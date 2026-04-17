@@ -7,7 +7,6 @@ import {
   buildThreadActionItems,
   filterBrowseEntries,
   filterCommandPaletteGroups,
-  parseBrowseItemValue,
   type CommandPaletteGroup,
 } from "./CommandPalette.logic";
 
@@ -261,33 +260,6 @@ describe("buildBrowseGroups", () => {
   });
 });
 
-describe("browse item value encoding", () => {
-  it("round-trips plain entries through parse/build", () => {
-    const value = buildBrowseItemValue({ name: "dir", fullPath: "/p/dir" });
-    expect(value).toBe("browse:/p/dir");
-    expect(parseBrowseItemValue(value)).toEqual({ kind: "entry", fullPath: "/p/dir" });
-  });
-
-  it("round-trips aliases through parse/build", () => {
-    const value = buildBrowseItemValue({
-      name: "alias",
-      fullPath: "/target/dir",
-      isAlias: true,
-    });
-    expect(value).toBe("browse:alias:alias:/target/dir");
-    expect(parseBrowseItemValue(value)).toEqual({
-      kind: "alias",
-      name: "alias",
-      fullPath: "/target/dir",
-    });
-  });
-
-  it("returns null for non-browse values", () => {
-    expect(parseBrowseItemValue("thread:thread-1")).toBeNull();
-    expect(parseBrowseItemValue("browse:alias:")).toBeNull();
-  });
-});
-
 describe("filterBrowseEntries", () => {
   const makeEntry = (overrides: Partial<FilesystemBrowseEntry>): FilesystemBrowseEntry => ({
     name: "entry",
@@ -305,8 +277,8 @@ describe("filterBrowseEntries", () => {
     expect(result.highlightedEntry).toBe(entry);
   });
 
-  it("resolves highlightedEntry for alias entries (regression: #2136)", () => {
-    // Two aliases in the same listing sharing a resolved target — the
+  it("resolves highlightedEntry for alias entries sharing a resolved target", () => {
+    // Two aliases in the same listing pointing at the same target; the
     // filename is what disambiguates them.
     const aliasA = makeEntry({
       name: "alias-a",
@@ -328,5 +300,26 @@ describe("filterBrowseEntries", () => {
     });
 
     expect(result.highlightedEntry).toBe(aliasB);
+  });
+
+  it("resolves highlightedEntry when the alias name contains a colon", () => {
+    // POSIX allows `:` in filenames. A stringy parser that splits on the
+    // first `:` after `alias:` would misread the name/fullPath boundary
+    // and fail to match. The consumer recomputes the value instead, so
+    // the round-trip is robust.
+    const alias = makeEntry({
+      name: "weird:name",
+      fullPath: "/real/target",
+      isSymlink: true,
+      isAlias: true,
+    });
+
+    const result = filterBrowseEntries({
+      browseEntries: [alias],
+      browseFilterQuery: "",
+      highlightedItemValue: buildBrowseItemValue(alias),
+    });
+
+    expect(result.highlightedEntry).toBe(alias);
   });
 });

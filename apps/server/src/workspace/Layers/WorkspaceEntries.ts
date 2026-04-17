@@ -181,6 +181,11 @@ async function mapWithConcurrency<A, B>(
 // and is essentially extinct on modern installs. We intentionally only
 // support modern bookmark aliases here.
 const MACOS_BOOKMARK_ALIAS_MAGIC = "book";
+// Real Finder bookmark files are tiny (typically well under 2 KB). Capping
+// the probe at 64 KB lets us skip media, archives, binaries, etc. with a
+// single cheap `stat` syscall in directories like ~/Downloads, instead of
+// paying for an `open + read + close` on every file matching the prefix.
+const MACOS_ALIAS_MAX_PROBE_BYTES = 64 * 1024;
 // The script emits one resolved path per alias in argv order, using NUL as
 // the terminator. POSIX paths cannot contain NUL bytes, so this is the only
 // delimiter that is guaranteed to be unambiguous; tabs and newlines are legal
@@ -204,6 +209,14 @@ const MACOS_ALIAS_RESOLVE_SCRIPT = `on run argv
 end run`;
 
 export async function isMacOSBookmarkAlias(filePath: string): Promise<boolean> {
+  // Cheap stat prefilter: bookmark files are small, so anything outside the
+  // plausible range can't be one and isn't worth opening.
+  try {
+    const stats = await fsPromises.stat(filePath);
+    if (stats.size < 4 || stats.size > MACOS_ALIAS_MAX_PROBE_BYTES) return false;
+  } catch {
+    return false;
+  }
   let handle: fsPromises.FileHandle | undefined;
   try {
     handle = await fsPromises.open(filePath, "r");

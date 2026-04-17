@@ -56,35 +56,15 @@ export type CommandPaletteMode = "root" | "root-browse" | "submenu" | "submenu-b
 //   - `browse:alias:${name}:${fullPath}` for macOS Finder aliases, where two
 //     aliases in the same listing can resolve to the same target and we need
 //     the visible name to disambiguate them.
-// Both the producer (buildBrowseGroups) and the consumer (filterBrowseEntries)
-// must agree on the format, so the encode/decode pair lives here.
+// The consumer never parses this string — it recomputes the value via
+// buildBrowseItemValue(entry) and compares. That way filename characters
+// (colons, spaces, …) never collide with the `:` delimiter.
 export function buildBrowseItemValue(
   entry: Pick<FilesystemBrowseEntry, "name" | "fullPath" | "isAlias">,
 ): string {
   return entry.isAlias
     ? `browse:alias:${entry.name}:${entry.fullPath}`
     : `browse:${entry.fullPath}`;
-}
-
-export function parseBrowseItemValue(
-  value: string,
-):
-  | { readonly kind: "entry"; readonly fullPath: string }
-  | { readonly kind: "alias"; readonly name: string; readonly fullPath: string }
-  | null {
-  if (!value.startsWith("browse:")) return null;
-  const rest = value.slice("browse:".length);
-  if (rest.startsWith("alias:")) {
-    const afterAlias = rest.slice("alias:".length);
-    const separatorIndex = afterAlias.indexOf(":");
-    if (separatorIndex <= 0) return null;
-    return {
-      kind: "alias",
-      name: afterAlias.slice(0, separatorIndex),
-      fullPath: afterAlias.slice(separatorIndex + 1),
-    };
-  }
-  return { kind: "entry", fullPath: rest };
 }
 
 export function filterBrowseEntries(input: {
@@ -106,16 +86,10 @@ export function filterBrowseEntries(input: {
   );
 
   let highlightedEntry: FilesystemBrowseEntry | null = null;
-  const parsed = input.highlightedItemValue
-    ? parseBrowseItemValue(input.highlightedItemValue)
-    : null;
-  if (parsed) {
+  const highlighted = input.highlightedItemValue;
+  if (highlighted && highlighted.startsWith("browse:")) {
     highlightedEntry =
-      filteredEntries.find((entry) =>
-        parsed.kind === "alias"
-          ? entry.name === parsed.name && entry.fullPath === parsed.fullPath
-          : entry.fullPath === parsed.fullPath,
-      ) ?? null;
+      filteredEntries.find((entry) => buildBrowseItemValue(entry) === highlighted) ?? null;
   }
 
   const exactEntry =

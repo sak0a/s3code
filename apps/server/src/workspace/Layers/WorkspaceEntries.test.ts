@@ -444,5 +444,23 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
         expect(result).toBe(false);
       }),
     );
+
+    it.effect("rejects files larger than the probe cap without reading magic", () =>
+      Effect.gen(function* () {
+        const path = yield* Path.Path;
+        const cwd = yield* makeTempDir({ prefix: "t3code-bookmark-magic-" });
+        const largePath = path.join(cwd, "big-fake-alias.bin");
+        // Starts with the bookmark magic but is larger than the probe cap
+        // (64 KB). Without the size prefilter this would return true; with
+        // it the file is skipped before we open it.
+        const header = Buffer.from("book\x00\x00\x00\x00mark\x00\x00\x00\x00", "binary");
+        const padding = Buffer.alloc(128 * 1024, 0);
+        yield* Effect.promise(() =>
+          fsPromises.writeFile(largePath, Buffer.concat([header, padding])),
+        );
+        const result = yield* Effect.promise(() => isMacOSBookmarkAlias(largePath));
+        expect(result).toBe(false);
+      }),
+    );
   });
 });
