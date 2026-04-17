@@ -3,8 +3,11 @@ import { EnvironmentId, type FilesystemBrowseEntry, ProjectId, ThreadId } from "
 import type { Thread } from "../types";
 import {
   buildBrowseGroups,
+  buildBrowseItemValue,
   buildThreadActionItems,
+  filterBrowseEntries,
   filterCommandPaletteGroups,
+  parseBrowseItemValue,
   type CommandPaletteGroup,
 } from "./CommandPalette.logic";
 
@@ -255,5 +258,75 @@ describe("buildBrowseGroups", () => {
 
     expect(browseTo.mock.calls).toEqual([["dir"], ["symlink"]]);
     expect(browseToPath).not.toHaveBeenCalled();
+  });
+});
+
+describe("browse item value encoding", () => {
+  it("round-trips plain entries through parse/build", () => {
+    const value = buildBrowseItemValue({ name: "dir", fullPath: "/p/dir" });
+    expect(value).toBe("browse:/p/dir");
+    expect(parseBrowseItemValue(value)).toEqual({ kind: "entry", fullPath: "/p/dir" });
+  });
+
+  it("round-trips aliases through parse/build", () => {
+    const value = buildBrowseItemValue({
+      name: "alias",
+      fullPath: "/target/dir",
+      isAlias: true,
+    });
+    expect(value).toBe("browse:alias:alias:/target/dir");
+    expect(parseBrowseItemValue(value)).toEqual({
+      kind: "alias",
+      name: "alias",
+      fullPath: "/target/dir",
+    });
+  });
+
+  it("returns null for non-browse values", () => {
+    expect(parseBrowseItemValue("thread:thread-1")).toBeNull();
+    expect(parseBrowseItemValue("browse:alias:")).toBeNull();
+  });
+});
+
+describe("filterBrowseEntries", () => {
+  const makeEntry = (overrides: Partial<FilesystemBrowseEntry>): FilesystemBrowseEntry => ({
+    name: "entry",
+    fullPath: "/entry",
+    ...overrides,
+  });
+
+  it("resolves highlightedEntry for non-alias entries", () => {
+    const entry = makeEntry({ name: "dir", fullPath: "/p/dir" });
+    const result = filterBrowseEntries({
+      browseEntries: [entry],
+      browseFilterQuery: "",
+      highlightedItemValue: buildBrowseItemValue(entry),
+    });
+    expect(result.highlightedEntry).toBe(entry);
+  });
+
+  it("resolves highlightedEntry for alias entries (regression: #2136)", () => {
+    // Two aliases in the same listing sharing a resolved target — the
+    // filename is what disambiguates them.
+    const aliasA = makeEntry({
+      name: "alias-a",
+      fullPath: "/shared/target",
+      isSymlink: true,
+      isAlias: true,
+    });
+    const aliasB = makeEntry({
+      name: "alias-b",
+      fullPath: "/shared/target",
+      isSymlink: true,
+      isAlias: true,
+    });
+
+    const result = filterBrowseEntries({
+      browseEntries: [aliasA, aliasB],
+      browseFilterQuery: "",
+      highlightedItemValue: buildBrowseItemValue(aliasB),
+    });
+
+    expect(result.highlightedEntry).toBe(aliasB);
   });
 });

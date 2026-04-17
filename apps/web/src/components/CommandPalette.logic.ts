@@ -51,6 +51,42 @@ export interface CommandPaletteView {
 
 export type CommandPaletteMode = "root" | "root-browse" | "submenu" | "submenu-browse";
 
+// Browse palette values have two shapes:
+//   - `browse:${fullPath}` for regular directories and symlinks
+//   - `browse:alias:${name}:${fullPath}` for macOS Finder aliases, where two
+//     aliases in the same listing can resolve to the same target and we need
+//     the visible name to disambiguate them.
+// Both the producer (buildBrowseGroups) and the consumer (filterBrowseEntries)
+// must agree on the format, so the encode/decode pair lives here.
+export function buildBrowseItemValue(
+  entry: Pick<FilesystemBrowseEntry, "name" | "fullPath" | "isAlias">,
+): string {
+  return entry.isAlias
+    ? `browse:alias:${entry.name}:${entry.fullPath}`
+    : `browse:${entry.fullPath}`;
+}
+
+export function parseBrowseItemValue(
+  value: string,
+):
+  | { readonly kind: "entry"; readonly fullPath: string }
+  | { readonly kind: "alias"; readonly name: string; readonly fullPath: string }
+  | null {
+  if (!value.startsWith("browse:")) return null;
+  const rest = value.slice("browse:".length);
+  if (rest.startsWith("alias:")) {
+    const afterAlias = rest.slice("alias:".length);
+    const separatorIndex = afterAlias.indexOf(":");
+    if (separatorIndex <= 0) return null;
+    return {
+      kind: "alias",
+      name: afterAlias.slice(0, separatorIndex),
+      fullPath: afterAlias.slice(separatorIndex + 1),
+    };
+  }
+  return { kind: "entry", fullPath: rest };
+}
+
 export function filterBrowseEntries(input: {
   browseEntries: ReadonlyArray<FilesystemBrowseEntry>;
   browseFilterQuery: string;
@@ -70,9 +106,16 @@ export function filterBrowseEntries(input: {
   );
 
   let highlightedEntry: FilesystemBrowseEntry | null = null;
-  if (input.highlightedItemValue?.startsWith("browse:")) {
-    const highlightedPath = input.highlightedItemValue.slice("browse:".length);
-    highlightedEntry = filteredEntries.find((entry) => entry.fullPath === highlightedPath) ?? null;
+  const parsed = input.highlightedItemValue
+    ? parseBrowseItemValue(input.highlightedItemValue)
+    : null;
+  if (parsed) {
+    highlightedEntry =
+      filteredEntries.find((entry) =>
+        parsed.kind === "alias"
+          ? entry.name === parsed.name && entry.fullPath === parsed.fullPath
+          : entry.fullPath === parsed.fullPath,
+      ) ?? null;
   }
 
   const exactEntry =
@@ -303,16 +346,9 @@ export function buildBrowseGroups(input: {
   }
 
   for (const entry of input.browseEntries) {
-    // For Finder aliases, `fullPath` is the resolved target and two aliases
-    // in the same directory can resolve to the same place. Fold the visible
-    // name into the value so each row has a distinct identifier for React
-    // keys and keyboard navigation.
-    const value = entry.isAlias
-      ? `browse:alias:${entry.name}:${entry.fullPath}`
-      : `browse:${entry.fullPath}`;
     items.push({
       kind: "action",
-      value,
+      value: buildBrowseItemValue(entry),
       searchTerms: [input.browseQuery, entry.fullPath, entry.name],
       title: entry.name,
       icon: entry.isSymlink ? input.symlinkIcon : input.directoryIcon,
