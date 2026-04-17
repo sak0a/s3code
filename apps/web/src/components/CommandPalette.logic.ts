@@ -281,8 +281,10 @@ export function buildBrowseGroups(input: {
   canBrowseUp: boolean;
   upIcon: ReactNode;
   directoryIcon: ReactNode;
+  symlinkIcon: ReactNode;
   browseUp: () => void;
   browseTo: (name: string) => void;
+  browseToPath: (fullPath: string) => void;
 }): CommandPaletteGroup[] {
   const items: CommandPaletteActionItem[] = [];
 
@@ -301,15 +303,29 @@ export function buildBrowseGroups(input: {
   }
 
   for (const entry of input.browseEntries) {
+    // For Finder aliases, `fullPath` is the resolved target and two aliases
+    // in the same directory can resolve to the same place. Fold the visible
+    // name into the value so each row has a distinct identifier for React
+    // keys and keyboard navigation.
+    const value = entry.isAlias
+      ? `browse:alias:${entry.name}:${entry.fullPath}`
+      : `browse:${entry.fullPath}`;
     items.push({
       kind: "action",
-      value: `browse:${entry.fullPath}`,
+      value,
       searchTerms: [input.browseQuery, entry.fullPath, entry.name],
       title: entry.name,
-      icon: input.directoryIcon,
+      icon: entry.isSymlink ? input.symlinkIcon : input.directoryIcon,
       keepOpen: true,
       run: async () => {
-        input.browseTo(entry.name);
+        // Finder aliases resolve to a target elsewhere on disk. Appending the
+        // alias file name to the current path would fail to readdir, so we
+        // jump straight to the resolved fullPath.
+        if (entry.isAlias) {
+          input.browseToPath(entry.fullPath);
+        } else {
+          input.browseTo(entry.name);
+        }
       },
     });
   }

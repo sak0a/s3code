@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { EnvironmentId, ProjectId, ThreadId } from "@t3tools/contracts";
+import { EnvironmentId, type FilesystemBrowseEntry, ProjectId, ThreadId } from "@t3tools/contracts";
 import type { Thread } from "../types";
 import {
+  buildBrowseGroups,
   buildThreadActionItems,
   filterCommandPaletteGroups,
   type CommandPaletteGroup,
@@ -162,5 +163,97 @@ describe("buildThreadActionItems", () => {
     });
 
     expect(items.map((item) => item.value)).toEqual(["thread:thread-active"]);
+  });
+});
+
+describe("buildBrowseGroups", () => {
+  const makeEntry = (overrides: Partial<FilesystemBrowseEntry>): FilesystemBrowseEntry => ({
+    name: "entry",
+    fullPath: "/entry",
+    ...overrides,
+  });
+
+  const makeInput = (
+    entries: FilesystemBrowseEntry[],
+    handlers: {
+      browseTo?: (name: string) => void;
+      browseToPath?: (fullPath: string) => void;
+    } = {},
+  ) => ({
+    browseEntries: entries,
+    browseQuery: "~/",
+    canBrowseUp: false,
+    upIcon: "up-icon",
+    directoryIcon: "dir-icon",
+    symlinkIcon: "symlink-icon",
+    browseUp: () => undefined,
+    browseTo: handlers.browseTo ?? (() => undefined),
+    browseToPath: handlers.browseToPath ?? (() => undefined),
+  });
+
+  it("uses the symlink icon for symlinked and aliased entries", () => {
+    const groups = buildBrowseGroups(
+      makeInput([
+        makeEntry({ name: "real", fullPath: "/p/real" }),
+        makeEntry({ name: "linked", fullPath: "/p/linked", isSymlink: true }),
+        makeEntry({ name: "aliased", fullPath: "/target", isSymlink: true, isAlias: true }),
+      ]),
+    );
+
+    const icons = groups[0]?.items.map((item) => item.kind === "action" && item.icon);
+    expect(icons).toEqual(["dir-icon", "symlink-icon", "symlink-icon"]);
+  });
+
+  it("produces unique values for aliases that share a resolved target", () => {
+    const groups = buildBrowseGroups(
+      makeInput([
+        makeEntry({ name: "alias-a", fullPath: "/shared/target", isSymlink: true, isAlias: true }),
+        makeEntry({ name: "alias-b", fullPath: "/shared/target", isSymlink: true, isAlias: true }),
+      ]),
+    );
+
+    const values = groups[0]?.items.map((item) => item.value) ?? [];
+    expect(new Set(values).size).toBe(values.length);
+  });
+
+  it("routes alias navigation to browseToPath with the resolved fullPath", async () => {
+    const browseTo = vi.fn();
+    const browseToPath = vi.fn();
+    const groups = buildBrowseGroups(
+      makeInput(
+        [makeEntry({ name: "alias", fullPath: "/target", isSymlink: true, isAlias: true })],
+        { browseTo, browseToPath },
+      ),
+    );
+
+    const action = groups[0]?.items[0];
+    if (action?.kind !== "action") throw new Error("expected action item");
+    await action.run();
+
+    expect(browseToPath).toHaveBeenCalledWith("/target");
+    expect(browseTo).not.toHaveBeenCalled();
+  });
+
+  it("routes directory and symlink navigation to browseTo with the entry name", async () => {
+    const browseTo = vi.fn();
+    const browseToPath = vi.fn();
+    const groups = buildBrowseGroups(
+      makeInput(
+        [
+          makeEntry({ name: "dir", fullPath: "/p/dir" }),
+          makeEntry({ name: "symlink", fullPath: "/p/symlink", isSymlink: true }),
+        ],
+        { browseTo, browseToPath },
+      ),
+    );
+
+    const items = groups[0]?.items ?? [];
+    for (const item of items) {
+      if (item.kind !== "action") throw new Error("expected action item");
+      await item.run();
+    }
+
+    expect(browseTo.mock.calls).toEqual([["dir"], ["symlink"]]);
+    expect(browseToPath).not.toHaveBeenCalled();
   });
 });

@@ -16,6 +16,7 @@ import {
   CornerLeftUpIcon,
   FolderIcon,
   FolderPlusIcon,
+  FolderSymlinkIcon,
   MessageSquareIcon,
   SettingsIcon,
   SquarePenIcon,
@@ -404,7 +405,11 @@ function OpenCommandPaletteDialog() {
 
     const nextChild = highlightedBrowseEntry ?? exactBrowseEntry;
     if (nextChild) {
-      prefetchBrowsePath(appendBrowsePathSegment(query, nextChild.name));
+      prefetchBrowsePath(
+        nextChild.isAlias
+          ? ensureBrowseDirectoryPath(nextChild.fullPath)
+          : appendBrowsePathSegment(query, nextChild.name),
+      );
     }
   }, [
     exactBrowseEntry,
@@ -818,6 +823,13 @@ function OpenCommandPaletteDialog() {
     setBrowseGeneration((generation) => generation + 1);
   }
 
+  function browseToPath(fullPath: string): void {
+    const nextQuery = ensureBrowseDirectoryPath(fullPath);
+    setHighlightedItemValue(null);
+    setQuery(nextQuery);
+    setBrowseGeneration((generation) => generation + 1);
+  }
+
   function browseUp(): void {
     const parentPath = getBrowseParentPath(query);
     if (parentPath === null) {
@@ -846,8 +858,10 @@ function OpenCommandPaletteDialog() {
     canBrowseUp,
     upIcon: <CornerLeftUpIcon className={ITEM_ICON_CLASS} />,
     directoryIcon: <FolderIcon className={ITEM_ICON_CLASS} />,
+    symlinkIcon: <FolderSymlinkIcon className={ITEM_ICON_CLASS} />,
     browseUp,
     browseTo,
+    browseToPath,
   });
 
   let displayedGroups = filteredGroups;
