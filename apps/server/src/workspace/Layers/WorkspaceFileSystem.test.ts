@@ -186,6 +186,90 @@ it.layer(TestLayer)("WorkspaceFileSystemLive", (it) => {
         );
       }),
     );
+
+    it.effect("rejects escaped symlink reads without leaking missing-target metadata", () =>
+      Effect.gen(function* () {
+        const workspaceFileSystem = yield* WorkspaceFileSystem;
+        const cwd = yield* makeTempDir;
+
+        const externalDir = `${cwd}-outside`;
+        yield* Effect.promise(() => fsPromises.mkdir(externalDir, { recursive: true })).pipe(
+          Effect.orDie,
+        );
+        yield* writeDirectorySymlink(cwd, "linked", externalDir);
+
+        const error = yield* workspaceFileSystem
+          .readFile({
+            cwd,
+            relativePath: "linked/missing.txt",
+          })
+          .pipe(Effect.flip);
+
+        expect(error.message).toContain(
+          "Workspace file path must be relative to the project root: linked/missing.txt",
+        );
+        expect(String(error)).not.toContain("ENOENT");
+      }),
+    );
+
+    it.effect("rejects escaped symlink reads without leaking directory metadata", () =>
+      Effect.gen(function* () {
+        const workspaceFileSystem = yield* WorkspaceFileSystem;
+        const cwd = yield* makeTempDir;
+        const path = yield* Path.Path;
+
+        const externalDir = `${cwd}-outside`;
+        yield* Effect.promise(() =>
+          fsPromises.mkdir(path.join(externalDir, "nested"), { recursive: true }),
+        ).pipe(Effect.orDie);
+        yield* writeDirectorySymlink(cwd, "linked", externalDir);
+
+        const error = yield* workspaceFileSystem
+          .readFile({
+            cwd,
+            relativePath: "linked/nested",
+          })
+          .pipe(Effect.flip);
+
+        expect(error.message).toContain(
+          "Workspace file path must be relative to the project root: linked/nested",
+        );
+        if ("detail" in error) {
+          expect(error.detail).not.toBe("Only regular files can be previewed.");
+        }
+      }),
+    );
+
+    it.effect("rejects escaped symlink reads without leaking file size metadata", () =>
+      Effect.gen(function* () {
+        const workspaceFileSystem = yield* WorkspaceFileSystem;
+        const cwd = yield* makeTempDir;
+        const path = yield* Path.Path;
+
+        const externalDir = `${cwd}-outside`;
+        yield* Effect.promise(() => fsPromises.mkdir(externalDir, { recursive: true })).pipe(
+          Effect.orDie,
+        );
+        yield* Effect.promise(() =>
+          fsPromises.writeFile(path.join(externalDir, "huge.log"), "x".repeat(512 * 1024 + 1)),
+        ).pipe(Effect.orDie);
+        yield* writeDirectorySymlink(cwd, "linked", externalDir);
+
+        const error = yield* workspaceFileSystem
+          .readFile({
+            cwd,
+            relativePath: "linked/huge.log",
+          })
+          .pipe(Effect.flip);
+
+        expect(error.message).toContain(
+          "Workspace file path must be relative to the project root: linked/huge.log",
+        );
+        if ("detail" in error) {
+          expect(error.detail).not.toContain("File is too large to preview");
+        }
+      }),
+    );
   });
 
   describe("writeFile", () => {

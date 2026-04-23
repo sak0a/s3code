@@ -126,6 +126,8 @@ export const makeWorkspaceFileSystem = Effect.gen(function* () {
         relativePath: input.relativePath,
       });
 
+      yield* ensureResolvedPathStaysWithinWorkspace(input, target.absolutePath);
+
       const fileInfo = yield* fileSystem
         .stat(target.absolutePath)
         .pipe(
@@ -139,8 +141,6 @@ export const makeWorkspaceFileSystem = Effect.gen(function* () {
           detail: "Only regular files can be previewed.",
         });
       }
-
-      yield* ensureResolvedPathStaysWithinWorkspace(input, target.absolutePath);
 
       const fileSize =
         typeof fileInfo.size === "bigint"
