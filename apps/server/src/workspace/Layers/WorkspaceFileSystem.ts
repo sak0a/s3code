@@ -1,6 +1,6 @@
 import { realpath as realpathPromise } from "node:fs/promises";
 
-import { Effect, FileSystem, Layer, Path } from "effect";
+import { Data, Effect, FileSystem, Layer, Path } from "effect";
 
 import {
   WorkspaceFileSystem,
@@ -29,6 +29,12 @@ function toPosixPath(input: string): string {
   return input.replaceAll("\\", "/");
 }
 
+class MissingRealPathError extends Data.TaggedError("MissingRealPathError") {}
+
+function isEnoentError(cause: unknown): cause is NodeJS.ErrnoException {
+  return typeof cause === "object" && cause !== null && "code" in cause && cause.code === "ENOENT";
+}
+
 export const makeWorkspaceFileSystem = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
@@ -49,27 +55,55 @@ export const makeWorkspaceFileSystem = Effect.gen(function* () {
       });
   };
 
+  const resolveRealWorkspaceTargetPath = Effect.fn(
+    "WorkspaceFileSystem.resolveRealWorkspaceTargetPath",
+  )(function* (input: { cwd: string; relativePath: string }, absolutePath: string) {
+    const missingSegments: Array<string> = [];
+    let candidatePath = absolutePath;
+
+    while (true) {
+      const realCandidatePath = yield* Effect.tryPromise({
+        try: () => realpathPromise(candidatePath),
+        catch: (cause) =>
+          isEnoentError(cause)
+            ? new MissingRealPathError()
+            : toWorkspaceFileSystemError(input, "workspaceFileSystem.realpath.target")(cause),
+      }).pipe(Effect.catchTag("MissingRealPathError", () => Effect.succeed(null)));
+
+      if (realCandidatePath !== null) {
+        return missingSegments.length === 0
+          ? realCandidatePath
+          : path.join(realCandidatePath, ...missingSegments);
+      }
+
+      const parentPath = path.dirname(candidatePath);
+      if (parentPath === candidatePath) {
+        return yield* new WorkspaceFileSystemError({
+          cwd: input.cwd,
+          relativePath: input.relativePath,
+          operation: "workspaceFileSystem.realpath.target",
+          detail: `Unable to resolve workspace target path: ${absolutePath}`,
+        });
+      }
+
+      missingSegments.unshift(path.basename(candidatePath));
+      candidatePath = parentPath;
+    }
+  });
+
   const ensureResolvedPathStaysWithinWorkspace = Effect.fn(
     "WorkspaceFileSystem.ensureResolvedPathStaysWithinWorkspace",
   )(function* (input: { cwd: string; relativePath: string }, absolutePath: string) {
     const normalizedWorkspaceRoot = yield* workspacePaths
       .normalizeWorkspaceRoot(input.cwd)
       .pipe(
-        Effect.mapError(toWorkspaceFileSystemError(input, "workspaceFileSystem.readFile.root")),
+        Effect.mapError(toWorkspaceFileSystemError(input, "workspaceFileSystem.workspaceRoot")),
       );
-    const [realWorkspaceRoot, realTargetPath] = yield* Effect.all(
-      [
-        Effect.tryPromise({
-          try: () => realpathPromise(normalizedWorkspaceRoot),
-          catch: toWorkspaceFileSystemError(input, "workspaceFileSystem.readFile.realpath.root"),
-        }),
-        Effect.tryPromise({
-          try: () => realpathPromise(absolutePath),
-          catch: toWorkspaceFileSystemError(input, "workspaceFileSystem.readFile.realpath.target"),
-        }),
-      ],
-      { concurrency: "unbounded" },
-    );
+    const realWorkspaceRoot = yield* Effect.tryPromise({
+      try: () => realpathPromise(normalizedWorkspaceRoot),
+      catch: toWorkspaceFileSystemError(input, "workspaceFileSystem.realpath.root"),
+    });
+    const realTargetPath = yield* resolveRealWorkspaceTargetPath(input, absolutePath);
     const relativeToRoot = toPosixPath(path.relative(realWorkspaceRoot, realTargetPath));
     if (
       relativeToRoot.length === 0 ||
@@ -161,6 +195,8 @@ export const makeWorkspaceFileSystem = Effect.gen(function* () {
       workspaceRoot: input.cwd,
       relativePath: input.relativePath,
     });
+
+    yield* ensureResolvedPathStaysWithinWorkspace(input, target.absolutePath);
 
     yield* fileSystem
       .makeDirectory(path.dirname(target.absolutePath), { recursive: true })

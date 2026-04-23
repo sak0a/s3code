@@ -270,5 +270,37 @@ it.layer(TestLayer)("WorkspaceFileSystemLive", (it) => {
         expect(escapedStat).toBeNull();
       }),
     );
+
+    it.effect("rejects symlinked write targets that resolve outside the workspace root", () =>
+      Effect.gen(function* () {
+        const workspaceFileSystem = yield* WorkspaceFileSystem;
+        const cwd = yield* makeTempDir;
+        const path = yield* Path.Path;
+        const fileSystem = yield* FileSystem.FileSystem;
+
+        const externalDir = `${cwd}-outside`;
+        yield* Effect.promise(() => fsPromises.mkdir(externalDir, { recursive: true })).pipe(
+          Effect.orDie,
+        );
+        yield* writeDirectorySymlink(cwd, "linked", externalDir);
+
+        const error = yield* workspaceFileSystem
+          .writeFile({
+            cwd,
+            relativePath: "linked/malicious.txt",
+            contents: "escaped\n",
+          })
+          .pipe(Effect.flip);
+
+        expect(error.message).toContain(
+          "Workspace file path must be relative to the project root: linked/malicious.txt",
+        );
+
+        const escapedStat = yield* fileSystem
+          .stat(path.join(externalDir, "malicious.txt"))
+          .pipe(Effect.catch(() => Effect.succeed(null)));
+        expect(escapedStat).toBeNull();
+      }),
+    );
   });
 });
