@@ -311,8 +311,7 @@ function ChatThreadRouteView() {
 
   const shouldRenderRightPanelContent =
     rightPanelMode === "diff" || hasOpenedDiff || rightPanelMode === "preview" || hasOpenedPreview;
-  const mountedRightPanelMode: RightPanelMode =
-    rightPanelMode ?? (hasOpenedPreview ? "preview" : "diff");
+  const mountedRightPanelMode: RightPanelMode = rightPanelMode ?? lastOpenedRightPanelMode;
 
   if (!shouldUseDiffSheet) {
     return (

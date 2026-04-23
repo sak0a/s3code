@@ -131,6 +131,15 @@ function clampTreeWidth(width: number, containerWidth: number): number {
   return Math.max(PREVIEW_TREE_MIN_WIDTH, Math.min(width, maxWidth));
 }
 
+function getResizedTreeWidth(
+  resizeState: { startWidth: number; startX: number },
+  containerWidth: number,
+  pointerClientX: number,
+): number {
+  const delta = pointerClientX - resizeState.startX;
+  return clampTreeWidth(resizeState.startWidth + delta, containerWidth);
+}
+
 function isMissingWorkspaceFileError(message: string | null): boolean {
   if (!message) {
     return false;
@@ -246,22 +255,23 @@ export default function PreviewPanel({ mode = "inline" }: PreviewPanelProps) {
       : projectFilesQuery.error
         ? "Failed to load the workspace tree."
         : null;
+  const projectFiles = projectFilesQuery.data;
   const projectFilesTruncated = projectFilesQuery.data?.truncated === true;
   const projectFilesIsFetching = projectFilesQuery.isFetching;
   const refetchProjectFiles = projectFilesQuery.refetch;
 
   useEffect(() => {
-    if (projectFilesQuery.data?.entries?.length === 0) {
+    if (!projectFiles) {
+      return;
+    }
+    if (projectFiles.entries.length === 0) {
       setSelectedFilePath(null);
       return;
     }
-    if (
-      selectedFilePath &&
-      !projectFilesQuery.data?.entries.some((file) => file.path === selectedFilePath)
-    ) {
+    if (selectedFilePath && !projectFiles.entries.some((file) => file.path === selectedFilePath)) {
       setSelectedFilePath(null);
     }
-  }, [projectFilesQuery.data?.entries, selectedFilePath]);
+  }, [projectFiles, selectedFilePath]);
 
   useEffect(() => {
     if (previewSearch.preview !== "1") {
@@ -407,29 +417,28 @@ export default function PreviewPanel({ mode = "inline" }: PreviewPanelProps) {
       return;
     }
     event.preventDefault();
-    const delta = event.clientX - resizeState.startX;
-    const nextWidth = clampTreeWidth(resizeState.startWidth + delta, container.clientWidth);
+    const nextWidth = getResizedTreeWidth(resizeState, container.clientWidth, event.clientX);
     setTreeWidth(nextWidth);
   }, []);
 
-  const onResizePointerEnd = useCallback(
-    (event: ReactPointerEvent<HTMLButtonElement>) => {
-      const resizeState = resizeStateRef.current;
-      if (!resizeState || resizeState.pointerId !== event.pointerId) {
-        return;
-      }
-      resizeStateRef.current = null;
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      }
-      document.body.style.removeProperty("cursor");
-      document.body.style.removeProperty("user-select");
-      if (typeof window !== "undefined") {
-        setLocalStorageItem(PREVIEW_TREE_WIDTH_STORAGE_KEY, treeWidth, Schema.Finite);
-      }
-    },
-    [treeWidth],
-  );
+  const onResizePointerEnd = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
+    const resizeState = resizeStateRef.current;
+    const container = splitLayoutRef.current;
+    if (!resizeState || !container || resizeState.pointerId !== event.pointerId) {
+      return;
+    }
+    const nextWidth = getResizedTreeWidth(resizeState, container.clientWidth, event.clientX);
+    resizeStateRef.current = null;
+    setTreeWidth(nextWidth);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    document.body.style.removeProperty("cursor");
+    document.body.style.removeProperty("user-select");
+    if (typeof window !== "undefined") {
+      setLocalStorageItem(PREVIEW_TREE_WIDTH_STORAGE_KEY, nextWidth, Schema.Finite);
+    }
+  }, []);
 
   useEffect(
     () => () => {
