@@ -3,6 +3,7 @@ import {
   CopyIcon,
   DownloadIcon,
   PencilIcon,
+  PlusIcon,
   Trash2Icon,
   UploadIcon,
 } from "lucide-react";
@@ -16,6 +17,7 @@ import {
   deleteCustomTheme,
   duplicateTheme,
   findTheme,
+  generateCustomThemeId,
   getAllThemes,
   isBuiltInThemeId,
   setActiveThemeId,
@@ -101,6 +103,19 @@ export function AppearanceSettingsPanel() {
     },
     [refresh, setActiveTheme],
   );
+
+  const handleAddNew = useCallback(() => {
+    const fresh: ThemeDefinition = {
+      id: generateCustomThemeId("new"),
+      name: "New theme",
+      builtIn: false,
+    };
+    addCustomTheme(fresh);
+    setActiveTheme(fresh.id);
+    setEditingId(fresh.id);
+    setDraft(fresh);
+    refresh();
+  }, [refresh, setActiveTheme]);
 
   const handleSave = useCallback(() => {
     if (!editing) return;
@@ -198,7 +213,7 @@ export function AppearanceSettingsPanel() {
       <SettingsSection
         title="Theme palette"
         headerAction={
-          <>
+          <div className="flex items-center gap-1">
             <input
               ref={fileInputRef}
               type="file"
@@ -211,6 +226,17 @@ export function AppearanceSettingsPanel() {
             <Button
               size="xs"
               variant="ghost"
+              onClick={handleAddNew}
+              aria-label="Create a new theme"
+              title="Create a new theme"
+              className="text-muted-foreground"
+            >
+              <PlusIcon className="size-3.5" />
+              New
+            </Button>
+            <Button
+              size="xs"
+              variant="ghost"
               onClick={handleImportClick}
               aria-label="Import a theme from file"
               title="Import a theme from disk"
@@ -219,7 +245,7 @@ export function AppearanceSettingsPanel() {
               <UploadIcon className="size-3.5" />
               Import
             </Button>
-          </>
+          </div>
         }
       >
         <div role="radiogroup" aria-label="Theme palette">
