@@ -3,11 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "../../lib/utils";
-import {
-  applyThemeToDocument,
-  isValidColorValue,
-  isValidTheme,
-} from "../../themes/registry";
+import { applyThemeToDocument, isValidColorValue, isValidTheme } from "../../themes/registry";
 import {
   THEME_TOKEN_NAMES,
   type ThemeDefinition,

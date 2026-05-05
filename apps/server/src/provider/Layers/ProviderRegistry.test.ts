@@ -216,6 +216,7 @@ function makeCodexProbeSnapshot(
       },
     ],
     skills: [],
+    rateLimits: undefined,
     ...input,
   };
 }
@@ -353,6 +354,56 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest()))(
           assert.strictEqual(status.auth.status, "authenticated");
           assert.strictEqual(status.auth.type, "apiKey");
           assert.strictEqual(status.auth.label, "OpenAI API Key");
+        }),
+      );
+
+      it.effect("forwards rateLimits from the probe snapshot onto the provider", () =>
+        Effect.gen(function* () {
+          const status = yield* checkCodexProviderStatus(defaultCodexSettings, () =>
+            Effect.succeed(
+              makeCodexProbeSnapshot({
+                rateLimits: {
+                  limitName: "ChatGPT Pro",
+                  planType: "pro",
+                  primary: {
+                    usedPercent: 42,
+                    resetsAt: 1_700_000_000,
+                    windowDurationMins: 300,
+                  },
+                  secondary: {
+                    usedPercent: 7,
+                    windowDurationMins: 7 * 24 * 60,
+                  },
+                },
+              }),
+            ),
+          );
+
+          assert.strictEqual(status.status, "ready");
+          assert.deepStrictEqual(status.rateLimits, {
+            limitName: "ChatGPT Pro",
+            planType: "pro",
+            primary: {
+              usedPercent: 42,
+              resetsAt: 1_700_000_000,
+              windowDurationMins: 300,
+            },
+            secondary: {
+              usedPercent: 7,
+              windowDurationMins: 7 * 24 * 60,
+            },
+          });
+        }),
+      );
+
+      it.effect("omits rateLimits when the probe snapshot has none", () =>
+        Effect.gen(function* () {
+          const status = yield* checkCodexProviderStatus(defaultCodexSettings, () =>
+            Effect.succeed(makeCodexProbeSnapshot()),
+          );
+
+          assert.strictEqual(status.status, "ready");
+          assert.strictEqual(status.rateLimits, undefined);
         }),
       );
 

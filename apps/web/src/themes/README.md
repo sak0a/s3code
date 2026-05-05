@@ -25,12 +25,13 @@ apps/web/src/
 ```
 
 **Data flow:**
+
 1. `useTheme` reads `t3code:theme` (light/dark/system) → toggles `.dark` class on `<html>`
 2. `useTheme` reads `t3code:active-theme` → looks up theme in registry → calls `applyThemeToDocument`
 3. `applyThemeToDocument` writes a `<style id="t3code-active-theme">` tag containing `:root { --x: ... } :root.dark { --y: ... }`
 4. Because the style tag is appended after `index.css`, its variables win — but only ones the theme defines, so partial themes work.
 
-**Key invariant:** `index.css` always contains the *full* default token set. Any theme is a *patch* on top, never a replacement. This guarantees the app never breaks if a user's theme is incomplete.
+**Key invariant:** `index.css` always contains the _full_ default token set. Any theme is a _patch_ on top, never a replacement. This guarantees the app never breaks if a user's theme is incomplete.
 
 ---
 
@@ -143,6 +144,7 @@ Files use the `.t3theme.json` extension and follow this shape:
 ```
 
 Rules:
+
 - `id` and `name` must be non-empty strings.
 - `light` and `dark` are both optional. Tokens missing from a variant fall back to the default theme's values for that variant.
 - Token values must be strings. Allowed: any CSS color, `var(...)`, `oklch(...)`, `color-mix(...)`, percentages, `rgba(...)`, etc.
@@ -158,6 +160,7 @@ Rules:
 Current state: code highlighting is shiki-based (see `chat-markdown-shiki` rule and `ChatMarkdown.tsx`). Today shiki uses its own theme list independent of chrome.
 
 Tasks:
+
 - [ ] Extend `ThemeDefinition` with an optional `syntax` field — either a shiki theme name (e.g. `"github-dark"`) or an inline TextMate-style theme JSON
 - [ ] Plumb the active theme's `syntax` value into the shiki highlighter call site
 - [ ] Provide a sensible default per theme variant (light → `github-light`, dark → `github-dark`)
@@ -180,21 +183,21 @@ Acceptance: switching theme also re-colors code blocks; falls back gracefully if
 
 ## File reference (current Phase 1 state)
 
-| File | Purpose |
-|---|---|
-| `apps/web/src/index.css` | Default tokens for `:root` and `.dark` (the fallback every theme patches) |
-| `apps/web/src/themes/types.ts` | `ThemeDefinition`, `ThemeTokens`, `THEME_TOKEN_NAMES` |
-| `apps/web/src/themes/builtin.ts` | `DEFAULT_THEME` + `BUILT_IN_THEMES` |
-| `apps/web/src/themes/registry.ts` | Storage, lookup, CSS injection (`applyThemeToDocument`) |
-| `apps/web/src/hooks/useTheme.ts` | React hook — exposes `theme`, `setTheme`, `resolvedTheme`, `activeThemeId`, `setActiveTheme` |
+| File                              | Purpose                                                                                      |
+| --------------------------------- | -------------------------------------------------------------------------------------------- |
+| `apps/web/src/index.css`          | Default tokens for `:root` and `.dark` (the fallback every theme patches)                    |
+| `apps/web/src/themes/types.ts`    | `ThemeDefinition`, `ThemeTokens`, `THEME_TOKEN_NAMES`                                        |
+| `apps/web/src/themes/builtin.ts`  | `DEFAULT_THEME` + `BUILT_IN_THEMES`                                                          |
+| `apps/web/src/themes/registry.ts` | Storage, lookup, CSS injection (`applyThemeToDocument`)                                      |
+| `apps/web/src/hooks/useTheme.ts`  | React hook — exposes `theme`, `setTheme`, `resolvedTheme`, `activeThemeId`, `setActiveTheme` |
 
 ## Storage keys
 
-| Key | Type | Purpose |
-|---|---|---|
-| `t3code:theme` | `"light" \| "dark" \| "system"` | Light/dark/system mode (existing) |
-| `t3code:active-theme` | string (theme id) | Which theme to apply (new — Phase 1) |
-| `t3code:custom-themes` | `ThemeDefinition[]` JSON | User-authored themes (new — Phase 1) |
+| Key                    | Type                            | Purpose                              |
+| ---------------------- | ------------------------------- | ------------------------------------ |
+| `t3code:theme`         | `"light" \| "dark" \| "system"` | Light/dark/system mode (existing)    |
+| `t3code:active-theme`  | string (theme id)               | Which theme to apply (new — Phase 1) |
+| `t3code:custom-themes` | `ThemeDefinition[]` JSON        | User-authored themes (new — Phase 1) |
 
 ## Hook API
 
@@ -211,6 +214,7 @@ const { theme, setTheme, resolvedTheme, activeThemeId, setActiveTheme } = useThe
 ## Token allow-list
 
 Defined in `types.ts`. Adding a new token requires:
+
 1. Append to `THEME_TOKEN_NAMES`
 2. Add the variable to `:root` (and `.dark` if needed) in `index.css`
 3. Add to `DEFAULT_THEME.light` / `.dark` in `builtin.ts` so existing themes don't break

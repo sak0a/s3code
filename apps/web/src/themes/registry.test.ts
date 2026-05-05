@@ -210,9 +210,7 @@ describe("materializeTokenValue", () => {
   });
 
   it("handles --alpha(...) with surrounding text", () => {
-    const result = materializeTokenValue(
-      "1px solid --alpha(var(--color-zinc-300) / 60%) inset",
-    );
+    const result = materializeTokenValue("1px solid --alpha(var(--color-zinc-300) / 60%) inset");
     expect(result).toBe(
       "1px solid color-mix(in srgb, var(--color-zinc-300) 60%, transparent) inset",
     );
@@ -226,12 +224,8 @@ describe("materializeTokenValue", () => {
   });
 
   it("handles nested parens inside --alpha(...)", () => {
-    const result = materializeTokenValue(
-      "--alpha(oklch(0.5 0.2 264) / 40%)",
-    );
-    expect(result).toBe(
-      "color-mix(in srgb, oklch(0.5 0.2 264) 40%, transparent)",
-    );
+    const result = materializeTokenValue("--alpha(oklch(0.5 0.2 264) / 40%)");
+    expect(result).toBe("color-mix(in srgb, oklch(0.5 0.2 264) 40%, transparent)");
   });
 
   it("leaves --alpha() without a slash separator unchanged-shaped (no conversion)", () => {
@@ -407,11 +401,13 @@ describe("custom theme storage", () => {
       value: {
         getElementById: (id: string) => styleNodes.find((node) => node.id === id) ?? null,
         createElement: () => {
-          const Style = (globalThis as unknown as { HTMLStyleElement: new () => typeof styleNodes[number] }).HTMLStyleElement;
+          const Style = (
+            globalThis as unknown as { HTMLStyleElement: new () => (typeof styleNodes)[number] }
+          ).HTMLStyleElement;
           return new Style();
         },
         head: {
-          append: (node: typeof styleNodes[number]) => {
+          append: (node: (typeof styleNodes)[number]) => {
             styleNodes.push(node);
           },
         },
@@ -420,7 +416,12 @@ describe("custom theme storage", () => {
 
     addCustomTheme({ id: "alpha", name: "Alpha", builtIn: false, light: { primary: "#abc" } });
     setActiveThemeId("alpha");
-    applyThemeToDocument({ id: "alpha", name: "Alpha", builtIn: false, light: { primary: "#abc" } });
+    applyThemeToDocument({
+      id: "alpha",
+      name: "Alpha",
+      builtIn: false,
+      light: { primary: "#abc" },
+    });
     expect(styleNodes.find((node) => node.id === THEME_STYLE_ELEMENT_ID)).toBeDefined();
 
     deleteCustomTheme("alpha");

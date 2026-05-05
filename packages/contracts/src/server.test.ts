@@ -43,4 +43,55 @@ describe("ServerProvider", () => {
 
     expect(parsed.continuation?.groupKey).toBe("codex:home:/Users/julius/.codex");
   });
+
+  it("decodes the optional rateLimits snapshot", () => {
+    const parsed = decodeServerProvider({
+      instanceId: "codex",
+      driver: "codex",
+      enabled: true,
+      installed: true,
+      version: "1.0.0",
+      status: "ready",
+      auth: { status: "authenticated" },
+      checkedAt: "2026-04-10T00:00:00.000Z",
+      models: [],
+      rateLimits: {
+        limitName: "ChatGPT Pro",
+        planType: "pro",
+        primary: {
+          usedPercent: 42,
+          resetsAt: 1_700_000_000,
+          windowDurationMins: 300,
+        },
+        secondary: {
+          usedPercent: 7,
+          windowDurationMins: 7 * 24 * 60,
+        },
+      },
+    });
+
+    expect(parsed.rateLimits?.limitName).toBe("ChatGPT Pro");
+    expect(parsed.rateLimits?.primary).toEqual({
+      usedPercent: 42,
+      resetsAt: 1_700_000_000,
+      windowDurationMins: 300,
+    });
+    expect(parsed.rateLimits?.secondary?.windowDurationMins).toBe(7 * 24 * 60);
+  });
+
+  it("decodes a snapshot without rateLimits as undefined", () => {
+    const parsed = decodeServerProvider({
+      instanceId: "codex",
+      driver: "codex",
+      enabled: true,
+      installed: true,
+      version: "1.0.0",
+      status: "ready",
+      auth: { status: "authenticated" },
+      checkedAt: "2026-04-10T00:00:00.000Z",
+      models: [],
+    });
+
+    expect(parsed.rateLimits).toBeUndefined();
+  });
 });

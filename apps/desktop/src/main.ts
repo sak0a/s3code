@@ -229,6 +229,7 @@ let backendEndpointUrl: string | null = null;
 let backendAdvertisedHost: string | null = null;
 let backendReadinessAbortController: AbortController | null = null;
 let backendInitialWindowOpenInFlight: Promise<void> | null = null;
+let developmentInitialWindowOpenInFlight: Promise<void> | null = null;
 let backendListeningDetector: ServerListeningDetector | null = null;
 let restartAttempt = 0;
 let restartTimer: ReturnType<typeof setTimeout> | null = null;
@@ -537,6 +538,48 @@ async function waitForBackendWindowReady(baseUrl: string): Promise<"listening" |
   });
 }
 
+async function waitForDevelopmentWindowReady(): Promise<"listening" | "http"> {
+  const [backendReadySource] = await Promise.all([
+    waitForBackendWindowReady(backendHttpUrl),
+    waitForHttpReady(resolveDesktopDevServerUrl(), {
+      timeoutMs: 60_000,
+    }),
+  ]);
+  return backendReadySource;
+}
+
+function ensureDevelopmentInitialWindowOpen(): void {
+  const existingWindow = mainWindow ?? BrowserWindow.getAllWindows()[0] ?? null;
+  if (!isDevelopment || existingWindow !== null || developmentInitialWindowOpenInFlight !== null) {
+    return;
+  }
+
+  const nextOpen = waitForDevelopmentWindowReady()
+    .then((source) => {
+      writeDesktopLogHeader(`bootstrap development resources ready backendSource=${source}`);
+    })
+    .catch((error) => {
+      if (isBackendReadinessAborted(error)) {
+        return;
+      }
+      writeDesktopLogHeader(
+        `bootstrap development readiness warning message=${formatErrorMessage(error)}`,
+      );
+      console.warn("[desktop] readiness check timed out during dev bootstrap", error);
+    })
+    .finally(() => {
+      if (!(mainWindow ?? BrowserWindow.getAllWindows()[0])) {
+        mainWindow = createWindow();
+        writeDesktopLogHeader("bootstrap main window created");
+      }
+      if (developmentInitialWindowOpenInFlight === nextOpen) {
+        developmentInitialWindowOpenInFlight = null;
+      }
+    });
+
+  developmentInitialWindowOpenInFlight = nextOpen;
+}
+
 function ensureInitialBackendWindowOpen(): void {
   const existingWindow = mainWindow ?? BrowserWindow.getAllWindows()[0] ?? null;
   if (isDevelopment || existingWindow !== null || backendInitialWindowOpenInFlight !== null) {
@@ -647,16 +690,22 @@ function initializePackagedLogging(): void {
 }
 
 function captureBackendOutput(child: ChildProcess.ChildProcess): void {
-  const attachStream = (stream: NodeJS.ReadableStream | null | undefined): void => {
+  const attachStream = (
+    stream: NodeJS.ReadableStream | null | undefined,
+    streamName: "stdout" | "stderr",
+  ): void => {
     stream?.on("data", (chunk: unknown) => {
       const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk), "utf8");
       backendLogSink?.write(buffer);
       backendListeningDetector?.push(buffer);
+      if (isDevelopment) {
+        process[streamName].write(buffer);
+      }
     });
   };
 
-  attachStream(child.stdout);
-  attachStream(child.stderr);
+  attachStream(child.stdout, "stdout");
+  attachStream(child.stderr, "stderr");
 }
 
 initializePackagedLogging();
@@ -1458,7 +1507,6 @@ function startBackend(): void {
     return;
   }
 
-  const captureBackendLogs = !isDevelopment;
   const child = ChildProcess.spawn(process.execPath, [backendEntry, "--bootstrap-fd", "3"], {
     cwd: resolveBackendCwd(),
     // In Electron main, process.execPath points to the Electron binary.
@@ -1467,9 +1515,7 @@ function startBackend(): void {
       ...backendChildEnv(),
       ELECTRON_RUN_AS_NODE: "1",
     },
-    stdio: captureBackendLogs
-      ? ["ignore", "pipe", "pipe", "pipe"]
-      : ["ignore", "inherit", "inherit", "pipe"],
+    stdio: ["ignore", "pipe", "pipe", "pipe"],
   });
   const bootstrapStream = child.stdio[3];
   if (bootstrapStream && "write" in bootstrapStream) {
@@ -2210,25 +2256,7 @@ async function bootstrap(): Promise<void> {
   writeDesktopLogHeader("bootstrap backend start requested");
 
   if (isDevelopment) {
-    mainWindow = createWindow();
-    writeDesktopLogHeader("bootstrap main window created");
-    void waitForBackendWindowReady(backendHttpUrl)
-      .then((source) => {
-        writeDesktopLogHeader(`bootstrap backend ready source=${source}`);
-        const window = mainWindow;
-        if (window && !window.isDestroyed()) {
-          window.webContents.reload();
-        }
-      })
-      .catch((error) => {
-        if (isBackendReadinessAborted(error)) {
-          return;
-        }
-        writeDesktopLogHeader(
-          `bootstrap backend readiness warning message=${formatErrorMessage(error)}`,
-        );
-        console.warn("[desktop] backend readiness check timed out during dev bootstrap", error);
-      });
+    ensureDevelopmentInitialWindowOpen();
     return;
   }
 
@@ -2268,7 +2296,7 @@ app
         return;
       }
       if (isDevelopment) {
-        mainWindow = createWindow();
+        ensureDevelopmentInitialWindowOpen();
         return;
       }
       ensureInitialBackendWindowOpen();

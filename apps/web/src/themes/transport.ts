@@ -15,7 +15,10 @@ export const THEME_FILE_EXTENSION = ".t3theme.json";
 const FILENAME_SAFE = /[^a-z0-9-_]+/gi;
 
 export function themeFilename(theme: Pick<ThemeDefinition, "id" | "name">): string {
-  const base = (theme.name || theme.id).trim().replace(FILENAME_SAFE, "-").replace(/^-+|-+$/g, "");
+  const base = (theme.name || theme.id)
+    .trim()
+    .replace(FILENAME_SAFE, "-")
+    .replace(/^-+|-+$/g, "");
   const slug = base.length > 0 ? base : theme.id || "theme";
   return `${slug}${THEME_FILE_EXTENSION}`;
 }
@@ -33,10 +36,14 @@ export function parseTheme(raw: string): ThemeDefinition {
   try {
     parsed = JSON.parse(raw);
   } catch (error) {
-    throw new Error(`Could not parse theme JSON: ${error instanceof Error ? error.message : "invalid JSON"}`);
+    throw new Error(
+      `Could not parse theme JSON: ${error instanceof Error ? error.message : "invalid JSON"}`,
+    );
   }
   if (!isValidTheme(parsed)) {
-    throw new Error("Theme JSON does not match the schema (need string id/name and string-only light/dark tokens).");
+    throw new Error(
+      "Theme JSON does not match the schema (need string id/name and string-only light/dark tokens).",
+    );
   }
   const next: ThemeDefinition = { id: parsed.id, name: parsed.name, builtIn: false };
   if (parsed.description) next.description = parsed.description;
@@ -114,7 +121,11 @@ export async function copyThemeToClipboard(theme: ThemeDefinition): Promise<void
 }
 
 export function downloadTheme(theme: ThemeDefinition): void {
-  if (typeof document === "undefined" || typeof URL === "undefined" || typeof Blob === "undefined") {
+  if (
+    typeof document === "undefined" ||
+    typeof URL === "undefined" ||
+    typeof Blob === "undefined"
+  ) {
     throw new Error("Download not supported in this environment.");
   }
   const blob = new Blob([serializeTheme(theme)], { type: "application/json" });

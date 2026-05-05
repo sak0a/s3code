@@ -23,11 +23,7 @@ import {
   setActiveThemeId,
   updateCustomTheme,
 } from "../../themes/registry";
-import {
-  copyThemeToClipboard,
-  downloadTheme,
-  importThemeFromFile,
-} from "../../themes/transport";
+import { copyThemeToClipboard, downloadTheme, importThemeFromFile } from "../../themes/transport";
 import type { ThemeDefinition } from "../../themes/types";
 import {
   AlertDialog,

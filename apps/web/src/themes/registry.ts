@@ -1,5 +1,10 @@
 import { BUILT_IN_THEMES, DEFAULT_THEME, DEFAULT_THEME_ID } from "./builtin";
-import { THEME_TOKEN_NAMES, type ThemeDefinition, type ThemeTokens, type ThemeVariant } from "./types";
+import {
+  THEME_TOKEN_NAMES,
+  type ThemeDefinition,
+  type ThemeTokens,
+  type ThemeVariant,
+} from "./types";
 
 const KNOWN_TOKEN_NAMES = new Set<string>(THEME_TOKEN_NAMES);
 
@@ -10,7 +15,8 @@ export const THEME_STYLE_ELEMENT_ID = "t3code-active-theme";
 export { DEFAULT_THEME, DEFAULT_THEME_ID };
 
 const CUSTOM_ID_PREFIX = "custom-";
-const FORBIDDEN_VALUE_PATTERN = /(?:javascript:|expression\s*\(|<script|url\s*\(\s*['"]?\s*javascript:)/i;
+const FORBIDDEN_VALUE_PATTERN =
+  /(?:javascript:|expression\s*\(|<script|url\s*\(\s*['"]?\s*javascript:)/i;
 
 export function isBuiltInThemeId(id: string): boolean {
   return BUILT_IN_THEMES.some((theme) => theme.id === id);

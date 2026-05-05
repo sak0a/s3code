@@ -177,23 +177,26 @@ export function ColorPicker({
   );
 
   const padRef = useRef<HTMLDivElement | null>(null);
-  const updateFromPad = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const el = padRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = clamp(event.clientX - rect.left, 0, rect.width);
-    const y = clamp(event.clientY - rect.top, 0, rect.height);
-    const s = rect.width === 0 ? 0 : x / rect.width;
-    const v = rect.height === 0 ? 0 : 1 - y / rect.height;
-    setHsv((prev) => {
-      const next = { h: prev.h, s, v };
-      const hex = rgbToHex(hsvToRgb(next));
-      setHexInput(hex);
-      pendingHexRef.current = hex;
-      if (rafRef.current === null) rafRef.current = requestAnimationFrame(flushCommit);
-      return next;
-    });
-  }, [flushCommit]);
+  const updateFromPad = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const el = padRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const x = clamp(event.clientX - rect.left, 0, rect.width);
+      const y = clamp(event.clientY - rect.top, 0, rect.height);
+      const s = rect.width === 0 ? 0 : x / rect.width;
+      const v = rect.height === 0 ? 0 : 1 - y / rect.height;
+      setHsv((prev) => {
+        const next = { h: prev.h, s, v };
+        const hex = rgbToHex(hsvToRgb(next));
+        setHexInput(hex);
+        pendingHexRef.current = hex;
+        if (rafRef.current === null) rafRef.current = requestAnimationFrame(flushCommit);
+        return next;
+      });
+    },
+    [flushCommit],
+  );
 
   const handlePadDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -213,21 +216,24 @@ export function ColorPicker({
   );
 
   const hueSliderRef = useRef<HTMLDivElement | null>(null);
-  const updateFromHue = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const el = hueSliderRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = clamp(event.clientX - rect.left, 0, rect.width);
-    const h = rect.width === 0 ? 0 : (x / rect.width) * 360;
-    setHsv((prev) => {
-      const next = { h, s: prev.s, v: prev.v };
-      const hex = rgbToHex(hsvToRgb(next));
-      setHexInput(hex);
-      pendingHexRef.current = hex;
-      if (rafRef.current === null) rafRef.current = requestAnimationFrame(flushCommit);
-      return next;
-    });
-  }, [flushCommit]);
+  const updateFromHue = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const el = hueSliderRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const x = clamp(event.clientX - rect.left, 0, rect.width);
+      const h = rect.width === 0 ? 0 : (x / rect.width) * 360;
+      setHsv((prev) => {
+        const next = { h, s: prev.s, v: prev.v };
+        const hex = rgbToHex(hsvToRgb(next));
+        setHexInput(hex);
+        pendingHexRef.current = hex;
+        if (rafRef.current === null) rafRef.current = requestAnimationFrame(flushCommit);
+        return next;
+      });
+    },
+    [flushCommit],
+  );
 
   const handleHueDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {

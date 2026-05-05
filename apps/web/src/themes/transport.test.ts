@@ -50,7 +50,9 @@ function uninstallLocalStorage() {
 describe("themeFilename", () => {
   it("slugifies the name and appends the standard extension", () => {
     expect(themeFilename({ id: "x", name: "My Theme" })).toBe(`My-Theme${THEME_FILE_EXTENSION}`);
-    expect(themeFilename({ id: "x", name: "Solar / Dark!" })).toBe(`Solar-Dark${THEME_FILE_EXTENSION}`);
+    expect(themeFilename({ id: "x", name: "Solar / Dark!" })).toBe(
+      `Solar-Dark${THEME_FILE_EXTENSION}`,
+    );
   });
 
   it("falls back to the id when the name is empty", () => {
@@ -149,7 +151,11 @@ describe("importTheme", () => {
   });
 
   it("renames the import when colliding with a built-in id", () => {
-    const json = JSON.stringify({ id: DEFAULT_THEME_ID, name: "Default", light: { primary: "#abc" } });
+    const json = JSON.stringify({
+      id: DEFAULT_THEME_ID,
+      name: "Default",
+      light: { primary: "#abc" },
+    });
     const result = importTheme(json, "replace");
     expect(result.action).toBe("renamed");
     expect(result.theme.id).not.toBe(DEFAULT_THEME_ID);
@@ -213,9 +219,11 @@ describe("importThemeFromFile", () => {
       value: {
         getElementById: (id: string) => styleNodes.find((node) => node.id === id) ?? null,
         createElement: () => {
-          const Style = (globalThis as unknown as {
-            HTMLStyleElement: new () => (typeof styleNodes)[number];
-          }).HTMLStyleElement;
+          const Style = (
+            globalThis as unknown as {
+              HTMLStyleElement: new () => (typeof styleNodes)[number];
+            }
+          ).HTMLStyleElement;
           return new Style();
         },
         head: {
