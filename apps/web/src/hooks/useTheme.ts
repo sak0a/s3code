@@ -1,9 +1,20 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 
+import {
+  ACTIVE_THEME_STORAGE_KEY,
+  CUSTOM_THEMES_STORAGE_KEY,
+  DEFAULT_THEME_ID,
+  applyThemeToDocument,
+  findTheme,
+  getActiveThemeId,
+  setActiveThemeId,
+} from "../themes/registry";
+
 type Theme = "light" | "dark" | "system";
 type ThemeSnapshot = {
   theme: Theme;
   systemDark: boolean;
+  activeThemeId: string;
 };
 
 const STORAGE_KEY = "t3code:theme";
@@ -11,6 +22,7 @@ const MEDIA_QUERY = "(prefers-color-scheme: dark)";
 const DEFAULT_THEME_SNAPSHOT: ThemeSnapshot = {
   theme: "system",
   systemDark: false,
+  activeThemeId: DEFAULT_THEME_ID,
 };
 const THEME_COLOR_META_NAME = "theme-color";
 const DYNAMIC_THEME_COLOR_SELECTOR = `meta[name="${THEME_COLOR_META_NAME}"][data-dynamic-theme-color="true"]`;
@@ -94,6 +106,7 @@ function applyTheme(theme: Theme, suppressTransitions = false) {
   }
   const isDark = theme === "dark" || (theme === "system" && getSystemDark());
   document.documentElement.classList.toggle("dark", isDark);
+  applyThemeToDocument(findTheme(getActiveThemeId()));
   syncBrowserChromeTheme();
   syncDesktopTheme(theme);
   if (suppressTransitions) {
@@ -130,12 +143,18 @@ function getSnapshot(): ThemeSnapshot {
   if (!hasThemeStorage()) return DEFAULT_THEME_SNAPSHOT;
   const theme = getStored();
   const systemDark = theme === "system" ? getSystemDark() : false;
+  const activeThemeId = getActiveThemeId();
 
-  if (lastSnapshot && lastSnapshot.theme === theme && lastSnapshot.systemDark === systemDark) {
+  if (
+    lastSnapshot &&
+    lastSnapshot.theme === theme &&
+    lastSnapshot.systemDark === systemDark &&
+    lastSnapshot.activeThemeId === activeThemeId
+  ) {
     return lastSnapshot;
   }
 
-  lastSnapshot = { theme, systemDark };
+  lastSnapshot = { theme, systemDark, activeThemeId };
   return lastSnapshot;
 }
 
@@ -157,7 +176,11 @@ function subscribe(listener: () => void): () => void {
 
   // Listen for storage changes from other tabs
   const handleStorage = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY) {
+    if (
+      e.key === STORAGE_KEY ||
+      e.key === ACTIVE_THEME_STORAGE_KEY ||
+      e.key === CUSTOM_THEMES_STORAGE_KEY
+    ) {
       applyTheme(getStored(), true);
       emitChange();
     }
@@ -174,6 +197,7 @@ function subscribe(listener: () => void): () => void {
 export function useTheme() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const theme = snapshot.theme;
+  const activeThemeId = snapshot.activeThemeId;
 
   const resolvedTheme: "light" | "dark" =
     theme === "system" ? (snapshot.systemDark ? "dark" : "light") : theme;
@@ -185,10 +209,17 @@ export function useTheme() {
     emitChange();
   }, []);
 
+  const setActiveTheme = useCallback((id: string) => {
+    if (!hasThemeStorage()) return;
+    setActiveThemeId(id);
+    applyTheme(getStored(), true);
+    emitChange();
+  }, []);
+
   // Keep DOM in sync on mount/change
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
 
-  return { theme, setTheme, resolvedTheme } as const;
+  return { theme, setTheme, resolvedTheme, activeThemeId, setActiveTheme } as const;
 }
