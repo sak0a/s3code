@@ -3,6 +3,7 @@ import type {
   ModelCapabilities,
   ServerProvider,
   ServerProviderAuth,
+  ServerProviderRateLimits,
   ServerProviderSkill,
   ServerProviderSlashCommand,
   ServerProviderModel,
@@ -188,6 +189,7 @@ export function buildServerProvider(input: {
   models: ReadonlyArray<ServerProviderModel>;
   slashCommands?: ReadonlyArray<ServerProviderSlashCommand>;
   skills?: ReadonlyArray<ServerProviderSkill>;
+  rateLimits?: ServerProviderRateLimits | undefined;
   probe: ProviderProbeResult;
 }): ServerProviderDraft {
   return {
@@ -206,6 +208,7 @@ export function buildServerProvider(input: {
     models: input.models,
     slashCommands: [...(input.slashCommands ?? [])],
     skills: [...(input.skills ?? [])],
+    ...(input.rateLimits ? { rateLimits: input.rateLimits } : {}),
   };
 }
 

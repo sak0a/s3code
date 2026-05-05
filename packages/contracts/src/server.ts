@@ -109,6 +109,47 @@ export const ServerProviderContinuation = Schema.Struct({
 });
 export type ServerProviderContinuation = typeof ServerProviderContinuation.Type;
 
+/**
+ * Live rate-limit window for a provider account. Mirrors the
+ * `RateLimitWindow` shape the Codex app-server returns from
+ * `account/rateLimits/read`, normalized to the contract's "absent vs
+ * present" convention (no `null` over the wire).
+ *
+ * Numeric ranges intentionally aren't constrained here — server probes
+ * forward whatever the upstream protocol returns and consumers clamp at
+ * the presentation layer.
+ */
+export const ServerProviderRateLimitWindow = Schema.Struct({
+  usedPercent: Schema.Number,
+  resetsAt: Schema.optional(Schema.Number),
+  windowDurationMins: Schema.optional(Schema.Number),
+});
+export type ServerProviderRateLimitWindow = typeof ServerProviderRateLimitWindow.Type;
+
+export const ServerProviderRateLimitCredits = Schema.Struct({
+  hasCredits: Schema.Boolean,
+  unlimited: Schema.Boolean,
+  balance: Schema.optional(TrimmedNonEmptyString),
+});
+export type ServerProviderRateLimitCredits = typeof ServerProviderRateLimitCredits.Type;
+
+/**
+ * Account-scoped rate-limit snapshot attached to a provider. Currently
+ * populated only by the Codex driver (one snapshot per Codex provider
+ * instance, since each instance can target a different `CODEX_HOME` /
+ * ChatGPT account). Other drivers leave it absent.
+ */
+export const ServerProviderRateLimits = Schema.Struct({
+  limitId: Schema.optional(TrimmedNonEmptyString),
+  limitName: Schema.optional(TrimmedNonEmptyString),
+  planType: Schema.optional(TrimmedNonEmptyString),
+  primary: Schema.optional(ServerProviderRateLimitWindow),
+  secondary: Schema.optional(ServerProviderRateLimitWindow),
+  credits: Schema.optional(ServerProviderRateLimitCredits),
+  rateLimitReachedType: Schema.optional(TrimmedNonEmptyString),
+});
+export type ServerProviderRateLimits = typeof ServerProviderRateLimits.Type;
+
 export const ServerProvider = Schema.Struct({
   // Routing key for the configured instance this snapshot represents. This
   // is the only stable identity consumers may use for provider routing.
@@ -142,6 +183,10 @@ export const ServerProvider = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed([])),
   ),
   skills: Schema.Array(ServerProviderSkill).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
+  // Optional and provider-driven. Populated only when the driver knows
+  // how to surface usage limits (Codex today). Consumers must treat an
+  // absent value as "no live data", not "no limits configured".
+  rateLimits: Schema.optional(ServerProviderRateLimits),
 });
 export type ServerProvider = typeof ServerProvider.Type;
 

@@ -10,6 +10,8 @@ import {
   type ProviderDriverKind,
   type ServerProvider,
   type ServerProviderModel,
+  type ServerProviderRateLimits,
+  type ServerProviderRateLimitWindow,
 } from "@t3tools/contracts";
 
 import { cn } from "../../lib/utils";
@@ -31,6 +33,12 @@ import {
   getProviderVersionLabel,
   type ProviderStatusKey,
 } from "./providerStatus";
+import {
+  availablePercent,
+  clampUsedPercent,
+  describeRateLimitWindow,
+  formatRateLimitResetLabel,
+} from "./codexUsageLimits";
 
 const PROVIDER_ACCENT_SWATCHES = [
   "#2563eb",
@@ -227,6 +235,74 @@ function ProviderAccentColorPicker(props: {
       <span className="text-xs text-muted-foreground">
         Used to distinguish this instance in picker rails and model lists.
       </span>
+    </div>
+  );
+}
+
+function ProviderUsageLimitWindowRow(props: {
+  readonly window: ServerProviderRateLimitWindow;
+  readonly fallbackLabel: string;
+}) {
+  const descriptor = describeRateLimitWindow(props.window);
+  const headingLabel =
+    props.window.windowDurationMins === undefined ? props.fallbackLabel : descriptor.label;
+  const used = clampUsedPercent(props.window.usedPercent);
+  const available = availablePercent(props.window.usedPercent);
+  const resetLabel = formatRateLimitResetLabel(props.window.resetsAt);
+  // Past 75% used the user cares about consumption, not headroom — flip
+  // the headline so the number they're about to act on is the prominent
+  // one and tint the bar to match.
+  const isHighUsage = used >= 75;
+  const headlineValue = isHighUsage ? `${used}% used` : `${available}% available`;
+  const trailingValue = isHighUsage ? `${available}% available` : `${used}% used`;
+
+  return (
+    <div className="grid gap-1.5">
+      <div className="flex items-baseline justify-between gap-2 text-xs">
+        <span className="font-medium text-foreground">{headingLabel}</span>
+        <span className="text-muted-foreground">{headlineValue}</span>
+      </div>
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-label={`${headingLabel} window usage`}
+        aria-valuenow={used}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div
+          className={cn(
+            "h-full rounded-full transition-[width]",
+            isHighUsage ? "bg-warning" : "bg-foreground/70",
+          )}
+          style={{ width: `${used}%` }}
+        />
+      </div>
+      <div className="flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground">
+        <span>{trailingValue}</span>
+        {resetLabel ? <span>Resets {resetLabel}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+function ProviderUsageLimitsSection(props: { readonly rateLimits: ServerProviderRateLimits }) {
+  const { primary, secondary } = props.rateLimits;
+  if (!primary && !secondary) return null;
+
+  return (
+    <div className="border-t border-border/60 px-4 py-3 sm:px-5">
+      <div className="grid gap-2.5">
+        <span className="text-xs font-medium text-foreground">Usage limits</span>
+        <div className="grid gap-3">
+          {primary ? (
+            <ProviderUsageLimitWindowRow window={primary} fallbackLabel="Short window" />
+          ) : null}
+          {secondary ? (
+            <ProviderUsageLimitWindowRow window={secondary} fallbackLabel="Weekly" />
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -651,6 +727,10 @@ export function ProviderInstanceCard({
       <Collapsible open={isExpanded} onOpenChange={onExpandedChange}>
         <CollapsibleContent>
           <div className="space-y-0">
+            {driverKind === "codex" && liveProvider?.rateLimits ? (
+              <ProviderUsageLimitsSection rateLimits={liveProvider.rateLimits} />
+            ) : null}
+
             <div className="border-t border-border/60 px-4 py-3 sm:px-5">
               <label htmlFor={`provider-instance-${instanceId}-display-name`} className="block">
                 <span className="text-xs font-medium text-foreground">Display name</span>

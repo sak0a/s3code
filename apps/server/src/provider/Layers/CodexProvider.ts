@@ -8,6 +8,8 @@ import type {
   CodexSettings,
   ServerProvider,
   ServerProviderState,
+  ServerProviderRateLimits,
+  ServerProviderRateLimitWindow,
   ModelCapabilities,
   ServerProviderModel,
   ServerProviderSkill,
@@ -32,6 +34,7 @@ export interface CodexAppServerProviderSnapshot {
   readonly version: string | undefined;
   readonly models: ReadonlyArray<ServerProviderModel>;
   readonly skills: ReadonlyArray<ServerProviderSkill>;
+  readonly rateLimits: ServerProviderRateLimits | undefined;
 }
 
 const REASONING_EFFORT_LABELS: Record<CodexSchema.V2ModelListResponse__ReasoningEffort, string> = {
@@ -169,6 +172,55 @@ function appendCustomCodexModels(
   return customEntries.length === 0 ? models : [...models, ...customEntries];
 }
 
+function parseCodexRateLimitWindow(
+  window: CodexSchema.V2GetAccountRateLimitsResponse__RateLimitWindow | null | undefined,
+): ServerProviderRateLimitWindow | undefined {
+  if (!window) return undefined;
+  return {
+    usedPercent: window.usedPercent,
+    ...(typeof window.resetsAt === "number" ? { resetsAt: window.resetsAt } : {}),
+    ...(typeof window.windowDurationMins === "number"
+      ? { windowDurationMins: window.windowDurationMins }
+      : {}),
+  };
+}
+
+/**
+ * Map the codex `account/rateLimits/read` response into the contract
+ * shape, normalizing `null` to `undefined` and dropping fields the
+ * upstream protocol left empty. Returns `undefined` when the response
+ * carries no actionable usage data — settings UI should treat that
+ * identically to "the call was never made".
+ */
+export function parseCodexRateLimits(
+  response: CodexSchema.V2GetAccountRateLimitsResponse,
+): ServerProviderRateLimits | undefined {
+  const r = response.rateLimits;
+  const primary = parseCodexRateLimitWindow(r.primary);
+  const secondary = parseCodexRateLimitWindow(r.secondary);
+  const credits = r.credits
+    ? {
+        hasCredits: r.credits.hasCredits,
+        unlimited: r.credits.unlimited,
+        ...(r.credits.balance ? { balance: r.credits.balance } : {}),
+      }
+    : undefined;
+
+  if (!primary && !secondary && !credits) {
+    return undefined;
+  }
+
+  return {
+    ...(r.limitId ? { limitId: r.limitId } : {}),
+    ...(r.limitName ? { limitName: r.limitName } : {}),
+    ...(r.planType ? { planType: r.planType } : {}),
+    ...(primary ? { primary } : {}),
+    ...(secondary ? { secondary } : {}),
+    ...(credits ? { credits } : {}),
+    ...(r.rateLimitReachedType ? { rateLimitReachedType: r.rateLimitReachedType } : {}),
+  };
+}
+
 function parseCodexSkillsListResponse(
   response: CodexSchema.V2SkillsListResponse,
   cwd: string,
@@ -292,15 +344,33 @@ const probeCodexAppServerProvider = Effect.fn("probeCodexAppServerProvider")(fun
       version,
       models: appendCustomCodexModels([], input.customModels ?? []),
       skills: [],
+      rateLimits: undefined,
     } satisfies CodexAppServerProviderSnapshot;
   }
 
-  const [skillsResponse, models] = yield* Effect.all(
+  // Only ChatGPT-backed accounts have meaningful rate-limit windows;
+  // skip the call entirely for OpenAI API key accounts. A short
+  // per-call timeout keeps a slow OpenAI billing endpoint from
+  // dominating the overall probe budget and delaying the provider's
+  // ready state. Any failure (timeout, network blip, server-side 5xx)
+  // is swallowed so the rest of the probe stays intact; the UI just
+  // renders no usage block on that turn.
+  const isChatGptAccount = accountResponse.account?.type === "chatgpt";
+  const rateLimitsRequest: Effect.Effect<ServerProviderRateLimits | undefined> = isChatGptAccount
+    ? client.request("account/rateLimits/read", undefined).pipe(
+        Effect.timeout(Duration.millis(2_500)),
+        Effect.map(parseCodexRateLimits),
+        Effect.catch(() => Effect.succeed<ServerProviderRateLimits | undefined>(undefined)),
+      )
+    : Effect.succeed<ServerProviderRateLimits | undefined>(undefined);
+
+  const [skillsResponse, models, rateLimits] = yield* Effect.all(
     [
       client.request("skills/list", {
         cwds: [input.cwd],
       }),
       requestAllCodexModels(client),
+      rateLimitsRequest,
     ],
     { concurrency: "unbounded" },
   );
@@ -310,6 +380,7 @@ const probeCodexAppServerProvider = Effect.fn("probeCodexAppServerProvider")(fun
     version,
     models: appendCustomCodexModels(models, input.customModels ?? []),
     skills: parseCodexSkillsListResponse(skillsResponse, input.cwd),
+    rateLimits,
   } satisfies CodexAppServerProviderSnapshot;
 }, scopedSafeTeardown("codex-probe"));
 
@@ -484,6 +555,7 @@ export const checkCodexProviderStatus = Effect.fn("checkCodexProviderStatus")(fu
     checkedAt,
     models: snapshot.models,
     skills: snapshot.skills,
+    ...(snapshot.rateLimits ? { rateLimits: snapshot.rateLimits } : {}),
     probe: {
       installed: true,
       version: snapshot.version ?? null,

@@ -33,7 +33,12 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  SortableContext,
+  type SortableContextProps,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -205,6 +210,7 @@ const PROJECT_GROUPING_MODE_LABELS: Record<SidebarProjectGroupingMode, string> =
   repository_path: "Group by repository path",
   separate: "Keep separate",
 };
+const SortableContextComponent = SortableContext as React.ComponentType<SortableContextProps>;
 
 function formatProjectMemberActionLabel(
   member: SidebarProjectGroupMember,
@@ -2638,7 +2644,7 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
             onDragCancel={handleProjectDragCancel}
           >
             <SidebarMenu>
-              <SortableContext
+              <SortableContextComponent
                 items={sortedProjects.map((project) => project.projectKey)}
                 strategy={verticalListSortingStrategy}
               >
@@ -2670,7 +2676,7 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
                     )}
                   </SortableProjectItem>
                 ))}
-              </SortableContext>
+              </SortableContextComponent>
             </SidebarMenu>
           </DndContext>
         ) : (
