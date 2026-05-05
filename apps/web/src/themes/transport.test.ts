@@ -7,6 +7,7 @@ import {
   decodeThemeFromBase64,
   encodeThemeToBase64,
   importTheme,
+  importThemeFromFile,
   parseTheme,
   serializeTheme,
   themeFilename,
@@ -180,5 +181,85 @@ describe("importTheme", () => {
     setCustomThemes([{ id: "seed", name: "Seed", builtIn: false }]);
     expect(() => importTheme("{ malformed")).toThrow();
     expect(getCustomThemes().map((theme) => theme.id)).toEqual(["seed"]);
+  });
+});
+
+describe("importThemeFromFile", () => {
+  beforeEach(() => {
+    installLocalStorage();
+  });
+
+  afterEach(() => {
+    uninstallLocalStorage();
+    Reflect.deleteProperty(globalThis, "document");
+    Reflect.deleteProperty(globalThis, "HTMLStyleElement");
+  });
+
+  it("applies the theme to the document when activate=true (no reliance on storage events)", async () => {
+    const styleNodes: Array<{ id: string; textContent: string; remove: () => void }> = [];
+    Object.defineProperty(globalThis, "HTMLStyleElement", {
+      configurable: true,
+      value: class FakeStyle {
+        id = "";
+        textContent = "";
+        remove() {
+          const i = styleNodes.indexOf(this);
+          if (i >= 0) styleNodes.splice(i, 1);
+        }
+      },
+    });
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: {
+        getElementById: (id: string) => styleNodes.find((node) => node.id === id) ?? null,
+        createElement: () => {
+          const Style = (globalThis as unknown as {
+            HTMLStyleElement: new () => (typeof styleNodes)[number];
+          }).HTMLStyleElement;
+          return new Style();
+        },
+        head: {
+          append: (node: (typeof styleNodes)[number]) => {
+            styleNodes.push(node);
+          },
+        },
+      },
+    });
+
+    const json = JSON.stringify({
+      id: "alpha",
+      name: "Alpha",
+      light: { primary: "#abcabc" },
+    });
+    const file = new File([json], "alpha.json", { type: "application/json" });
+
+    const result = await importThemeFromFile(file, { activate: true });
+    expect(result.action).toBe("added");
+
+    const style = styleNodes.find((node) => node.id === "t3code-active-theme");
+    expect(style).toBeDefined();
+    expect(style?.textContent).toContain("--primary: #abcabc;");
+  });
+
+  it("does not touch the document when activate is false", async () => {
+    const accessed: string[] = [];
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: new Proxy(
+        {},
+        {
+          get(_, prop: string) {
+            accessed.push(prop);
+            return undefined;
+          },
+        },
+      ),
+    });
+
+    const json = JSON.stringify({ id: "beta", name: "Beta", light: { primary: "#000" } });
+    const file = new File([json], "beta.json", { type: "application/json" });
+
+    await importThemeFromFile(file);
+    expect(accessed).toEqual([]);
   });
 });

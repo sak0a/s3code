@@ -1,5 +1,6 @@
 import {
   addCustomTheme,
+  applyThemeToDocument,
   generateCustomThemeId,
   getAllThemes,
   isBuiltInThemeId,
@@ -139,6 +140,9 @@ export async function importThemeFromFile(
 ): Promise<ImportResult> {
   const text = await file.text();
   const result = importTheme(text, options.collision ?? "rename");
-  if (options.activate) setActiveThemeId(result.theme.id);
+  if (options.activate) {
+    setActiveThemeId(result.theme.id);
+    applyThemeToDocument(result.theme);
+  }
   return result;
 }

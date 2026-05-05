@@ -131,6 +131,31 @@ describe("tokensToCss", () => {
     const css = tokensToCss({ "scrollbar-thumb": "rgba(0,0,0,0.1)" });
     expect(css).toBe("--scrollbar-thumb: rgba(0,0,0,0.1);");
   });
+
+  it("drops tokens whose name is not in the allow-list (CSS injection guard)", () => {
+    const css = tokensToCss({
+      primary: "#fff",
+      "evil-key; }:root{--primary": "red",
+    } as unknown as Parameters<typeof tokensToCss>[0]);
+    expect(css).toBe("--primary: #fff;");
+  });
+
+  it("drops values that contain `;` or `}` (rule-break injection)", () => {
+    const css = tokensToCss({
+      primary: "red; --secondary: blue",
+      background: "#000 } evil { color: red",
+      foreground: "#abc",
+    } as unknown as Parameters<typeof tokensToCss>[0]);
+    expect(css).toBe("--foreground: #abc;");
+  });
+
+  it("drops values that fail isValidColorValue (e.g. javascript:)", () => {
+    const css = tokensToCss({
+      primary: "javascript:alert(1)",
+      background: "#000",
+    } as unknown as Parameters<typeof tokensToCss>[0]);
+    expect(css).toBe("--background: #000;");
+  });
 });
 
 describe("isBuiltInThemeId", () => {
@@ -362,6 +387,48 @@ describe("custom theme storage", () => {
     deleteCustomTheme(DEFAULT_THEME_ID);
     expect(getAllThemes().some((theme) => theme.id === DEFAULT_THEME_ID)).toBe(true);
     expect(localStorage.getItem(ACTIVE_THEME_STORAGE_KEY)).toBeNull();
+  });
+
+  it("deleteCustomTheme of the active theme also removes the injected <style> tag", () => {
+    const styleNodes: Array<{ id: string; textContent: string; remove: () => void }> = [];
+    Object.defineProperty(globalThis, "HTMLStyleElement", {
+      configurable: true,
+      value: class FakeStyle {
+        id = "";
+        textContent = "";
+        remove() {
+          const i = styleNodes.indexOf(this);
+          if (i >= 0) styleNodes.splice(i, 1);
+        }
+      },
+    });
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: {
+        getElementById: (id: string) => styleNodes.find((node) => node.id === id) ?? null,
+        createElement: () => {
+          const Style = (globalThis as unknown as { HTMLStyleElement: new () => typeof styleNodes[number] }).HTMLStyleElement;
+          return new Style();
+        },
+        head: {
+          append: (node: typeof styleNodes[number]) => {
+            styleNodes.push(node);
+          },
+        },
+      },
+    });
+
+    addCustomTheme({ id: "alpha", name: "Alpha", builtIn: false, light: { primary: "#abc" } });
+    setActiveThemeId("alpha");
+    applyThemeToDocument({ id: "alpha", name: "Alpha", builtIn: false, light: { primary: "#abc" } });
+    expect(styleNodes.find((node) => node.id === THEME_STYLE_ELEMENT_ID)).toBeDefined();
+
+    deleteCustomTheme("alpha");
+    expect(styleNodes.find((node) => node.id === THEME_STYLE_ELEMENT_ID)).toBeUndefined();
+    expect(getActiveThemeId()).toBe(DEFAULT_THEME_ID);
+
+    Reflect.deleteProperty(globalThis, "document");
+    Reflect.deleteProperty(globalThis, "HTMLStyleElement");
   });
 });
 

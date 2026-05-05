@@ -1,5 +1,7 @@
 import { BUILT_IN_THEMES, DEFAULT_THEME, DEFAULT_THEME_ID } from "./builtin";
-import type { ThemeDefinition, ThemeTokens, ThemeVariant } from "./types";
+import { THEME_TOKEN_NAMES, type ThemeDefinition, type ThemeTokens, type ThemeVariant } from "./types";
+
+const KNOWN_TOKEN_NAMES = new Set<string>(THEME_TOKEN_NAMES);
 
 export const CUSTOM_THEMES_STORAGE_KEY = "t3code:custom-themes";
 export const ACTIVE_THEME_STORAGE_KEY = "t3code:active-theme";
@@ -127,6 +129,7 @@ export function deleteCustomTheme(id: string): void {
   setCustomThemes(themes);
   if (getActiveThemeId() === id) {
     setActiveThemeId(DEFAULT_THEME_ID);
+    applyThemeToDocument(DEFAULT_THEME);
   }
 }
 
@@ -177,7 +180,15 @@ export function resolveTokens(theme: ThemeDefinition, variant: ThemeVariant): Th
 
 export function tokensToCss(tokens: ThemeTokens): string {
   return Object.entries(tokens)
-    .filter(([, value]) => typeof value === "string" && value.length > 0)
+    .filter(
+      ([name, value]) =>
+        KNOWN_TOKEN_NAMES.has(name) &&
+        typeof value === "string" &&
+        value.length > 0 &&
+        isValidColorValue(value) &&
+        !value.includes(";") &&
+        !value.includes("}"),
+    )
     .map(([name, value]) => `--${name}: ${value};`)
     .join(" ");
 }

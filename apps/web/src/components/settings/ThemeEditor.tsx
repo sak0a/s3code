@@ -238,9 +238,11 @@ export function ThemeEditor({
   const unknownTokenEntries = Object.entries(variantTokens).filter(
     ([token]) => !KNOWN_TOKEN_SET.has(token),
   );
-  const hasInvalidValue = Object.values(variantTokens).some(
-    (value) => typeof value === "string" && value.length > 0 && !isValidColorValue(value),
-  );
+  const hasInvalidValueIn = (tokens: ThemeTokens | undefined): boolean =>
+    Object.values(tokens ?? {}).some(
+      (value) => typeof value === "string" && value.length > 0 && !isValidColorValue(value),
+    );
+  const hasInvalidValue = hasInvalidValueIn(draft.light) || hasInvalidValueIn(draft.dark);
   const saveDisabled = jsonError !== null || draft.name.trim().length === 0 || hasInvalidValue;
 
   return (
