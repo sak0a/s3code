@@ -98,6 +98,41 @@ const TOKEN_CATEGORIES: ReadonlyArray<TokenCategory> = [
 
 const KNOWN_TOKEN_SET = new Set<string>(THEME_TOKEN_NAMES);
 
+let probeEl: HTMLDivElement | null = null;
+let probeCanvas: HTMLCanvasElement | null = null;
+
+function deriveHex(value: string): string {
+  if (typeof document === "undefined" || typeof document.body === "undefined" || !value) {
+    return "#000000";
+  }
+  if (!probeEl) {
+    probeEl = document.createElement("div");
+    probeEl.style.position = "absolute";
+    probeEl.style.visibility = "hidden";
+    probeEl.style.pointerEvents = "none";
+    document.body.append(probeEl);
+  }
+  probeEl.style.color = "";
+  probeEl.style.color = value;
+  const computed = getComputedStyle(probeEl).color;
+  if (!probeCanvas) probeCanvas = document.createElement("canvas");
+  probeCanvas.width = 1;
+  probeCanvas.height = 1;
+  const ctx = probeCanvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return "#000000";
+  ctx.clearRect(0, 0, 1, 1);
+  try {
+    ctx.fillStyle = computed;
+  } catch {
+    return "#000000";
+  }
+  ctx.fillRect(0, 0, 1, 1);
+  const pixel = ctx.getImageData(0, 0, 1, 1).data;
+  return `#${[pixel[0], pixel[1], pixel[2]]
+    .map((c) => (c ?? 0).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
 export function setTokenValue(
   theme: ThemeDefinition,
   variant: ThemeVariant,
@@ -305,13 +340,27 @@ export function ThemeEditor({
                         key={token}
                         className="flex items-center gap-2 rounded-md border border-border/60 bg-background px-2 py-1.5"
                       >
-                        <span
-                          className="size-5 shrink-0 rounded-sm border border-border/80"
-                          style={{
-                            backgroundColor: invalid ? "transparent" : value || "transparent",
-                          }}
-                          aria-hidden
-                        />
+                        <label
+                          className="relative size-5 shrink-0 cursor-pointer overflow-hidden rounded-sm border border-border/80"
+                          title={`Pick a color for --${token}`}
+                        >
+                          <span
+                            className="pointer-events-none absolute inset-0"
+                            style={{
+                              backgroundColor: invalid ? "transparent" : value || "transparent",
+                            }}
+                            aria-hidden
+                          />
+                          <input
+                            type="color"
+                            value={deriveHex(value)}
+                            onChange={(event) =>
+                              handleTokenChange(token, event.currentTarget.value)
+                            }
+                            aria-label={`Pick a color for --${token}`}
+                            className="absolute inset-0 size-full cursor-pointer opacity-0"
+                          />
+                        </label>
                         <div className="flex min-w-0 flex-1 flex-col">
                           <span
                             className={cn(
