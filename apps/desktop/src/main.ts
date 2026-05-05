@@ -112,7 +112,10 @@ const GET_SERVER_EXPOSURE_STATE_CHANNEL = "desktop:get-server-exposure-state";
 const SET_SERVER_EXPOSURE_MODE_CHANNEL = "desktop:set-server-exposure-mode";
 const SET_TAILSCALE_SERVE_ENABLED_CHANNEL = "desktop:set-tailscale-serve-enabled";
 const GET_ADVERTISED_ENDPOINTS_CHANNEL = "desktop:get-advertised-endpoints";
-const BASE_DIR = process.env.T3CODE_HOME?.trim() || Path.join(OS.homedir(), ".t3");
+const BASE_DIR =
+  process.env.S3CODE_HOME?.trim() ||
+  process.env.T3CODE_HOME?.trim() ||
+  Path.join(OS.homedir(), ".s3code");
 const STATE_DIR = Path.join(BASE_DIR, "userdata");
 const DESKTOP_SETTINGS_PATH = Path.join(STATE_DIR, "desktop-settings.json");
 const CLIENT_SETTINGS_PATH = Path.join(STATE_DIR, "client-settings.json");
@@ -130,11 +133,10 @@ const desktopAppBranding: DesktopAppBranding = resolveDesktopAppBranding({
   appVersion: app.getVersion(),
 });
 const APP_DISPLAY_NAME = desktopAppBranding.displayName;
-const APP_USER_MODEL_ID = isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code";
-const LINUX_DESKTOP_ENTRY_NAME = isDevelopment ? "t3code-dev.desktop" : "t3code.desktop";
-const LINUX_WM_CLASS = isDevelopment ? "t3code-dev" : "t3code";
-const USER_DATA_DIR_NAME = isDevelopment ? "t3code-dev" : "t3code";
-const LEGACY_USER_DATA_DIR_NAME = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
+const APP_USER_MODEL_ID = isDevelopment ? "com.sak0a.s3code.dev" : "com.sak0a.s3code";
+const LINUX_DESKTOP_ENTRY_NAME = isDevelopment ? "s3code-dev.desktop" : "s3code.desktop";
+const LINUX_WM_CLASS = isDevelopment ? "s3code-dev" : "s3code";
+const USER_DATA_DIR_NAME = isDevelopment ? "s3code-dev" : "s3code";
 const COMMIT_HASH_PATTERN = /^[0-9a-f]{7,40}$/i;
 const COMMIT_HASH_DISPLAY_LENGTH = 12;
 const LOG_DIR = Path.join(STATE_DIR, "logs");
@@ -529,6 +531,7 @@ async function waitForBackendWindowReady(baseUrl: string): Promise<"listening" |
     waitForHttpReady: () =>
       waitForBackendHttpReady(baseUrl, {
         timeoutMs: 60_000,
+        path: "/.well-known/t3/environment",
       }),
     cancelHttpWait: cancelBackendReadinessWait,
   });
@@ -1105,13 +1108,9 @@ function resolveIconPath(ext: "ico" | "icns" | "png"): string | null {
  * Resolve the Electron userData directory path.
  *
  * Electron derives the default userData path from `productName` in
- * package.json, which currently produces directories with spaces and
- * parentheses (e.g. `~/.config/T3 Code (Alpha)` on Linux). This is
- * unfriendly for shell usage and violates Linux naming conventions.
- *
- * We override it to a clean lowercase name (`t3code`). If the legacy
- * directory already exists we keep using it so existing users don't
- * lose their Chromium profile data (localStorage, cookies, sessions).
+ * package.json. We override it to a clean lowercase `s3code` so the
+ * directory is shell-friendly and isolated from any other installs
+ * (including upstream T3 Code) on the same machine.
  */
 function resolveUserDataPath(): string {
   const appDataBase =
@@ -1120,11 +1119,6 @@ function resolveUserDataPath(): string {
       : process.platform === "darwin"
         ? Path.join(OS.homedir(), "Library", "Application Support")
         : process.env.XDG_CONFIG_HOME || Path.join(OS.homedir(), ".config");
-
-  const legacyPath = Path.join(appDataBase, LEGACY_USER_DATA_DIR_NAME);
-  if (FS.existsSync(legacyPath)) {
-    return legacyPath;
-  }
 
   return Path.join(appDataBase, USER_DATA_DIR_NAME);
 }
@@ -2129,8 +2123,22 @@ function createWindow(): BrowserWindow {
   bindFirstRevealTrigger(revealSubscribers, () => revealWindow(window));
 
   if (isDevelopment) {
-    void window.loadURL(resolveDesktopDevServerUrl());
+    const devUrl = resolveDesktopDevServerUrl();
+    void window.loadURL(devUrl);
     window.webContents.openDevTools({ mode: "detach" });
+    window.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
+      if (errorCode === -3 || window.isDestroyed()) {
+        return;
+      }
+      writeDesktopLogHeader(
+        `dev renderer load failed code=${errorCode} desc=${errorDescription} url=${validatedURL} — retrying in 1s`,
+      );
+      setTimeout(() => {
+        if (!window.isDestroyed()) {
+          void window.loadURL(devUrl);
+        }
+      }, 1000);
+    });
   } else {
     void window.loadURL(backendHttpUrl);
   }
@@ -2207,6 +2215,10 @@ async function bootstrap(): Promise<void> {
     void waitForBackendWindowReady(backendHttpUrl)
       .then((source) => {
         writeDesktopLogHeader(`bootstrap backend ready source=${source}`);
+        const window = mainWindow;
+        if (window && !window.isDestroyed()) {
+          window.webContents.reload();
+        }
       })
       .catch((error) => {
         if (isBackendReadinessAborted(error)) {
