@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { EnvironmentId, type FilesystemBrowseEntry, ProjectId, ThreadId } from "@t3tools/contracts";
+import {
+  EnvironmentId,
+  type FilesystemBrowseEntry,
+  ProjectId,
+  ProviderInstanceId,
+  ThreadId,
+} from "@t3tools/contracts";
 import type { Thread } from "../types";
 import {
   buildBrowseGroups,
@@ -20,7 +26,7 @@ function makeThread(overrides: Partial<Thread> = {}): Thread {
     codexThreadId: null,
     projectId: PROJECT_ID,
     title: "Thread",
-    modelSelection: { provider: "codex", model: "gpt-5" },
+    modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5" },
     runtimeMode: "full-access",
     interactionMode: "default",
     session: null,

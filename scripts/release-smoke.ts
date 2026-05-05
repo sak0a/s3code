@@ -24,11 +24,26 @@ const workspaceFiles = [
   "packages/client-runtime/package.json",
   "packages/contracts/package.json",
   "packages/shared/package.json",
+  "packages/ssh/package.json",
+  "packages/tailscale/package.json",
+  "packages/effect-acp/package.json",
+  "packages/effect-codex-app-server/package.json",
   "scripts/package.json",
 ] as const;
 
 function copyWorkspaceManifestFixture(targetRoot: string): void {
   for (const relativePath of workspaceFiles) {
+    const sourcePath = resolve(repoRoot, relativePath);
+    const destinationPath = resolve(targetRoot, relativePath);
+    mkdirSync(dirname(destinationPath), { recursive: true });
+    cpSync(sourcePath, destinationPath);
+  }
+
+  const packageJson = JSON.parse(readFileSync(resolve(repoRoot, "package.json"), "utf8")) as {
+    readonly patchedDependencies?: Record<string, string>;
+  };
+
+  for (const relativePath of Object.values(packageJson.patchedDependencies ?? {})) {
     const sourcePath = resolve(repoRoot, relativePath);
     const destinationPath = resolve(targetRoot, relativePath);
     mkdirSync(dirname(destinationPath), { recursive: true });
@@ -182,6 +197,8 @@ try {
     },
   );
 
+  rmSync(resolve(tempRoot, "bun.lock"), { force: true });
+
   execFileSync("bun", ["install", "--ignore-scripts"], {
     cwd: tempRoot,
     stdio: "inherit",
@@ -219,7 +236,7 @@ try {
   );
   assertContains(
     nightlyReleaseMetadata,
-    "tag=nightly-v9.9.10-nightly.20260413.321",
+    "tag=v9.9.10-nightly.20260413.321",
     "Expected nightly metadata to contain the derived nightly tag.",
   );
   assertContains(
@@ -290,7 +307,7 @@ try {
           fi
 
           found_windows_manifest=true
-          node ${JSON.stringify(resolve(repoRoot, "scripts/merge-update-manifests.ts"))} --platform win \
+          ${JSON.stringify(process.execPath)} ${JSON.stringify(resolve(repoRoot, "scripts/merge-update-manifests.ts"))} --platform win \
             "$arm64_manifest" \
             "$x64_manifest" \
             "$output_manifest"
