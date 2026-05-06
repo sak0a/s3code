@@ -42,6 +42,13 @@ import { useSettings } from "../hooks/useSettings";
 import { formatShortTimestamp } from "../timestampFormat";
 import { DiffPanelLoadingState, DiffPanelShell, type DiffPanelMode } from "./DiffPanelShell";
 import { ToggleGroup, Toggle } from "./ui/toggle-group";
+import {
+  deriveDiffSearchFileIndexes,
+  findDiffSearchMatches,
+  getNextDiffSearchMatchIndex,
+  normalizeDiffSearchQuery,
+  resolveDiffFilePath,
+} from "./DiffPanel.search.logic";
 
 type DiffRenderMode = "stacked" | "split";
 type DiffThemeType = "light" | "dark";
@@ -163,11 +170,7 @@ function getRenderablePatch(
 }
 
 function resolveFileDiffPath(fileDiff: FileDiffMetadata): string {
-  const raw = fileDiff.name ?? fileDiff.prevName ?? "";
-  if (raw.startsWith("a/") || raw.startsWith("b/")) {
-    return raw.slice(2);
-  }
-  return raw;
+  return resolveDiffFilePath(fileDiff);
 }
 
 function buildFileDiffRenderKey(fileDiff: FileDiffMetadata): string {
@@ -429,26 +432,17 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
   }, [renderablePatch]);
 
   const normalizedDiffSearchQuery = useMemo(
-    () => diffSearchQuery.trim().toLowerCase(),
+    () => normalizeDiffSearchQuery(diffSearchQuery),
     [diffSearchQuery],
+  );
+  const diffSearchMatches = useMemo(
+    () => findDiffSearchMatches(renderableFiles, diffSearchQuery),
+    [diffSearchQuery, renderableFiles],
   );
   const filteredFiles = useMemo(() => {
     if (!normalizedDiffSearchQuery) return renderableFiles;
-    return renderableFiles.filter((file) => {
-      const path = resolveFileDiffPath(file).toLowerCase();
-      if (path.includes(normalizedDiffSearchQuery)) return true;
-      if (file.prevName && file.prevName.toLowerCase().includes(normalizedDiffSearchQuery)) {
-        return true;
-      }
-      for (const line of file.additionLines) {
-        if (line.toLowerCase().includes(normalizedDiffSearchQuery)) return true;
-      }
-      for (const line of file.deletionLines) {
-        if (line.toLowerCase().includes(normalizedDiffSearchQuery)) return true;
-      }
-      return false;
-    });
-  }, [normalizedDiffSearchQuery, renderableFiles]);
+    return deriveDiffSearchFileIndexes(diffSearchMatches).map((index) => renderableFiles[index]!);
+  }, [diffSearchMatches, normalizedDiffSearchQuery, renderableFiles]);
 
   useEffect(() => {
     setCurrentDiffMatchIndex(0);
@@ -457,7 +451,7 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
   const goToDiffMatch = useCallback(
     (delta: 1 | -1) => {
       if (filteredFiles.length === 0) return;
-      const next = (currentDiffMatchIndex + delta + filteredFiles.length) % filteredFiles.length;
+      const next = getNextDiffSearchMatchIndex(currentDiffMatchIndex, filteredFiles.length, delta);
       setCurrentDiffMatchIndex(next);
       const targetFile = filteredFiles[next];
       if (!targetFile || !patchViewportRef.current) return;
