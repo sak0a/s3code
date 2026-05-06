@@ -110,10 +110,7 @@ const DARWIN_APP_BUNDLE_RELATIVE_CLI_PATHS: Partial<Record<EditorId, readonly st
     "PyCharm CE.app/Contents/MacOS/pycharm",
     "PyCharm Community Edition.app/Contents/MacOS/pycharm",
   ],
-  rider: [
-    "Rider.app/Contents/MacOS/rider",
-    "JetBrains Rider.app/Contents/MacOS/rider",
-  ],
+  rider: ["Rider.app/Contents/MacOS/rider", "JetBrains Rider.app/Contents/MacOS/rider"],
   rubymine: ["RubyMine.app/Contents/MacOS/rubymine"],
   rustrover: ["RustRover.app/Contents/MacOS/rustrover"],
   webstorm: ["WebStorm.app/Contents/MacOS/webstorm"],

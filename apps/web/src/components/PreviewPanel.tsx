@@ -166,8 +166,7 @@ export default function PreviewPanel({ mode = "inline" }: PreviewPanelProps) {
   });
   const routeDraftId = useParams({
     strict: false,
-    select: (params) =>
-      typeof params.draftId === "string" ? DraftId.make(params.draftId) : null,
+    select: (params) => (typeof params.draftId === "string" ? DraftId.make(params.draftId) : null),
   });
   const previewSearch = useSearch({
     strict: false,

@@ -1,6 +1,7 @@
 import { ProviderInteractionMode, RuntimeMode } from "@t3tools/contracts";
 import { memo, type ReactNode } from "react";
 import { EllipsisIcon, ListTodoIcon } from "lucide-react";
+import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import {
   Menu,
@@ -31,7 +32,12 @@ export const CompactComposerControlsMenu = memo(function CompactComposerControls
           <Button
             size="sm"
             variant="ghost"
-            className="shrink-0 px-2 text-muted-foreground/70 hover:text-foreground/80"
+            className={cn(
+              "shrink-0 px-2",
+              props.runtimeMode === "full-access"
+                ? "text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200"
+                : "text-muted-foreground/70 hover:text-foreground/80",
+            )}
             aria-label="More composer controls"
           />
         }

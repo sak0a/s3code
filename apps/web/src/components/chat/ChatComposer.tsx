@@ -228,7 +228,11 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
         <SelectTrigger
           variant="ghost"
           size="sm"
-          className="font-medium"
+          className={cn(
+            "font-medium",
+            props.runtimeMode === "full-access" &&
+              "text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200",
+          )}
           aria-label="Runtime mode"
           title={runtimeModeOption.description}
         >
