@@ -92,6 +92,31 @@ function resolveAvailableCommand(
 
 const DARWIN_APP_BUNDLE_RELATIVE_CLI_PATHS: Partial<Record<EditorId, readonly string[]>> = {
   cursor: ["Cursor.app/Contents/Resources/app/bin/cursor"],
+  idea: [
+    "IntelliJ IDEA.app/Contents/MacOS/idea",
+    "IntelliJ IDEA Ultimate.app/Contents/MacOS/idea",
+    "IntelliJ IDEA CE.app/Contents/MacOS/idea",
+    "IntelliJ IDEA Community Edition.app/Contents/MacOS/idea",
+  ],
+  aqua: ["Aqua.app/Contents/MacOS/aqua"],
+  clion: ["CLion.app/Contents/MacOS/clion"],
+  datagrip: ["DataGrip.app/Contents/MacOS/datagrip"],
+  dataspell: ["DataSpell.app/Contents/MacOS/dataspell"],
+  goland: ["GoLand.app/Contents/MacOS/goland"],
+  phpstorm: ["PhpStorm.app/Contents/MacOS/phpstorm"],
+  pycharm: [
+    "PyCharm.app/Contents/MacOS/pycharm",
+    "PyCharm Professional Edition.app/Contents/MacOS/pycharm",
+    "PyCharm CE.app/Contents/MacOS/pycharm",
+    "PyCharm Community Edition.app/Contents/MacOS/pycharm",
+  ],
+  rider: [
+    "Rider.app/Contents/MacOS/rider",
+    "JetBrains Rider.app/Contents/MacOS/rider",
+  ],
+  rubymine: ["RubyMine.app/Contents/MacOS/rubymine"],
+  rustrover: ["RustRover.app/Contents/MacOS/rustrover"],
+  webstorm: ["WebStorm.app/Contents/MacOS/webstorm"],
 };
 
 function defaultDarwinAppRoots(env: NodeJS.ProcessEnv): readonly string[] {
