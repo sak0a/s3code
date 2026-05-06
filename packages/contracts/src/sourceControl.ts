@@ -81,6 +81,23 @@ export const SourceControlChangeRequestDetail = Schema.Struct({
 });
 export type SourceControlChangeRequestDetail = typeof SourceControlChangeRequestDetail.Type;
 
+export const ComposerSourceControlContextKind = Schema.Literals(["issue", "change-request"]);
+export type ComposerSourceControlContextKind = typeof ComposerSourceControlContextKind.Type;
+
+export const ComposerSourceControlContext = Schema.Struct({
+  id: TrimmedNonEmptyString,                 // local UUID, generated client-side
+  kind: ComposerSourceControlContextKind,
+  provider: SourceControlProviderKind,
+  reference: TrimmedNonEmptyString,          // 'owner/repo#42' or full URL
+  detail: Schema.Union([
+    SourceControlIssueDetail,
+    SourceControlChangeRequestDetail,
+  ]),
+  fetchedAt: Schema.DateTimeUtc,
+  staleAfter: Schema.DateTimeUtc,            // fetchedAt + 5 minutes
+});
+export type ComposerSourceControlContext = typeof ComposerSourceControlContext.Type;
+
 export const SourceControlRepositoryCloneUrls = Schema.Struct({
   nameWithOwner: TrimmedNonEmptyString,
   url: TrimmedNonEmptyString,
