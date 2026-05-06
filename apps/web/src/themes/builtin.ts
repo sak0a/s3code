@@ -40,6 +40,11 @@ export const DEFAULT_THEME: ThemeDefinition = {
     "scrollbar-thumb-thin": "rgba(0, 0, 0, 0.1)",
     "scrollbar-thumb-thin-hover": "rgba(0, 0, 0, 0.2)",
     "noise-opacity": "0.035",
+    "font-family-sans":
+      '"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+    "font-family-mono":
+      '"SF Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
+    "font-size-base": "16px",
   },
   dark: {
     background: "color-mix(in srgb, var(--color-neutral-950) 95%, var(--color-white))",
@@ -72,6 +77,11 @@ export const DEFAULT_THEME: ThemeDefinition = {
     "scrollbar-thumb-hover": "rgba(255, 255, 255, 0.18)",
     "scrollbar-thumb-thin": "rgba(255, 255, 255, 0.08)",
     "scrollbar-thumb-thin-hover": "rgba(255, 255, 255, 0.15)",
+    "font-family-sans":
+      '"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+    "font-family-mono":
+      '"SF Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
+    "font-size-base": "16px",
   },
 };
 

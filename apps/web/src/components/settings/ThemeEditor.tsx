@@ -1,12 +1,25 @@
 "use client";
 
+import { XIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "../../lib/utils";
-import { applyThemeToDocument, isValidColorValue, isValidTheme } from "../../themes/registry";
+import { DEFAULT_THEME } from "../../themes/builtin";
 import {
+  applyThemeToDocument,
+  isValidColorValue,
+  isValidTheme,
+  isValidTokenValue,
+  materializeTokenValue,
+  parseLength,
+  SUPPORTED_LENGTH_UNITS,
+  type SupportedLengthUnit,
+} from "../../themes/registry";
+import {
+  getTokenKind,
   THEME_TOKEN_NAMES,
   type ThemeDefinition,
+  type ThemeTokenKind,
   type ThemeTokenName,
   type ThemeTokens,
   type ThemeVariant,
@@ -88,6 +101,10 @@ const TOKEN_CATEGORIES: ReadonlyArray<TokenCategory> = [
     ],
   },
   {
+    title: "Typography",
+    tokens: ["font-family-sans", "font-family-mono", "font-size-base"],
+  },
+  {
     title: "Misc",
     tokens: ["noise-opacity", "radius"],
   },
@@ -154,6 +171,10 @@ export function setThemeDescription(theme: ThemeDefinition, description: string)
   return next;
 }
 
+function isSupportedUnit(unit: string): unit is SupportedLengthUnit {
+  return (SUPPORTED_LENGTH_UNITS as ReadonlyArray<string>).includes(unit);
+}
+
 export type ThemeEditorProps = {
   source: ThemeDefinition;
   draft: ThemeDefinition;
@@ -182,12 +203,6 @@ export function ThemeEditor({
   useEffect(() => {
     applyThemeToDocument(draft);
   }, [draft, resolvedVariant]);
-
-  useEffect(() => {
-    return () => {
-      applyThemeToDocument(source);
-    };
-  }, [source]);
 
   useEffect(() => {
     if (mode === "form") setJsonText(JSON.stringify(draft, null, 2));
@@ -231,13 +246,21 @@ export function ThemeEditor({
   };
 
   const variantTokens: ThemeTokens = (variant === "dark" ? draft.dark : draft.light) ?? {};
+  const inheritedTokens: ThemeTokens = useMemo(
+    () => (variant === "dark" ? DEFAULT_THEME.dark : DEFAULT_THEME.light) ?? {},
+    [variant],
+  );
   const unknownTokenEntries = Object.entries(variantTokens).filter(
     ([token]) => !KNOWN_TOKEN_SET.has(token),
   );
+
   const hasInvalidValueIn = (tokens: ThemeTokens | undefined): boolean =>
-    Object.values(tokens ?? {}).some(
-      (value) => typeof value === "string" && value.length > 0 && !isValidColorValue(value),
-    );
+    Object.entries(tokens ?? {}).some(([token, value]) => {
+      if (typeof value !== "string" || value.length === 0) return false;
+      const kind = getTokenKind(token);
+      if (!kind) return false;
+      return !isValidTokenValue(kind, value);
+    });
   const hasInvalidValue = hasInvalidValueIn(draft.light) || hasInvalidValueIn(draft.dark);
   const saveDisabled = jsonError !== null || draft.name.trim().length === 0 || hasInvalidValue;
 
@@ -276,10 +299,10 @@ export function ThemeEditor({
               if (next === "form" || next === "json") setMode(next);
             }}
           >
-            <Toggle value="form" aria-label="Form editor">
+            <Toggle value="form" aria-label="Form editor" className="px-3 sm:px-3">
               Form
             </Toggle>
-            <Toggle value="json" aria-label="JSON editor">
+            <Toggle value="json" aria-label="JSON editor" className="px-3 sm:px-3">
               JSON
             </Toggle>
           </ToggleGroup>
@@ -292,10 +315,10 @@ export function ThemeEditor({
               if (next === "light" || next === "dark") setVariant(next);
             }}
           >
-            <Toggle value="light" aria-label="Light variant">
+            <Toggle value="light" aria-label="Light variant" className="px-3 sm:px-3">
               Light
             </Toggle>
-            <Toggle value="dark" aria-label="Dark variant">
+            <Toggle value="dark" aria-label="Dark variant" className="px-3 sm:px-3">
               Dark
             </Toggle>
           </ToggleGroup>
@@ -332,63 +355,18 @@ export function ThemeEditor({
                 <div className="grid gap-2 sm:grid-cols-2">
                   {category.tokens.map((token) => {
                     const value = variantTokens[token] ?? "";
-                    const invalid = value.length > 0 && !isValidColorValue(value);
-                    const overridden = value.length > 0;
+                    const inherited = inheritedTokens[token] ?? "";
+                    const kind = getTokenKind(token);
+                    if (!kind) return null;
                     return (
-                      <div
+                      <TokenRow
                         key={token}
-                        className="flex items-center gap-2 rounded-md border border-border/60 bg-background px-2 py-1.5"
-                      >
-                        <ColorPicker
-                          value={deriveHex(value)}
-                          onChange={(hex) => handleTokenChange(token, hex)}
-                          ariaLabel={`Pick a color for --${token}`}
-                        >
-                          <span
-                            className="pointer-events-none absolute inset-0"
-                            style={{
-                              backgroundColor: invalid ? "transparent" : value || "transparent",
-                            }}
-                            aria-hidden
-                          />
-                        </ColorPicker>
-                        <div className="flex min-w-0 flex-1 flex-col">
-                          <span
-                            className={cn(
-                              "truncate font-mono text-[11px]",
-                              overridden ? "text-foreground" : "text-muted-foreground/70",
-                            )}
-                            title={`--${token}`}
-                          >
-                            --{token}
-                          </span>
-                          <Input
-                            value={value}
-                            nativeInput
-                            unstyled
-                            size="sm"
-                            className="border-0 bg-transparent p-0 shadow-none focus-within:shadow-none"
-                            placeholder="inherit default"
-                            aria-invalid={invalid || undefined}
-                            onChange={(event) =>
-                              handleTokenChange(token, event.currentTarget.value)
-                            }
-                          />
-                        </div>
-                        {overridden ? (
-                          <Button
-                            size="icon-xs"
-                            variant="ghost"
-                            aria-label={`Reset --${token}`}
-                            onClick={() => handleTokenChange(token, "")}
-                            className="text-muted-foreground"
-                          >
-                            <span aria-hidden className="text-[10px]">
-                              ×
-                            </span>
-                          </Button>
-                        ) : null}
-                      </div>
+                        token={token}
+                        kind={kind}
+                        value={value}
+                        inherited={inherited}
+                        onChange={(next) => handleTokenChange(token, next)}
+                      />
                     );
                   })}
                 </div>
@@ -446,6 +424,294 @@ export function ThemeEditor({
           </AlertDialogFooter>
         </AlertDialogPopup>
       </AlertDialog>
+    </div>
+  );
+}
+
+type TokenRowProps = {
+  token: ThemeTokenName;
+  kind: ThemeTokenKind;
+  value: string;
+  inherited: string;
+  onChange: (next: string) => void;
+};
+
+function TokenRow({ token, kind, value, inherited, onChange }: TokenRowProps) {
+  const overridden = value.length > 0;
+  const spanFull = kind === "font-family";
+
+  return (
+    <div
+      className={cn(
+        "rounded-md border border-border/60 bg-background px-2 py-1.5",
+        spanFull && "sm:col-span-2",
+      )}
+    >
+      {kind === "color" ? (
+        <ColorRow
+          token={token}
+          value={value}
+          inherited={inherited}
+          overridden={overridden}
+          onChange={onChange}
+        />
+      ) : kind === "opacity" ? (
+        <OpacityRow
+          token={token}
+          value={value}
+          inherited={inherited}
+          overridden={overridden}
+          onChange={onChange}
+        />
+      ) : kind === "length" ? (
+        <LengthRow
+          token={token}
+          value={value}
+          inherited={inherited}
+          overridden={overridden}
+          onChange={onChange}
+        />
+      ) : (
+        <FontFamilyRow
+          token={token}
+          value={value}
+          inherited={inherited}
+          overridden={overridden}
+          onChange={onChange}
+        />
+      )}
+    </div>
+  );
+}
+
+type RowProps = {
+  token: ThemeTokenName;
+  value: string;
+  inherited: string;
+  overridden: boolean;
+  onChange: (next: string) => void;
+};
+
+function ResetButton({ token, onChange }: { token: string; onChange: (next: string) => void }) {
+  return (
+    <Button
+      size="icon-xs"
+      variant="ghost"
+      aria-label={`Reset --${token}`}
+      onClick={() => onChange("")}
+      className="text-muted-foreground"
+    >
+      <XIcon className="size-3.5" aria-hidden />
+    </Button>
+  );
+}
+
+function TokenLabel({ token, overridden }: { token: string; overridden: boolean }) {
+  return (
+    <span
+      className={cn(
+        "truncate font-mono text-[11px]",
+        overridden ? "text-foreground" : "text-muted-foreground/70",
+      )}
+      title={`--${token}`}
+    >
+      --{token}
+    </span>
+  );
+}
+
+function ColorRow({ token, value, inherited, overridden, onChange }: RowProps) {
+  const resolvedRaw = value || inherited;
+  const swatchSource = materializeTokenValue(resolvedRaw);
+  const invalid = value.length > 0 && !isValidColorValue(value);
+
+  return (
+    <div className="flex items-center gap-2">
+      <ColorPicker
+        value={deriveHex(swatchSource)}
+        onChange={(hex) => onChange(hex)}
+        ariaLabel={`Pick a color for --${token}`}
+      >
+        <span
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundColor: invalid ? "transparent" : swatchSource || "transparent",
+          }}
+          aria-hidden
+        />
+      </ColorPicker>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <TokenLabel token={token} overridden={overridden} />
+        <Input
+          value={value}
+          nativeInput
+          unstyled
+          size="sm"
+          className="border-0 bg-transparent p-0 shadow-none focus-within:shadow-none"
+          placeholder={inherited || "inherit default"}
+          aria-invalid={invalid || undefined}
+          onChange={(event) => onChange(event.currentTarget.value)}
+        />
+      </div>
+      {overridden ? <ResetButton token={token} onChange={onChange} /> : null}
+    </div>
+  );
+}
+
+function OpacityRow({ token, value, inherited, overridden, onChange }: RowProps) {
+  const resolved = value || inherited;
+  const numeric = Number(resolved);
+  const sliderValue = Number.isFinite(numeric) ? Math.min(1, Math.max(0, numeric)) : 0;
+  const invalid = value.length > 0 && !isValidTokenValue("opacity", value);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <TokenLabel token={token} overridden={overridden} />
+      <div className="flex items-center gap-2">
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.005}
+          value={sliderValue}
+          onChange={(event) => onChange(event.currentTarget.value)}
+          aria-label={`--${token} value`}
+          className="h-7.5 flex-1 accent-primary cursor-pointer"
+        />
+        <div className="w-20 shrink-0">
+          <Input
+            value={value}
+            nativeInput
+            type="number"
+            min={0}
+            max={1}
+            step={0.005}
+            size="sm"
+            placeholder={inherited || "0"}
+            aria-invalid={invalid || undefined}
+            onChange={(event) => onChange(event.currentTarget.value)}
+          />
+        </div>
+        {overridden ? <ResetButton token={token} onChange={onChange} /> : null}
+      </div>
+    </div>
+  );
+}
+
+function LengthRow({ token, value, inherited, overridden, onChange }: RowProps) {
+  const parsedValue = parseLength(value);
+  const parsedInherited = parseLength(inherited);
+  const inheritedSupported = parsedInherited ? isSupportedUnit(parsedInherited.unit) : false;
+  const valueSupported = parsedValue ? isSupportedUnit(parsedValue.unit) : false;
+
+  // If either current value or the inherited default uses an unsupported unit (e.g. clamp,
+  // percentages), fall back to a free-text input so we don't silently drop precision.
+  const useFallback =
+    (value.length > 0 && !valueSupported) ||
+    (value.length === 0 && inherited.length > 0 && !inheritedSupported);
+
+  if (useFallback) {
+    const invalid = value.length > 0 && !isValidTokenValue("length", value);
+    return (
+      <div className="flex flex-col gap-1.5">
+        <TokenLabel token={token} overridden={overridden} />
+        <div className="flex items-center gap-2">
+          <Input
+            value={value}
+            nativeInput
+            size="sm"
+            placeholder={inherited || "e.g. 1rem"}
+            aria-invalid={invalid || undefined}
+            onChange={(event) => onChange(event.currentTarget.value)}
+          />
+          {overridden ? <ResetButton token={token} onChange={onChange} /> : null}
+        </div>
+      </div>
+    );
+  }
+
+  const numberValue = parsedValue ? String(parsedValue.number) : "";
+  const unit: SupportedLengthUnit =
+    parsedValue && isSupportedUnit(parsedValue.unit)
+      ? parsedValue.unit
+      : parsedInherited && isSupportedUnit(parsedInherited.unit)
+        ? parsedInherited.unit
+        : "rem";
+  const numberPlaceholder = parsedInherited ? String(parsedInherited.number) : "";
+
+  const commitNumber = (raw: string) => {
+    const trimmed = raw.trim();
+    if (trimmed.length === 0) {
+      onChange("");
+      return;
+    }
+    const num = Number(trimmed);
+    if (!Number.isFinite(num)) return;
+    onChange(`${num}${unit}`);
+  };
+
+  const commitUnit = (nextUnit: SupportedLengthUnit) => {
+    if (parsedValue) {
+      onChange(`${parsedValue.number}${nextUnit}`);
+      return;
+    }
+    if (parsedInherited) onChange(`${parsedInherited.number}${nextUnit}`);
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <TokenLabel token={token} overridden={overridden} />
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <Input
+            value={numberValue}
+            nativeInput
+            type="number"
+            step={token === "font-size-base" ? 1 : 0.05}
+            size="sm"
+            placeholder={numberPlaceholder}
+            onChange={(event) => commitNumber(event.currentTarget.value)}
+          />
+        </div>
+        <select
+          value={unit}
+          onChange={(event) => commitUnit(event.currentTarget.value as SupportedLengthUnit)}
+          aria-label={`--${token} unit`}
+          className="h-7.5 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/24 sm:h-6.5 sm:text-xs"
+        >
+          {SUPPORTED_LENGTH_UNITS.map((u) => (
+            <option key={u} value={u}>
+              {u}
+            </option>
+          ))}
+        </select>
+        {overridden ? <ResetButton token={token} onChange={onChange} /> : null}
+      </div>
+    </div>
+  );
+}
+
+function FontFamilyRow({ token, value, inherited, overridden, onChange }: RowProps) {
+  const resolved = value || inherited;
+  const invalid = value.length > 0 && !isValidTokenValue("font-family", value);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <TokenLabel token={token} overridden={overridden} />
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <Input
+            value={value}
+            nativeInput
+            size="sm"
+            placeholder={inherited || "system-ui, sans-serif"}
+            style={{ fontFamily: resolved || undefined }}
+            aria-invalid={invalid || undefined}
+            onChange={(event) => onChange(event.currentTarget.value)}
+          />
+        </div>
+        {overridden ? <ResetButton token={token} onChange={onChange} /> : null}
+      </div>
     </div>
   );
 }
