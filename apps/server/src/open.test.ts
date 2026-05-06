@@ -94,9 +94,132 @@ it.layer(NodeServices.layer)("resolveEditorLaunch", (it) => {
       const ideaLaunch = yield* resolveEditorLaunch(
         { cwd: "/tmp/workspace", editor: "idea" },
         "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
       );
       assert.deepEqual(ideaLaunch, {
         command: "idea",
+        args: ["/tmp/workspace"],
+      });
+
+      const aquaLaunch = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace", editor: "aqua" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(aquaLaunch, {
+        command: "aqua",
+        args: ["/tmp/workspace"],
+      });
+
+      const clionLaunch = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace", editor: "clion" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(clionLaunch, {
+        command: "clion",
+        args: ["/tmp/workspace"],
+      });
+
+      const datagripLaunch = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace", editor: "datagrip" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(datagripLaunch, {
+        command: "datagrip",
+        args: ["/tmp/workspace"],
+      });
+
+      const dataspellLaunch = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace", editor: "dataspell" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(dataspellLaunch, {
+        command: "dataspell",
+        args: ["/tmp/workspace"],
+      });
+
+      const golandLaunch = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace", editor: "goland" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(golandLaunch, {
+        command: "goland",
+        args: ["/tmp/workspace"],
+      });
+
+      const phpstormLaunch = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace", editor: "phpstorm" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(phpstormLaunch, {
+        command: "phpstorm",
+        args: ["/tmp/workspace"],
+      });
+
+      const pycharmLaunch = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace", editor: "pycharm" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(pycharmLaunch, {
+        command: "pycharm",
+        args: ["/tmp/workspace"],
+      });
+
+      const riderLaunch = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace", editor: "rider" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(riderLaunch, {
+        command: "rider",
+        args: ["/tmp/workspace"],
+      });
+
+      const rubymineLaunch = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace", editor: "rubymine" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(rubymineLaunch, {
+        command: "rubymine",
+        args: ["/tmp/workspace"],
+      });
+
+      const rustroverLaunch = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace", editor: "rustrover" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(rustroverLaunch, {
+        command: "rustrover",
+        args: ["/tmp/workspace"],
+      });
+
+      const webstormLaunch = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace", editor: "webstorm" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(webstormLaunch, {
+        command: "webstorm",
         args: ["/tmp/workspace"],
       });
     }),
@@ -196,6 +319,8 @@ it.layer(NodeServices.layer)("resolveEditorLaunch", (it) => {
       const ideaLineOnly = yield* resolveEditorLaunch(
         { cwd: "/tmp/workspace/AGENTS.md:48", editor: "idea" },
         "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
       );
       assert.deepEqual(ideaLineOnly, {
         command: "idea",
@@ -205,10 +330,133 @@ it.layer(NodeServices.layer)("resolveEditorLaunch", (it) => {
       const ideaLineAndColumn = yield* resolveEditorLaunch(
         { cwd: "/tmp/workspace/src/open.ts:71:5", editor: "idea" },
         "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
       );
       assert.deepEqual(ideaLineAndColumn, {
         command: "idea",
         args: ["--line", "71", "--column", "5", "/tmp/workspace/src/open.ts"],
+      });
+
+      const aquaLineAndColumn = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace/src/open.ts:71:5", editor: "aqua" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(aquaLineAndColumn, {
+        command: "aqua",
+        args: ["--line", "71", "--column", "5", "/tmp/workspace/src/open.ts"],
+      });
+
+      const clionLineAndColumn = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace/src/open.ts:71:5", editor: "clion" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(clionLineAndColumn, {
+        command: "clion",
+        args: ["--line", "71", "--column", "5", "/tmp/workspace/src/open.ts"],
+      });
+
+      const datagripLineAndColumn = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace/src/open.ts:71:5", editor: "datagrip" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(datagripLineAndColumn, {
+        command: "datagrip",
+        args: ["--line", "71", "--column", "5", "/tmp/workspace/src/open.ts"],
+      });
+
+      const dataspellLineAndColumn = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace/src/open.ts:71:5", editor: "dataspell" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(dataspellLineAndColumn, {
+        command: "dataspell",
+        args: ["--line", "71", "--column", "5", "/tmp/workspace/src/open.ts"],
+      });
+
+      const golandLineAndColumn = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace/src/open.ts:71:5", editor: "goland" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(golandLineAndColumn, {
+        command: "goland",
+        args: ["--line", "71", "--column", "5", "/tmp/workspace/src/open.ts"],
+      });
+
+      const phpstormLineAndColumn = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace/src/open.ts:71:5", editor: "phpstorm" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(phpstormLineAndColumn, {
+        command: "phpstorm",
+        args: ["--line", "71", "--column", "5", "/tmp/workspace/src/open.ts"],
+      });
+
+      const pycharmLineAndColumn = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace/src/open.ts:71:5", editor: "pycharm" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(pycharmLineAndColumn, {
+        command: "pycharm",
+        args: ["--line", "71", "--column", "5", "/tmp/workspace/src/open.ts"],
+      });
+
+      const riderLineAndColumn = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace/src/open.ts:71:5", editor: "rider" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(riderLineAndColumn, {
+        command: "rider",
+        args: ["--line", "71", "--column", "5", "/tmp/workspace/src/open.ts"],
+      });
+
+      const rubymineLineAndColumn = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace/src/open.ts:71:5", editor: "rubymine" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(rubymineLineAndColumn, {
+        command: "rubymine",
+        args: ["--line", "71", "--column", "5", "/tmp/workspace/src/open.ts"],
+      });
+
+      const rustroverLineAndColumn = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace/src/open.ts:71:5", editor: "rustrover" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(rustroverLineAndColumn, {
+        command: "rustrover",
+        args: ["--line", "71", "--column", "5", "/tmp/workspace/src/open.ts"],
+      });
+
+      const webstormLineOnly = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace/AGENTS.md:48", editor: "webstorm" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [] },
+      );
+      assert.deepEqual(webstormLineOnly, {
+        command: "webstorm",
+        args: ["--line", "48", "/tmp/workspace/AGENTS.md"],
       });
     }),
   );
@@ -380,12 +628,40 @@ it.layer(NodeServices.layer)("resolveAvailableEditors", (it) => {
       yield* fs.writeFileString(path.join(dir, "kiro.CMD"), "@echo off\r\n");
       yield* fs.writeFileString(path.join(dir, "code-insiders.CMD"), "@echo off\r\n");
       yield* fs.writeFileString(path.join(dir, "codium.CMD"), "@echo off\r\n");
+      yield* fs.writeFileString(path.join(dir, "aqua.CMD"), "@echo off\r\n");
+      yield* fs.writeFileString(path.join(dir, "clion.CMD"), "@echo off\r\n");
+      yield* fs.writeFileString(path.join(dir, "datagrip.CMD"), "@echo off\r\n");
+      yield* fs.writeFileString(path.join(dir, "dataspell.CMD"), "@echo off\r\n");
+      yield* fs.writeFileString(path.join(dir, "goland.CMD"), "@echo off\r\n");
+      yield* fs.writeFileString(path.join(dir, "phpstorm.CMD"), "@echo off\r\n");
+      yield* fs.writeFileString(path.join(dir, "pycharm.CMD"), "@echo off\r\n");
+      yield* fs.writeFileString(path.join(dir, "rider.CMD"), "@echo off\r\n");
+      yield* fs.writeFileString(path.join(dir, "rubymine.CMD"), "@echo off\r\n");
+      yield* fs.writeFileString(path.join(dir, "rustrover.CMD"), "@echo off\r\n");
+      yield* fs.writeFileString(path.join(dir, "webstorm.CMD"), "@echo off\r\n");
       yield* fs.writeFileString(path.join(dir, "explorer.CMD"), "MZ");
       const editors = resolveAvailableEditors("win32", {
         PATH: dir,
         PATHEXT: ".COM;.EXE;.BAT;.CMD",
       });
-      assert.deepEqual(editors, ["trae", "kiro", "vscode-insiders", "vscodium", "file-manager"]);
+      assert.deepEqual(editors, [
+        "trae",
+        "kiro",
+        "vscode-insiders",
+        "vscodium",
+        "aqua",
+        "clion",
+        "datagrip",
+        "dataspell",
+        "goland",
+        "phpstorm",
+        "pycharm",
+        "rider",
+        "rubymine",
+        "rustrover",
+        "webstorm",
+        "file-manager",
+      ]);
     }),
   );
 
@@ -441,6 +717,72 @@ it.layer(NodeServices.layer)("resolveAvailableEditors", (it) => {
     const editors = resolveAvailableEditors("darwin", { PATH: "" }, { darwinAppRoots: [] });
     assert.notInclude(editors, "cursor");
   });
+
+  it.effect("detects JetBrains editors via macOS app bundles when not on PATH", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const appRoot = yield* fs.makeTempDirectoryScoped({ prefix: "t3-darwin-apps-" });
+
+      const bundles: ReadonlyArray<readonly [string, string]> = [
+        ["IntelliJ IDEA.app/Contents/MacOS", "idea"],
+        ["Aqua.app/Contents/MacOS", "aqua"],
+        ["CLion.app/Contents/MacOS", "clion"],
+        ["DataGrip.app/Contents/MacOS", "datagrip"],
+        ["DataSpell.app/Contents/MacOS", "dataspell"],
+        ["GoLand.app/Contents/MacOS", "goland"],
+        ["PhpStorm.app/Contents/MacOS", "phpstorm"],
+        ["PyCharm.app/Contents/MacOS", "pycharm"],
+        ["Rider.app/Contents/MacOS", "rider"],
+        ["RubyMine.app/Contents/MacOS", "rubymine"],
+        ["RustRover.app/Contents/MacOS", "rustrover"],
+        ["WebStorm.app/Contents/MacOS", "webstorm"],
+      ];
+      for (const [dir, binary] of bundles) {
+        const bundleDir = path.join(appRoot, dir);
+        yield* fs.makeDirectory(bundleDir, { recursive: true });
+        const cli = path.join(bundleDir, binary);
+        yield* fs.writeFileString(cli, "#!/bin/sh\nexit 0\n");
+        yield* fs.chmod(cli, 0o755);
+      }
+
+      const opener = yield* fs.makeTempDirectoryScoped({ prefix: "t3-darwin-bin-" });
+      yield* fs.writeFileString(path.join(opener, "open"), "#!/bin/sh\nexit 0\n");
+      yield* fs.chmod(path.join(opener, "open"), 0o755);
+
+      const editors = resolveAvailableEditors(
+        "darwin",
+        { PATH: opener },
+        { darwinAppRoots: [appRoot] },
+      );
+      for (const [, id] of bundles) {
+        assert.include(editors, id);
+      }
+    }),
+  );
+
+  it.effect("detects PyCharm Professional Edition as the canonical pycharm editor", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const appRoot = yield* fs.makeTempDirectoryScoped({ prefix: "t3-darwin-apps-" });
+      const bundleDir = path.join(appRoot, "PyCharm Professional Edition.app/Contents/MacOS");
+      yield* fs.makeDirectory(bundleDir, { recursive: true });
+      yield* fs.writeFileString(path.join(bundleDir, "pycharm"), "#!/bin/sh\nexit 0\n");
+      yield* fs.chmod(path.join(bundleDir, "pycharm"), 0o755);
+
+      const opener = yield* fs.makeTempDirectoryScoped({ prefix: "t3-darwin-bin-" });
+      yield* fs.writeFileString(path.join(opener, "open"), "#!/bin/sh\nexit 0\n");
+      yield* fs.chmod(path.join(opener, "open"), 0o755);
+
+      const editors = resolveAvailableEditors(
+        "darwin",
+        { PATH: opener },
+        { darwinAppRoots: [appRoot] },
+      );
+      assert.include(editors, "pycharm");
+    }),
+  );
 });
 
 it.layer(NodeServices.layer)("resolveEditorLaunch (darwin app bundle)", (it) => {
@@ -462,6 +804,30 @@ it.layer(NodeServices.layer)("resolveEditorLaunch (darwin app bundle)", (it) => 
         { darwinAppRoots: [appRoot] },
       );
       assert.deepEqual(launch, { command: bundleCli, args: ["/tmp/workspace"] });
+    }),
+  );
+
+  it.effect("uses the macOS PyCharm bundle CLI with line-column args when not on PATH", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const appRoot = yield* fs.makeTempDirectoryScoped({ prefix: "t3-darwin-apps-" });
+      const bundleDir = path.join(appRoot, "PyCharm.app/Contents/MacOS");
+      yield* fs.makeDirectory(bundleDir, { recursive: true });
+      const bundleCli = path.join(bundleDir, "pycharm");
+      yield* fs.writeFileString(bundleCli, "#!/bin/sh\nexit 0\n");
+      yield* fs.chmod(bundleCli, 0o755);
+
+      const launch = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace/src/main.py:71:5", editor: "pycharm" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [appRoot] },
+      );
+      assert.deepEqual(launch, {
+        command: bundleCli,
+        args: ["--line", "71", "--column", "5", "/tmp/workspace/src/main.py"],
+      });
     }),
   );
 });

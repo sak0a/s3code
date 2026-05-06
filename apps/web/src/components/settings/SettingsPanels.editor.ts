@@ -4,7 +4,6 @@ import {
   AntigravityIcon,
   CursorIcon,
   type Icon,
-  IntelliJIdeaIcon,
   KiroIcon,
   TraeIcon,
   VisualStudioCode,
@@ -12,6 +11,20 @@ import {
   VSCodium,
   Zed,
 } from "../Icons";
+import {
+  AquaIcon,
+  CLionIcon,
+  DataGripIcon,
+  DataSpellIcon,
+  GoLandIcon,
+  IntelliJIdeaIcon,
+  PhpStormIcon,
+  PyCharmIcon,
+  RiderIcon,
+  RubyMineIcon,
+  RustRoverIcon,
+  WebStormIcon,
+} from "../JetBrainsIcons";
 import { isMacPlatform, isWindowsPlatform } from "../../lib/utils";
 
 export const EDITOR_ICONS = {
@@ -24,6 +37,17 @@ export const EDITOR_ICONS = {
   zed: Zed,
   antigravity: AntigravityIcon,
   idea: IntelliJIdeaIcon,
+  aqua: AquaIcon,
+  clion: CLionIcon,
+  datagrip: DataGripIcon,
+  dataspell: DataSpellIcon,
+  goland: GoLandIcon,
+  phpstorm: PhpStormIcon,
+  pycharm: PyCharmIcon,
+  rider: RiderIcon,
+  rubymine: RubyMineIcon,
+  rustrover: RustRoverIcon,
+  webstorm: WebStormIcon,
   "file-manager": FolderClosedIcon,
 } satisfies Record<EditorId, Icon>;
 
