@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import * as Schema from "effect/Schema";
 import * as SchemaTransformation from "effect/SchemaTransformation";
 import { TrimmedNonEmptyString, TrimmedString } from "./baseSchemas.ts";
+import { EditorId } from "./editor.ts";
 import { DEFAULT_GIT_TEXT_GENERATION_MODEL, ProviderOptionSelections } from "./model.ts";
 import { ModelSelection } from "./orchestration.ts";
 import { ProviderInstanceConfig, ProviderInstanceId } from "./providerInstance.ts";
@@ -75,6 +76,10 @@ export const ClientSettingsSchema = Schema.Struct({
   timestampFormat: TimestampFormat.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_TIMESTAMP_FORMAT)),
   ),
+  // When set, pins the editor used by the "Open in" picker and any other
+  // "open in your preferred editor" affordance. `null` falls back to
+  // last-used (localStorage) → first-available behavior.
+  preferredEditor: Schema.NullOr(EditorId).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
 });
 export type ClientSettings = typeof ClientSettingsSchema.Type;
 
@@ -482,5 +487,6 @@ export const ClientSettingsPatch = Schema.Struct({
   sidebarProjectSortOrder: Schema.optionalKey(SidebarProjectSortOrder),
   sidebarThreadSortOrder: Schema.optionalKey(SidebarThreadSortOrder),
   timestampFormat: Schema.optionalKey(TimestampFormat),
+  preferredEditor: Schema.optionalKey(Schema.NullOr(EditorId)),
 });
 export type ClientSettingsPatch = typeof ClientSettingsPatch.Type;

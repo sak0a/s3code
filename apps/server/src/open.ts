@@ -90,6 +90,43 @@ function resolveAvailableCommand(
   return null;
 }
 
+const DARWIN_APP_BUNDLE_RELATIVE_CLI_PATHS: Partial<Record<EditorId, readonly string[]>> = {
+  cursor: ["Cursor.app/Contents/Resources/app/bin/cursor"],
+};
+
+function defaultDarwinAppRoots(env: NodeJS.ProcessEnv): readonly string[] {
+  const home = env.HOME ?? "";
+  return home.length > 0 ? ["/Applications", `${home}/Applications`] : ["/Applications"];
+}
+
+export interface ResolveOptions {
+  /**
+   * macOS-only: directories to search for app bundles when the editor's CLI
+   * isn't on PATH. Defaults to `/Applications` and `~/Applications`. Tests
+   * pass an isolated array to keep results deterministic.
+   */
+  readonly darwinAppRoots?: readonly string[];
+}
+
+function resolveDarwinBundleCli(
+  editor: EditorId,
+  platform: NodeJS.Platform,
+  env: NodeJS.ProcessEnv,
+  options: ResolveOptions,
+): string | null {
+  if (platform !== "darwin") return null;
+  const relativePaths = DARWIN_APP_BUNDLE_RELATIVE_CLI_PATHS[editor];
+  if (!relativePaths) return null;
+  const roots = options.darwinAppRoots ?? defaultDarwinAppRoots(env);
+  for (const root of roots) {
+    for (const rel of relativePaths) {
+      const candidate = `${root}/${rel}`;
+      if (isCommandAvailable(candidate, { platform, env })) return candidate;
+    }
+  }
+  return null;
+}
+
 function fileManagerCommandForPlatform(platform: NodeJS.Platform): string {
   switch (platform) {
     case "darwin":
@@ -104,6 +141,7 @@ function fileManagerCommandForPlatform(platform: NodeJS.Platform): string {
 export function resolveAvailableEditors(
   platform: NodeJS.Platform = process.platform,
   env: NodeJS.ProcessEnv = process.env,
+  options: ResolveOptions = {},
 ): ReadonlyArray<EditorId> {
   const available: EditorId[] = [];
 
@@ -118,6 +156,10 @@ export function resolveAvailableEditors(
 
     const command = resolveAvailableCommand(editor.commands, { platform, env });
     if (command !== null) {
+      available.push(editor.id);
+      continue;
+    }
+    if (resolveDarwinBundleCli(editor.id, platform, env, options) !== null) {
       available.push(editor.id);
     }
   }
@@ -155,6 +197,7 @@ export const resolveEditorLaunch = Effect.fn("resolveEditorLaunch")(function* (
   input: OpenInEditorInput,
   platform: NodeJS.Platform = process.platform,
   env: NodeJS.ProcessEnv = process.env,
+  options: ResolveOptions = {},
 ): Effect.fn.Return<EditorLaunch, OpenError> {
   yield* Effect.annotateCurrentSpan({
     "open.editor": input.editor,
@@ -168,7 +211,9 @@ export const resolveEditorLaunch = Effect.fn("resolveEditorLaunch")(function* (
 
   if (editorDef.commands) {
     const command =
-      resolveAvailableCommand(editorDef.commands, { platform, env }) ?? editorDef.commands[0];
+      resolveAvailableCommand(editorDef.commands, { platform, env }) ??
+      resolveDarwinBundleCli(editorDef.id, platform, env, options) ??
+      editorDef.commands[0];
     return {
       command,
       args: resolveEditorArgs(editorDef, input.cwd),
