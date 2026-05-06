@@ -29,7 +29,6 @@ import { useGitStatus } from "~/lib/gitStatusState";
 import { checkpointDiffQueryOptions } from "~/lib/providerReactQuery";
 import { cn } from "~/lib/utils";
 import { readLocalApi } from "../localApi";
-import { resolvePathLinkTarget } from "../terminal-links";
 import { parseDiffRouteSearch, stripDiffSearchParams } from "../diffRouteSearch";
 import { useTheme } from "../hooks/useTheme";
 import { buildPatchCacheKey } from "../lib/diffRendering";
@@ -49,6 +48,7 @@ import {
   normalizeDiffSearchQuery,
   resolveDiffFilePath,
 } from "./DiffPanel.search.logic";
+import { resolveDiffOpenInEditorTarget } from "./DiffPanel.openInEditor.logic";
 
 type DiffRenderMode = "stacked" | "split";
 type DiffThemeType = "light" | "dark";
@@ -555,9 +555,11 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
     (filePath: string, lineNumber?: number) => {
       const api = readLocalApi();
       if (!api) return;
-      const resolvedPath = activeCwd ? resolvePathLinkTarget(filePath, activeCwd) : filePath;
-      const target =
-        typeof lineNumber === "number" ? `${resolvedPath}:${lineNumber}` : resolvedPath;
+      const target = resolveDiffOpenInEditorTarget({
+        cwd: activeCwd,
+        filePath,
+        lineNumber,
+      });
       void openInPreferredEditor(api, target).catch((error) => {
         console.warn("Failed to open diff in editor.", error);
       });
@@ -978,11 +980,7 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
                               themeType: resolvedTheme as DiffThemeType,
                               unsafeCSS: DIFF_PANEL_UNSAFE_CSS,
                               lineHoverHighlight: "number",
-                              onLineNumberClick: ({ lineNumber, lineType }) => {
-                                if (lineType === "change-deletion") {
-                                  openDiffFileInEditor(filePath);
-                                  return;
-                                }
+                              onLineNumberClick: ({ lineNumber }) => {
                                 openDiffFileInEditor(filePath, lineNumber);
                               },
                             }}
