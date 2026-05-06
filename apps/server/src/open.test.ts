@@ -438,11 +438,7 @@ it.layer(NodeServices.layer)("resolveAvailableEditors", (it) => {
   );
 
   it("does not detect Cursor when no app bundle root contains it", () => {
-    const editors = resolveAvailableEditors(
-      "darwin",
-      { PATH: "" },
-      { darwinAppRoots: [] },
-    );
+    const editors = resolveAvailableEditors("darwin", { PATH: "" }, { darwinAppRoots: [] });
     assert.notInclude(editors, "cursor");
   });
 });
