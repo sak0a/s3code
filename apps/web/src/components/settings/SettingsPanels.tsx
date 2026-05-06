@@ -1,11 +1,4 @@
-import {
-  ArchiveIcon,
-  ArchiveX,
-  FolderClosedIcon,
-  LoaderIcon,
-  PlusIcon,
-  RefreshCwIcon,
-} from "lucide-react";
+import { ArchiveIcon, ArchiveX, LoaderIcon, PlusIcon, RefreshCwIcon } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -77,24 +70,12 @@ import {
 } from "./settingsLayout";
 import { ProjectFavicon } from "../ProjectFavicon";
 import {
-  AntigravityIcon,
-  CursorIcon,
-  type Icon,
-  IntelliJIdeaIcon,
-  KiroIcon,
-  TraeIcon,
-  VisualStudioCode,
-  VisualStudioCodeInsiders,
-  VSCodium,
-  Zed,
-} from "../Icons";
-import { isMacPlatform, isWindowsPlatform } from "../../lib/utils";
-import {
   useServerAvailableEditors,
   useServerKeybindingsConfigPath,
   useServerObservability,
   useServerProviders,
 } from "../../rpc/serverState";
+import { EDITOR_ICONS, getEditorLabel } from "./SettingsPanels.editor";
 
 const TIMESTAMP_FORMAT_LABELS = {
   locale: "System default",
@@ -104,32 +85,10 @@ const TIMESTAMP_FORMAT_LABELS = {
 
 const DEFAULT_DRIVER_KIND = ProviderDriverKind.make("codex");
 
-const EDITOR_ICONS: Record<EditorId, Icon> = {
-  cursor: CursorIcon,
-  trae: TraeIcon,
-  kiro: KiroIcon,
-  vscode: VisualStudioCode,
-  "vscode-insiders": VisualStudioCodeInsiders,
-  vscodium: VSCodium,
-  zed: Zed,
-  antigravity: AntigravityIcon,
-  idea: IntelliJIdeaIcon,
-  "file-manager": FolderClosedIcon,
-};
-
 function EditorOptionIcon({ editor }: { editor: EditorId }) {
   const IconComponent = EDITOR_ICONS[editor];
   if (!IconComponent) return null;
   return <IconComponent aria-hidden="true" className="size-4 text-muted-foreground" />;
-}
-
-function getEditorLabel(editor: EditorId, platform: string): string {
-  if (editor === "file-manager") {
-    if (isMacPlatform(platform)) return "Finder";
-    if (isWindowsPlatform(platform)) return "Explorer";
-    return "Files";
-  }
-  return EDITORS.find((e) => e.id === editor)?.label ?? editor;
 }
 
 function withoutProviderInstanceKey<V>(
