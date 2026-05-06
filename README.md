@@ -1,7 +1,7 @@
 # S3Code
 
-S3Code is a fork of T3 Code, a minimal Agent GUI for coding agents (currently Codex,
-Claude, and OpenCode, Cursor, more coming soon).
+S3Code is a fork of T3 Code, a minimal web GUI for coding agents (currently Codex,
+Claude, and OpenCode, more coming soon).
 
 The fork is moving the project naming toward **S3Code**. Some commands, package
 names, storage keys, and upstream references still use `t3`, `t3code`, or T3 Code
@@ -24,6 +24,10 @@ Implemented fork improvements include:
   changes.
 - The app can remember and use a default editor selection for editor-opening
   workflows.
+- Symlinked project paths are handled as the same workspace as their resolved
+  paths, which keeps setups like Dropbox on macOS working whether the project is
+  opened from `/Users/you/Dropbox/...` or
+  `/Users/you/Library/CloudStorage/Dropbox/...`.
 
 ## Installation
 
