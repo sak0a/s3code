@@ -2,7 +2,7 @@
 
 ## Goal
 
-The file preview / file browser panel is currently disabled on threads that haven't been promoted to a server thread (drafts). The button is greyed out with the tooltip *"File preview is only available on server threads with an active project."* Make it available on draft threads too, so users can browse the project's working tree before sending the first turn.
+The file preview / file browser panel is currently disabled on threads that haven't been promoted to a server thread (drafts). The button is greyed out with the tooltip _"File preview is only available on server threads with an active project."_ Make it available on draft threads too, so users can browse the project's working tree before sending the first turn.
 
 ## Scope
 
@@ -23,13 +23,13 @@ Out of scope:
 
 After the change:
 
-| Thread state                                              | Preview button | Panel renders |
-| --------------------------------------------------------- | -------------- | ------------- |
-| Server thread with active project                         | enabled        | yes           |
-| Server thread without active project                      | disabled       | n/a           |
-| Draft on server URL (`/$envId/$threadId`)                 | **enabled**    | **yes**       |
-| Pure draft URL (`/draft/$draftId`)                        | **enabled**    | **yes**       |
-| No active thread                                          | disabled       | n/a           |
+| Thread state                              | Preview button | Panel renders |
+| ----------------------------------------- | -------------- | ------------- |
+| Server thread with active project         | enabled        | yes           |
+| Server thread without active project      | disabled       | n/a           |
+| Draft on server URL (`/$envId/$threadId`) | **enabled**    | **yes**       |
+| Pure draft URL (`/draft/$draftId`)        | **enabled**    | **yes**       |
+| No active thread                          | disabled       | n/a           |
 
 The preview UI itself doesn't change. For a draft, `activeCwd` resolves to `activeProject.cwd` (since drafts have no `worktreePath` until promoted), and `turnDiffSummaries` is empty so the refresh-on-new-turn effects no-op until a turn lands.
 

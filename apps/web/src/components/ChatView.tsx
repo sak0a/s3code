@@ -3580,9 +3580,6 @@ export default function ChatView(props: ChatViewProps) {
           }
           keybindings={keybindings}
           availableEditors={availableEditors}
-          terminalAvailable={activeProject !== undefined}
-          terminalOpen={terminalState.terminalOpen}
-          terminalToggleShortcutLabel={terminalToggleShortcutLabel}
           diffToggleShortcutLabel={diffPanelShortcutLabel}
           gitCwd={gitCwd}
           previewAvailable={activeProject !== undefined}
@@ -3592,7 +3589,6 @@ export default function ChatView(props: ChatViewProps) {
           onAddProjectScript={saveProjectScript}
           onUpdateProjectScript={updateProjectScript}
           onDeleteProjectScript={deleteProjectScript}
-          onToggleTerminal={toggleTerminalVisibility}
           onToggleDiff={onToggleDiff}
           onTogglePreview={onTogglePreview}
         />
@@ -3756,6 +3752,10 @@ export default function ChatView(props: ChatViewProps) {
                   : {})}
                 {...(hasMultipleEnvironments ? { onEnvironmentChange } : {})}
                 availableEnvironments={logicalProjectEnvironments}
+                terminalAvailable={activeProject !== undefined}
+                terminalOpen={terminalState.terminalOpen}
+                terminalToggleShortcutLabel={terminalToggleShortcutLabel}
+                onToggleTerminal={toggleTerminalVisibility}
               />
             )}
           </div>

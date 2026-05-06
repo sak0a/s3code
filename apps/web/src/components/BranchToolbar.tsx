@@ -7,6 +7,7 @@ import {
   FolderGitIcon,
   FolderIcon,
   MonitorIcon,
+  TerminalSquareIcon,
 } from "lucide-react";
 import { memo, useMemo } from "react";
 
@@ -37,6 +38,7 @@ import {
   MenuTrigger,
 } from "./ui/menu";
 import { Separator } from "./ui/separator";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
 interface BranchToolbarProps {
   environmentId: EnvironmentId;
@@ -51,6 +53,10 @@ interface BranchToolbarProps {
   onComposerFocusRequest?: () => void;
   availableEnvironments?: readonly EnvironmentOption[];
   onEnvironmentChange?: (environmentId: EnvironmentId) => void;
+  terminalAvailable: boolean;
+  terminalOpen: boolean;
+  terminalToggleShortcutLabel: string | null;
+  onToggleTerminal: () => void;
 }
 
 interface MobileRunContextSelectorProps {
@@ -202,6 +208,10 @@ export const BranchToolbar = memo(function BranchToolbar({
   onComposerFocusRequest,
   availableEnvironments,
   onEnvironmentChange,
+  terminalAvailable,
+  terminalOpen,
+  terminalToggleShortcutLabel,
+  onToggleTerminal,
 }: BranchToolbarProps) {
   const threadRef = useMemo(
     () => scopeThreadRef(environmentId, threadId),
@@ -273,6 +283,36 @@ export const BranchToolbar = memo(function BranchToolbar({
             activeWorktreePath={activeWorktreePath}
             onEnvModeChange={onEnvModeChange}
           />
+        </div>
+      )}
+
+      {!isMobile && (
+        <div className="flex flex-1 justify-center">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className="font-medium text-muted-foreground/70 hover:text-foreground/80"
+                  disabled={!terminalAvailable}
+                  onClick={onToggleTerminal}
+                  aria-label="Toggle terminal drawer"
+                  aria-pressed={terminalOpen}
+                >
+                  <TerminalSquareIcon className="size-3 shrink-0" />
+                  <span>Open Terminal</span>
+                </Button>
+              }
+            />
+            <TooltipPopup side="top">
+              {!terminalAvailable
+                ? "Terminal is unavailable until this thread has an active project."
+                : terminalToggleShortcutLabel
+                  ? `Toggle terminal drawer (${terminalToggleShortcutLabel})`
+                  : "Toggle terminal drawer"}
+            </TooltipPopup>
+          </Tooltip>
         </div>
       )}
 
