@@ -22,6 +22,8 @@ import { getLocalStorageItem, setLocalStorageItem } from "../hooks/useLocalStora
 import { selectProjectByRef, useStore } from "../store";
 import { createThreadSelectorByRef } from "../storeSelectors";
 import { resolveThreadRouteRef } from "../threadRoutes";
+import { DraftId, useComposerDraftStore } from "../composerDraftStore";
+import type { TurnDiffSummary } from "../types";
 import { ChangedFilesTree } from "./chat/ChangedFilesTree";
 import { DiffPanelLoadingState, DiffPanelShell, type DiffPanelMode } from "./DiffPanelShell";
 import { Badge } from "./ui/badge";
@@ -149,6 +151,8 @@ function isMissingWorkspaceFileError(message: string | null): boolean {
   );
 }
 
+const EMPTY_TURN_DIFF_SUMMARIES: readonly TurnDiffSummary[] = [];
+
 interface PreviewPanelProps {
   mode?: DiffPanelMode;
 }
@@ -160,13 +164,45 @@ export default function PreviewPanel({ mode = "inline" }: PreviewPanelProps) {
     strict: false,
     select: (params) => resolveThreadRouteRef(params),
   });
+  const routeDraftId = useParams({
+    strict: false,
+    select: (params) =>
+      typeof params.draftId === "string" ? DraftId.make(params.draftId) : null,
+  });
   const previewSearch = useSearch({
     strict: false,
     select: (search) => parsePreviewRouteSearch(search),
   });
-  const activeThread = useStore(
+  const serverThread = useStore(
     useMemo(() => createThreadSelectorByRef(routeThreadRef), [routeThreadRef]),
   );
+  const draftThread = useComposerDraftStore((store) => {
+    if (serverThread) return null;
+    if (routeDraftId) return store.getDraftSession(routeDraftId);
+    if (routeThreadRef) return store.getDraftThreadByRef(routeThreadRef);
+    return null;
+  });
+  const activeThread = useMemo(() => {
+    if (serverThread) {
+      return {
+        id: serverThread.id,
+        environmentId: serverThread.environmentId,
+        projectId: serverThread.projectId,
+        worktreePath: serverThread.worktreePath,
+        turnDiffSummaries: serverThread.turnDiffSummaries,
+      };
+    }
+    if (draftThread) {
+      return {
+        id: draftThread.threadId,
+        environmentId: draftThread.environmentId,
+        projectId: draftThread.projectId,
+        worktreePath: draftThread.worktreePath,
+        turnDiffSummaries: EMPTY_TURN_DIFF_SUMMARIES,
+      };
+    }
+    return undefined;
+  }, [serverThread, draftThread]);
   const activeProjectId = activeThread?.projectId ?? null;
   const activeProject = useStore((store) =>
     activeThread && activeProjectId

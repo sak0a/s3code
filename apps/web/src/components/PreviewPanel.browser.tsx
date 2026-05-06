@@ -21,15 +21,32 @@ const previewHarness = vi.hoisted(() => {
     readonly base64?: string;
     readonly mimeType?: string;
   };
+  type DraftThreadStub = {
+    readonly threadId: string;
+    readonly environmentId: string;
+    readonly projectId: string;
+    readonly worktreePath: string | null;
+  };
+  type Params = {
+    readonly environmentId?: string;
+    readonly threadId?: string;
+    readonly draftId?: string;
+  };
 
   return {
     entries: [] as Entry[],
     readFiles: new Map<string, ReadFileResult>(),
     readAttempts: [] as string[],
+    serverThreadEnabled: true,
+    draftThread: null as DraftThreadStub | null,
+    routeParams: { environmentId: "environment-local", threadId: "thread-1" } as Params,
     reset() {
       this.entries = [];
       this.readFiles = new Map();
       this.readAttempts = [];
+      this.serverThreadEnabled = true;
+      this.draftThread = null;
+      this.routeParams = { environmentId: "environment-local", threadId: "thread-1" };
     },
   };
 });
@@ -77,7 +94,7 @@ vi.mock("@tanstack/react-query", () => ({
 
 vi.mock("@tanstack/react-router", () => ({
   useParams: vi.fn((options?: { select?: (params: Record<string, string>) => unknown }) => {
-    const params = { environmentId: "environment-local", threadId: "thread-1" };
+    const params = previewHarness.routeParams;
     return options?.select ? options.select(params) : params;
   }),
   useSearch: vi.fn((options?: { select?: (search: Record<string, string>) => unknown }) => {
@@ -112,13 +129,16 @@ vi.mock("../hooks/useSettings", () => ({
 }));
 
 vi.mock("../storeSelectors", () => ({
-  createThreadSelectorByRef: () => () => ({
-    id: ThreadId.make("thread-1"),
-    environmentId: EnvironmentId.make("environment-local"),
-    projectId: ProjectId.make("project-1"),
-    worktreePath: null,
-    turnDiffSummaries: [],
-  }),
+  createThreadSelectorByRef: () => () =>
+    previewHarness.serverThreadEnabled
+      ? {
+          id: ThreadId.make("thread-1"),
+          environmentId: EnvironmentId.make("environment-local"),
+          projectId: ProjectId.make("project-1"),
+          worktreePath: null,
+          turnDiffSummaries: [],
+        }
+      : undefined,
 }));
 
 vi.mock("../store", () => ({
@@ -126,6 +146,20 @@ vi.mock("../store", () => ({
     cwd: "/repo",
   }),
   useStore: (selector: (store: Record<string, never>) => unknown) => selector({}),
+}));
+
+vi.mock("../composerDraftStore", () => ({
+  DraftId: { make: (value: string) => value },
+  useComposerDraftStore: (
+    selector: (store: {
+      getDraftSession: (id: string) => unknown;
+      getDraftThreadByRef: (ref: { environmentId: string; threadId: string }) => unknown;
+    }) => unknown,
+  ) =>
+    selector({
+      getDraftSession: () => previewHarness.draftThread,
+      getDraftThreadByRef: () => previewHarness.draftThread,
+    }),
 }));
 
 vi.mock("./chat/ChangedFilesTree", () => ({
@@ -216,5 +250,26 @@ describe("PreviewPanel", () => {
 
     await expect.element(page.getByText(/File is too large to preview/)).toBeInTheDocument();
     expect(previewHarness.readAttempts).not.toContain("logs/huge.log");
+  });
+
+  it("falls back to the draft store on the draft route URL", async () => {
+    previewHarness.serverThreadEnabled = false;
+    previewHarness.routeParams = { draftId: "draft-1" };
+    previewHarness.draftThread = {
+      threadId: "thread-1",
+      environmentId: "environment-local",
+      projectId: "project-1",
+      worktreePath: null,
+    };
+    previewHarness.entries = [{ path: "src/app.ts", kind: "file", sizeBytes: 64 }];
+    previewHarness.readFiles.set("src/app.ts", {
+      relativePath: "src/app.ts",
+      contents: "const draft = true;",
+    });
+
+    mounted = await render(<PreviewPanel mode="sheet" />);
+    await page.getByRole("button", { name: "src/app.ts" }).click();
+
+    await expect.element(page.getByText("const draft = true;")).toBeInTheDocument();
   });
 });

@@ -1730,11 +1730,30 @@ export default function ChatView(props: ChatViewProps) {
     });
   }, [diffOpen, environmentId, isServerThread, navigate, onDiffPanelOpen, threadId]);
   const onTogglePreview = useCallback(() => {
-    if (!isServerThread || !activeProject) {
+    if (!activeProject) {
       return;
     }
     if (!previewOpen) {
       onPreviewPanelOpen?.();
+    }
+    const nextSearch = (previous: Record<string, unknown>) =>
+      previewOpen
+        ? {
+            ...stripPreviewSearchParams(stripDiffSearchParams(previous)),
+            diff: undefined,
+            diffTurnId: undefined,
+            diffFilePath: undefined,
+            preview: undefined,
+          }
+        : buildOpenPreviewSearch(previous);
+    if (routeKind === "draft" && draftId) {
+      void navigate({
+        to: "/draft/$draftId",
+        params: { draftId },
+        replace: true,
+        search: nextSearch,
+      });
+      return;
     }
     void navigate({
       to: "/$environmentId/$threadId",
@@ -1743,24 +1762,16 @@ export default function ChatView(props: ChatViewProps) {
         threadId,
       },
       replace: true,
-      search: (previous) =>
-        previewOpen
-          ? {
-              ...stripPreviewSearchParams(stripDiffSearchParams(previous)),
-              diff: undefined,
-              diffTurnId: undefined,
-              diffFilePath: undefined,
-              preview: undefined,
-            }
-          : buildOpenPreviewSearch(previous),
+      search: nextSearch,
     });
   }, [
     activeProject,
+    draftId,
     environmentId,
-    isServerThread,
     navigate,
     onPreviewPanelOpen,
     previewOpen,
+    routeKind,
     threadId,
   ]);
 
@@ -3574,7 +3585,7 @@ export default function ChatView(props: ChatViewProps) {
           terminalToggleShortcutLabel={terminalToggleShortcutLabel}
           diffToggleShortcutLabel={diffPanelShortcutLabel}
           gitCwd={gitCwd}
-          previewAvailable={isServerThread && activeProject !== undefined}
+          previewAvailable={activeProject !== undefined}
           diffOpen={diffOpen}
           previewOpen={previewOpen}
           onRunProjectScript={runProjectScript}
