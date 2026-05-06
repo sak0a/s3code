@@ -183,7 +183,7 @@ export const ChatHeader = memo(function ChatHeader({
           />
           <TooltipPopup side="bottom">
             {!previewAvailable
-              ? "File preview is only available on server threads with an active project."
+              ? "File preview is unavailable until this thread has an active project."
               : "Toggle file preview panel"}
           </TooltipPopup>
         </Tooltip>
