@@ -22,6 +22,7 @@ import { __resetLocalApiForTests } from "../../localApi";
 import { AppAtomRegistryProvider, resetAppAtomRegistryForTests } from "../../rpc/atomRegistry";
 import { resetServerStateForTests, setServerConfigSnapshot } from "../../rpc/serverState";
 import { useUiStateStore } from "../../uiStateStore";
+import { DEFAULT_CLIENT_SETTINGS } from "@t3tools/contracts/settings";
 import { ConnectionsSettings } from "./ConnectionsSettings";
 import { GeneralSettingsPanel } from "./SettingsPanels";
 import { SourceControlSettingsPanel } from "./SourceControlSettings";
@@ -117,6 +118,7 @@ const authAccessHarness = vi.hoisted(() => {
 });
 
 const mockConnectDesktopSshEnvironment = vi.hoisted(() => vi.fn());
+const originalNavigatorPlatform = navigator.platform;
 
 vi.mock("../../environments/runtime", () => {
   const primaryConnection = {
@@ -260,6 +262,57 @@ function makeClientSession(input: {
         ? null
         : makeUtc(input.lastConnectedAt),
   };
+}
+
+function installSettingsNativeApi(input?: {
+  readonly updateSettings?: LocalApi["server"]["updateSettings"];
+  readonly setClientSettings?: LocalApi["persistence"]["setClientSettings"];
+  readonly clientSettings?: Awaited<ReturnType<LocalApi["persistence"]["getClientSettings"]>>;
+}) {
+  const updateSettings =
+    input?.updateSettings ??
+    vi.fn<LocalApi["server"]["updateSettings"]>().mockResolvedValue(DEFAULT_SERVER_SETTINGS);
+  const setClientSettings =
+    input?.setClientSettings ??
+    vi.fn<LocalApi["persistence"]["setClientSettings"]>().mockResolvedValue(undefined);
+  window.nativeApi = {
+    persistence: {
+      getClientSettings: vi.fn().mockResolvedValue(input?.clientSettings ?? null),
+      setClientSettings,
+      getSavedEnvironmentRegistry: vi.fn().mockResolvedValue([]),
+      setSavedEnvironmentRegistry: vi.fn().mockResolvedValue(undefined),
+      getSavedEnvironmentSecret: vi.fn().mockResolvedValue(null),
+      setSavedEnvironmentSecret: vi.fn().mockResolvedValue(true),
+      removeSavedEnvironmentSecret: vi.fn().mockResolvedValue(undefined),
+    },
+    server: {
+      getConfig: vi.fn().mockResolvedValue(createBaseServerConfig()),
+      refreshProviders: vi.fn().mockResolvedValue({
+        providers: [],
+      }),
+      upsertKeybinding: vi.fn().mockResolvedValue({
+        keybindings: [],
+      }),
+      getSettings: vi.fn().mockResolvedValue(DEFAULT_SERVER_SETTINGS),
+      updateSettings,
+      discoverSourceControl: vi.fn().mockResolvedValue({
+        versionControlSystems: [],
+        sourceControlProviders: [],
+      } satisfies SourceControlDiscoveryResult),
+    },
+    shell: {
+      openInEditor: vi.fn().mockResolvedValue(undefined),
+      openExternal: vi.fn().mockResolvedValue(undefined),
+    },
+    dialogs: {
+      pickFolder: vi.fn().mockResolvedValue(null),
+      confirm: vi.fn().mockResolvedValue(false),
+    },
+    contextMenu: {
+      show: vi.fn().mockResolvedValue(null),
+    },
+  } as unknown as LocalApi;
+  return window.nativeApi;
 }
 
 const createDesktopBridgeStub = (overrides?: {
@@ -420,6 +473,10 @@ describe("GeneralSettingsPanel observability", () => {
     }
     mounted = null;
     vi.unstubAllGlobals();
+    Object.defineProperty(navigator, "platform", {
+      value: originalNavigatorPlatform,
+      configurable: true,
+    });
     Reflect.deleteProperty(window, "desktopBridge");
     Reflect.deleteProperty(window, "nativeApi");
     document.body.innerHTML = "";
@@ -688,6 +745,112 @@ describe("GeneralSettingsPanel observability", () => {
         ),
       )
       .toBeInTheDocument();
+  });
+
+  it("labels the default editor file-manager option as Finder on macOS", async () => {
+    Object.defineProperty(navigator, "platform", {
+      value: "MacIntel",
+      configurable: true,
+    });
+    const setClientSettings = vi
+      .fn<LocalApi["persistence"]["setClientSettings"]>()
+      .mockResolvedValue(undefined);
+    installSettingsNativeApi({ setClientSettings });
+    setServerConfigSnapshot({
+      ...createBaseServerConfig(),
+      availableEditors: ["cursor", "vscode", "file-manager"],
+    });
+
+    mounted = await render(
+      <AppAtomRegistryProvider>
+        <GeneralSettingsPanel />
+      </AppAtomRegistryProvider>,
+    );
+
+    await page.getByLabelText("Default editor").click();
+    await expect.element(page.getByRole("option", { name: /Cursor/ })).toBeInTheDocument();
+    await expect.element(page.getByRole("option", { name: /VS Code/ })).toBeInTheDocument();
+    await expect.element(page.getByRole("option", { name: /Finder/ })).toBeInTheDocument();
+    await expect
+      .element(page.getByRole("option", { name: /File Manager/ }))
+      .not.toBeInTheDocument();
+
+    await page.getByRole("option", { name: /VS Code/ }).click();
+    await vi.waitFor(() => {
+      expect(setClientSettings).toHaveBeenCalledWith({
+        ...DEFAULT_CLIENT_SETTINGS,
+        preferredEditor: "vscode",
+      });
+    });
+  });
+
+  it("labels the default editor file-manager option as Explorer on Windows", async () => {
+    Object.defineProperty(navigator, "platform", {
+      value: "Win32",
+      configurable: true,
+    });
+    installSettingsNativeApi();
+    setServerConfigSnapshot({
+      ...createBaseServerConfig(),
+      availableEditors: ["cursor", "vscode", "file-manager"],
+    });
+
+    mounted = await render(
+      <AppAtomRegistryProvider>
+        <GeneralSettingsPanel />
+      </AppAtomRegistryProvider>,
+    );
+
+    await page.getByLabelText("Default editor").click();
+    await expect.element(page.getByRole("option", { name: /Explorer/ })).toBeInTheDocument();
+    await expect
+      .element(page.getByRole("option", { name: /File Manager/ }))
+      .not.toBeInTheDocument();
+  });
+
+  it("persists the diff behavior toggles", async () => {
+    const setClientSettings = vi
+      .fn<LocalApi["persistence"]["setClientSettings"]>()
+      .mockResolvedValue(undefined);
+    installSettingsNativeApi({
+      setClientSettings,
+      clientSettings: {
+        ...DEFAULT_CLIENT_SETTINGS,
+        diffWordWrap: false,
+        diffIgnoreWhitespace: true,
+      },
+    });
+    setServerConfigSnapshot(createBaseServerConfig());
+
+    mounted = await render(
+      <AppAtomRegistryProvider>
+        <GeneralSettingsPanel />
+      </AppAtomRegistryProvider>,
+    );
+
+    const wordWrapSwitch = page.getByLabelText("Wrap diff lines by default");
+    await expect.element(wordWrapSwitch).not.toBeChecked();
+    await wordWrapSwitch.click();
+    await expect.element(wordWrapSwitch).toBeChecked();
+    await vi.waitFor(() => {
+      expect(setClientSettings).toHaveBeenLastCalledWith({
+        ...DEFAULT_CLIENT_SETTINGS,
+        diffWordWrap: true,
+        diffIgnoreWhitespace: true,
+      });
+    });
+
+    const ignoreWhitespaceSwitch = page.getByLabelText("Hide whitespace changes by default");
+    await expect.element(ignoreWhitespaceSwitch).toBeChecked();
+    await ignoreWhitespaceSwitch.click();
+    await expect.element(ignoreWhitespaceSwitch).not.toBeChecked();
+    await vi.waitFor(() => {
+      expect(setClientSettings).toHaveBeenLastCalledWith({
+        ...DEFAULT_CLIENT_SETTINGS,
+        diffWordWrap: true,
+        diffIgnoreWhitespace: false,
+      });
+    });
   });
 
   it("creates and shows a pairing link when network access is enabled", async () => {
