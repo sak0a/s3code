@@ -29,7 +29,11 @@ import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { Button } from "./ui/button";
 import { Toggle } from "./ui/toggle";
 import { cn } from "~/lib/utils";
-import { inferPreviewLanguage } from "./PreviewPanel.logic";
+import {
+  detectPreviewFileKind,
+  inferPreviewLanguage,
+  resolvePreviewSizeGuard,
+} from "./PreviewPanel.logic";
 
 const PREVIEW_TREE_WIDTH_STORAGE_KEY = "chat_preview_tree_width";
 const PREVIEW_TREE_MIN_WIDTH = 220;
@@ -83,6 +87,18 @@ const PREVIEW_CODE_CSS = `
   overflow-wrap: anywhere;
 }
 `;
+
+type PreviewProjectEntryMetadata = {
+  readonly sizeBytes?: number;
+  readonly mimeType?: string;
+};
+
+type RichPreviewFileData = {
+  readonly relativePath: string;
+  readonly contents?: string;
+  readonly base64?: string;
+  readonly mimeType?: string;
+};
 
 function getHighlighterPromise(language: string): Promise<DiffsHighlighter> {
   const cached = highlighterPromiseCache.get(language);
@@ -277,6 +293,17 @@ export default function PreviewPanel({ mode = "inline" }: PreviewPanelProps) {
     previousPreviewOpenRef.current = previewOpen;
   }, [previewSearch.preview]);
 
+  const selectedProjectEntry = selectedFilePath
+    ? projectFiles?.entries.find((entry) => entry.path === selectedFilePath)
+    : undefined;
+  const selectedProjectEntryMetadata = selectedProjectEntry as
+    | (typeof selectedProjectEntry & PreviewProjectEntryMetadata)
+    | undefined;
+  const selectedFileSizeGuard =
+    typeof selectedProjectEntryMetadata?.sizeBytes === "number"
+      ? resolvePreviewSizeGuard(selectedProjectEntryMetadata.sizeBytes)
+      : null;
+
   const selectedFileQuery = useQuery({
     queryKey: [
       "projects",
@@ -296,12 +323,25 @@ export default function PreviewPanel({ mode = "inline" }: PreviewPanelProps) {
       });
     },
     enabled: Boolean(
-      activeThread?.environmentId && activeCwd && selectedFilePath && previewSearch.preview === "1",
+      activeThread?.environmentId &&
+      activeCwd &&
+      selectedFilePath &&
+      previewSearch.preview === "1" &&
+      (selectedFileSizeGuard?.shouldFetch ?? true),
     ),
     retry: 1,
   });
   const selectedFileData =
     selectedFileQuery.data?.relativePath === selectedFilePath ? selectedFileQuery.data : null;
+  const richSelectedFileData = selectedFileData as RichPreviewFileData | null;
+  const selectedFileMimeType =
+    richSelectedFileData?.mimeType ?? selectedProjectEntryMetadata?.mimeType ?? null;
+  const selectedFileKind = selectedFilePath
+    ? detectPreviewFileKind({
+        filePath: selectedFilePath,
+        mimeType: selectedFileMimeType,
+      })
+    : "text";
   const selectedFileError =
     selectedFileQuery.error instanceof Error
       ? selectedFileQuery.error.message
@@ -347,8 +387,8 @@ export default function PreviewPanel({ mode = "inline" }: PreviewPanelProps) {
 
   useEffect(() => {
     let cancelled = false;
-    const contents = selectedFileData?.contents ?? "";
-    if (!selectedFilePath || contents.length === 0) {
+    const contents = richSelectedFileData?.contents ?? "";
+    if (!selectedFilePath || selectedFileKind !== "text" || contents.length === 0) {
       setHighlightedPreviewHtml(null);
       return;
     }
@@ -373,7 +413,7 @@ export default function PreviewPanel({ mode = "inline" }: PreviewPanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [resolvedTheme, selectedFileData?.contents, selectedFilePath]);
+  }, [resolvedTheme, richSelectedFileData?.contents, selectedFileKind, selectedFilePath]);
 
   const onResizePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -549,6 +589,11 @@ export default function PreviewPanel({ mode = "inline" }: PreviewPanelProps) {
               <div className="flex flex-1 items-center justify-center px-5 text-center text-xs text-muted-foreground/70">
                 Select a file to preview.
               </div>
+            ) : selectedFileSizeGuard?.state === "too-large" ? (
+              <div className="flex flex-1 items-center justify-center px-5 text-center text-xs text-muted-foreground/70">
+                File is too large to preview ({selectedFileSizeGuard.sizeBytes} bytes). Limit is{" "}
+                {selectedFileSizeGuard.limitBytes} bytes.
+              </div>
             ) : selectedFileQuery.isLoading && !selectedFileData ? (
               <DiffPanelLoadingState label="Loading file preview..." />
             ) : selectedFileError ? (
@@ -564,7 +609,17 @@ export default function PreviewPanel({ mode = "inline" }: PreviewPanelProps) {
                       {selectedFilePath}
                     </div>
                   </div>
-                  {highlightedPreviewHtml ? (
+                  {selectedFileKind === "image" && richSelectedFileData?.base64 ? (
+                    <div className="flex min-h-0 justify-center overflow-auto bg-background/70 p-3">
+                      <img
+                        alt={selectedFilePath}
+                        className="max-h-full max-w-full object-contain"
+                        src={`data:${selectedFileMimeType ?? "image/png"};base64,${
+                          richSelectedFileData.base64
+                        }`}
+                      />
+                    </div>
+                  ) : highlightedPreviewHtml ? (
                     <div
                       className={cn(
                         "preview-panel-shiki min-h-full p-3",
@@ -581,7 +636,7 @@ export default function PreviewPanel({ mode = "inline" }: PreviewPanelProps) {
                           : "overflow-auto",
                       )}
                     >
-                      {selectedFileData?.contents ?? ""}
+                      {richSelectedFileData?.contents ?? ""}
                     </pre>
                   )}
                 </div>
