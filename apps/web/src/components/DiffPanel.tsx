@@ -105,6 +105,10 @@ const DIFF_PANEL_UNSAFE_CSS = `
   color: color-mix(in srgb, var(--foreground) 84%, var(--primary)) !important;
   text-decoration-color: currentColor;
 }
+
+[data-interactive-line-numbers] [data-line-number-content] {
+  cursor: pointer;
+}
 `;
 
 type RenderablePatch =
@@ -368,12 +372,13 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
   }, [selectedFilePath, renderableFiles]);
 
   const openDiffFileInEditor = useCallback(
-    (filePath: string) => {
+    (filePath: string, lineNumber?: number) => {
       const api = readLocalApi();
       if (!api) return;
-      const targetPath = activeCwd ? resolvePathLinkTarget(filePath, activeCwd) : filePath;
-      void openInPreferredEditor(api, targetPath).catch((error) => {
-        console.warn("Failed to open diff file in editor.", error);
+      const resolvedPath = activeCwd ? resolvePathLinkTarget(filePath, activeCwd) : filePath;
+      const target = typeof lineNumber === "number" ? `${resolvedPath}:${lineNumber}` : resolvedPath;
+      void openInPreferredEditor(api, target).catch((error) => {
+        console.warn("Failed to open diff in editor.", error);
       });
     },
     [activeCwd],
@@ -712,6 +717,14 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
                           theme: resolveDiffThemeName(resolvedTheme),
                           themeType: resolvedTheme as DiffThemeType,
                           unsafeCSS: DIFF_PANEL_UNSAFE_CSS,
+                          lineHoverHighlight: "number",
+                          onLineNumberClick: ({ lineNumber, lineType }) => {
+                            if (lineType === "change-deletion") {
+                              openDiffFileInEditor(filePath);
+                              return;
+                            }
+                            openDiffFileInEditor(filePath, lineNumber);
+                          },
                         }}
                       />
                     </div>
