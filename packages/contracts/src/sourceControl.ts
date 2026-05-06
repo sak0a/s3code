@@ -36,6 +36,51 @@ export const ChangeRequest = Schema.Struct({
 });
 export type ChangeRequest = typeof ChangeRequest.Type;
 
+// Token-budget caps. Server enforces these before responding so the web client
+// always receives bounded payloads. Keep these here so server, web, and tests
+// reference the same constants.
+export const SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES = 8 * 1024;        // 8 KB
+export const SOURCE_CONTROL_DETAIL_COMMENT_BODY_MAX_BYTES = 2 * 1024; // 2 KB
+export const SOURCE_CONTROL_DETAIL_MAX_COMMENTS = 5;
+
+export const SourceControlIssueState = Schema.Literals(["open", "closed"]);
+export type SourceControlIssueState = typeof SourceControlIssueState.Type;
+
+export const SourceControlIssueSummary = Schema.Struct({
+  provider: SourceControlProviderKind,
+  number: PositiveInt,
+  title: TrimmedNonEmptyString,
+  url: TrimmedNonEmptyString,
+  state: SourceControlIssueState,
+  author: Schema.optional(TrimmedNonEmptyString),
+  updatedAt: Schema.Option(Schema.DateTimeUtc),
+  labels: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
+});
+export type SourceControlIssueSummary = typeof SourceControlIssueSummary.Type;
+
+export const SourceControlIssueComment = Schema.Struct({
+  author: Schema.String,
+  body: Schema.String,
+  createdAt: Schema.DateTimeUtc,
+});
+export type SourceControlIssueComment = typeof SourceControlIssueComment.Type;
+
+export const SourceControlIssueDetail = Schema.Struct({
+  ...SourceControlIssueSummary.fields,
+  body: Schema.String,
+  comments: Schema.Array(SourceControlIssueComment),
+  truncated: Schema.Boolean,
+});
+export type SourceControlIssueDetail = typeof SourceControlIssueDetail.Type;
+
+export const SourceControlChangeRequestDetail = Schema.Struct({
+  ...ChangeRequest.fields,
+  body: Schema.String,
+  comments: Schema.Array(SourceControlIssueComment),
+  truncated: Schema.Boolean,
+});
+export type SourceControlChangeRequestDetail = typeof SourceControlChangeRequestDetail.Type;
+
 export const SourceControlRepositoryCloneUrls = Schema.Struct({
   nameWithOwner: TrimmedNonEmptyString,
   url: TrimmedNonEmptyString,
