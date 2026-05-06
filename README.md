@@ -1,7 +1,7 @@
 # S3Code
 
-S3Code is a fork of T3 Code, a minimal web GUI for coding agents (currently Codex,
-Claude, and OpenCode, more coming soon).
+S3Code is a fork of T3 Code, a minimal Agent GUI for coding agents (currently Codex,
+Claude, and OpenCode, Cursor, more coming soon).
 
 The fork is moving the project naming toward **S3Code**. Some commands, package
 names, storage keys, and upstream references still use `t3`, `t3code`, or T3 Code
