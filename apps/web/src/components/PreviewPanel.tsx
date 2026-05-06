@@ -29,6 +29,7 @@ import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { Button } from "./ui/button";
 import { Toggle } from "./ui/toggle";
 import { cn } from "~/lib/utils";
+import { inferPreviewLanguage } from "./PreviewPanel.logic";
 
 const PREVIEW_TREE_WIDTH_STORAGE_KEY = "chat_preview_tree_width";
 const PREVIEW_TREE_MIN_WIDTH = 220;
@@ -82,27 +83,6 @@ const PREVIEW_CODE_CSS = `
   overflow-wrap: anywhere;
 }
 `;
-
-function extensionToLanguage(filePath: string): string {
-  const lowerPath = filePath.toLowerCase();
-  const basename = lowerPath.split("/").at(-1) ?? lowerPath;
-  if (basename === "dockerfile") return "dockerfile";
-  if (basename === ".gitignore") return "ini";
-  if (basename.endsWith(".md")) return "markdown";
-  if (basename.endsWith(".tsx")) return "tsx";
-  if (basename.endsWith(".ts")) return "ts";
-  if (basename.endsWith(".jsx")) return "jsx";
-  if (basename.endsWith(".js")) return "js";
-  if (basename.endsWith(".json")) return "json";
-  if (basename.endsWith(".css")) return "css";
-  if (basename.endsWith(".html")) return "html";
-  if (basename.endsWith(".yml") || basename.endsWith(".yaml")) return "yaml";
-  if (basename.endsWith(".sh")) return "bash";
-  if (basename.endsWith(".py")) return "python";
-  if (basename.endsWith(".rs")) return "rust";
-  if (basename.endsWith(".go")) return "go";
-  return "text";
-}
 
 function getHighlighterPromise(language: string): Promise<DiffsHighlighter> {
   const cached = highlighterPromiseCache.get(language);
@@ -373,7 +353,7 @@ export default function PreviewPanel({ mode = "inline" }: PreviewPanelProps) {
       return;
     }
 
-    const language = extensionToLanguage(selectedFilePath);
+    const language = inferPreviewLanguage(selectedFilePath);
     getHighlighterPromise(language)
       .then((highlighter) => {
         const html = highlighter.codeToHtml(contents, {
