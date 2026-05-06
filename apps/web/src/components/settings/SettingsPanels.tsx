@@ -4,6 +4,8 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import {
   defaultInstanceIdForDriver,
   type DesktopUpdateChannel,
+  EDITORS,
+  type EditorId,
   ProviderDriverKind,
   type ProviderInstanceConfig,
   type ProviderInstanceId,
@@ -815,6 +817,59 @@ export function GeneralSettingsPanel() {
                 <SelectItem hideIndicator value="24-hour">
                   {TIMESTAMP_FORMAT_LABELS["24-hour"]}
                 </SelectItem>
+              </SelectPopup>
+            </Select>
+          }
+        />
+
+        <SettingsRow
+          title="Default editor"
+          description={
+            (availableEditors ?? []).length > 0
+              ? "Pin which editor opens directories and files. Auto uses your last selection from the Open menu."
+              : "No installed editors detected. Install a supported IDE to pick a default."
+          }
+          resetAction={
+            settings.preferredEditor !== DEFAULT_UNIFIED_SETTINGS.preferredEditor ? (
+              <SettingResetButton
+                label="default editor"
+                onClick={() =>
+                  updateSettings({
+                    preferredEditor: DEFAULT_UNIFIED_SETTINGS.preferredEditor,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Select
+              value={settings.preferredEditor ?? "__auto__"}
+              onValueChange={(value) => {
+                if (value === "__auto__") {
+                  updateSettings({ preferredEditor: null });
+                  return;
+                }
+                const match = EDITORS.find((e) => e.id === value);
+                if (match) updateSettings({ preferredEditor: match.id as EditorId });
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-56" aria-label="Default editor">
+                <SelectValue>
+                  {settings.preferredEditor
+                    ? (EDITORS.find((e) => e.id === settings.preferredEditor)?.label ??
+                      "Auto (last used)")
+                    : "Auto (last used)"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectPopup align="end" alignItemWithTrigger={false}>
+                <SelectItem hideIndicator value="__auto__">
+                  Auto (last used)
+                </SelectItem>
+                {EDITORS.filter((e) => (availableEditors ?? []).includes(e.id)).map((editor) => (
+                  <SelectItem key={editor.id} hideIndicator value={editor.id}>
+                    {editor.label}
+                  </SelectItem>
+                ))}
               </SelectPopup>
             </Select>
           }

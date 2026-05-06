@@ -27,6 +27,7 @@ it.layer(NodeServices.layer)("resolveEditorLaunch", (it) => {
         { cwd: "/tmp/workspace", editor: "cursor" },
         "darwin",
         { PATH: "" },
+        { darwinAppRoots: [] },
       );
       assert.deepEqual(cursorLaunch, {
         command: "cursor",
@@ -107,6 +108,7 @@ it.layer(NodeServices.layer)("resolveEditorLaunch", (it) => {
         { cwd: "/tmp/workspace/AGENTS.md:48", editor: "cursor" },
         "darwin",
         { PATH: "" },
+        { darwinAppRoots: [] },
       );
       assert.deepEqual(lineOnly, {
         command: "cursor",
@@ -117,6 +119,7 @@ it.layer(NodeServices.layer)("resolveEditorLaunch", (it) => {
         { cwd: "/tmp/workspace/src/open.ts:71:5", editor: "cursor" },
         "darwin",
         { PATH: "" },
+        { darwinAppRoots: [] },
       );
       assert.deepEqual(lineAndColumn, {
         command: "cursor",
@@ -410,4 +413,59 @@ it.layer(NodeServices.layer)("resolveAvailableEditors", (it) => {
     });
     assert.deepEqual(editors, []);
   });
+
+  it.effect("detects Cursor via the macOS app bundle CLI when not on PATH", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const appRoot = yield* fs.makeTempDirectoryScoped({ prefix: "t3-darwin-apps-" });
+      const bundleDir = path.join(appRoot, "Cursor.app/Contents/Resources/app/bin");
+      yield* fs.makeDirectory(bundleDir, { recursive: true });
+      yield* fs.writeFileString(path.join(bundleDir, "cursor"), "#!/bin/sh\nexit 0\n");
+      yield* fs.chmod(path.join(bundleDir, "cursor"), 0o755);
+
+      const opener = yield* fs.makeTempDirectoryScoped({ prefix: "t3-darwin-bin-" });
+      yield* fs.writeFileString(path.join(opener, "open"), "#!/bin/sh\nexit 0\n");
+      yield* fs.chmod(path.join(opener, "open"), 0o755);
+
+      const editors = resolveAvailableEditors(
+        "darwin",
+        { PATH: opener },
+        { darwinAppRoots: [appRoot] },
+      );
+      assert.include(editors, "cursor");
+    }),
+  );
+
+  it("does not detect Cursor when no app bundle root contains it", () => {
+    const editors = resolveAvailableEditors(
+      "darwin",
+      { PATH: "" },
+      { darwinAppRoots: [] },
+    );
+    assert.notInclude(editors, "cursor");
+  });
+});
+
+it.layer(NodeServices.layer)("resolveEditorLaunch (darwin app bundle)", (it) => {
+  it.effect("uses the macOS Cursor bundle CLI when the bare command isn't on PATH", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const appRoot = yield* fs.makeTempDirectoryScoped({ prefix: "t3-darwin-apps-" });
+      const bundleDir = path.join(appRoot, "Cursor.app/Contents/Resources/app/bin");
+      yield* fs.makeDirectory(bundleDir, { recursive: true });
+      const bundleCli = path.join(bundleDir, "cursor");
+      yield* fs.writeFileString(bundleCli, "#!/bin/sh\nexit 0\n");
+      yield* fs.chmod(bundleCli, 0o755);
+
+      const launch = yield* resolveEditorLaunch(
+        { cwd: "/tmp/workspace", editor: "cursor" },
+        "darwin",
+        { PATH: "" },
+        { darwinAppRoots: [appRoot] },
+      );
+      assert.deepEqual(launch, { command: bundleCli, args: ["/tmp/workspace"] });
+    }),
+  );
 });
