@@ -376,7 +376,8 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
       const api = readLocalApi();
       if (!api) return;
       const resolvedPath = activeCwd ? resolvePathLinkTarget(filePath, activeCwd) : filePath;
-      const target = typeof lineNumber === "number" ? `${resolvedPath}:${lineNumber}` : resolvedPath;
+      const target =
+        typeof lineNumber === "number" ? `${resolvedPath}:${lineNumber}` : resolvedPath;
       void openInPreferredEditor(api, target).catch((error) => {
         console.warn("Failed to open diff in editor.", error);
       });

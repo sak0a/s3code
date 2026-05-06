@@ -296,7 +296,7 @@ export function ColorPicker({
             aria-valuemax={100}
             aria-valuenow={Math.round(hsv.s * 100)}
             tabIndex={0}
-            className="relative h-36 w-full cursor-crosshair touch-none select-none overflow-hidden rounded-md border border-border/60"
+            className="relative h-36 w-full cursor-crosshair touch-none select-none overflow-hidden rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             style={{ backgroundColor: hueColor }}
             onPointerDown={handlePadDown}
             onPointerMove={handlePadMove}
@@ -330,7 +330,7 @@ export function ColorPicker({
             aria-valuemax={360}
             aria-valuenow={Math.round(hsv.h)}
             tabIndex={0}
-            className="relative h-3 w-full cursor-ew-resize touch-none select-none overflow-hidden rounded-full border border-border/60"
+            className="relative h-3 w-full cursor-ew-resize touch-none select-none overflow-hidden rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             style={{
               background:
                 "linear-gradient(to right, hsl(0 100% 50%), hsl(60 100% 50%), hsl(120 100% 50%), hsl(180 100% 50%), hsl(240 100% 50%), hsl(300 100% 50%), hsl(360 100% 50%))",

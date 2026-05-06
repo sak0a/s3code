@@ -36,6 +36,16 @@ describe("setTokenValue", () => {
     expect(next.light).toEqual({ primary: "#abc", background: "#fff" });
     expect(next.dark).toEqual({ primary: "#def" });
   });
+
+  it("stores typography tokens with the same shape as colors", () => {
+    const withFont = setTokenValue(BASE, "light", "font-family-sans", "Inter, sans-serif");
+    expect(withFont.light).toEqual({ "font-family-sans": "Inter, sans-serif" });
+    const withSize = setTokenValue(withFont, "light", "font-size-base", "18px");
+    expect(withSize.light).toEqual({
+      "font-family-sans": "Inter, sans-serif",
+      "font-size-base": "18px",
+    });
+  });
 });
 
 describe("setThemeName", () => {

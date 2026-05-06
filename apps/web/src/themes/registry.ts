@@ -1,7 +1,9 @@
 import { BUILT_IN_THEMES, DEFAULT_THEME, DEFAULT_THEME_ID } from "./builtin";
 import {
   THEME_TOKEN_NAMES,
+  getTokenKind,
   type ThemeDefinition,
+  type ThemeTokenKind,
   type ThemeTokens,
   type ThemeVariant,
 } from "./types";
@@ -28,6 +30,38 @@ export function isValidColorValue(value: string): boolean {
   if (trimmed.length === 0) return false;
   if (trimmed.length > 200) return false;
   return !FORBIDDEN_VALUE_PATTERN.test(trimmed);
+}
+
+export const SUPPORTED_LENGTH_UNITS = ["px", "rem", "em"] as const;
+export type SupportedLengthUnit = (typeof SUPPORTED_LENGTH_UNITS)[number];
+
+export function parseLength(value: string): { number: number; unit: string } | null {
+  if (typeof value !== "string") return null;
+  const match = /^(-?\d*\.?\d+)\s*([a-z%]+)$/i.exec(value.trim());
+  if (!match || match[1] === undefined || match[2] === undefined) return null;
+  const num = Number(match[1]);
+  if (!Number.isFinite(num)) return null;
+  return { number: num, unit: match[2].toLowerCase() };
+}
+
+export function isValidTokenValue(kind: ThemeTokenKind, value: string): boolean {
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return false;
+  if (trimmed.length > 200) return false;
+  if (FORBIDDEN_VALUE_PATTERN.test(trimmed)) return false;
+  switch (kind) {
+    case "color":
+      return true;
+    case "opacity": {
+      const num = Number(trimmed);
+      return Number.isFinite(num) && num >= 0 && num <= 1;
+    }
+    case "length":
+      return parseLength(trimmed) !== null;
+    case "font-family":
+      return true;
+  }
 }
 
 export function generateCustomThemeId(sourceId: string): string {
@@ -186,15 +220,14 @@ export function resolveTokens(theme: ThemeDefinition, variant: ThemeVariant): Th
 
 export function tokensToCss(tokens: ThemeTokens): string {
   return Object.entries(tokens)
-    .filter(
-      ([name, value]) =>
-        KNOWN_TOKEN_NAMES.has(name) &&
-        typeof value === "string" &&
-        value.length > 0 &&
-        isValidColorValue(value) &&
-        !value.includes(";") &&
-        !value.includes("}"),
-    )
+    .filter(([name, value]) => {
+      if (!KNOWN_TOKEN_NAMES.has(name)) return false;
+      if (typeof value !== "string" || value.length === 0) return false;
+      if (value.includes(";") || value.includes("}")) return false;
+      const kind = getTokenKind(name);
+      if (!kind) return false;
+      return isValidTokenValue(kind, value);
+    })
     .map(([name, value]) => `--${name}: ${value};`)
     .join(" ");
 }

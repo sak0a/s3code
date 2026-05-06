@@ -17,8 +17,10 @@ import {
   isBuiltInThemeId,
   isValidColorValue,
   isValidTheme,
+  isValidTokenValue,
   materializeTokenValue,
   materializeTokens,
+  parseLength,
   resolveTokens,
   setActiveThemeId,
   tokensToCss,
@@ -169,6 +171,66 @@ describe("isBuiltInThemeId", () => {
   it("returns false for unknown ids", () => {
     expect(isBuiltInThemeId("custom-thing")).toBe(false);
     expect(isBuiltInThemeId("")).toBe(false);
+  });
+});
+
+describe("parseLength", () => {
+  it("parses common length values", () => {
+    expect(parseLength("16px")).toEqual({ number: 16, unit: "px" });
+    expect(parseLength("0.625rem")).toEqual({ number: 0.625, unit: "rem" });
+    expect(parseLength("  2em  ")).toEqual({ number: 2, unit: "em" });
+    expect(parseLength("100%")).toEqual({ number: 100, unit: "%" });
+  });
+
+  it("returns null for non-length values", () => {
+    expect(parseLength("")).toBeNull();
+    expect(parseLength("clamp(1rem, 2vw, 2rem)")).toBeNull();
+    expect(parseLength("blue")).toBeNull();
+    expect(parseLength("16")).toBeNull();
+  });
+
+  it("normalizes the unit to lowercase", () => {
+    expect(parseLength("16PX")).toEqual({ number: 16, unit: "px" });
+    expect(parseLength("0.5REM")).toEqual({ number: 0.5, unit: "rem" });
+  });
+});
+
+describe("isValidTokenValue", () => {
+  it("validates colors against the forbidden-pattern allow-list", () => {
+    expect(isValidTokenValue("color", "#fff")).toBe(true);
+    expect(isValidTokenValue("color", "var(--color-blue-500)")).toBe(true);
+    expect(isValidTokenValue("color", "")).toBe(false);
+    expect(isValidTokenValue("color", "javascript:alert(1)")).toBe(false);
+  });
+
+  it("validates opacity as a number in [0, 1]", () => {
+    expect(isValidTokenValue("opacity", "0")).toBe(true);
+    expect(isValidTokenValue("opacity", "0.5")).toBe(true);
+    expect(isValidTokenValue("opacity", "1")).toBe(true);
+    expect(isValidTokenValue("opacity", "1.0001")).toBe(false);
+    expect(isValidTokenValue("opacity", "-0.1")).toBe(false);
+    expect(isValidTokenValue("opacity", "blue")).toBe(false);
+    expect(isValidTokenValue("opacity", "")).toBe(false);
+  });
+
+  it("validates length as a number+unit", () => {
+    expect(isValidTokenValue("length", "16px")).toBe(true);
+    expect(isValidTokenValue("length", "0.625rem")).toBe(true);
+    expect(isValidTokenValue("length", "16")).toBe(false);
+    expect(isValidTokenValue("length", "px")).toBe(false);
+    expect(isValidTokenValue("length", "javascript:alert(1)")).toBe(false);
+  });
+
+  it("validates font-family as a non-empty string with no forbidden patterns", () => {
+    expect(isValidTokenValue("font-family", "DM Sans, sans-serif")).toBe(true);
+    expect(isValidTokenValue("font-family", '"Inter", system-ui')).toBe(true);
+    expect(isValidTokenValue("font-family", "")).toBe(false);
+    expect(isValidTokenValue("font-family", "<script>")).toBe(false);
+  });
+
+  it("rejects values longer than 200 chars", () => {
+    expect(isValidTokenValue("color", "a".repeat(201))).toBe(false);
+    expect(isValidTokenValue("font-family", "a".repeat(201))).toBe(false);
   });
 });
 
