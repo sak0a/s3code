@@ -886,8 +886,26 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
           );
         }),
       ),
-    searchPullRequests: () =>
-      Effect.fail(new BitbucketApiError({ operation: "searchPullRequests", detail: "stub" })),
+    searchPullRequests: (input) =>
+      resolveRepository({
+        cwd: input.cwd,
+        ...(input.context ? { context: input.context } : {}),
+      }).pipe(
+        Effect.flatMap((repo) => {
+          const escaped = input.query.replace(/"/g, '\\"');
+          const q = `title ~ "${escaped}"`;
+          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/pullrequests?q=${encodeURIComponent(q)}&pagelen=${input.limit ?? 20}&sort=-updated_on`;
+          return executeJson(
+            "searchPullRequests",
+            HttpClientRequest.get(apiUrl(path)),
+            BitbucketPullRequests.BitbucketPullRequestListSchema,
+          ).pipe(
+            Effect.map((list) =>
+              list.values.map(BitbucketPullRequests.normalizeBitbucketPullRequestRecord),
+            ),
+          );
+        }),
+      ),
     getPullRequestDetail: () =>
       Effect.fail(new BitbucketApiError({ operation: "getPullRequestDetail", detail: "stub" })),
   });

@@ -678,6 +678,42 @@ it.effect("searchIssues forwards BBQL to /issues endpoint", () => {
   }).pipe(Effect.provide(layer));
 });
 
+it.effect("searchPullRequests forwards BBQL to /pullrequests endpoint", () => {
+  const { execute, layer } = makeLayer({
+    response: () =>
+      Response.json({
+        values: [
+          {
+            id: 12,
+            title: "fix memory leak in parser",
+            state: "OPEN",
+            links: {
+              html: { href: "https://bitbucket.org/pingdotgg/t3code/pull-requests/12" },
+            },
+            source: {
+              branch: { name: "fix/leak" },
+              repository: { full_name: "pingdotgg/t3code" },
+            },
+            destination: {
+              branch: { name: "main" },
+              repository: { full_name: "pingdotgg/t3code" },
+            },
+          },
+        ],
+      }),
+  });
+
+  return Effect.gen(function* () {
+    const bitbucket = yield* BitbucketApi.BitbucketApi;
+    const results = yield* bitbucket.searchPullRequests({ cwd: "/repo", query: "memory leak" });
+    assert.strictEqual(results.length, 1);
+    assert.strictEqual(results[0]?.number, 12);
+    const url = execute.mock.calls[0]?.[0].url ?? "";
+    assert.ok(url.includes("/pullrequests"), `URL should include /pullrequests, got: ${url}`);
+    assert.ok(url.includes(encodeURIComponent('title ~ "memory leak"')), `URL should include BBQL, got: ${url}`);
+  }).pipe(Effect.provide(layer));
+});
+
 it.effect("listIssues fetches open issues and returns normalized records", () => {
   const { execute, layer } = makeLayer({
     response: () =>
