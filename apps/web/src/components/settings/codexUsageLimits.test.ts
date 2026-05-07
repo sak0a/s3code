@@ -5,6 +5,7 @@ import {
   clampUsedPercent,
   describeRateLimitWindow,
   formatRateLimitResetLabel,
+  formatRateLimitResetText,
 } from "./codexUsageLimits";
 
 describe("clampUsedPercent", () => {
@@ -102,5 +103,31 @@ describe("formatRateLimitResetLabel", () => {
     expect(formatRateLimitResetLabel(Number.NaN)).toBeNull();
     expect(formatRateLimitResetLabel(0)).toBeNull();
     expect(formatRateLimitResetLabel(-1)).toBeNull();
+  });
+});
+
+describe("formatRateLimitResetText", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-07T12:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("frames a future timestamp as 'resets in X' without the trailing 'left'", () => {
+    const fourHoursLater = Math.floor(new Date("2026-04-07T16:00:00.000Z").getTime() / 1000);
+    expect(formatRateLimitResetText(fourHoursLater)).toBe("resets in 4h");
+  });
+
+  it("collapses the 'Expired' sentinel to a lowercase 'expired'", () => {
+    const oneMinuteAgo = Math.floor(new Date("2026-04-07T11:59:00.000Z").getTime() / 1000);
+    expect(formatRateLimitResetText(oneMinuteAgo)).toBe("expired");
+  });
+
+  it("returns null when the timestamp is missing or invalid", () => {
+    expect(formatRateLimitResetText(undefined)).toBeNull();
+    expect(formatRateLimitResetText(0)).toBeNull();
   });
 });
