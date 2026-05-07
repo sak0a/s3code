@@ -158,8 +158,9 @@ describe("ProviderSendTurnInput", () => {
     const commentCreatedAt = DateTime.fromDateUnsafe(new Date("2024-06-01T13:00:00.000Z"));
     const issueUpdatedAt = DateTime.fromDateUnsafe(new Date("2024-06-01T12:00:00.000Z"));
 
-    // Build a typed value matching ProviderSendTurnInput.Type
-    const input = {
+    // Build input using plain threadId string (decoded first so threadId gets branded)
+    // and real DateTime/Option values (required by Schema.Option/Schema.DateTimeUtc).
+    const wireInput = {
       threadId: "thread-1",
       sourceControlContexts: [
         {
@@ -212,19 +213,17 @@ describe("ProviderSendTurnInput", () => {
       ],
     };
 
-    const encodeSync = Schema.encodeSync(ProviderSendTurnInput);
-    const decodeUnknownSync = Schema.decodeUnknownSync(ProviderSendTurnInput);
+    const decoded = decodeProviderSendTurnInput(wireInput);
+    const encoded = Schema.encodeSync(ProviderSendTurnInput)(decoded);
+    const reDecoded = decodeProviderSendTurnInput(encoded);
 
-    const encoded = encodeSync(input);
-    const decoded = decodeUnknownSync(encoded);
-
-    expect(decoded.sourceControlContexts).toHaveLength(2);
-    expect(decoded.sourceControlContexts![0]!.id).toBe("ctx-issue-1");
-    expect(decoded.sourceControlContexts![0]!.kind).toBe("issue");
-    expect(decoded.sourceControlContexts![1]!.id).toBe("ctx-cr-1");
-    expect(decoded.sourceControlContexts![1]!.kind).toBe("change-request");
-    expect(Option.isSome(decoded.sourceControlContexts![0]!.detail.updatedAt)).toBe(true);
-    expect(Option.isNone(decoded.sourceControlContexts![1]!.detail.updatedAt)).toBe(true);
+    expect(reDecoded.sourceControlContexts).toHaveLength(2);
+    expect(reDecoded.sourceControlContexts![0]!.id).toBe("ctx-issue-1");
+    expect(reDecoded.sourceControlContexts![0]!.kind).toBe("issue");
+    expect(reDecoded.sourceControlContexts![1]!.id).toBe("ctx-cr-1");
+    expect(reDecoded.sourceControlContexts![1]!.kind).toBe("change-request");
+    expect(Option.isSome(reDecoded.sourceControlContexts![0]!.detail.updatedAt)).toBe(true);
+    expect(Option.isNone(reDecoded.sourceControlContexts![1]!.detail.updatedAt)).toBe(true);
   });
 });
 
