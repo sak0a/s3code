@@ -231,6 +231,17 @@ function toBitbucketStates(state: "open" | "closed" | "merged" | "all"): Readonl
   }
 }
 
+function toBitbucketIssueStates(state: "open" | "closed" | "all"): ReadonlyArray<string> {
+  switch (state) {
+    case "open":
+      return ["new", "open", "submitted"];
+    case "closed":
+      return ["resolved", "closed", "on hold", "invalid", "duplicate", "wontfix"];
+    case "all":
+      return [];
+  }
+}
+
 function bitbucketQueryString(filters: ReadonlyArray<string>): string {
   return filters.join(" AND ");
 }
@@ -809,17 +820,16 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
         ...(input.context ? { context: input.context } : {}),
       }).pipe(
         Effect.flatMap((repo) => {
-          const stateQuery =
-            input.state === "open"
-              ? "&state=new&state=open&state=submitted"
-              : input.state === "closed"
-                ? "&state=resolved&state=closed&state=on%20hold&state=invalid&state=duplicate&state=wontfix"
-                : "";
-          const pagelen = Math.max(1, Math.min(input.limit ?? 50, 50));
-          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues?pagelen=${pagelen}&sort=-updated_on${stateQuery}`;
+          const states = toBitbucketIssueStates(input.state);
+          const query: Record<string, string | ReadonlyArray<string>> = {
+            pagelen: String(Math.max(1, Math.min(input.limit ?? 50, 50))),
+            sort: "-updated_on",
+            ...(states.length > 0 ? { state: states } : {}),
+          };
+          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues`;
           return executeJson(
             "listIssues",
-            HttpClientRequest.get(apiUrl(path)),
+            HttpClientRequest.get(apiUrl(path), { urlParams: query }),
             BitbucketIssues.BitbucketIssueListSchema,
           ).pipe(
             Effect.map((value) => value.values.map(BitbucketIssues.normalizeBitbucketIssueRecord)),
@@ -839,18 +849,19 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
       }).pipe(
         Effect.flatMap((repo) => {
           const issuePath = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues/${encodeURIComponent(referenceId)}`;
-          // pagelen is clamped per Bitbucket Cloud's [1, 100] limit; we fetch
-          // 6 newest so truncateSourceControlDetailContent can emit a "truncated"
-          // signal when the thread has more than 5 comments.
-          const commentsPath = `${issuePath}/comments?pagelen=6&sort=-created_on`;
           const issue = executeJson(
             "getIssue",
             HttpClientRequest.get(apiUrl(issuePath)),
             BitbucketIssues.BitbucketIssueSchema,
           );
+          // pagelen is clamped per Bitbucket Cloud's [1, 100] limit; we fetch
+          // 6 newest so truncateSourceControlDetailContent can emit a "truncated"
+          // signal when the thread has more than 5 comments.
           const comments = executeJson(
             "getIssueComments",
-            HttpClientRequest.get(apiUrl(commentsPath)),
+            HttpClientRequest.get(apiUrl(`${issuePath}/comments`), {
+              urlParams: { pagelen: "6", sort: "-created_on" },
+            }),
             BitbucketIssues.BitbucketCommentListSchema,
           ).pipe(
             Effect.map((list) =>
@@ -882,12 +893,15 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
       }).pipe(
         Effect.flatMap((repo) => {
           const escaped = input.query.replace(/"/g, '\\"');
-          const q = `title ~ "${escaped}"`;
-          const pagelen = Math.max(1, Math.min(input.limit ?? 20, 50));
-          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues?q=${encodeURIComponent(q)}&pagelen=${pagelen}&sort=-updated_on`;
+          const query: Record<string, string | ReadonlyArray<string>> = {
+            q: `title ~ "${escaped}"`,
+            pagelen: String(Math.max(1, Math.min(input.limit ?? 20, 50))),
+            sort: "-updated_on",
+          };
+          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues`;
           return executeJson(
             "searchIssues",
-            HttpClientRequest.get(apiUrl(path)),
+            HttpClientRequest.get(apiUrl(path), { urlParams: query }),
             BitbucketIssues.BitbucketIssueListSchema,
           ).pipe(
             Effect.map((value) => value.values.map(BitbucketIssues.normalizeBitbucketIssueRecord)),
@@ -906,12 +920,15 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
       }).pipe(
         Effect.flatMap((repo) => {
           const escaped = input.query.replace(/"/g, '\\"');
-          const q = `title ~ "${escaped}"`;
-          const pagelen = Math.max(1, Math.min(input.limit ?? 20, 50));
-          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/pullrequests?q=${encodeURIComponent(q)}&pagelen=${pagelen}&sort=-updated_on`;
+          const query: Record<string, string | ReadonlyArray<string>> = {
+            q: `title ~ "${escaped}"`,
+            pagelen: String(Math.max(1, Math.min(input.limit ?? 20, 50))),
+            sort: "-updated_on",
+          };
+          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/pullrequests`;
           return executeJson(
             "searchPullRequests",
-            HttpClientRequest.get(apiUrl(path)),
+            HttpClientRequest.get(apiUrl(path), { urlParams: query }),
             BitbucketPullRequests.BitbucketPullRequestListSchema,
           ).pipe(
             Effect.map((list) =>
@@ -933,7 +950,6 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
       }).pipe(
         Effect.flatMap((repo) => {
           const prPath = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/pullrequests/${encodeURIComponent(referenceId)}`;
-          const commentsPath = `${prPath}/comments?pagelen=6&sort=-created_on`;
           const pr = executeJson(
             "getPullRequestDetail",
             HttpClientRequest.get(apiUrl(prPath)),
@@ -941,7 +957,9 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
           );
           const comments = executeJson(
             "getPullRequestComments",
-            HttpClientRequest.get(apiUrl(commentsPath)),
+            HttpClientRequest.get(apiUrl(`${prPath}/comments`), {
+              urlParams: { pagelen: "6", sort: "-created_on" },
+            }),
             BitbucketIssues.BitbucketCommentListSchema,
           ).pipe(
             Effect.map((list) =>

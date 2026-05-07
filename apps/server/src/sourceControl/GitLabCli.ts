@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Option, Result, Schema, SchemaIssue, type DateTime } from "effect";
+import { Cause, Context, Effect, Layer, Option, Result, Schema, SchemaIssue, type DateTime } from "effect";
 
 import { TrimmedNonEmptyString, type SourceControlRepositoryVisibility } from "@t3tools/contracts";
 
@@ -226,6 +226,34 @@ function decodeGitLabJson<S extends Schema.Top>(
   );
 }
 
+function runAndDecode<T>(input: {
+  readonly operation: string;
+  readonly exec: Effect.Effect<VcsProcess.VcsProcessOutput, GitLabCliError>;
+  readonly decode: (raw: string) => Result.Result<T, Cause.Cause<Schema.SchemaError>>;
+  readonly formatError: (cause: Cause.Cause<Schema.SchemaError>) => string;
+  readonly emptyValue?: T;
+  readonly invalidDetail: string;
+}): Effect.Effect<T, GitLabCliError> {
+  return input.exec.pipe(
+    Effect.map((result) => result.stdout.trim()),
+    Effect.flatMap((raw) => {
+      if (raw.length === 0 && input.emptyValue !== undefined) {
+        return Effect.succeed(input.emptyValue);
+      }
+      const decoded = input.decode(raw);
+      return Result.isSuccess(decoded)
+        ? Effect.succeed(decoded.success)
+        : Effect.fail(
+            new GitLabCliError({
+              operation: input.operation,
+              detail: `${input.invalidDetail}: ${input.formatError(decoded.failure)}`,
+              cause: decoded.failure,
+            }),
+          );
+    }),
+  );
+}
+
 function stateArgs(state: "open" | "closed" | "merged" | "all"): ReadonlyArray<string> {
   switch (state) {
     case "open":
@@ -298,65 +326,38 @@ export const make = Effect.fn("makeGitLabCli")(function* () {
   return GitLabCli.of({
     execute,
     listMergeRequests: (input) =>
-      execute({
-        cwd: input.cwd,
-        args: [
-          "mr",
-          "list",
-          "--source-branch",
-          sourceRefName(input),
-          ...stateArgs(input.state),
-          "--per-page",
-          String(input.limit ?? 20),
-          "--output",
-          "json",
-        ],
-      }).pipe(
-        Effect.map((result) => result.stdout.trim()),
-        Effect.flatMap((raw) =>
-          raw.length === 0
-            ? Effect.succeed([])
-            : Effect.sync(() => GitLabMergeRequests.decodeGitLabMergeRequestListJson(raw)).pipe(
-                Effect.flatMap((decoded) => {
-                  if (!Result.isSuccess(decoded)) {
-                    return Effect.fail(
-                      new GitLabCliError({
-                        operation: "listMergeRequests",
-                        detail: `GitLab CLI returned invalid MR list JSON: ${GitLabMergeRequests.formatGitLabJsonDecodeError(decoded.failure)}`,
-                        cause: decoded.failure,
-                      }),
-                    );
-                  }
-
-                  return Effect.succeed(decoded.success.map(toSummaryWithOptionalUpdatedAt));
-                }),
-              ),
-        ),
-      ),
+      runAndDecode({
+        operation: "listMergeRequests",
+        exec: execute({
+          cwd: input.cwd,
+          args: [
+            "mr",
+            "list",
+            "--source-branch",
+            sourceRefName(input),
+            ...stateArgs(input.state),
+            "--per-page",
+            String(input.limit ?? 20),
+            "--output",
+            "json",
+          ],
+        }),
+        decode: GitLabMergeRequests.decodeGitLabMergeRequestListJson,
+        formatError: GitLabMergeRequests.formatGitLabJsonDecodeError,
+        emptyValue: [],
+        invalidDetail: "GitLab CLI returned invalid MR list JSON",
+      }).pipe(Effect.map((records) => records.map(toSummaryWithOptionalUpdatedAt))),
     getMergeRequest: (input) =>
-      execute({
-        cwd: input.cwd,
-        args: ["mr", "view", input.reference, "--output", "json"],
-      }).pipe(
-        Effect.map((result) => result.stdout.trim()),
-        Effect.flatMap((raw) =>
-          Effect.sync(() => GitLabMergeRequests.decodeGitLabMergeRequestJson(raw)).pipe(
-            Effect.flatMap((decoded) => {
-              if (!Result.isSuccess(decoded)) {
-                return Effect.fail(
-                  new GitLabCliError({
-                    operation: "getMergeRequest",
-                    detail: `GitLab CLI returned invalid merge request JSON: ${GitLabMergeRequests.formatGitLabJsonDecodeError(decoded.failure)}`,
-                    cause: decoded.failure,
-                  }),
-                );
-              }
-
-              return Effect.succeed(toSummaryWithOptionalUpdatedAt(decoded.success));
-            }),
-          ),
-        ),
-      ),
+      runAndDecode({
+        operation: "getMergeRequest",
+        exec: execute({
+          cwd: input.cwd,
+          args: ["mr", "view", input.reference, "--output", "json"],
+        }),
+        decode: GitLabMergeRequests.decodeGitLabMergeRequestJson,
+        formatError: GitLabMergeRequests.formatGitLabJsonDecodeError,
+        invalidDetail: "GitLab CLI returned invalid merge request JSON",
+      }).pipe(Effect.map(toSummaryWithOptionalUpdatedAt)),
     getRepositoryCloneUrls: (input) =>
       execute({
         cwd: input.cwd,
@@ -471,148 +472,90 @@ export const make = Effect.fn("makeGitLabCli")(function* () {
     listIssues: (input) => {
       const stateFlags =
         input.state === "open" ? [] : input.state === "closed" ? ["--closed"] : ["--all"];
-      return execute({
-        cwd: input.cwd,
-        args: [
-          "issue",
-          "list",
-          ...stateFlags,
-          "--per-page",
-          String(input.limit ?? 50),
-          "--output",
-          "json",
-        ],
-      }).pipe(
-        Effect.map((result) => result.stdout.trim()),
-        Effect.flatMap((raw) =>
-          raw.length === 0
-            ? Effect.succeed([])
-            : Effect.sync(() => GitLabIssues.decodeGitLabIssueListJson(raw)).pipe(
-                Effect.flatMap((decoded) =>
-                  Result.isSuccess(decoded)
-                    ? Effect.succeed(decoded.success)
-                    : Effect.fail(
-                        new GitLabCliError({
-                          operation: "listIssues",
-                          detail: `GitLab CLI returned invalid issue list JSON: ${GitLabIssues.formatGitLabIssueDecodeError(decoded.failure)}`,
-                          cause: decoded.failure,
-                        }),
-                      ),
-                ),
-              ),
-        ),
-      );
+      return runAndDecode({
+        operation: "listIssues",
+        exec: execute({
+          cwd: input.cwd,
+          args: [
+            "issue",
+            "list",
+            ...stateFlags,
+            "--per-page",
+            String(input.limit ?? 50),
+            "--output",
+            "json",
+          ],
+        }),
+        decode: GitLabIssues.decodeGitLabIssueListJson,
+        formatError: GitLabIssues.formatGitLabIssueDecodeError,
+        emptyValue: [],
+        invalidDetail: "GitLab CLI returned invalid issue list JSON",
+      });
     },
     getIssue: (input) =>
-      execute({
-        cwd: input.cwd,
-        args: ["issue", "view", input.reference, "--comments", "--output", "json"],
-      }).pipe(
-        Effect.map((result) => result.stdout.trim()),
-        Effect.flatMap((raw) =>
-          Effect.sync(() => GitLabIssues.decodeGitLabIssueDetailJson(raw)).pipe(
-            Effect.flatMap((decoded) =>
-              Result.isSuccess(decoded)
-                ? Effect.succeed(decoded.success)
-                : Effect.fail(
-                    new GitLabCliError({
-                      operation: "getIssue",
-                      detail: `GitLab CLI returned invalid issue JSON: ${GitLabIssues.formatGitLabIssueDecodeError(decoded.failure)}`,
-                      cause: decoded.failure,
-                    }),
-                  ),
-            ),
-          ),
-        ),
-      ),
+      runAndDecode({
+        operation: "getIssue",
+        exec: execute({
+          cwd: input.cwd,
+          args: ["issue", "view", input.reference, "--comments", "--output", "json"],
+        }),
+        decode: GitLabIssues.decodeGitLabIssueDetailJson,
+        formatError: GitLabIssues.formatGitLabIssueDecodeError,
+        invalidDetail: "GitLab CLI returned invalid issue JSON",
+      }),
     searchIssues: (input) =>
-      execute({
-        cwd: input.cwd,
-        args: [
-          "issue",
-          "list",
-          "--search",
-          input.query,
-          "--per-page",
-          String(input.limit ?? 20),
-          "--output",
-          "json",
-        ],
-      }).pipe(
-        Effect.map((result) => result.stdout.trim()),
-        Effect.flatMap((raw) =>
-          raw.length === 0
-            ? Effect.succeed([])
-            : Effect.sync(() => GitLabIssues.decodeGitLabIssueListJson(raw)).pipe(
-                Effect.flatMap((decoded) =>
-                  Result.isSuccess(decoded)
-                    ? Effect.succeed(decoded.success)
-                    : Effect.fail(
-                        new GitLabCliError({
-                          operation: "searchIssues",
-                          detail: `GitLab CLI returned invalid issue list JSON: ${GitLabIssues.formatGitLabIssueDecodeError(decoded.failure)}`,
-                          cause: decoded.failure,
-                        }),
-                      ),
-                ),
-              ),
-        ),
-      ),
+      runAndDecode({
+        operation: "searchIssues",
+        exec: execute({
+          cwd: input.cwd,
+          args: [
+            "issue",
+            "list",
+            "--search",
+            input.query,
+            "--per-page",
+            String(input.limit ?? 20),
+            "--output",
+            "json",
+          ],
+        }),
+        decode: GitLabIssues.decodeGitLabIssueListJson,
+        formatError: GitLabIssues.formatGitLabIssueDecodeError,
+        emptyValue: [],
+        invalidDetail: "GitLab CLI returned invalid issue list JSON",
+      }),
     searchMergeRequests: (input) =>
-      execute({
-        cwd: input.cwd,
-        args: [
-          "mr",
-          "list",
-          "--search",
-          input.query,
-          "--per-page",
-          String(input.limit ?? 20),
-          "--output",
-          "json",
-        ],
-      }).pipe(
-        Effect.map((result) => result.stdout.trim()),
-        Effect.flatMap((raw) =>
-          raw.length === 0
-            ? Effect.succeed([])
-            : Effect.sync(() => GitLabMergeRequests.decodeGitLabMergeRequestListJson(raw)).pipe(
-                Effect.flatMap((decoded) =>
-                  Result.isSuccess(decoded)
-                    ? Effect.succeed(decoded.success.map(toSummaryWithOptionalUpdatedAt))
-                    : Effect.fail(
-                        new GitLabCliError({
-                          operation: "searchMergeRequests",
-                          detail: `GitLab CLI returned invalid MR list JSON: ${GitLabMergeRequests.formatGitLabJsonDecodeError(decoded.failure)}`,
-                          cause: decoded.failure,
-                        }),
-                      ),
-                ),
-              ),
-        ),
-      ),
+      runAndDecode({
+        operation: "searchMergeRequests",
+        exec: execute({
+          cwd: input.cwd,
+          args: [
+            "mr",
+            "list",
+            "--search",
+            input.query,
+            "--per-page",
+            String(input.limit ?? 20),
+            "--output",
+            "json",
+          ],
+        }),
+        decode: GitLabMergeRequests.decodeGitLabMergeRequestListJson,
+        formatError: GitLabMergeRequests.formatGitLabJsonDecodeError,
+        emptyValue: [],
+        invalidDetail: "GitLab CLI returned invalid MR list JSON",
+      }).pipe(Effect.map((records) => records.map(toSummaryWithOptionalUpdatedAt))),
     getMergeRequestDetail: (input) =>
-      execute({
-        cwd: input.cwd,
-        args: ["mr", "view", input.reference, "--comments", "--output", "json"],
-      }).pipe(
-        Effect.map((result) => result.stdout.trim()),
-        Effect.flatMap((raw) =>
-          Effect.sync(() => GitLabMergeRequests.decodeGitLabMergeRequestDetailJson(raw)).pipe(
-            Effect.flatMap((decoded) =>
-              Result.isSuccess(decoded)
-                ? Effect.succeed(decoded.success)
-                : Effect.fail(
-                    new GitLabCliError({
-                      operation: "getMergeRequestDetail",
-                      detail: `GitLab CLI returned invalid merge request JSON: ${GitLabMergeRequests.formatGitLabJsonDecodeError(decoded.failure)}`,
-                      cause: decoded.failure,
-                    }),
-                  ),
-            ),
-          ),
-        ),
-      ),
+      runAndDecode({
+        operation: "getMergeRequestDetail",
+        exec: execute({
+          cwd: input.cwd,
+          args: ["mr", "view", input.reference, "--comments", "--output", "json"],
+        }),
+        decode: GitLabMergeRequests.decodeGitLabMergeRequestDetailJson,
+        formatError: GitLabMergeRequests.formatGitLabJsonDecodeError,
+        invalidDetail: "GitLab CLI returned invalid merge request JSON",
+      }),
   });
 });
 

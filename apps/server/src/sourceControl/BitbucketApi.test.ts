@@ -672,12 +672,16 @@ it.effect("searchIssues forwards BBQL to /issues endpoint", () => {
     const results = yield* bitbucket.searchIssues({ cwd: "/repo", query: "memory leak" });
     assert.strictEqual(results.length, 1);
     assert.strictEqual(results[0]?.number, 5);
-    const url = execute.mock.calls[0]?.[0].url ?? "";
-    assert.ok(url.includes("/issues"), `URL should include /issues, got: ${url}`);
-    assert.ok(
-      url.includes(encodeURIComponent('title ~ "memory leak"')),
-      `URL should include BBQL, got: ${url}`,
+    const request = execute.mock.calls[0]?.[0];
+    assert.strictEqual(
+      request?.url,
+      "https://api.test.local/2.0/repositories/pingdotgg/t3code/issues",
     );
+    assert.deepStrictEqual(request?.urlParams.params, [
+      ["q", 'title ~ "memory leak"'],
+      ["pagelen", "20"],
+      ["sort", "-updated_on"],
+    ]);
   }).pipe(Effect.provide(layer));
 });
 
@@ -711,12 +715,16 @@ it.effect("searchPullRequests forwards BBQL to /pullrequests endpoint", () => {
     const results = yield* bitbucket.searchPullRequests({ cwd: "/repo", query: "memory leak" });
     assert.strictEqual(results.length, 1);
     assert.strictEqual(results[0]?.number, 12);
-    const url = execute.mock.calls[0]?.[0].url ?? "";
-    assert.ok(url.includes("/pullrequests"), `URL should include /pullrequests, got: ${url}`);
-    assert.ok(
-      url.includes(encodeURIComponent('title ~ "memory leak"')),
-      `URL should include BBQL, got: ${url}`,
+    const request = execute.mock.calls[0]?.[0];
+    assert.strictEqual(
+      request?.url,
+      "https://api.test.local/2.0/repositories/pingdotgg/t3code/pullrequests",
     );
+    assert.deepStrictEqual(request?.urlParams.params, [
+      ["q", 'title ~ "memory leak"'],
+      ["pagelen", "20"],
+      ["sort", "-updated_on"],
+    ]);
   }).pipe(Effect.provide(layer));
 });
 
