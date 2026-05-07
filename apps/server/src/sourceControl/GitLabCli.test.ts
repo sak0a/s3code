@@ -324,6 +324,40 @@ layer("GitLabCli.layer", (it) => {
     }),
   );
 
+  it.effect("getIssue invokes glab issue view with --comments and decodes detail", () =>
+    Effect.gen(function* () {
+      mockedRun.mockReturnValueOnce(
+        Effect.succeed(
+          processOutput(
+            JSON.stringify({
+              iid: 7,
+              title: "Detailed",
+              web_url: "https://gitlab.com/owner/repo/-/issues/7",
+              state: "opened",
+              description: "issue body",
+              notes: [
+                { author: { username: "bob" }, body: "first", created_at: "2026-03-14T10:00:00Z" },
+              ],
+            }),
+          ),
+        ),
+      );
+      const detail = yield* Effect.gen(function* () {
+        const glab = yield* GitLabCli.GitLabCli;
+        return yield* glab.getIssue({ cwd: "/repo", reference: "7" });
+      });
+      expect(detail.body).toBe("issue body");
+      expect(detail.comments[0]?.author).toBe("bob");
+      expect(mockedRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: "glab",
+          cwd: "/repo",
+          args: ["issue", "view", "7", "--comments", "--output", "json"],
+        }),
+      );
+    }),
+  );
+
   it.effect("listIssues invokes glab with correct args and decodes output", () =>
     Effect.gen(function* () {
       mockedRun.mockReturnValueOnce(

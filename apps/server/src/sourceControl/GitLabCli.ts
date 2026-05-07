@@ -510,9 +510,27 @@ export const make = Effect.fn("makeGitLabCli")(function* () {
         ),
       );
     },
-    getIssue: () =>
-      Effect.fail(
-        new GitLabCliError({ operation: "getIssue", detail: "stub" }),
+    getIssue: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: ["issue", "view", input.reference, "--comments", "--output", "json"],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          Effect.sync(() => GitLabIssues.decodeGitLabIssueDetailJson(raw)).pipe(
+            Effect.flatMap((decoded) =>
+              Result.isSuccess(decoded)
+                ? Effect.succeed(decoded.success)
+                : Effect.fail(
+                    new GitLabCliError({
+                      operation: "getIssue",
+                      detail: `GitLab CLI returned invalid issue JSON: ${GitLabIssues.formatGitLabIssueDecodeError(decoded.failure)}`,
+                      cause: decoded.failure,
+                    }),
+                  ),
+            ),
+          ),
+        ),
       ),
     searchIssues: () =>
       Effect.fail(
