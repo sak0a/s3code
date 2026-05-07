@@ -315,6 +315,22 @@ describe("AzureDevOpsCli.layer", () => {
     }).pipe(Effect.provide(layer)),
   );
 
+  it.effect("searchPullRequests filters via JMESPath query", () =>
+    Effect.gen(function* () {
+      mockRun.mockReturnValueOnce(Effect.succeed(processOutput("[]")));
+      const az = yield* AzureDevOpsCli.AzureDevOpsCli;
+      yield* az.searchPullRequests({ cwd: "/repo", query: "fix" });
+      const call = mockRun.mock.calls[mockRun.mock.calls.length - 1]?.[0];
+      expect(call?.args).toContain("repos");
+      expect(call?.args).toContain("pr");
+      expect(call?.args).toContain("list");
+      const queryArg = (call?.args ?? []).find(
+        (a) => typeof a === "string" && a.includes("contains(title"),
+      );
+      expect(queryArg).toContain("'fix'");
+    }).pipe(Effect.provide(layer)),
+  );
+
   it.effect("searchWorkItems builds WIQL with title CONTAINS clause", () =>
     Effect.gen(function* () {
       mockRun.mockReturnValueOnce(Effect.succeed(processOutput("[]")));

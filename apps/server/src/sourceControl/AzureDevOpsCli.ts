@@ -570,8 +570,47 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
         ),
       );
     },
-    searchPullRequests: () =>
-      Effect.fail(new AzureDevOpsCliError({ operation: "searchPullRequests", detail: "stub" })),
+    searchPullRequests: (input) => {
+      const escaped = input.query.replace(/'/g, "\\'");
+      const jmes = `[?contains(title, '${escaped}')] | [0:${input.limit ?? 20}]`;
+      return executeJson({
+        cwd: input.cwd,
+        args: [
+          "repos",
+          "pr",
+          "list",
+          "--detect",
+          "true",
+          "--status",
+          "all",
+          "--top",
+          String((input.limit ?? 20) * 4),
+          "--query",
+          jmes,
+        ],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() =>
+                AzureDevOpsPullRequests.decodeAzureDevOpsPullRequestListJson(raw),
+              ).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success)
+                    : Effect.fail(
+                        new AzureDevOpsCliError({
+                          operation: "searchPullRequests",
+                          detail: `Azure DevOps CLI returned invalid PR list JSON: ${AzureDevOpsPullRequests.formatAzureDevOpsJsonDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
+      );
+    },
     getPullRequestDetail: () =>
       Effect.fail(
         new AzureDevOpsCliError({ operation: "getPullRequestDetail", detail: "stub" }),
