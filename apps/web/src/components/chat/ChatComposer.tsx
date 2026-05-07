@@ -1590,8 +1590,12 @@ export const ChatComposer = memo(
             staleAfter,
           };
           addSourceControlContextToDraft(composerDraftTarget, context);
-        } catch {
-          // best-effort: silently ignore detail-fetch failures
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "unknown error";
+          toastManager.add({
+            type: "error",
+            title: `Couldn't fetch ${reference}: ${message}`,
+          });
         }
       },
       [environmentId, gitCwd, queryClient, composerDraftTarget, addSourceControlContextToDraft],
@@ -1621,8 +1625,12 @@ export const ChatComposer = memo(
             staleAfter,
           };
           addSourceControlContextToDraft(composerDraftTarget, context);
-        } catch {
-          // best-effort: silently ignore detail-fetch failures
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "unknown error";
+          toastManager.add({
+            type: "error",
+            title: `Couldn't fetch ${reference}: ${message}`,
+          });
         }
       },
       [environmentId, gitCwd, queryClient, composerDraftTarget, addSourceControlContextToDraft],
