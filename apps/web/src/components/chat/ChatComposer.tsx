@@ -1602,7 +1602,10 @@ export const ChatComposer = memo(
             fetchedAt: now,
             staleAfter,
           };
-          addSourceControlContextToDraft(composerDraftTarget, context);
+          const result = addSourceControlContextToDraft(composerDraftTarget, context);
+          if (!result.added && result.reason === "duplicate") {
+            toastManager.add({ type: "info", title: "Already attached." });
+          }
         } catch (err) {
           const message = err instanceof Error ? err.message : "unknown error";
           toastManager.add({
@@ -1637,7 +1640,10 @@ export const ChatComposer = memo(
             fetchedAt: now,
             staleAfter,
           };
-          addSourceControlContextToDraft(composerDraftTarget, context);
+          const result = addSourceControlContextToDraft(composerDraftTarget, context);
+          if (!result.added && result.reason === "duplicate") {
+            toastManager.add({ type: "info", title: "Already attached." });
+          }
         } catch (err) {
           const message = err instanceof Error ? err.message : "unknown error";
           toastManager.add({

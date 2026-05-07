@@ -401,7 +401,7 @@ interface ComposerDraftStoreState {
   addSourceControlContext: (
     threadRef: ComposerThreadTarget,
     context: ComposerSourceControlContext,
-  ) => void;
+  ) => { added: boolean; reason?: "duplicate" };
   removeSourceControlContext: (threadRef: ComposerThreadTarget, id: string) => void;
   clearSourceControlContexts: (threadRef: ComposerThreadTarget) => void;
   clearPersistedAttachments: (threadRef: ComposerThreadTarget) => void;
@@ -2823,12 +2823,13 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
         addSourceControlContext: (threadRef, context) => {
           const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
           if (threadKey.length === 0) {
-            return;
+            return { added: false };
           }
           const dedupKey = `${context.provider}:${context.reference}`;
+          let alreadyPresent = false;
           set((state) => {
             const existing = state.draftsByThreadKey[threadKey] ?? createEmptyThreadDraft();
-            const alreadyPresent = existing.sourceControlContexts.some(
+            alreadyPresent = existing.sourceControlContexts.some(
               (ctx) => `${ctx.provider}:${ctx.reference}` === dedupKey,
             );
             if (alreadyPresent) {
@@ -2844,6 +2845,7 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
               },
             };
           });
+          return alreadyPresent ? { added: false, reason: "duplicate" } : { added: true };
         },
         removeSourceControlContext: (threadRef, id) => {
           const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
