@@ -28,6 +28,9 @@ Implemented fork improvements include:
   paths, which keeps setups like Dropbox on macOS working whether the project is
   opened from `/Users/you/Dropbox/...` or
   `/Users/you/Library/CloudStorage/Dropbox/...`.
+- The terminal toggle button under the chat composer now reflects the drawer's
+  state, switching between "Open Terminal" and "Close Terminal" so the action is
+  always unambiguous.
 
 ## Installation
 
