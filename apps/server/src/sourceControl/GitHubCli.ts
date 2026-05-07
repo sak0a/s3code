@@ -7,6 +7,8 @@ import {
 } from "@t3tools/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
+import * as GitHubIssues from "./gitHubIssues.ts";
+import type { NormalizedGitHubIssueDetail, NormalizedGitHubIssueRecord } from "./gitHubIssues.ts";
 import * as GitHubPullRequests from "./gitHubPullRequests.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -31,6 +33,15 @@ export interface GitHubPullRequestSummary {
   readonly isCrossRepository?: boolean;
   readonly headRepositoryNameWithOwner?: string | null;
   readonly headRepositoryOwnerLogin?: string | null;
+}
+
+export interface GitHubPullRequestDetail extends GitHubPullRequestSummary {
+  readonly body: string;
+  readonly comments: ReadonlyArray<{
+    readonly author: string;
+    readonly body: string;
+    readonly createdAt: string;
+  }>;
 }
 
 export interface GitHubRepositoryCloneUrls {
@@ -85,6 +96,34 @@ export interface GitHubCliShape {
     readonly reference: string;
     readonly force?: boolean;
   }) => Effect.Effect<void, GitHubCliError>;
+
+  readonly listIssues: (input: {
+    readonly cwd: string;
+    readonly state: "open" | "closed" | "all";
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<NormalizedGitHubIssueRecord>, GitHubCliError>;
+
+  readonly getIssue: (input: {
+    readonly cwd: string;
+    readonly reference: string;
+  }) => Effect.Effect<NormalizedGitHubIssueDetail, GitHubCliError>;
+
+  readonly searchIssues: (input: {
+    readonly cwd: string;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<NormalizedGitHubIssueRecord>, GitHubCliError>;
+
+  readonly searchPullRequests: (input: {
+    readonly cwd: string;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<GitHubPullRequestSummary>, GitHubCliError>;
+
+  readonly getPullRequestDetail: (input: {
+    readonly cwd: string;
+    readonly reference: string;
+  }) => Effect.Effect<GitHubPullRequestDetail, GitHubCliError>;
 }
 
 export class GitHubCli extends Context.Service<GitHubCli, GitHubCliShape>()(
@@ -364,6 +403,16 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
         cwd: input.cwd,
         args: ["pr", "checkout", input.reference, ...(input.force ? ["--force"] : [])],
       }).pipe(Effect.asVoid),
+    listIssues: () =>
+      Effect.fail(new GitHubCliError({ operation: "listIssues", detail: "stub" })),
+    getIssue: () =>
+      Effect.fail(new GitHubCliError({ operation: "getIssue", detail: "stub" })),
+    searchIssues: () =>
+      Effect.fail(new GitHubCliError({ operation: "searchIssues", detail: "stub" })),
+    searchPullRequests: () =>
+      Effect.fail(new GitHubCliError({ operation: "searchPullRequests", detail: "stub" })),
+    getPullRequestDetail: () =>
+      Effect.fail(new GitHubCliError({ operation: "getPullRequestDetail", detail: "stub" })),
   });
 });
 
