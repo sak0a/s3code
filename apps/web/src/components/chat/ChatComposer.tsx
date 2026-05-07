@@ -850,8 +850,9 @@ export const ChatComposer = memo(
           prompt,
           imageCount: composerImages.length,
           terminalContexts: composerTerminalContexts,
+          sourceControlContexts: composerSourceControlContexts,
         }),
-      [composerImages.length, composerTerminalContexts, prompt],
+      [composerImages.length, composerSourceControlContexts, composerTerminalContexts, prompt],
     );
 
     // ------------------------------------------------------------------
