@@ -534,8 +534,42 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
         ),
       );
     },
-    searchWorkItems: () =>
-      Effect.fail(new AzureDevOpsCliError({ operation: "searchWorkItems", detail: "stub" })),
+    searchWorkItems: (input) => {
+      const escapedQuery = input.query.replace(/'/g, "''");
+      const wiql = `SELECT [System.Id], [System.Title], [System.State], [System.Tags], [System.ChangedDate], [System.CreatedBy] FROM workItems WHERE [System.TeamProject] = @project AND [System.Title] CONTAINS '${escapedQuery}' ORDER BY [System.ChangedDate] DESC`;
+      return executeJson({
+        cwd: input.cwd,
+        args: [
+          "boards",
+          "query",
+          "--wiql",
+          wiql,
+          "--top",
+          String(input.limit ?? 20),
+        ],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() =>
+                AzureDevOpsWorkItems.decodeAzureDevOpsWorkItemListJson(raw),
+              ).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success)
+                    : Effect.fail(
+                        new AzureDevOpsCliError({
+                          operation: "searchWorkItems",
+                          detail: `Azure DevOps CLI returned invalid work item JSON: ${AzureDevOpsWorkItems.formatAzureDevOpsWorkItemDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
+      );
+    },
     searchPullRequests: () =>
       Effect.fail(new AzureDevOpsCliError({ operation: "searchPullRequests", detail: "stub" })),
     getPullRequestDetail: () =>

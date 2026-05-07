@@ -315,6 +315,20 @@ describe("AzureDevOpsCli.layer", () => {
     }).pipe(Effect.provide(layer)),
   );
 
+  it.effect("searchWorkItems builds WIQL with title CONTAINS clause", () =>
+    Effect.gen(function* () {
+      mockRun.mockReturnValueOnce(Effect.succeed(processOutput("[]")));
+      const az = yield* AzureDevOpsCli.AzureDevOpsCli;
+      yield* az.searchWorkItems({ cwd: "/repo", query: "memory leak" });
+      const call = mockRun.mock.calls[mockRun.mock.calls.length - 1]?.[0];
+      const wiql = (call?.args ?? []).find(
+        (a) => typeof a === "string" && a.toUpperCase().includes("SELECT"),
+      );
+      expect(typeof wiql === "string" && wiql.toLowerCase()).toContain("contains");
+      expect(typeof wiql === "string" && wiql).toContain("memory leak");
+    }).pipe(Effect.provide(layer)),
+  );
+
   it.effect("listWorkItems queries WIQL with state filter and decodes", () =>
     Effect.gen(function* () {
       mockRun.mockReturnValueOnce(
