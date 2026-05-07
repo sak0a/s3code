@@ -301,7 +301,7 @@ export const BranchToolbar = memo(function BranchToolbar({
                   aria-pressed={terminalOpen}
                 >
                   <TerminalSquareIcon className="size-3 shrink-0" />
-                  <span>Open Terminal</span>
+                  <span>{terminalOpen ? "Close Terminal" : "Open Terminal"}</span>
                 </Button>
               }
             />
