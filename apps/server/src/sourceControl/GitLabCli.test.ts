@@ -324,6 +324,42 @@ layer("GitLabCli.layer", (it) => {
     }),
   );
 
+  it.effect("getMergeRequestDetail decodes description and notes", () =>
+    Effect.gen(function* () {
+      mockedRun.mockReturnValueOnce(
+        Effect.succeed(
+          processOutput(
+            JSON.stringify({
+              iid: 99,
+              title: "Add feature",
+              web_url: "https://gitlab.com/owner/repo/-/merge_requests/99",
+              target_branch: "main",
+              source_branch: "feature/add",
+              state: "opened",
+              description: "MR body text",
+              notes: [
+                { author: { username: "reviewer" }, body: "looks good", created_at: "2026-03-01T10:00:00Z" },
+              ],
+            }),
+          ),
+        ),
+      );
+      const detail = yield* Effect.gen(function* () {
+        const glab = yield* GitLabCli.GitLabCli;
+        return yield* glab.getMergeRequestDetail({ cwd: "/repo", reference: "99" });
+      });
+      expect(detail.body).toBe("MR body text");
+      expect(detail.comments[0]?.author).toBe("reviewer");
+      expect(mockedRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: "glab",
+          cwd: "/repo",
+          args: ["mr", "view", "99", "--comments", "--output", "json"],
+        }),
+      );
+    }),
+  );
+
   it.effect("searchMergeRequests forwards query to glab mr list --search", () =>
     Effect.gen(function* () {
       mockedRun.mockReturnValueOnce(Effect.succeed(processOutput("[]")));

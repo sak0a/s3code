@@ -598,9 +598,27 @@ export const make = Effect.fn("makeGitLabCli")(function* () {
               ),
         ),
       ),
-    getMergeRequestDetail: () =>
-      Effect.fail(
-        new GitLabCliError({ operation: "getMergeRequestDetail", detail: "stub" }),
+    getMergeRequestDetail: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: ["mr", "view", input.reference, "--comments", "--output", "json"],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          Effect.sync(() => GitLabMergeRequests.decodeGitLabMergeRequestDetailJson(raw)).pipe(
+            Effect.flatMap((decoded) =>
+              Result.isSuccess(decoded)
+                ? Effect.succeed(decoded.success)
+                : Effect.fail(
+                    new GitLabCliError({
+                      operation: "getMergeRequestDetail",
+                      detail: `GitLab CLI returned invalid merge request JSON: ${GitLabMergeRequests.formatGitLabJsonDecodeError(decoded.failure)}`,
+                      cause: decoded.failure,
+                    }),
+                  ),
+            ),
+          ),
+        ),
       ),
   });
 });
