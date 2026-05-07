@@ -1560,6 +1560,73 @@ export const ChatComposer = memo(
       };
     }, [readComposerSnapshot]);
 
+    // ------------------------------------------------------------------
+    // Callbacks: source-control context picker
+    // ------------------------------------------------------------------
+    const queryClient = useQueryClient();
+
+    const handleSelectIssue = useCallback(
+      async (issue: SourceControlIssueSummary) => {
+        if (!environmentId || !gitCwd) return;
+        const reference = `${issue.provider}#${issue.number}`;
+        try {
+          const detail = await queryClient.fetchQuery(
+            issueDetailQueryOptions({
+              environmentId,
+              cwd: gitCwd,
+              reference: String(issue.number),
+            }),
+          );
+          const now = DateTime.fromDateUnsafe(new Date());
+          const staleAfter = DateTime.fromDateUnsafe(new Date(Date.now() + 5 * 60 * 1000));
+          const context: ComposerSourceControlContext = {
+            id: randomUUID(),
+            kind: "issue",
+            provider: issue.provider,
+            reference,
+            detail,
+            fetchedAt: now,
+            staleAfter,
+          };
+          addSourceControlContextToDraft(composerDraftTarget, context);
+        } catch {
+          // best-effort: silently ignore detail-fetch failures
+        }
+      },
+      [environmentId, gitCwd, queryClient, composerDraftTarget, addSourceControlContextToDraft],
+    );
+
+    const handleSelectChangeRequest = useCallback(
+      async (cr: ChangeRequest) => {
+        if (!environmentId || !gitCwd) return;
+        const reference = `${cr.provider}#${cr.number}`;
+        try {
+          const detail = await queryClient.fetchQuery(
+            changeRequestDetailQueryOptions({
+              environmentId,
+              cwd: gitCwd,
+              reference: String(cr.number),
+            }),
+          );
+          const now = DateTime.fromDateUnsafe(new Date());
+          const staleAfter = DateTime.fromDateUnsafe(new Date(Date.now() + 5 * 60 * 1000));
+          const context: ComposerSourceControlContext = {
+            id: randomUUID(),
+            kind: "change-request",
+            provider: cr.provider,
+            reference,
+            detail,
+            fetchedAt: now,
+            staleAfter,
+          };
+          addSourceControlContextToDraft(composerDraftTarget, context);
+        } catch {
+          // best-effort: silently ignore detail-fetch failures
+        }
+      },
+      [environmentId, gitCwd, queryClient, composerDraftTarget, addSourceControlContextToDraft],
+    );
+
     const onSelectComposerItem = useCallback(
       (item: ComposerCommandItem) => {
         if (composerSelectLockRef.current) return;
@@ -1853,73 +1920,6 @@ export const ChatComposer = memo(
     const removeComposerImage = (imageId: string) => {
       removeComposerImageFromDraft(imageId);
     };
-
-    // ------------------------------------------------------------------
-    // Callbacks: source-control context picker
-    // ------------------------------------------------------------------
-    const queryClient = useQueryClient();
-
-    const handleSelectIssue = useCallback(
-      async (issue: SourceControlIssueSummary) => {
-        if (!environmentId || !gitCwd) return;
-        const reference = `${issue.provider}#${issue.number}`;
-        try {
-          const detail = await queryClient.fetchQuery(
-            issueDetailQueryOptions({
-              environmentId,
-              cwd: gitCwd,
-              reference: String(issue.number),
-            }),
-          );
-          const now = DateTime.fromDateUnsafe(new Date());
-          const staleAfter = DateTime.fromDateUnsafe(new Date(Date.now() + 5 * 60 * 1000));
-          const context: ComposerSourceControlContext = {
-            id: randomUUID(),
-            kind: "issue",
-            provider: issue.provider,
-            reference,
-            detail,
-            fetchedAt: now,
-            staleAfter,
-          };
-          addSourceControlContextToDraft(composerDraftTarget, context);
-        } catch {
-          // best-effort: silently ignore detail-fetch failures
-        }
-      },
-      [environmentId, gitCwd, queryClient, composerDraftTarget, addSourceControlContextToDraft],
-    );
-
-    const handleSelectChangeRequest = useCallback(
-      async (cr: ChangeRequest) => {
-        if (!environmentId || !gitCwd) return;
-        const reference = `${cr.provider}#${cr.number}`;
-        try {
-          const detail = await queryClient.fetchQuery(
-            changeRequestDetailQueryOptions({
-              environmentId,
-              cwd: gitCwd,
-              reference: String(cr.number),
-            }),
-          );
-          const now = DateTime.fromDateUnsafe(new Date());
-          const staleAfter = DateTime.fromDateUnsafe(new Date(Date.now() + 5 * 60 * 1000));
-          const context: ComposerSourceControlContext = {
-            id: randomUUID(),
-            kind: "change-request",
-            provider: cr.provider,
-            reference,
-            detail,
-            fetchedAt: now,
-            staleAfter,
-          };
-          addSourceControlContextToDraft(composerDraftTarget, context);
-        } catch {
-          // best-effort: silently ignore detail-fetch failures
-        }
-      },
-      [environmentId, gitCwd, queryClient, composerDraftTarget, addSourceControlContextToDraft],
-    );
 
     const handleRemoveSourceControlContext = useCallback(
       (id: string) => {

@@ -236,7 +236,7 @@ export async function refreshStaleSourceControlContexts(
   const now = DateTime.fromDateUnsafe(new Date());
   return Promise.all(
     contexts.map(async (ctx) => {
-      const isStale = DateTime.lessThanOrEqualTo(ctx.staleAfter, now);
+      const isStale = DateTime.isLessThanOrEqualTo(ctx.staleAfter, now);
       if (!isStale) return ctx;
       try {
         return await options.fetcher(ctx);
