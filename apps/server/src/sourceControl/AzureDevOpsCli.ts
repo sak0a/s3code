@@ -461,8 +461,47 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
           input.remoteName ?? "origin",
         ],
       }).pipe(Effect.asVoid),
-    listWorkItems: () =>
-      Effect.fail(new AzureDevOpsCliError({ operation: "listWorkItems", detail: "stub" })),
+    listWorkItems: (input) => {
+      const stateClause =
+        input.state === "open"
+          ? " AND [System.State] NOT IN ('Closed', 'Resolved', 'Done', 'Removed', 'Cancelled')"
+          : input.state === "closed"
+            ? " AND [System.State] IN ('Closed', 'Resolved', 'Done', 'Removed', 'Cancelled')"
+            : "";
+      const wiql = `SELECT [System.Id], [System.Title], [System.State], [System.Tags], [System.ChangedDate], [System.CreatedBy] FROM workItems WHERE [System.TeamProject] = @project${stateClause} ORDER BY [System.ChangedDate] DESC`;
+      return executeJson({
+        cwd: input.cwd,
+        args: [
+          "boards",
+          "query",
+          "--wiql",
+          wiql,
+          "--top",
+          String(input.limit ?? 50),
+        ],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() =>
+                AzureDevOpsWorkItems.decodeAzureDevOpsWorkItemListJson(raw),
+              ).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success)
+                    : Effect.fail(
+                        new AzureDevOpsCliError({
+                          operation: "listWorkItems",
+                          detail: `Azure DevOps CLI returned invalid work item JSON: ${AzureDevOpsWorkItems.formatAzureDevOpsWorkItemDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
+      );
+    },
     getWorkItem: () =>
       Effect.fail(new AzureDevOpsCliError({ operation: "getWorkItem", detail: "stub" })),
     searchWorkItems: () =>

@@ -289,4 +289,37 @@ describe("AzureDevOpsCli.layer", () => {
       });
     }).pipe(Effect.provide(layer)),
   );
+
+  it.effect("listWorkItems queries WIQL with state filter and decodes", () =>
+    Effect.gen(function* () {
+      mockRun.mockReturnValueOnce(
+        Effect.succeed(
+          processOutput(
+            JSON.stringify([
+              {
+                id: 42,
+                fields: {
+                  "System.Title": "Bug",
+                  "System.State": "Active",
+                },
+                url: "https://dev.azure.com/org/proj/_apis/wit/workItems/42",
+              },
+            ]),
+          ),
+        ),
+      );
+      const az = yield* AzureDevOpsCli.AzureDevOpsCli;
+      const items = yield* az.listWorkItems({ cwd: "/repo", state: "open", limit: 10 });
+      expect(items).toHaveLength(1);
+      expect(items[0]?.number).toBe(42);
+      expect(mockRun).toHaveBeenCalled();
+      const call = mockRun.mock.calls[mockRun.mock.calls.length - 1]?.[0];
+      expect(call?.command).toBe("az");
+      expect(call?.args).toContain("query");
+      expect(
+        call?.args.some((a) => typeof a === "string" && a.toUpperCase().includes("SELECT")),
+      ).toBe(true);
+      expect(call?.env).toEqual(expect.objectContaining({ LC_ALL: "C" }));
+    }).pipe(Effect.provide(layer)),
+  );
 });
