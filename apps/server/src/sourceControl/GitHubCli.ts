@@ -464,10 +464,75 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           ),
         ),
       ),
-    searchIssues: () =>
-      Effect.fail(new GitHubCliError({ operation: "searchIssues", detail: "stub" })),
-    searchPullRequests: () =>
-      Effect.fail(new GitHubCliError({ operation: "searchPullRequests", detail: "stub" })),
+    searchIssues: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: [
+          "issue",
+          "list",
+          "--search",
+          input.query,
+          "--limit",
+          String(input.limit ?? 20),
+          "--json",
+          "number,title,url,state,updatedAt,author,labels",
+        ],
+      }).pipe(
+        Effect.map((r) => r.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() => GitHubIssues.decodeGitHubIssueListJson(raw)).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success)
+                    : Effect.fail(
+                        new GitHubCliError({
+                          operation: "searchIssues",
+                          detail: `GitHub CLI returned invalid issue list JSON: ${GitHubIssues.formatGitHubIssueDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
+      ),
+    searchPullRequests: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: [
+          "pr",
+          "list",
+          "--search",
+          input.query,
+          "--limit",
+          String(input.limit ?? 20),
+          "--json",
+          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner",
+        ],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() => GitHubPullRequests.decodeGitHubPullRequestListJson(raw)).pipe(
+                Effect.flatMap((decoded) => {
+                  if (!Result.isSuccess(decoded)) {
+                    return Effect.fail(
+                      new GitHubCliError({
+                        operation: "searchPullRequests",
+                        detail: `GitHub CLI returned invalid PR list JSON: ${GitHubPullRequests.formatGitHubJsonDecodeError(decoded.failure)}`,
+                        cause: decoded.failure,
+                      }),
+                    );
+                  }
+                  return Effect.succeed(
+                    decoded.success.map(({ updatedAt: _updatedAt, ...summary }) => summary),
+                  );
+                }),
+              ),
+        ),
+      ),
     getPullRequestDetail: () =>
       Effect.fail(new GitHubCliError({ operation: "getPullRequestDetail", detail: "stub" })),
   });

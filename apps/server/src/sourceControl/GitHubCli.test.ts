@@ -289,6 +289,87 @@ describe("GitHubCli.layer", () => {
     }).pipe(Effect.provide(layer)),
   );
 
+  describe("searchIssues", () => {
+    it.effect("invokes gh issue list --search with correct args", () =>
+      Effect.gen(function* () {
+        mockRun.mockReturnValueOnce(
+          Effect.succeed(
+            processOutput(
+              JSON.stringify([{ number: 5, title: "Bug fix", url: "https://x/5", state: "OPEN" }]),
+            ),
+          ),
+        );
+
+        const gh = yield* GitHubCli.GitHubCli;
+        const issues = yield* gh.searchIssues({ cwd: "/tmp", query: "bug" });
+        assert.equal(issues.length, 1);
+        expect(mockRun).toHaveBeenCalledWith({
+          operation: "GitHubCli.execute",
+          command: "gh",
+          args: [
+            "issue",
+            "list",
+            "--search",
+            "bug",
+            "--limit",
+            "20",
+            "--json",
+            "number,title,url,state,updatedAt,author,labels",
+          ],
+          cwd: "/tmp",
+          timeoutMs: 30_000,
+        });
+      }).pipe(Effect.provide(layer)),
+    );
+  });
+
+  describe("searchPullRequests", () => {
+    it.effect("invokes gh pr list --search with correct args", () =>
+      Effect.gen(function* () {
+        mockRun.mockReturnValueOnce(
+          Effect.succeed(
+            processOutput(
+              JSON.stringify([
+                {
+                  number: 7,
+                  title: "Fix bug",
+                  url: "https://x/7",
+                  baseRefName: "main",
+                  headRefName: "fix/bug",
+                  state: "OPEN",
+                  mergedAt: null,
+                  isCrossRepository: false,
+                  headRepository: null,
+                  headRepositoryOwner: null,
+                },
+              ]),
+            ),
+          ),
+        );
+
+        const gh = yield* GitHubCli.GitHubCli;
+        const prs = yield* gh.searchPullRequests({ cwd: "/tmp", query: "fix" });
+        assert.equal(prs.length, 1);
+        expect(mockRun).toHaveBeenCalledWith({
+          operation: "GitHubCli.execute",
+          command: "gh",
+          args: [
+            "pr",
+            "list",
+            "--search",
+            "fix",
+            "--limit",
+            "20",
+            "--json",
+            "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner",
+          ],
+          cwd: "/tmp",
+          timeoutMs: 30_000,
+        });
+      }).pipe(Effect.provide(layer)),
+    );
+  });
+
   describe("getIssue", () => {
     it.effect("fetches body + comments by number reference", () =>
       Effect.gen(function* () {
