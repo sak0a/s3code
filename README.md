@@ -28,6 +28,11 @@ Implemented fork improvements include:
   paths, which keeps setups like Dropbox on macOS working whether the project is
   opened from `/Users/you/Dropbox/...` or
   `/Users/you/Library/CloudStorage/Dropbox/...`.
+- Chat composer can attach issues and pull/merge requests / work items from
+  GitHub, GitLab, Bitbucket, or Azure DevOps as structured turn context —
+  opened via a 📎 button in the footer or the `#` keyboard trigger, with
+  per-provider tabs, search, dedup, and stale-on-send refetch. Title, body,
+  and recent comments are forwarded to the agent alongside the prompt.
 
 ## Installation
 
