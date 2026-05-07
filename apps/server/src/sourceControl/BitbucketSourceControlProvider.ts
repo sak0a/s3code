@@ -1,7 +1,15 @@
-import { Effect, Layer, Option } from "effect";
-import { SourceControlProviderError, type ChangeRequest } from "@t3tools/contracts";
+import { DateTime, Effect, Layer, Option } from "effect";
+import {
+  SourceControlProviderError,
+  truncateSourceControlDetailContent,
+  type ChangeRequest,
+  type SourceControlChangeRequestDetail,
+  type SourceControlIssueDetail,
+  type SourceControlIssueSummary,
+} from "@t3tools/contracts";
 
 import * as BitbucketApi from "./BitbucketApi.ts";
+import * as BitbucketIssues from "./bitbucketIssues.ts";
 import * as BitbucketPullRequests from "./bitbucketPullRequests.ts";
 import * as SourceControlProvider from "./SourceControlProvider.ts";
 import type * as SourceControlProviderDiscovery from "./SourceControlProviderDiscovery.ts";
@@ -39,6 +47,59 @@ function toChangeRequest(
     ...(summary.headRepositoryOwnerLogin !== undefined
       ? { headRepositoryOwnerLogin: summary.headRepositoryOwnerLogin }
       : {}),
+  };
+}
+
+function toIssueSummary(
+  raw: BitbucketIssues.NormalizedBitbucketIssueRecord,
+): SourceControlIssueSummary {
+  return {
+    provider: "bitbucket",
+    number: raw.number,
+    title: raw.title,
+    url: raw.url,
+    state: raw.state,
+    ...(raw.author ? { author: raw.author } : {}),
+    updatedAt: raw.updatedAt.pipe(Option.map((s) => DateTime.fromDateUnsafe(new Date(s)))),
+    labels: raw.labels,
+  };
+}
+
+function toIssueDetail(
+  raw: BitbucketIssues.NormalizedBitbucketIssueDetail,
+): SourceControlIssueDetail {
+  const truncated = truncateSourceControlDetailContent({
+    body: raw.body,
+    comments: raw.comments,
+  });
+  return {
+    ...toIssueSummary(raw),
+    body: truncated.body,
+    comments: truncated.comments.map((c) => ({
+      author: c.author,
+      body: c.body,
+      createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
+    })),
+    truncated: truncated.truncated,
+  };
+}
+
+function toChangeRequestDetail(
+  raw: BitbucketPullRequests.NormalizedBitbucketPullRequestDetail,
+): SourceControlChangeRequestDetail {
+  const truncated = truncateSourceControlDetailContent({
+    body: raw.body,
+    comments: raw.comments,
+  });
+  return {
+    ...toChangeRequest(raw),
+    body: truncated.body,
+    comments: truncated.comments.map((c) => ({
+      author: c.author,
+      body: c.body,
+      createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
+    })),
+    truncated: truncated.truncated,
   };
 }
 
@@ -107,46 +168,64 @@ export const make = Effect.fn("makeBitbucketSourceControlProvider")(function* ()
           ...(input.force !== undefined ? { force: input.force } : {}),
         })
         .pipe(Effect.mapError((error) => providerError("checkoutChangeRequest", error))),
-    listIssues: () =>
-      Effect.fail(
-        new SourceControlProviderError({
-          provider: "bitbucket",
-          operation: "listIssues",
-          detail: "Not implemented for Bitbucket yet (Plan 2).",
-        }),
-      ),
-    getIssue: () =>
-      Effect.fail(
-        new SourceControlProviderError({
-          provider: "bitbucket",
-          operation: "getIssue",
-          detail: "Not implemented for Bitbucket yet (Plan 2).",
-        }),
-      ),
-    searchIssues: () =>
-      Effect.fail(
-        new SourceControlProviderError({
-          provider: "bitbucket",
-          operation: "searchIssues",
-          detail: "Not implemented for Bitbucket yet (Plan 2).",
-        }),
-      ),
-    searchChangeRequests: () =>
-      Effect.fail(
-        new SourceControlProviderError({
-          provider: "bitbucket",
-          operation: "searchChangeRequests",
-          detail: "Not implemented for Bitbucket yet (Plan 2).",
-        }),
-      ),
-    getChangeRequestDetail: () =>
-      Effect.fail(
-        new SourceControlProviderError({
-          provider: "bitbucket",
-          operation: "getChangeRequestDetail",
-          detail: "Not implemented for Bitbucket yet (Plan 2).",
-        }),
-      ),
+    listIssues: (input) =>
+      bitbucket
+        .listIssues({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+          state: input.state,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toIssueSummary)),
+          Effect.mapError((error) => providerError("listIssues", error)),
+        ),
+    getIssue: (input) =>
+      bitbucket
+        .getIssue({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+          reference: input.reference,
+        })
+        .pipe(
+          Effect.map(toIssueDetail),
+          Effect.mapError((error) => providerError("getIssue", error)),
+        ),
+    searchIssues: (input) =>
+      bitbucket
+        .searchIssues({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+          query: input.query,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toIssueSummary)),
+          Effect.mapError((error) => providerError("searchIssues", error)),
+        ),
+    searchChangeRequests: (input) =>
+      bitbucket
+        .searchPullRequests({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+          query: input.query,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toChangeRequest)),
+          Effect.mapError((error) => providerError("searchChangeRequests", error)),
+        ),
+    getChangeRequestDetail: (input) =>
+      bitbucket
+        .getPullRequestDetail({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+          reference: input.reference,
+        })
+        .pipe(
+          Effect.map(toChangeRequestDetail),
+          Effect.mapError((error) => providerError("getChangeRequestDetail", error)),
+        ),
   });
 });
 
