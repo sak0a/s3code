@@ -1,5 +1,7 @@
 import type {
   ApprovalRequestId,
+  ChangeRequest,
+  ComposerSourceControlContext,
   EnvironmentId,
   ModelSelection,
   ProjectEntry,
@@ -9,6 +11,7 @@ import type {
   RuntimeMode,
   ScopedThreadRef,
   ServerProvider,
+  SourceControlIssueSummary,
   ThreadId,
   TurnId,
 } from "@t3tools/contracts";
@@ -30,7 +33,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { projectSearchEntriesQueryOptions } from "~/lib/projectReactQuery";
 import {
@@ -50,6 +53,12 @@ import {
   useComposerThreadDraft,
   useEffectiveComposerModelState,
 } from "../../composerDraftStore";
+import { DateTime } from "effect";
+import {
+  issueDetailQueryOptions,
+  changeRequestDetailQueryOptions,
+} from "../../lib/sourceControlContextRpc";
+import { ContextPickerButton } from "./ContextPickerButton";
 import {
   type TerminalContextDraft,
   type TerminalContextSelection,
@@ -569,6 +578,7 @@ export const ChatComposer = memo(
     const prompt = composerDraft.prompt;
     const composerImages = composerDraft.images;
     const composerTerminalContexts = composerDraft.terminalContexts;
+    const composerSourceControlContexts = composerDraft.sourceControlContexts;
     const nonPersistedComposerImageIds = composerDraft.nonPersistedImageIds;
 
     const setComposerDraftPrompt = useComposerDraftStore((store) => store.setPrompt);
@@ -591,6 +601,12 @@ export const ChatComposer = memo(
       (store) => store.syncPersistedAttachments,
     );
     const getComposerDraft = useComposerDraftStore((store) => store.getComposerDraft);
+    const addSourceControlContextToDraft = useComposerDraftStore(
+      (store) => store.addSourceControlContext,
+    );
+    const removeSourceControlContextFromDraft = useComposerDraftStore(
+      (store) => store.removeSourceControlContext,
+    );
 
     // ------------------------------------------------------------------
     // Model state
@@ -1742,6 +1758,80 @@ export const ChatComposer = memo(
     };
 
     // ------------------------------------------------------------------
+    // Callbacks: source-control context picker
+    // ------------------------------------------------------------------
+    const queryClient = useQueryClient();
+
+    const handleSelectIssue = useCallback(
+      async (issue: SourceControlIssueSummary) => {
+        if (!environmentId || !gitCwd) return;
+        const reference = `${issue.provider}#${issue.number}`;
+        try {
+          const detail = await queryClient.fetchQuery(
+            issueDetailQueryOptions({
+              environmentId,
+              cwd: gitCwd,
+              reference: String(issue.number),
+            }),
+          );
+          const now = DateTime.fromDateUnsafe(new Date());
+          const staleAfter = DateTime.fromDateUnsafe(new Date(Date.now() + 5 * 60 * 1000));
+          const context: ComposerSourceControlContext = {
+            id: randomUUID(),
+            kind: "issue",
+            provider: issue.provider,
+            reference,
+            detail,
+            fetchedAt: now,
+            staleAfter,
+          };
+          addSourceControlContextToDraft(composerDraftTarget, context);
+        } catch {
+          // best-effort: silently ignore detail-fetch failures
+        }
+      },
+      [environmentId, gitCwd, queryClient, composerDraftTarget, addSourceControlContextToDraft],
+    );
+
+    const handleSelectChangeRequest = useCallback(
+      async (cr: ChangeRequest) => {
+        if (!environmentId || !gitCwd) return;
+        const reference = `${cr.provider}#${cr.number}`;
+        try {
+          const detail = await queryClient.fetchQuery(
+            changeRequestDetailQueryOptions({
+              environmentId,
+              cwd: gitCwd,
+              reference: String(cr.number),
+            }),
+          );
+          const now = DateTime.fromDateUnsafe(new Date());
+          const staleAfter = DateTime.fromDateUnsafe(new Date(Date.now() + 5 * 60 * 1000));
+          const context: ComposerSourceControlContext = {
+            id: randomUUID(),
+            kind: "change-request",
+            provider: cr.provider,
+            reference,
+            detail,
+            fetchedAt: now,
+            staleAfter,
+          };
+          addSourceControlContextToDraft(composerDraftTarget, context);
+        } catch {
+          // best-effort: silently ignore detail-fetch failures
+        }
+      },
+      [environmentId, gitCwd, queryClient, composerDraftTarget, addSourceControlContextToDraft],
+    );
+
+    const handleRemoveSourceControlContext = useCallback(
+      (id: string) => {
+        removeSourceControlContextFromDraft(composerDraftTarget, id);
+      },
+      [composerDraftTarget, removeSourceControlContextFromDraft],
+    );
+
+    // ------------------------------------------------------------------
     // Callbacks: paste / drag
     // ------------------------------------------------------------------
     const onComposerPaste = (event: React.ClipboardEvent<HTMLElement>) => {
@@ -2325,6 +2415,15 @@ export const ChatComposer = memo(
                 )}
               >
                 <div className="-m-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <ContextPickerButton
+                    environmentId={environmentId}
+                    cwd={gitCwd ?? ""}
+                    hasSourceControlRemote={true}
+                    onSelectIssue={handleSelectIssue}
+                    onSelectChangeRequest={handleSelectChangeRequest}
+                    onAttachFile={(file) => addComposerImages([file])}
+                  />
+                  <Separator orientation="vertical" className="mx-0.5 hidden h-4 sm:block" />
                   <ProviderModelPicker
                     compact={isComposerFooterCompact}
                     activeInstanceId={selectedInstanceId}
