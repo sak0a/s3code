@@ -794,8 +794,33 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
               }),
         ),
       ),
-    listIssues: () =>
-      Effect.fail(new BitbucketApiError({ operation: "listIssues", detail: "stub" })),
+    listIssues: (input) =>
+      resolveRepository({
+        cwd: input.cwd,
+        ...(input.context ? { context: input.context } : {}),
+      }).pipe(
+        Effect.flatMap((repo) => {
+          const stateQuery =
+            input.state === "open"
+              ? "&state=new&state=open"
+              : input.state === "closed"
+                ? "&state=resolved&state=closed&state=on%20hold"
+                : "";
+          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues?pagelen=${input.limit ?? 50}&sort=-updated_on${stateQuery}`;
+          return executeJson(
+            "listIssues",
+            HttpClientRequest.get(apiUrl(path)),
+            BitbucketIssues.BitbucketIssueListSchema,
+          ).pipe(
+            Effect.map((value) => value.values.map(BitbucketIssues.normalizeBitbucketIssueRecord)),
+            Effect.catch((err) =>
+              isBitbucketApiError(err) && err.status === 404
+                ? Effect.succeed([])
+                : Effect.fail(err),
+            ),
+          );
+        }),
+      ),
     getIssue: () =>
       Effect.fail(new BitbucketApiError({ operation: "getIssue", detail: "stub" })),
     searchIssues: () =>

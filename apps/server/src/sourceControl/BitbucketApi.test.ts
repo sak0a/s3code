@@ -602,3 +602,44 @@ it.effect("checks out fork pull requests through an ensured fork remote", () => 
     });
   }).pipe(Effect.provide(layer));
 });
+
+it.effect("listIssues returns empty array when Bitbucket replies 404", () => {
+  const { layer } = makeLayer({
+    response: () => Response.json({ error: { message: "Issues disabled" } }, { status: 404 }),
+  });
+
+  return Effect.gen(function* () {
+    const bitbucket = yield* BitbucketApi.BitbucketApi;
+    const issues = yield* bitbucket.listIssues({ cwd: "/repo", state: "open" });
+    assert.deepStrictEqual(issues, []);
+  }).pipe(Effect.provide(layer));
+});
+
+it.effect("listIssues fetches open issues and returns normalized records", () => {
+  const { execute, layer } = makeLayer({
+    response: () =>
+      Response.json({
+        values: [
+          {
+            id: 42,
+            title: "Bug report",
+            state: "open",
+            updated_on: "2026-03-14T10:00:00Z",
+            reporter: { username: "alice", display_name: "Alice" },
+            links: { html: { href: "https://bitbucket.org/pingdotgg/t3code/issues/42" } },
+          },
+        ],
+      }),
+  });
+
+  return Effect.gen(function* () {
+    const bitbucket = yield* BitbucketApi.BitbucketApi;
+    const issues = yield* bitbucket.listIssues({ cwd: "/repo", state: "open", limit: 10 });
+    assert.strictEqual(issues.length, 1);
+    assert.strictEqual(issues[0]?.number, 42);
+    assert.strictEqual(issues[0]?.state, "open");
+    assert.strictEqual(issues[0]?.author, "alice");
+    const url = execute.mock.calls[0]?.[0].url ?? "";
+    assert.ok(url.includes("/repositories/pingdotgg/t3code/issues"), `URL was: ${url}`);
+  }).pipe(Effect.provide(layer));
+});
