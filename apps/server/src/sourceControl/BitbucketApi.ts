@@ -9,6 +9,7 @@ import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstab
 import { sanitizeBranchFragment } from "@t3tools/shared/git";
 import { detectSourceControlProviderFromRemoteUrl } from "@t3tools/shared/sourceControl";
 
+import * as BitbucketIssues from "./bitbucketIssues.ts";
 import * as BitbucketPullRequests from "./bitbucketPullRequests.ts";
 import * as SourceControlProvider from "./SourceControlProvider.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
@@ -144,6 +145,46 @@ export interface BitbucketApiShape {
     readonly reference: string;
     readonly force?: boolean;
   }) => Effect.Effect<void, BitbucketApiError>;
+  readonly listIssues: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProvider.SourceControlProviderContext;
+    readonly state: "open" | "closed" | "all";
+    readonly limit?: number;
+  }) => Effect.Effect<
+    ReadonlyArray<BitbucketIssues.NormalizedBitbucketIssueRecord>,
+    BitbucketApiError
+  >;
+  readonly getIssue: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProvider.SourceControlProviderContext;
+    readonly reference: string;
+  }) => Effect.Effect<BitbucketIssues.NormalizedBitbucketIssueDetail, BitbucketApiError>;
+  readonly searchIssues: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProvider.SourceControlProviderContext;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<
+    ReadonlyArray<BitbucketIssues.NormalizedBitbucketIssueRecord>,
+    BitbucketApiError
+  >;
+  readonly searchPullRequests: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProvider.SourceControlProviderContext;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<
+    ReadonlyArray<BitbucketPullRequests.NormalizedBitbucketPullRequestRecord>,
+    BitbucketApiError
+  >;
+  readonly getPullRequestDetail: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProvider.SourceControlProviderContext;
+    readonly reference: string;
+  }) => Effect.Effect<
+    BitbucketPullRequests.NormalizedBitbucketPullRequestDetail,
+    BitbucketApiError
+  >;
 }
 
 export class BitbucketApi extends Context.Service<BitbucketApi, BitbucketApiShape>()(
@@ -160,6 +201,12 @@ function normalizeChangeRequestId(reference: string): string {
   const urlMatch = /(?:pull-requests|pullrequests|pull-request|pull|pr)\/(\d+)(?:\D.*)?$/i.exec(
     trimmed,
   );
+  return urlMatch?.[1] ?? trimmed;
+}
+
+function normalizeIssueId(reference: string): string {
+  const trimmed = reference.trim().replace(/^#/, "");
+  const urlMatch = /(?:issues?)\/(\d+)(?:\D.*)?$/i.exec(trimmed);
   return urlMatch?.[1] ?? trimmed;
 }
 
@@ -756,6 +803,169 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
               }),
         ),
       ),
+    listIssues: (input) =>
+      resolveRepository({
+        cwd: input.cwd,
+        ...(input.context ? { context: input.context } : {}),
+      }).pipe(
+        Effect.flatMap((repo) => {
+          const stateQuery =
+            input.state === "open"
+              ? "&state=new&state=open&state=submitted"
+              : input.state === "closed"
+                ? "&state=resolved&state=closed&state=on%20hold&state=invalid&state=duplicate&state=wontfix"
+                : "";
+          const pagelen = Math.max(1, Math.min(input.limit ?? 50, 50));
+          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues?pagelen=${pagelen}&sort=-updated_on${stateQuery}`;
+          return executeJson(
+            "listIssues",
+            HttpClientRequest.get(apiUrl(path)),
+            BitbucketIssues.BitbucketIssueListSchema,
+          ).pipe(
+            Effect.map((value) => value.values.map(BitbucketIssues.normalizeBitbucketIssueRecord)),
+            Effect.catch((err) =>
+              isBitbucketApiError(err) && err.status === 404
+                ? Effect.succeed([])
+                : Effect.fail(err),
+            ),
+          );
+        }),
+      ),
+    getIssue: (input) => {
+      const referenceId = normalizeIssueId(input.reference);
+      return resolveRepository({
+        cwd: input.cwd,
+        ...(input.context ? { context: input.context } : {}),
+      }).pipe(
+        Effect.flatMap((repo) => {
+          const issuePath = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues/${encodeURIComponent(referenceId)}`;
+          // pagelen is clamped per Bitbucket Cloud's [1, 100] limit; we fetch
+          // 6 newest so truncateSourceControlDetailContent can emit a "truncated"
+          // signal when the thread has more than 5 comments.
+          const commentsPath = `${issuePath}/comments?pagelen=6&sort=-created_on`;
+          const issue = executeJson(
+            "getIssue",
+            HttpClientRequest.get(apiUrl(issuePath)),
+            BitbucketIssues.BitbucketIssueSchema,
+          );
+          const comments = executeJson(
+            "getIssueComments",
+            HttpClientRequest.get(apiUrl(commentsPath)),
+            BitbucketIssues.BitbucketCommentListSchema,
+          ).pipe(
+            Effect.map((list) =>
+              [...BitbucketIssues.normalizeBitbucketCommentList(list)].reverse(),
+            ),
+            Effect.catch((err) =>
+              isBitbucketApiError(err) && err.status === 404
+                ? Effect.succeed([])
+                : Effect.fail(err),
+            ),
+          );
+          return Effect.all([issue, comments], { concurrency: 2 }).pipe(
+            Effect.map(([rawIssue, normalizedComments]) => {
+              const summary = BitbucketIssues.normalizeBitbucketIssueRecord(rawIssue);
+              return {
+                ...summary,
+                body: rawIssue.content?.raw ?? "",
+                comments: normalizedComments,
+              };
+            }),
+          );
+        }),
+      );
+    },
+    searchIssues: (input) =>
+      resolveRepository({
+        cwd: input.cwd,
+        ...(input.context ? { context: input.context } : {}),
+      }).pipe(
+        Effect.flatMap((repo) => {
+          const escaped = input.query.replace(/"/g, '\\"');
+          const q = `title ~ "${escaped}"`;
+          const pagelen = Math.max(1, Math.min(input.limit ?? 20, 50));
+          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues?q=${encodeURIComponent(q)}&pagelen=${pagelen}&sort=-updated_on`;
+          return executeJson(
+            "searchIssues",
+            HttpClientRequest.get(apiUrl(path)),
+            BitbucketIssues.BitbucketIssueListSchema,
+          ).pipe(
+            Effect.map((value) => value.values.map(BitbucketIssues.normalizeBitbucketIssueRecord)),
+            Effect.catch((err) =>
+              isBitbucketApiError(err) && err.status === 404
+                ? Effect.succeed([])
+                : Effect.fail(err),
+            ),
+          );
+        }),
+      ),
+    searchPullRequests: (input) =>
+      resolveRepository({
+        cwd: input.cwd,
+        ...(input.context ? { context: input.context } : {}),
+      }).pipe(
+        Effect.flatMap((repo) => {
+          const escaped = input.query.replace(/"/g, '\\"');
+          const q = `title ~ "${escaped}"`;
+          const pagelen = Math.max(1, Math.min(input.limit ?? 20, 50));
+          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/pullrequests?q=${encodeURIComponent(q)}&pagelen=${pagelen}&sort=-updated_on`;
+          return executeJson(
+            "searchPullRequests",
+            HttpClientRequest.get(apiUrl(path)),
+            BitbucketPullRequests.BitbucketPullRequestListSchema,
+          ).pipe(
+            Effect.map((list) =>
+              list.values.map(BitbucketPullRequests.normalizeBitbucketPullRequestRecord),
+            ),
+            Effect.catch((err) =>
+              isBitbucketApiError(err) && err.status === 404
+                ? Effect.succeed([])
+                : Effect.fail(err),
+            ),
+          );
+        }),
+      ),
+    getPullRequestDetail: (input) => {
+      const referenceId = normalizeChangeRequestId(input.reference);
+      return resolveRepository({
+        cwd: input.cwd,
+        ...(input.context ? { context: input.context } : {}),
+      }).pipe(
+        Effect.flatMap((repo) => {
+          const prPath = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/pullrequests/${encodeURIComponent(referenceId)}`;
+          const commentsPath = `${prPath}/comments?pagelen=6&sort=-created_on`;
+          const pr = executeJson(
+            "getPullRequestDetail",
+            HttpClientRequest.get(apiUrl(prPath)),
+            BitbucketPullRequests.BitbucketPullRequestDetailSchema,
+          );
+          const comments = executeJson(
+            "getPullRequestComments",
+            HttpClientRequest.get(apiUrl(commentsPath)),
+            BitbucketIssues.BitbucketCommentListSchema,
+          ).pipe(
+            Effect.map((list) =>
+              [...BitbucketIssues.normalizeBitbucketCommentList(list)].reverse(),
+            ),
+            Effect.catch((err) =>
+              isBitbucketApiError(err) && err.status === 404
+                ? Effect.succeed([])
+                : Effect.fail(err),
+            ),
+          );
+          return Effect.all([pr, comments], { concurrency: 2 }).pipe(
+            Effect.map(([raw, normalizedComments]) => {
+              const summary = BitbucketPullRequests.normalizeBitbucketPullRequestRecord(raw);
+              return {
+                ...summary,
+                body: raw.summary?.raw ?? "",
+                comments: normalizedComments,
+              };
+            }),
+          );
+        }),
+      );
+    },
   });
 });
 

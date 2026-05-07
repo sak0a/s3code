@@ -323,4 +323,156 @@ layer("GitLabCli.layer", (it) => {
       assert.equal(error.message.includes("Merge request not found"), true);
     }),
   );
+
+  it.effect("getMergeRequestDetail decodes description and notes", () =>
+    Effect.gen(function* () {
+      mockedRun.mockReturnValueOnce(
+        Effect.succeed(
+          processOutput(
+            JSON.stringify({
+              iid: 99,
+              title: "Add feature",
+              web_url: "https://gitlab.com/owner/repo/-/merge_requests/99",
+              target_branch: "main",
+              source_branch: "feature/add",
+              state: "opened",
+              description: "MR body text",
+              notes: [
+                {
+                  author: { username: "reviewer" },
+                  body: "looks good",
+                  created_at: "2026-03-01T10:00:00Z",
+                },
+              ],
+            }),
+          ),
+        ),
+      );
+      const detail = yield* Effect.gen(function* () {
+        const glab = yield* GitLabCli.GitLabCli;
+        return yield* glab.getMergeRequestDetail({ cwd: "/repo", reference: "99" });
+      });
+      expect(detail.body).toBe("MR body text");
+      expect(detail.comments[0]?.author).toBe("reviewer");
+      expect(mockedRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: "glab",
+          cwd: "/repo",
+          args: ["mr", "view", "99", "--comments", "--output", "json"],
+        }),
+      );
+    }),
+  );
+
+  it.effect("searchMergeRequests forwards query to glab mr list --search", () =>
+    Effect.gen(function* () {
+      mockedRun.mockReturnValueOnce(Effect.succeed(processOutput("[]")));
+      yield* Effect.gen(function* () {
+        const glab = yield* GitLabCli.GitLabCli;
+        return yield* glab.searchMergeRequests({ cwd: "/repo", query: "fix" });
+      });
+      expect(mockedRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: "glab",
+          cwd: "/repo",
+          args: ["mr", "list", "--search", "fix", "--per-page", "20", "--output", "json"],
+        }),
+      );
+    }),
+  );
+
+  it.effect("searchIssues forwards query and limit to glab issue list --search", () =>
+    Effect.gen(function* () {
+      mockedRun.mockReturnValueOnce(Effect.succeed(processOutput("[]")));
+      yield* Effect.gen(function* () {
+        const glab = yield* GitLabCli.GitLabCli;
+        return yield* glab.searchIssues({ cwd: "/repo", query: "memory leak", limit: 30 });
+      });
+      expect(mockedRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: "glab",
+          cwd: "/repo",
+          args: [
+            "issue",
+            "list",
+            "--search",
+            "memory leak",
+            "--per-page",
+            "30",
+            "--output",
+            "json",
+          ],
+        }),
+      );
+    }),
+  );
+
+  it.effect("getIssue invokes glab issue view with --comments and decodes detail", () =>
+    Effect.gen(function* () {
+      mockedRun.mockReturnValueOnce(
+        Effect.succeed(
+          processOutput(
+            JSON.stringify({
+              iid: 7,
+              title: "Detailed",
+              web_url: "https://gitlab.com/owner/repo/-/issues/7",
+              state: "opened",
+              description: "issue body",
+              notes: [
+                { author: { username: "bob" }, body: "first", created_at: "2026-03-14T10:00:00Z" },
+              ],
+            }),
+          ),
+        ),
+      );
+      const detail = yield* Effect.gen(function* () {
+        const glab = yield* GitLabCli.GitLabCli;
+        return yield* glab.getIssue({ cwd: "/repo", reference: "7" });
+      });
+      expect(detail.body).toBe("issue body");
+      expect(detail.comments[0]?.author).toBe("bob");
+      expect(mockedRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: "glab",
+          cwd: "/repo",
+          args: ["issue", "view", "7", "--comments", "--output", "json"],
+        }),
+      );
+    }),
+  );
+
+  it.effect("listIssues invokes glab with correct args and decodes output", () =>
+    Effect.gen(function* () {
+      mockedRun.mockReturnValueOnce(
+        Effect.succeed(
+          processOutput(
+            JSON.stringify([
+              {
+                iid: 42,
+                title: "Bug",
+                web_url: "https://gitlab.com/owner/repo/-/issues/42",
+                state: "opened",
+                author: { username: "alice" },
+                labels: ["bug"],
+              },
+            ]),
+          ),
+        ),
+      );
+      const issues = yield* Effect.gen(function* () {
+        const glab = yield* GitLabCli.GitLabCli;
+        return yield* glab.listIssues({ cwd: "/repo", state: "open", limit: 20 });
+      });
+      expect(issues).toHaveLength(1);
+      expect(issues[0]?.number).toBe(42);
+      expect(mockedRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: "glab",
+          cwd: "/repo",
+          args: ["issue", "list", "--per-page", "20", "--output", "json"],
+          env: expect.objectContaining({ LC_ALL: "C" }),
+        }),
+      );
+    }),
+  );
 });

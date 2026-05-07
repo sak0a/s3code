@@ -7,6 +7,15 @@ import {
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as AzureDevOpsPullRequests from "./azureDevOpsPullRequests.ts";
+import type {
+  NormalizedAzureDevOpsPullRequestDetail,
+  NormalizedAzureDevOpsThreadComment,
+} from "./azureDevOpsPullRequests.ts";
+import * as AzureDevOpsWorkItems from "./azureDevOpsWorkItems.ts";
+import type {
+  NormalizedAzureDevOpsWorkItemDetail,
+  NormalizedAzureDevOpsWorkItemRecord,
+} from "./azureDevOpsWorkItems.ts";
 import * as SourceControlProvider from "./SourceControlProvider.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -86,6 +95,37 @@ export interface AzureDevOpsCliShape {
     readonly reference: string;
     readonly remoteName?: string;
   }) => Effect.Effect<void, AzureDevOpsCliError>;
+
+  readonly listWorkItems: (input: {
+    readonly cwd: string;
+    readonly state: "open" | "closed" | "all";
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<NormalizedAzureDevOpsWorkItemRecord>, AzureDevOpsCliError>;
+
+  readonly getWorkItem: (input: {
+    readonly cwd: string;
+    readonly reference: string;
+  }) => Effect.Effect<NormalizedAzureDevOpsWorkItemDetail, AzureDevOpsCliError>;
+
+  readonly searchWorkItems: (input: {
+    readonly cwd: string;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<NormalizedAzureDevOpsWorkItemRecord>, AzureDevOpsCliError>;
+
+  readonly searchPullRequests: (input: {
+    readonly cwd: string;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<
+    ReadonlyArray<AzureDevOpsPullRequests.NormalizedAzureDevOpsPullRequestRecord>,
+    AzureDevOpsCliError
+  >;
+
+  readonly getPullRequestDetail: (input: {
+    readonly cwd: string;
+    readonly reference: string;
+  }) => Effect.Effect<NormalizedAzureDevOpsPullRequestDetail, AzureDevOpsCliError>;
 }
 
 export class AzureDevOpsCli extends Context.Service<AzureDevOpsCli, AzureDevOpsCliShape>()(
@@ -154,6 +194,12 @@ function normalizeAzureDevOpsCliError(
 function normalizeChangeRequestId(reference: string): string {
   const trimmed = reference.trim().replace(/^#/, "");
   const urlMatch = /(?:pullrequest|pull-request|pull|_pulls?)\/(\d+)(?:\D.*)?$/i.exec(trimmed);
+  return urlMatch?.[1] ?? trimmed;
+}
+
+function normalizeWorkItemId(reference: string): string {
+  const trimmed = reference.trim().replace(/^#/, "");
+  const urlMatch = /(?:_workitems\/edit|workItems)\/(\d+)(?:\D.*)?$/i.exec(trimmed);
   return urlMatch?.[1] ?? trimmed;
 }
 
@@ -242,6 +288,7 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
         args: input.args,
         cwd: input.cwd,
         timeoutMs: input.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        env: { LC_ALL: "C" },
       })
       .pipe(Effect.mapError((error) => normalizeAzureDevOpsCliError("execute", error)));
 
@@ -423,6 +470,182 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
           input.remoteName ?? "origin",
         ],
       }).pipe(Effect.asVoid),
+    listWorkItems: (input) => {
+      const stateClause =
+        input.state === "open"
+          ? " AND [System.State] NOT IN ('Closed', 'Resolved', 'Done', 'Completed', 'Removed', 'Cancelled', 'Rejected')"
+          : input.state === "closed"
+            ? " AND [System.State] IN ('Closed', 'Resolved', 'Done', 'Completed', 'Removed', 'Cancelled', 'Rejected')"
+            : "";
+      const wiql = `SELECT [System.Id], [System.Title], [System.State], [System.Tags], [System.ChangedDate], [System.CreatedBy] FROM workItems WHERE [System.TeamProject] = @project${stateClause} ORDER BY [System.ChangedDate] DESC`;
+      return executeJson({
+        cwd: input.cwd,
+        args: ["boards", "query", "--wiql", wiql, "--top", String(input.limit ?? 50)],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() => AzureDevOpsWorkItems.decodeAzureDevOpsWorkItemListJson(raw)).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success)
+                    : Effect.fail(
+                        new AzureDevOpsCliError({
+                          operation: "listWorkItems",
+                          detail: `Azure DevOps CLI returned invalid work item JSON: ${AzureDevOpsWorkItems.formatAzureDevOpsWorkItemDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
+      );
+    },
+    getWorkItem: (input) => {
+      const id = normalizeWorkItemId(input.reference);
+      return executeJson({
+        cwd: input.cwd,
+        args: ["boards", "work-item", "show", "--id", id],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          Effect.sync(() => AzureDevOpsWorkItems.decodeAzureDevOpsWorkItemDetailJson(raw)).pipe(
+            Effect.flatMap((decoded) =>
+              Result.isSuccess(decoded)
+                ? Effect.succeed(decoded.success)
+                : Effect.fail(
+                    new AzureDevOpsCliError({
+                      operation: "getWorkItem",
+                      detail: `Azure DevOps CLI returned invalid work item JSON: ${AzureDevOpsWorkItems.formatAzureDevOpsWorkItemDecodeError(decoded.failure)}`,
+                      cause: decoded.failure,
+                    }),
+                  ),
+            ),
+          ),
+        ),
+      );
+    },
+    searchWorkItems: (input) => {
+      const escapedQuery = input.query.replace(/'/g, "''");
+      const wiql = `SELECT [System.Id], [System.Title], [System.State], [System.Tags], [System.ChangedDate], [System.CreatedBy] FROM workItems WHERE [System.TeamProject] = @project AND [System.Title] CONTAINS '${escapedQuery}' ORDER BY [System.ChangedDate] DESC`;
+      return executeJson({
+        cwd: input.cwd,
+        args: ["boards", "query", "--wiql", wiql, "--top", String(input.limit ?? 20)],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() => AzureDevOpsWorkItems.decodeAzureDevOpsWorkItemListJson(raw)).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success)
+                    : Effect.fail(
+                        new AzureDevOpsCliError({
+                          operation: "searchWorkItems",
+                          detail: `Azure DevOps CLI returned invalid work item JSON: ${AzureDevOpsWorkItems.formatAzureDevOpsWorkItemDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
+      );
+    },
+    searchPullRequests: (input) => {
+      const escaped = input.query.replace(/'/g, "\\'");
+      const jmes = `[?contains(title, '${escaped}')] | [0:${input.limit ?? 20}]`;
+      return executeJson({
+        cwd: input.cwd,
+        args: [
+          "repos",
+          "pr",
+          "list",
+          "--detect",
+          "true",
+          "--status",
+          "all",
+          "--top",
+          String((input.limit ?? 20) * 4),
+          "--query",
+          jmes,
+        ],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() =>
+                AzureDevOpsPullRequests.decodeAzureDevOpsPullRequestListJson(raw),
+              ).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success)
+                    : Effect.fail(
+                        new AzureDevOpsCliError({
+                          operation: "searchPullRequests",
+                          detail: `Azure DevOps CLI returned invalid PR list JSON: ${AzureDevOpsPullRequests.formatAzureDevOpsJsonDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
+      );
+    },
+    getPullRequestDetail: (input) => {
+      const id = normalizeChangeRequestId(input.reference);
+      const showCmd = executeJson({
+        cwd: input.cwd,
+        args: ["repos", "pr", "show", "--detect", "true", "--id", id],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          Effect.sync(() => AzureDevOpsPullRequests.decodeAzureDevOpsPullRequestDetailJson(raw)),
+        ),
+        Effect.flatMap((decoded) =>
+          Result.isSuccess(decoded)
+            ? Effect.succeed(decoded.success)
+            : Effect.fail(
+                new AzureDevOpsCliError({
+                  operation: "getPullRequestDetail",
+                  detail: `Azure DevOps CLI returned invalid pull request JSON: ${AzureDevOpsPullRequests.formatAzureDevOpsJsonDecodeError(decoded.failure)}`,
+                  cause: decoded.failure,
+                }),
+              ),
+        ),
+      );
+      // Fetch comment threads in parallel. The `list-comments` subcommand
+      // doesn't exist on every `azure-devops` extension version, so we fall
+      // back to an empty array on any error — but log the cause so a
+      // misconfigured CLI / auth-expired session is still distinguishable
+      // from a PR that genuinely has no threads.
+      const commentsCmd = executeJson({
+        cwd: input.cwd,
+        args: ["repos", "pr", "list-comments", "--detect", "true", "--id", id],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          Effect.sync(() => AzureDevOpsPullRequests.decodeAzureDevOpsPullRequestThreadsJson(raw)),
+        ),
+        Effect.flatMap((decoded) =>
+          Result.isSuccess(decoded)
+            ? Effect.succeed(decoded.success)
+            : Effect.succeed([] as ReadonlyArray<NormalizedAzureDevOpsThreadComment>),
+        ),
+        Effect.catch((cause) =>
+          Effect.logWarning("AzureDevOpsCli.getPullRequestDetail: failed to load comment threads", {
+            pullRequestId: id,
+            detail: cause instanceof Error ? cause.message : String(cause),
+            cause,
+          }).pipe(Effect.as([] as ReadonlyArray<NormalizedAzureDevOpsThreadComment>)),
+        ),
+      );
+      return Effect.all([showCmd, commentsCmd], { concurrency: 2 }).pipe(
+        Effect.map(([detail, comments]) => ({ ...detail, comments })),
+      );
+    },
   });
 });
 

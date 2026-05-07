@@ -1,8 +1,20 @@
 import type { SourceControlIssueSummary } from "@t3tools/contracts";
+import { DateTime, Option } from "effect";
 import { memo } from "react";
 import { cn } from "~/lib/utils";
 
 type Item = SourceControlIssueSummary;
+
+const dateFmt = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+});
+
+function formatItemDate(updatedAt: SourceControlIssueSummary["updatedAt"]): string {
+  if (!updatedAt || Option.isNone(updatedAt)) return "";
+  return dateFmt.format(DateTime.toDate(updatedAt.value));
+}
 
 export const ContextPickerList = memo(function ContextPickerList(props: {
   items: ReadonlyArray<Item>;
@@ -31,7 +43,7 @@ export const ContextPickerList = memo(function ContextPickerList(props: {
             <span className="shrink-0 text-muted-foreground">#{item.number}</span>
             <span className="min-w-0 flex-1 truncate">{item.title}</span>
             <span className="shrink-0 text-xs text-muted-foreground">
-              {/* date — format updatedAt if present */}
+              {formatItemDate(item.updatedAt)}
             </span>
           </button>
         </li>

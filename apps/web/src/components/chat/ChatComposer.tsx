@@ -61,6 +61,7 @@ import {
   changeRequestListQueryOptions,
 } from "../../lib/sourceControlContextRpc";
 import { searchSourceControlSummaries } from "./composerSourceControlContextSearch";
+import { useSourceControlDiscovery } from "~/lib/sourceControlDiscoveryState";
 import { ContextPickerButton } from "./ContextPickerButton";
 import {
   type TerminalContextDraft,
@@ -591,6 +592,17 @@ export const ChatComposer = memo(
     const composerTerminalContexts = composerDraft.terminalContexts;
     const composerSourceControlContexts = composerDraft.sourceControlContexts;
     const nonPersistedComposerImageIds = composerDraft.nonPersistedImageIds;
+
+    const sourceControlDiscovery = useSourceControlDiscovery();
+    const hasSourceControlRemote = useMemo(
+      () =>
+        (sourceControlDiscovery.data?.sourceControlProviders ?? []).some(
+          (provider) =>
+            provider.status === "available" &&
+            (provider.auth.status === "authenticated" || provider.auth.status === "unknown"),
+        ),
+      [sourceControlDiscovery.data],
+    );
 
     const setComposerDraftPrompt = useComposerDraftStore((store) => store.setPrompt);
     const addComposerDraftImage = useComposerDraftStore((store) => store.addImage);
@@ -1601,7 +1613,10 @@ export const ChatComposer = memo(
             fetchedAt: now,
             staleAfter,
           };
-          addSourceControlContextToDraft(composerDraftTarget, context);
+          const result = addSourceControlContextToDraft(composerDraftTarget, context);
+          if (!result.added && result.reason === "duplicate") {
+            toastManager.add({ type: "info", title: "Already attached." });
+          }
         } catch (err) {
           const message = err instanceof Error ? err.message : "unknown error";
           toastManager.add({
@@ -1636,7 +1651,10 @@ export const ChatComposer = memo(
             fetchedAt: now,
             staleAfter,
           };
-          addSourceControlContextToDraft(composerDraftTarget, context);
+          const result = addSourceControlContextToDraft(composerDraftTarget, context);
+          if (!result.added && result.reason === "duplicate") {
+            toastManager.add({ type: "info", title: "Already attached." });
+          }
         } catch (err) {
           const message = err instanceof Error ? err.message : "unknown error";
           toastManager.add({
@@ -2553,7 +2571,7 @@ export const ChatComposer = memo(
                   <ContextPickerButton
                     environmentId={environmentId}
                     cwd={gitCwd ?? ""}
-                    hasSourceControlRemote={true}
+                    hasSourceControlRemote={hasSourceControlRemote}
                     onSelectIssue={handleSelectIssue}
                     onSelectChangeRequest={handleSelectChangeRequest}
                     onAttachFile={(file) => addComposerImages([file])}

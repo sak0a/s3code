@@ -1,6 +1,7 @@
 import { Cause, DateTime, Exit, Option, Result, Schema } from "effect";
 import { PositiveInt, TrimmedNonEmptyString } from "@t3tools/contracts";
 import { decodeJsonResult, formatSchemaError } from "@t3tools/shared/schemaJson";
+import { authorName } from "./gitLabIssues.ts";
 
 export interface NormalizedGitLabMergeRequestRecord {
   readonly number: number;
@@ -145,4 +146,54 @@ export function decodeGitLabMergeRequestJson(
     return Result.succeed(normalizeGitLabMergeRequestRecord(result.success));
   }
   return Result.fail(result.failure);
+}
+
+export interface NormalizedGitLabMergeRequestDetail extends NormalizedGitLabMergeRequestRecord {
+  readonly body: string;
+  readonly comments: ReadonlyArray<{
+    readonly author: string;
+    readonly body: string;
+    readonly createdAt: string;
+  }>;
+}
+
+const GitLabMergeRequestDetailSchema = Schema.Struct({
+  ...GitLabMergeRequestSchema.fields,
+  description: Schema.optional(Schema.NullOr(Schema.String)),
+  notes: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        author: Schema.optional(
+          Schema.NullOr(
+            Schema.Struct({
+              username: Schema.optional(Schema.String),
+              name: Schema.optional(Schema.String),
+            }),
+          ),
+        ),
+        body: Schema.String,
+        created_at: Schema.String,
+      }),
+    ),
+  ),
+});
+
+const decodeGitLabMergeRequestDetail = decodeJsonResult(GitLabMergeRequestDetailSchema);
+
+export function decodeGitLabMergeRequestDetailJson(
+  raw: string,
+): Result.Result<NormalizedGitLabMergeRequestDetail, Cause.Cause<Schema.SchemaError>> {
+  const result = decodeGitLabMergeRequestDetail(raw);
+  if (!Result.isSuccess(result)) return Result.fail(result.failure);
+  const summary = normalizeGitLabMergeRequestRecord(result.success);
+  const detail: NormalizedGitLabMergeRequestDetail = {
+    ...summary,
+    body: result.success.description ?? "",
+    comments: (result.success.notes ?? []).map((note) => ({
+      author: authorName(note.author) ?? "unknown",
+      body: note.body,
+      createdAt: note.created_at,
+    })),
+  };
+  return Result.succeed(detail);
 }

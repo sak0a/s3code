@@ -3,7 +3,10 @@ import { Context, Effect, Layer, Option, Result, Schema, SchemaIssue, type DateT
 import { TrimmedNonEmptyString, type SourceControlRepositoryVisibility } from "@t3tools/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
+import * as GitLabIssues from "./gitLabIssues.ts";
+import type { NormalizedGitLabIssueDetail, NormalizedGitLabIssueRecord } from "./gitLabIssues.ts";
 import * as GitLabMergeRequests from "./gitLabMergeRequests.ts";
+import type { NormalizedGitLabMergeRequestDetail } from "./gitLabMergeRequests.ts";
 import type * as SourceControlProvider from "./SourceControlProvider.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -87,6 +90,34 @@ export interface GitLabCliShape {
     readonly reference: string;
     readonly force?: boolean;
   }) => Effect.Effect<void, GitLabCliError>;
+
+  readonly listIssues: (input: {
+    readonly cwd: string;
+    readonly state: "open" | "closed" | "all";
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<NormalizedGitLabIssueRecord>, GitLabCliError>;
+
+  readonly getIssue: (input: {
+    readonly cwd: string;
+    readonly reference: string;
+  }) => Effect.Effect<NormalizedGitLabIssueDetail, GitLabCliError>;
+
+  readonly searchIssues: (input: {
+    readonly cwd: string;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<NormalizedGitLabIssueRecord>, GitLabCliError>;
+
+  readonly searchMergeRequests: (input: {
+    readonly cwd: string;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<GitLabMergeRequestSummary>, GitLabCliError>;
+
+  readonly getMergeRequestDetail: (input: {
+    readonly cwd: string;
+    readonly reference: string;
+  }) => Effect.Effect<NormalizedGitLabMergeRequestDetail, GitLabCliError>;
 }
 
 export class GitLabCli extends Context.Service<GitLabCli, GitLabCliShape>()(
@@ -260,6 +291,7 @@ export const make = Effect.fn("makeGitLabCli")(function* () {
         args: input.args,
         cwd: input.cwd,
         timeoutMs: input.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        env: { LC_ALL: "C" },
       })
       .pipe(Effect.mapError((error) => normalizeGitLabCliError("execute", error)));
 
@@ -436,6 +468,151 @@ export const make = Effect.fn("makeGitLabCli")(function* () {
         cwd: input.cwd,
         args: ["mr", "checkout", input.reference],
       }).pipe(Effect.asVoid),
+    listIssues: (input) => {
+      const stateFlags =
+        input.state === "open" ? [] : input.state === "closed" ? ["--closed"] : ["--all"];
+      return execute({
+        cwd: input.cwd,
+        args: [
+          "issue",
+          "list",
+          ...stateFlags,
+          "--per-page",
+          String(input.limit ?? 50),
+          "--output",
+          "json",
+        ],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() => GitLabIssues.decodeGitLabIssueListJson(raw)).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success)
+                    : Effect.fail(
+                        new GitLabCliError({
+                          operation: "listIssues",
+                          detail: `GitLab CLI returned invalid issue list JSON: ${GitLabIssues.formatGitLabIssueDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
+      );
+    },
+    getIssue: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: ["issue", "view", input.reference, "--comments", "--output", "json"],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          Effect.sync(() => GitLabIssues.decodeGitLabIssueDetailJson(raw)).pipe(
+            Effect.flatMap((decoded) =>
+              Result.isSuccess(decoded)
+                ? Effect.succeed(decoded.success)
+                : Effect.fail(
+                    new GitLabCliError({
+                      operation: "getIssue",
+                      detail: `GitLab CLI returned invalid issue JSON: ${GitLabIssues.formatGitLabIssueDecodeError(decoded.failure)}`,
+                      cause: decoded.failure,
+                    }),
+                  ),
+            ),
+          ),
+        ),
+      ),
+    searchIssues: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: [
+          "issue",
+          "list",
+          "--search",
+          input.query,
+          "--per-page",
+          String(input.limit ?? 20),
+          "--output",
+          "json",
+        ],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() => GitLabIssues.decodeGitLabIssueListJson(raw)).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success)
+                    : Effect.fail(
+                        new GitLabCliError({
+                          operation: "searchIssues",
+                          detail: `GitLab CLI returned invalid issue list JSON: ${GitLabIssues.formatGitLabIssueDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
+      ),
+    searchMergeRequests: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: [
+          "mr",
+          "list",
+          "--search",
+          input.query,
+          "--per-page",
+          String(input.limit ?? 20),
+          "--output",
+          "json",
+        ],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() => GitLabMergeRequests.decodeGitLabMergeRequestListJson(raw)).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success.map(toSummaryWithOptionalUpdatedAt))
+                    : Effect.fail(
+                        new GitLabCliError({
+                          operation: "searchMergeRequests",
+                          detail: `GitLab CLI returned invalid MR list JSON: ${GitLabMergeRequests.formatGitLabJsonDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
+      ),
+    getMergeRequestDetail: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: ["mr", "view", input.reference, "--comments", "--output", "json"],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          Effect.sync(() => GitLabMergeRequests.decodeGitLabMergeRequestDetailJson(raw)).pipe(
+            Effect.flatMap((decoded) =>
+              Result.isSuccess(decoded)
+                ? Effect.succeed(decoded.success)
+                : Effect.fail(
+                    new GitLabCliError({
+                      operation: "getMergeRequestDetail",
+                      detail: `GitLab CLI returned invalid merge request JSON: ${GitLabMergeRequests.formatGitLabJsonDecodeError(decoded.failure)}`,
+                      cause: decoded.failure,
+                    }),
+                  ),
+            ),
+          ),
+        ),
+      ),
   });
 });
 

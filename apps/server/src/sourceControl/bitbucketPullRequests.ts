@@ -1,5 +1,6 @@
-import { DateTime, Option, Schema } from "effect";
+import { Cause, DateTime, Option, Result, Schema } from "effect";
 import { PositiveInt, TrimmedNonEmptyString } from "@t3tools/contracts";
+import { decodeJsonResult } from "@t3tools/shared/schemaJson";
 
 export interface NormalizedBitbucketPullRequestRecord {
   readonly number: number;
@@ -101,4 +102,35 @@ export function normalizeBitbucketPullRequestRecord(
     ...(headRepositoryNameWithOwner ? { headRepositoryNameWithOwner } : {}),
     ...(headRepositoryOwnerLogin ? { headRepositoryOwnerLogin } : {}),
   };
+}
+
+export interface NormalizedBitbucketPullRequestDetail extends NormalizedBitbucketPullRequestRecord {
+  readonly body: string;
+  readonly comments: ReadonlyArray<{
+    readonly author: string;
+    readonly body: string;
+    readonly createdAt: string;
+  }>;
+}
+
+export const BitbucketPullRequestDetailSchema = Schema.Struct({
+  ...BitbucketPullRequestSchema.fields,
+  summary: Schema.optional(
+    Schema.NullOr(Schema.Struct({ raw: Schema.optional(Schema.NullOr(Schema.String)) })),
+  ),
+});
+
+const decodeBitbucketPullRequestDetailDecoder = decodeJsonResult(BitbucketPullRequestDetailSchema);
+
+export function decodeBitbucketPullRequestDetailJson(
+  raw: string,
+): Result.Result<NormalizedBitbucketPullRequestDetail, Cause.Cause<Schema.SchemaError>> {
+  const result = decodeBitbucketPullRequestDetailDecoder(raw);
+  if (!Result.isSuccess(result)) return Result.fail(result.failure);
+  const summary = normalizeBitbucketPullRequestRecord(result.success);
+  return Result.succeed({
+    ...summary,
+    body: result.success.summary?.raw ?? "",
+    comments: [],
+  });
 }

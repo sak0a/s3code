@@ -1,7 +1,16 @@
-import { Effect, Layer, Option } from "effect";
-import { SourceControlProviderError, type ChangeRequest } from "@t3tools/contracts";
+import { DateTime, Effect, Layer, Option } from "effect";
+import {
+  SourceControlProviderError,
+  truncateSourceControlDetailContent,
+  type ChangeRequest,
+  type SourceControlChangeRequestDetail,
+  type SourceControlIssueDetail,
+  type SourceControlIssueSummary,
+} from "@t3tools/contracts";
 
 import * as GitLabCli from "./GitLabCli.ts";
+import * as GitLabIssues from "./gitLabIssues.ts";
+import * as GitLabMergeRequests from "./gitLabMergeRequests.ts";
 import * as SourceControlProvider from "./SourceControlProvider.ts";
 import * as SourceControlProviderDiscovery from "./SourceControlProviderDiscovery.ts";
 
@@ -36,6 +45,55 @@ function toChangeRequest(summary: GitLabCli.GitLabMergeRequestSummary): ChangeRe
     ...(summary.headRepositoryOwnerLogin !== undefined
       ? { headRepositoryOwnerLogin: summary.headRepositoryOwnerLogin }
       : {}),
+  };
+}
+
+function toIssueSummary(raw: GitLabIssues.NormalizedGitLabIssueRecord): SourceControlIssueSummary {
+  return {
+    provider: "gitlab",
+    number: raw.number,
+    title: raw.title,
+    url: raw.url,
+    state: raw.state,
+    ...(raw.author ? { author: raw.author } : {}),
+    updatedAt: raw.updatedAt.pipe(Option.map((s) => DateTime.fromDateUnsafe(new Date(s)))),
+    labels: raw.labels,
+  };
+}
+
+function toIssueDetail(raw: GitLabIssues.NormalizedGitLabIssueDetail): SourceControlIssueDetail {
+  const truncated = truncateSourceControlDetailContent({
+    body: raw.body,
+    comments: raw.comments,
+  });
+  return {
+    ...toIssueSummary(raw),
+    body: truncated.body,
+    comments: truncated.comments.map((c) => ({
+      author: c.author,
+      body: c.body,
+      createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
+    })),
+    truncated: truncated.truncated,
+  };
+}
+
+function toChangeRequestDetail(
+  raw: GitLabMergeRequests.NormalizedGitLabMergeRequestDetail,
+): SourceControlChangeRequestDetail {
+  const truncated = truncateSourceControlDetailContent({
+    body: raw.body,
+    comments: raw.comments,
+  });
+  return {
+    ...toChangeRequest(raw),
+    body: truncated.body,
+    comments: truncated.comments.map((c) => ({
+      author: c.author,
+      body: c.body,
+      createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
+    })),
+    truncated: truncated.truncated,
   };
 }
 
@@ -138,45 +196,48 @@ export const make = Effect.fn("makeGitLabSourceControlProvider")(function* () {
       gitlab
         .checkoutMergeRequest(input)
         .pipe(Effect.mapError((error) => providerError("checkoutChangeRequest", error))),
-    listIssues: () =>
-      Effect.fail(
-        new SourceControlProviderError({
-          provider: "gitlab",
-          operation: "listIssues",
-          detail: "Not implemented for GitLab yet (Plan 2).",
-        }),
+    listIssues: (input) =>
+      gitlab
+        .listIssues({
+          cwd: input.cwd,
+          state: input.state,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toIssueSummary)),
+          Effect.mapError((error) => providerError("listIssues", error)),
+        ),
+    getIssue: (input) =>
+      gitlab.getIssue({ cwd: input.cwd, reference: input.reference }).pipe(
+        Effect.map(toIssueDetail),
+        Effect.mapError((error) => providerError("getIssue", error)),
       ),
-    getIssue: () =>
-      Effect.fail(
-        new SourceControlProviderError({
-          provider: "gitlab",
-          operation: "getIssue",
-          detail: "Not implemented for GitLab yet (Plan 2).",
-        }),
-      ),
-    searchIssues: () =>
-      Effect.fail(
-        new SourceControlProviderError({
-          provider: "gitlab",
-          operation: "searchIssues",
-          detail: "Not implemented for GitLab yet (Plan 2).",
-        }),
-      ),
-    searchChangeRequests: () =>
-      Effect.fail(
-        new SourceControlProviderError({
-          provider: "gitlab",
-          operation: "searchChangeRequests",
-          detail: "Not implemented for GitLab yet (Plan 2).",
-        }),
-      ),
-    getChangeRequestDetail: () =>
-      Effect.fail(
-        new SourceControlProviderError({
-          provider: "gitlab",
-          operation: "getChangeRequestDetail",
-          detail: "Not implemented for GitLab yet (Plan 2).",
-        }),
+    searchIssues: (input) =>
+      gitlab
+        .searchIssues({
+          cwd: input.cwd,
+          query: input.query,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toIssueSummary)),
+          Effect.mapError((error) => providerError("searchIssues", error)),
+        ),
+    searchChangeRequests: (input) =>
+      gitlab
+        .searchMergeRequests({
+          cwd: input.cwd,
+          query: input.query,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toChangeRequest)),
+          Effect.mapError((error) => providerError("searchChangeRequests", error)),
+        ),
+    getChangeRequestDetail: (input) =>
+      gitlab.getMergeRequestDetail({ cwd: input.cwd, reference: input.reference }).pipe(
+        Effect.map(toChangeRequestDetail),
+        Effect.mapError((error) => providerError("getChangeRequestDetail", error)),
       ),
   });
 });

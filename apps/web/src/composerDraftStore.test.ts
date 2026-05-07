@@ -1554,23 +1554,26 @@ describe("composerDraftStore sourceControlContexts", () => {
     });
   });
 
-  it("addSourceControlContext adds a context to the per-thread draft", () => {
+  it("addSourceControlContext adds a context to the per-thread draft and returns { added: true }", () => {
     const ctx = makeSourceControlContext("ctx-1", "owner/repo#1");
 
-    useComposerDraftStore.getState().addSourceControlContext(threadRef, ctx);
+    const result = useComposerDraftStore.getState().addSourceControlContext(threadRef, ctx);
 
+    expect(result).toEqual({ added: true });
     const draft = draftFor(threadId, TEST_ENVIRONMENT_ID);
     expect(draft?.sourceControlContexts).toHaveLength(1);
     expect(draft?.sourceControlContexts[0]?.id).toBe("ctx-1");
   });
 
-  it("addSourceControlContext deduplicates by provider:reference — second add is a no-op", () => {
+  it("addSourceControlContext deduplicates by provider:reference and returns { added: false, reason: 'duplicate' }", () => {
     const ctx1 = makeSourceControlContext("ctx-1", "owner/repo#1");
     const ctx2 = makeSourceControlContext("ctx-2", "owner/repo#1"); // same reference, different id
 
-    useComposerDraftStore.getState().addSourceControlContext(threadRef, ctx1);
-    useComposerDraftStore.getState().addSourceControlContext(threadRef, ctx2);
+    const first = useComposerDraftStore.getState().addSourceControlContext(threadRef, ctx1);
+    const second = useComposerDraftStore.getState().addSourceControlContext(threadRef, ctx2);
 
+    expect(first).toEqual({ added: true });
+    expect(second).toEqual({ added: false, reason: "duplicate" });
     const draft = draftFor(threadId, TEST_ENVIRONMENT_ID);
     expect(draft?.sourceControlContexts).toHaveLength(1);
     expect(draft?.sourceControlContexts[0]?.id).toBe("ctx-1");
