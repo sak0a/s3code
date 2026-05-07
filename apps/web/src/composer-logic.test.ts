@@ -299,7 +299,13 @@ describe("detectComposerTrigger – source control", () => {
   it("matches '#' at start", () => {
     const text = "#";
     const t = detectComposerTrigger(text, 1);
-    expect(t).toEqual({ kind: "source-control", query: "", rangeStart: 0, rangeEnd: 1 });
+    expect(t).toEqual({
+      kind: "source-control",
+      query: "",
+      rangeStart: 0,
+      rangeEnd: 1,
+      directAttach: false,
+    });
   });
   it("matches '#42' as numeric reference", () => {
     const text = "see #42 ";
@@ -323,6 +329,25 @@ describe("detectComposerTrigger – source control", () => {
   it("does NOT match '#' mid-word", () => {
     const t = detectComposerTrigger("abc#42", 6);
     expect(t?.kind).not.toBe("source-control");
+  });
+  it("flags pure-digit '#42' query as directAttach", () => {
+    const t = detectComposerTrigger("see #42 ", 7);
+    expect(t?.kind).toBe("source-control");
+    if (t?.kind !== "source-control") return;
+    expect(t.directAttach).toBe(true);
+  });
+  it("does not flag text '#bug' query as directAttach", () => {
+    const t = detectComposerTrigger("fixing #bug now", 11);
+    expect(t?.kind).toBe("source-control");
+    if (t?.kind !== "source-control") return;
+    expect(t.directAttach).toBe(false);
+  });
+  it("does not flag URL '#https://…/9' query as directAttach", () => {
+    const text = "ref #https://github.com/foo/bar/issues/9";
+    const t = detectComposerTrigger(text, text.length);
+    expect(t?.kind).toBe("source-control");
+    if (t?.kind !== "source-control") return;
+    expect(t.directAttach).toBe(false);
   });
 });
 

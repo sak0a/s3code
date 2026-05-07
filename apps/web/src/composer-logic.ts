@@ -9,6 +9,12 @@ export interface ComposerTrigger {
   query: string;
   rangeStart: number;
   rangeEnd: number;
+  /**
+   * For `kind === "source-control"`, set when the query is a pure positive integer
+   * (e.g. `#42`). Caller can choose to direct-attach on Enter rather than opening
+   * the menu. Always `false` for other trigger kinds.
+   */
+  directAttach?: boolean;
 }
 
 const isInlineTokenSegment = (
@@ -244,11 +250,13 @@ export function detectComposerTrigger(text: string, cursorInput: number): Compos
     };
   }
   if (token.startsWith("#")) {
+    const query = token.slice(1);
     return {
       kind: "source-control",
-      query: token.slice(1),
+      query,
       rangeStart: tokenStart,
       rangeEnd: cursor,
+      directAttach: /^\d+$/.test(query),
     };
   }
   if (!token.startsWith("@")) {
