@@ -239,3 +239,57 @@ export class SourceControlRepositoryError extends Schema.TaggedErrorClass<Source
     return `Source control repository operation ${this.operation} failed for ${this.provider}: ${this.detail}`;
   }
 }
+
+export interface SourceControlDetailContentInput {
+  readonly body: string;
+  readonly comments: ReadonlyArray<{
+    readonly author: string;
+    readonly body: string;
+    readonly createdAt: string;
+  }>;
+}
+
+export interface SourceControlDetailContentOutput {
+  readonly body: string;
+  readonly comments: ReadonlyArray<{
+    readonly author: string;
+    readonly body: string;
+    readonly createdAt: string;
+  }>;
+  readonly truncated: boolean;
+}
+
+function truncateUtf8(value: string, maxBytes: number): { value: string; truncated: boolean } {
+  if (Buffer.byteLength(value, "utf8") <= maxBytes) return { value, truncated: false };
+  const buf = Buffer.from(value, "utf8").subarray(0, maxBytes);
+  // Avoid splitting a multi-byte char at the tail.
+  return { value: buf.toString("utf8"), truncated: true };
+}
+
+export function truncateSourceControlDetailContent(
+  input: SourceControlDetailContentInput,
+): SourceControlDetailContentOutput {
+  let truncated = false;
+  const { value: body, truncated: bodyCut } = truncateUtf8(
+    input.body,
+    SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES,
+  );
+  if (bodyCut) truncated = true;
+
+  let comments = input.comments;
+  if (comments.length > SOURCE_CONTROL_DETAIL_MAX_COMMENTS) {
+    comments = comments.slice(comments.length - SOURCE_CONTROL_DETAIL_MAX_COMMENTS);
+    truncated = true;
+  }
+
+  const cappedComments = comments.map((c) => {
+    const { value, truncated: cBodyCut } = truncateUtf8(
+      c.body,
+      SOURCE_CONTROL_DETAIL_COMMENT_BODY_MAX_BYTES,
+    );
+    if (cBodyCut) truncated = true;
+    return { author: c.author, body: value, createdAt: c.createdAt };
+  });
+
+  return { body, comments: cappedComments, truncated };
+}
