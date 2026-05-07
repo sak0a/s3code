@@ -290,6 +290,31 @@ describe("AzureDevOpsCli.layer", () => {
     }).pipe(Effect.provide(layer)),
   );
 
+  it.effect("getWorkItem invokes az boards work-item show with --id", () =>
+    Effect.gen(function* () {
+      mockRun.mockReturnValueOnce(
+        Effect.succeed(
+          processOutput(
+            JSON.stringify({
+              id: 42,
+              fields: {
+                "System.Title": "Detailed",
+                "System.State": "Active",
+                "System.Description": "<p>issue body</p>",
+              },
+            }),
+          ),
+        ),
+      );
+      const az = yield* AzureDevOpsCli.AzureDevOpsCli;
+      const detail = yield* az.getWorkItem({ cwd: "/repo", reference: "42" });
+      expect(detail.body.trim()).toBe("issue body");
+      const call = mockRun.mock.calls[mockRun.mock.calls.length - 1]?.[0];
+      expect(call?.args).toContain("--id");
+      expect(call?.args).toContain("42");
+    }).pipe(Effect.provide(layer)),
+  );
+
   it.effect("listWorkItems queries WIQL with state filter and decodes", () =>
     Effect.gen(function* () {
       mockRun.mockReturnValueOnce(

@@ -194,6 +194,12 @@ function normalizeChangeRequestId(reference: string): string {
   return urlMatch?.[1] ?? trimmed;
 }
 
+function normalizeWorkItemId(reference: string): string {
+  const trimmed = reference.trim().replace(/^#/, "");
+  const urlMatch = /(?:_workitems\/edit|workItems)\/(\d+)(?:\D.*)?$/i.exec(trimmed);
+  return urlMatch?.[1] ?? trimmed;
+}
+
 function toAzureStatus(state: "open" | "closed" | "merged" | "all"): string {
   switch (state) {
     case "open":
@@ -502,8 +508,32 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
         ),
       );
     },
-    getWorkItem: () =>
-      Effect.fail(new AzureDevOpsCliError({ operation: "getWorkItem", detail: "stub" })),
+    getWorkItem: (input) => {
+      const id = normalizeWorkItemId(input.reference);
+      return executeJson({
+        cwd: input.cwd,
+        args: ["boards", "work-item", "show", "--id", id],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          Effect.sync(() =>
+            AzureDevOpsWorkItems.decodeAzureDevOpsWorkItemDetailJson(raw),
+          ).pipe(
+            Effect.flatMap((decoded) =>
+              Result.isSuccess(decoded)
+                ? Effect.succeed(decoded.success)
+                : Effect.fail(
+                    new AzureDevOpsCliError({
+                      operation: "getWorkItem",
+                      detail: `Azure DevOps CLI returned invalid work item JSON: ${AzureDevOpsWorkItems.formatAzureDevOpsWorkItemDecodeError(decoded.failure)}`,
+                      cause: decoded.failure,
+                    }),
+                  ),
+            ),
+          ),
+        ),
+      );
+    },
     searchWorkItems: () =>
       Effect.fail(new AzureDevOpsCliError({ operation: "searchWorkItems", detail: "stub" })),
     searchPullRequests: () =>
