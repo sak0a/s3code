@@ -87,6 +87,7 @@ import {
 } from "./composerProviderState";
 import { ContextWindowMeter } from "./ContextWindowMeter";
 import { buildExpandedImagePreview, type ExpandedImagePreview } from "./ExpandedImagePreview";
+import { SourceControlContextChip } from "./SourceControlContextChip";
 import { basenameOfPath } from "../../vscode-icons";
 import { cn, randomUUID } from "~/lib/utils";
 import { Separator } from "../ui/separator";
@@ -2254,6 +2255,21 @@ export const ChatComposer = memo(
                   />
                 </div>
               )}
+
+              {!isComposerCollapsedMobile &&
+                !isComposerApprovalState &&
+                pendingUserInputs.length === 0 &&
+                composerSourceControlContexts.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {composerSourceControlContexts.map((ctx) => (
+                      <SourceControlContextChip
+                        key={ctx.id}
+                        context={ctx}
+                        onRemove={handleRemoveSourceControlContext}
+                      />
+                    ))}
+                  </div>
+                )}
 
               {!isComposerCollapsedMobile &&
                 !isComposerApprovalState &&
