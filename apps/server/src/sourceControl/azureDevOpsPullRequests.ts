@@ -104,3 +104,64 @@ export function decodeAzureDevOpsPullRequestJson(
   }
   return Result.fail(result.failure);
 }
+
+export interface NormalizedAzureDevOpsPullRequestDetail
+  extends NormalizedAzureDevOpsPullRequestRecord {
+  readonly body: string;
+  readonly comments: ReadonlyArray<{
+    readonly author: string;
+    readonly body: string;
+    readonly createdAt: string;
+  }>;
+}
+
+const AzureThreadCommentSchema = Schema.Struct({
+  author: Schema.optional(
+    Schema.NullOr(
+      Schema.Struct({
+        uniqueName: Schema.optional(Schema.String),
+        displayName: Schema.optional(Schema.String),
+      }),
+    ),
+  ),
+  content: Schema.optional(Schema.NullOr(Schema.String)),
+  publishedDate: Schema.optional(Schema.NullOr(Schema.String)),
+});
+
+const AzureDevOpsPullRequestDetailSchema = Schema.Struct({
+  ...AzureDevOpsPullRequestSchema.fields,
+  description: Schema.optional(Schema.NullOr(Schema.String)),
+  threads: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        comments: Schema.optional(Schema.Array(AzureThreadCommentSchema)),
+        isDeleted: Schema.optional(Schema.NullOr(Schema.Boolean)),
+      }),
+    ),
+  ),
+});
+
+const decodeAzurePullRequestDetail = decodeJsonResult(AzureDevOpsPullRequestDetailSchema);
+
+export function decodeAzureDevOpsPullRequestDetailJson(
+  raw: string,
+): Result.Result<NormalizedAzureDevOpsPullRequestDetail, Cause.Cause<Schema.SchemaError>> {
+  const result = decodeAzurePullRequestDetail(raw);
+  if (!Result.isSuccess(result)) return Result.fail(result.failure);
+  const summary = normalizeAzureDevOpsPullRequestRecord(result.success);
+  const comments = (result.success.threads ?? [])
+    .filter((t) => !t.isDeleted)
+    .flatMap((t) => t.comments ?? [])
+    .filter((c) => (c.content?.trim() ?? "").length > 0)
+    .map((c) => ({
+      author:
+        c.author?.uniqueName?.trim() ?? c.author?.displayName?.trim() ?? "unknown",
+      body: c.content ?? "",
+      createdAt: c.publishedDate ?? "",
+    }));
+  return Result.succeed({
+    ...summary,
+    body: result.success.description ?? "",
+    comments,
+  });
+}
