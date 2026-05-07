@@ -67,3 +67,17 @@ export function formatRateLimitResetLabel(resetsAt: number | undefined): string 
   const iso = new Date(resetsAt * 1000).toISOString();
   return formatRelativeTimeUntilLabel(iso);
 }
+
+/**
+ * Render a reset timestamp as a UI-ready phrase like "resets in 4h" or
+ * "expired". The shared `formatRelativeTimeUntilLabel` returns "4h left"
+ * / "Expired", which reads awkwardly when surrounded by "Resets … left"
+ * or "resets in … Expired". Centralizing the framing keeps the
+ * settings card and the chat composer popup phrased consistently.
+ */
+export function formatRateLimitResetText(resetsAt: number | undefined): string | null {
+  const label = formatRateLimitResetLabel(resetsAt);
+  if (label === null) return null;
+  if (label === "Expired") return "expired";
+  return `resets in ${label.replace(/ left$/, "")}`;
+}

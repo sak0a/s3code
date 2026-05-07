@@ -1,5 +1,15 @@
+import type {
+  ServerProviderRateLimits,
+  ServerProviderRateLimitWindow,
+} from "@t3tools/contracts";
+
 import { cn } from "~/lib/utils";
 import { type ContextWindowSnapshot, formatContextWindowTokens } from "~/lib/contextWindow";
+import {
+  clampUsedPercent,
+  describeRateLimitWindow,
+  formatRateLimitResetText,
+} from "../settings/codexUsageLimits";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 
 function formatPercentage(value: number | null): string | null {
@@ -12,8 +22,33 @@ function formatPercentage(value: number | null): string | null {
   return `${Math.round(value)}%`;
 }
 
-export function ContextWindowMeter(props: { usage: ContextWindowSnapshot }) {
-  const { usage } = props;
+function UsageLimitRow(props: {
+  readonly window: ServerProviderRateLimitWindow;
+  readonly fallbackLabel: string;
+}) {
+  const descriptor = describeRateLimitWindow(props.window);
+  const label =
+    props.window.windowDurationMins === undefined ? props.fallbackLabel : descriptor.label;
+  const used = clampUsedPercent(props.window.usedPercent);
+  const resetText = formatRateLimitResetText(props.window.resetsAt);
+
+  return (
+    <div className="flex items-baseline justify-between gap-3 whitespace-nowrap text-xs">
+      <span className="font-medium text-foreground">{label}</span>
+      <span className="text-muted-foreground">
+        {used}% used
+        {resetText ? <span className="ml-1">· {resetText}</span> : null}
+      </span>
+    </div>
+  );
+}
+
+export function ContextWindowMeter(props: {
+  usage: ContextWindowSnapshot;
+  rateLimits?: ServerProviderRateLimits | undefined;
+}) {
+  const { usage, rateLimits } = props;
+  const showUsageLimits = Boolean(rateLimits && (rateLimits.primary || rateLimits.secondary));
   const usedPercentage = formatPercentage(usage.usedPercentage);
   const normalizedPercentage = Math.max(0, Math.min(100, usage.usedPercentage ?? 0));
   const radius = 9.75;
@@ -108,6 +143,21 @@ export function ContextWindowMeter(props: { usage: ContextWindowSnapshot }) {
             </div>
           ) : null}
         </div>
+        {showUsageLimits && rateLimits ? (
+          <div className="mt-2.5 space-y-1.5 border-t border-border/60 pt-2 leading-tight">
+            <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+              Usage limits
+            </div>
+            <div className="grid gap-1">
+              {rateLimits.primary ? (
+                <UsageLimitRow window={rateLimits.primary} fallbackLabel="Short window" />
+              ) : null}
+              {rateLimits.secondary ? (
+                <UsageLimitRow window={rateLimits.secondary} fallbackLabel="Weekly" />
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </PopoverPopup>
     </Popover>
   );

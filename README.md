@@ -33,6 +33,9 @@ Implemented fork improvements include:
   opened via a 📎 button in the footer or the `#` keyboard trigger, with
   per-provider tabs, search, dedup, and stale-on-send refetch. Title, body,
   and recent comments are forwarded to the agent alongside the prompt.
+- The terminal toggle button under the chat composer now reflects the drawer's
+  state, switching between "Open Terminal" and "Close Terminal" so the action is
+  always unambiguous.
 
 ## Installation
 
