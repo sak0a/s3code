@@ -289,6 +289,71 @@ describe("GitHubCli.layer", () => {
     }).pipe(Effect.provide(layer)),
   );
 
+  describe("getIssue", () => {
+    it.effect("fetches body + comments by number reference", () =>
+      Effect.gen(function* () {
+        mockRun.mockReturnValueOnce(
+          Effect.succeed(
+            processOutput(
+              JSON.stringify({
+                number: 42,
+                title: "t",
+                url: "https://x/42",
+                state: "OPEN",
+                body: "BODY",
+                comments: [
+                  { author: { login: "bob" }, body: "hi", createdAt: "2026-03-14T10:00:00Z" },
+                ],
+              }),
+            ),
+          ),
+        );
+
+        const gh = yield* GitHubCli.GitHubCli;
+        const detail = yield* gh.getIssue({ cwd: "/tmp", reference: "42" });
+        assert.equal(detail.body, "BODY");
+        assert.equal(detail.comments[0]?.author, "bob");
+        expect(mockRun).toHaveBeenCalledWith({
+          operation: "GitHubCli.execute",
+          command: "gh",
+          args: [
+            "issue",
+            "view",
+            "42",
+            "--json",
+            "number,title,url,state,updatedAt,author,labels,body,comments",
+          ],
+          cwd: "/tmp",
+          timeoutMs: 30_000,
+        });
+      }).pipe(Effect.provide(layer)),
+    );
+
+    it.effect("passes URL as-is for cross-repo references", () =>
+      Effect.gen(function* () {
+        mockRun.mockReturnValueOnce(
+          Effect.succeed(
+            processOutput(
+              JSON.stringify({
+                number: 9,
+                title: "x",
+                url: "https://github.com/foo/bar/issues/9",
+                state: "CLOSED",
+                body: "",
+                comments: [],
+              }),
+            ),
+          ),
+        );
+
+        const gh = yield* GitHubCli.GitHubCli;
+        yield* gh.getIssue({ cwd: "/tmp", reference: "https://github.com/foo/bar/issues/9" });
+        const calledArgs = mockRun.mock.calls[0]?.[0];
+        assert.equal(calledArgs?.args[2], "https://github.com/foo/bar/issues/9");
+      }).pipe(Effect.provide(layer)),
+    );
+  });
+
   describe("listIssues", () => {
     it.effect("invokes gh issue list with correct args and decodes output", () =>
       Effect.gen(function* () {

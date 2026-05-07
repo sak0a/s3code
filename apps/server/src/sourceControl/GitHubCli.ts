@@ -436,8 +436,34 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
               ),
         ),
       ),
-    getIssue: () =>
-      Effect.fail(new GitHubCliError({ operation: "getIssue", detail: "stub" })),
+    getIssue: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: [
+          "issue",
+          "view",
+          input.reference,
+          "--json",
+          "number,title,url,state,updatedAt,author,labels,body,comments",
+        ],
+      }).pipe(
+        Effect.map((r) => r.stdout.trim()),
+        Effect.flatMap((raw) =>
+          Effect.sync(() => GitHubIssues.decodeGitHubIssueDetailJson(raw)).pipe(
+            Effect.flatMap((decoded) =>
+              Result.isSuccess(decoded)
+                ? Effect.succeed(decoded.success)
+                : Effect.fail(
+                    new GitHubCliError({
+                      operation: "getIssue",
+                      detail: `GitHub CLI returned invalid issue JSON: ${GitHubIssues.formatGitHubIssueDecodeError(decoded.failure)}`,
+                      cause: decoded.failure,
+                    }),
+                  ),
+            ),
+          ),
+        ),
+      ),
     searchIssues: () =>
       Effect.fail(new GitHubCliError({ operation: "searchIssues", detail: "stub" })),
     searchPullRequests: () =>
