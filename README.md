@@ -40,7 +40,7 @@ Implemented fork improvements include:
 ## Installation
 
 > [!WARNING]
-> T3 Code currently supports Codex, Claude, and OpenCode.
+> S3 Code currently supports Codex, Claude, OpenCode and (Early Access Cursor)
 > Install and authenticate at least one provider before use:
 >
 > - Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
@@ -50,29 +50,23 @@ Implemented fork improvements include:
 ### Run without installing
 
 ```bash
-npx t3
+npx s3
 ```
 
 ### Desktop app
 
-Install the latest version of the desktop app from [GitHub Releases](https://github.com/pingdotgg/t3code/releases), or from your favorite package registry:
-
-#### Windows (`winget`)
-
-```bash
-winget install T3Tools.T3Code
-```
+Install the latest version of the desktop app from [GitHub Releases](https://github.com/sak0a/s3code/releases), or from your favorite package registry:
 
 #### macOS (Homebrew)
 
 ```bash
-brew install --cask t3-code
+brew install --cask s3-code
 ```
 
 #### Arch Linux (AUR)
 
 ```bash
-yay -S t3code-bin
+yay -S s3code-bin
 ```
 
 ## Some notes
@@ -94,5 +88,3 @@ bun install .
 ```
 
 Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening an issue or PR.
-
-Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv).
