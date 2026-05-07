@@ -380,6 +380,7 @@ export interface ChatComposerHandle {
     prompt: string;
     images: ComposerImageAttachment[];
     terminalContexts: TerminalContextDraft[];
+    sourceControlContexts: ComposerSourceControlContext[];
     selectedPromptEffort: string | null;
     selectedModelOptionsForDispatch: unknown;
     selectedModelSelection: ModelSelection;
@@ -2103,6 +2104,7 @@ export const ChatComposer = memo(
           prompt: promptRef.current,
           images: composerImagesRef.current,
           terminalContexts: composerTerminalContextsRef.current,
+          sourceControlContexts: composerSourceControlContexts,
           selectedPromptEffort,
           selectedModelOptionsForDispatch,
           selectedModelSelection,
@@ -2115,6 +2117,7 @@ export const ChatComposer = memo(
         activeThread,
         composerDraftTarget,
         composerCursor,
+        composerSourceControlContexts,
         composerTerminalContexts,
         insertComposerDraftTerminalContext,
         promptRef,

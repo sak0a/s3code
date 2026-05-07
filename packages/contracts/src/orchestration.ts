@@ -16,6 +16,7 @@ import {
   TurnId,
 } from "./baseSchemas.ts";
 import { ProviderInstanceId } from "./providerInstance.ts";
+import { ComposerSourceControlContext } from "./sourceControl.ts";
 
 export const ORCHESTRATION_WS_METHODS = {
   dispatchCommand: "orchestration.dispatchCommand",
@@ -576,6 +577,7 @@ export const ThreadTurnStartCommand = Schema.Struct({
   ),
   bootstrap: Schema.optional(ThreadTurnStartBootstrap),
   sourceProposedPlan: Schema.optional(SourceProposedPlanReference),
+  sourceControlContexts: Schema.optional(Schema.Array(ComposerSourceControlContext)),
   createdAt: IsoDateTime,
 });
 
@@ -595,6 +597,7 @@ const ClientThreadTurnStartCommand = Schema.Struct({
   interactionMode: ProviderInteractionMode,
   bootstrap: Schema.optional(ThreadTurnStartBootstrap),
   sourceProposedPlan: Schema.optional(SourceProposedPlanReference),
+  sourceControlContexts: Schema.optional(Schema.Array(ComposerSourceControlContext)),
   createdAt: IsoDateTime,
 });
 

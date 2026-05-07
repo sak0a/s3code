@@ -2685,6 +2685,7 @@ export default function ChatView(props: ChatViewProps) {
     const {
       images: composerImages,
       terminalContexts: composerTerminalContexts,
+      sourceControlContexts: composerSourceControlContexts,
       selectedProvider: ctxSelectedProvider,
       selectedModel: ctxSelectedModel,
       selectedProviderModels: ctxSelectedProviderModels,
@@ -2925,6 +2926,9 @@ export default function ChatView(props: ChatViewProps) {
         runtimeMode,
         interactionMode,
         ...(bootstrap ? { bootstrap } : {}),
+        ...(composerSourceControlContexts.length > 0
+          ? { sourceControlContexts: composerSourceControlContexts }
+          : {}),
         createdAt: messageCreatedAt,
       });
       turnStartSucceeded = true;
