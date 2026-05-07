@@ -57,7 +57,10 @@ import { DateTime } from "effect";
 import {
   issueDetailQueryOptions,
   changeRequestDetailQueryOptions,
+  issueListQueryOptions,
+  changeRequestListQueryOptions,
 } from "../../lib/sourceControlContextRpc";
+import { searchSourceControlSummaries } from "./composerSourceControlContextSearch";
 import { ContextPickerButton } from "./ContextPickerButton";
 import {
   type TerminalContextDraft,
@@ -873,6 +876,26 @@ export const ChatComposer = memo(
     );
     const workspaceEntries = workspaceEntriesQuery.data?.entries ?? EMPTY_PROJECT_ENTRIES;
 
+    const isSourceControlTrigger = composerTriggerKind === "source-control";
+    const issueListQuery = useQuery(
+      issueListQueryOptions({
+        environmentId,
+        cwd: gitCwd,
+        state: "open",
+        limit: 50,
+        enabled: isSourceControlTrigger,
+      }),
+    );
+    const changeRequestListQuery = useQuery(
+      changeRequestListQueryOptions({
+        environmentId,
+        cwd: gitCwd,
+        state: "open",
+        limit: 50,
+        enabled: isSourceControlTrigger,
+      }),
+    );
+
     const composerMenuItems = useMemo<ComposerCommandItem[]>(() => {
       if (!composerTrigger) return [];
       if (composerTrigger.kind === "path") {
@@ -942,8 +965,45 @@ export const ChatComposer = memo(
             (skill.scope ? `${skill.scope} skill` : "Run provider skill"),
         }));
       }
+      if (composerTrigger.kind === "source-control") {
+        const query = composerTrigger.query;
+        const issues = issueListQuery.data ?? [];
+        const prs = changeRequestListQuery.data ?? [];
+        const filteredIssues = searchSourceControlSummaries(issues, query);
+        // ChangeRequest has number/title but is a different type; filter manually
+        const q = query.trim().toLowerCase();
+        const filteredPrs = q.length === 0
+          ? prs
+          : prs.filter((pr) => {
+              const num = String(pr.number);
+              const title = pr.title.toLowerCase();
+              return num === q || num.startsWith(q) || title.includes(q);
+            });
+        const issueItems: ComposerCommandItem[] = filteredIssues.map((issue) => ({
+          id: `source-control-issue:${issue.provider}:${issue.number}`,
+          type: "source-control-issue" as const,
+          summary: issue,
+          label: `#${issue.number}`,
+          description: issue.title,
+        }));
+        const prItems: ComposerCommandItem[] = filteredPrs.map((pr) => ({
+          id: `source-control-pr:${pr.provider}:${pr.number}`,
+          type: "source-control-pr" as const,
+          summary: pr,
+          label: `#${pr.number}`,
+          description: pr.title,
+        }));
+        return [...issueItems, ...prItems];
+      }
       return [];
-    }, [composerTrigger, selectedProvider, selectedProviderStatus, workspaceEntries]);
+    }, [
+      composerTrigger,
+      issueListQuery.data,
+      changeRequestListQuery.data,
+      selectedProvider,
+      selectedProviderStatus,
+      workspaceEntries,
+    ]);
 
     const composerMenuOpen = Boolean(composerTrigger);
     const composerMenuSearchKey = composerTrigger
@@ -1008,13 +1068,18 @@ export const ChatComposer = memo(
     ]);
 
     const isComposerMenuLoading =
-      composerTriggerKind === "path" &&
-      ((pathTriggerQuery.length > 0 && composerPathQueryDebouncer.state.isPending) ||
-        workspaceEntriesQuery.isLoading ||
-        workspaceEntriesQuery.isFetching);
+      (composerTriggerKind === "path" &&
+        ((pathTriggerQuery.length > 0 && composerPathQueryDebouncer.state.isPending) ||
+          workspaceEntriesQuery.isLoading ||
+          workspaceEntriesQuery.isFetching)) ||
+      (composerTriggerKind === "source-control" &&
+        (issueListQuery.isLoading || changeRequestListQuery.isLoading));
     const composerMenuEmptyState = useMemo(() => {
       if (composerTriggerKind === "skill") {
         return "No skills found. Try / to browse provider commands.";
+      }
+      if (composerTriggerKind === "source-control") {
+        return "No matching issues or pull requests.";
       }
       return composerTriggerKind === "path"
         ? "No matching files or folders."
@@ -1578,8 +1643,38 @@ export const ChatComposer = memo(
           }
           return;
         }
+        if (item.type === "source-control-issue") {
+          // Delete the `#...` text range from the composer
+          const applied = applyPromptReplacement(trigger.rangeStart, trigger.rangeEnd, "", {
+            expectedText: snapshot.value.slice(trigger.rangeStart, trigger.rangeEnd),
+          });
+          if (applied) {
+            setComposerHighlightedItemId(null);
+          }
+          // Fetch detail and attach chip (event-driven, non-blocking)
+          void handleSelectIssue(item.summary);
+          return;
+        }
+        if (item.type === "source-control-pr") {
+          // Delete the `#...` text range from the composer
+          const applied = applyPromptReplacement(trigger.rangeStart, trigger.rangeEnd, "", {
+            expectedText: snapshot.value.slice(trigger.rangeStart, trigger.rangeEnd),
+          });
+          if (applied) {
+            setComposerHighlightedItemId(null);
+          }
+          // Fetch detail and attach chip (event-driven, non-blocking)
+          void handleSelectChangeRequest(item.summary);
+          return;
+        }
       },
-      [applyPromptReplacement, handleInteractionModeChange, resolveActiveComposerTrigger],
+      [
+        applyPromptReplacement,
+        handleInteractionModeChange,
+        handleSelectIssue,
+        handleSelectChangeRequest,
+        resolveActiveComposerTrigger,
+      ],
     );
 
     const onComposerMenuItemHighlighted = useCallback(
