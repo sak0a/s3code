@@ -714,6 +714,52 @@ it.effect("searchPullRequests forwards BBQL to /pullrequests endpoint", () => {
   }).pipe(Effect.provide(layer));
 });
 
+it.effect("getPullRequestDetail returns body and comments via two REST calls", () => {
+  const { execute, layer } = makeLayer({
+    response: (request) => {
+      if (request.url.includes("/comments")) {
+        return Response.json({
+          values: [
+            {
+              user: { username: "reviewer", display_name: "Reviewer" },
+              content: { raw: "looks good" },
+              created_on: "2026-03-14T10:00:00Z",
+            },
+          ],
+        });
+      }
+      return Response.json({
+        id: 12,
+        title: "Add feature",
+        state: "OPEN",
+        summary: { raw: "PR body text" },
+        links: {
+          html: { href: "https://bitbucket.org/pingdotgg/t3code/pull-requests/12" },
+        },
+        source: {
+          branch: { name: "feature/add" },
+          repository: { full_name: "pingdotgg/t3code" },
+        },
+        destination: {
+          branch: { name: "main" },
+          repository: { full_name: "pingdotgg/t3code" },
+        },
+      });
+    },
+  });
+
+  return Effect.gen(function* () {
+    const bitbucket = yield* BitbucketApi.BitbucketApi;
+    const detail = yield* bitbucket.getPullRequestDetail({ cwd: "/repo", reference: "12" });
+    assert.strictEqual(detail.number, 12);
+    assert.strictEqual(detail.body, "PR body text");
+    assert.strictEqual(detail.comments.length, 1);
+    assert.strictEqual(detail.comments[0]?.author, "reviewer");
+    // Two calls: PR + comments
+    assert.strictEqual(execute.mock.calls.length, 2);
+  }).pipe(Effect.provide(layer));
+});
+
 it.effect("listIssues fetches open issues and returns normalized records", () => {
   const { execute, layer } = makeLayer({
     response: () =>

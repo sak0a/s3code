@@ -906,8 +906,46 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
           );
         }),
       ),
-    getPullRequestDetail: () =>
-      Effect.fail(new BitbucketApiError({ operation: "getPullRequestDetail", detail: "stub" })),
+    getPullRequestDetail: (input) => {
+      const referenceId =
+        input.reference.trim().replace(/^#/, "").split("/").pop() ?? input.reference;
+      return resolveRepository({
+        cwd: input.cwd,
+        ...(input.context ? { context: input.context } : {}),
+      }).pipe(
+        Effect.flatMap((repo) => {
+          const prPath = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/pullrequests/${encodeURIComponent(referenceId)}`;
+          const commentsPath = `${prPath}/comments?pagelen=10&sort=-created_on`;
+          const pr = executeJson(
+            "getPullRequestDetail",
+            HttpClientRequest.get(apiUrl(prPath)),
+            BitbucketPullRequests.BitbucketPullRequestDetailSchema,
+          );
+          const comments = executeJson(
+            "getPullRequestComments",
+            HttpClientRequest.get(apiUrl(commentsPath)),
+            BitbucketIssues.BitbucketCommentListSchema,
+          ).pipe(
+            Effect.map(BitbucketIssues.normalizeBitbucketCommentList),
+            Effect.catch((err) =>
+              isBitbucketApiError(err) && err.status === 404
+                ? Effect.succeed([])
+                : Effect.fail(err),
+            ),
+          );
+          return Effect.all([pr, comments], { concurrency: 2 }).pipe(
+            Effect.map(([raw, normalizedComments]) => {
+              const summary = BitbucketPullRequests.normalizeBitbucketPullRequestRecord(raw);
+              return {
+                ...summary,
+                body: raw.summary?.raw ?? "",
+                comments: normalizedComments,
+              };
+            }),
+          );
+        }),
+      );
+    },
   });
 });
 
