@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Schema } from "effect";
+import { DateTime, Option, Schema } from "effect";
 
 import {
   ProviderEvent,
@@ -150,6 +150,81 @@ describe("ProviderSendTurnInput", () => {
     expect(parsed.modelSelection?.instanceId).toBe("claudeAgent");
     expect(getOptionValue(parsed.modelSelection?.options, "effort")).toBe("ultrathink");
     expect(getOptionValue(parsed.modelSelection?.options, "fastMode")).toBe(true);
+  });
+
+  it("round-trips sourceControlContexts with an issue context and a change-request context", () => {
+    const fetchedAt = DateTime.fromDateUnsafe(new Date("2024-06-01T14:00:00.000Z"));
+    const staleAfter = DateTime.fromDateUnsafe(new Date("2024-06-01T14:05:00.000Z"));
+    const commentCreatedAt = DateTime.fromDateUnsafe(new Date("2024-06-01T13:00:00.000Z"));
+    const issueUpdatedAt = DateTime.fromDateUnsafe(new Date("2024-06-01T12:00:00.000Z"));
+
+    // Build a typed value matching ProviderSendTurnInput.Type
+    const input = {
+      threadId: "thread-1",
+      sourceControlContexts: [
+        {
+          id: "ctx-issue-1",
+          kind: "issue",
+          provider: "github",
+          reference: "owner/repo#42",
+          detail: {
+            provider: "github",
+            number: 42,
+            title: "Fix login bug",
+            url: "https://github.com/owner/repo/issues/42",
+            state: "open",
+            author: "alice",
+            updatedAt: Option.some(issueUpdatedAt),
+            body: "The login button does not work.",
+            comments: [
+              {
+                author: "bob",
+                body: "I can reproduce this.",
+                createdAt: commentCreatedAt,
+              },
+            ],
+            truncated: false,
+          },
+          fetchedAt,
+          staleAfter,
+        },
+        {
+          id: "ctx-cr-1",
+          kind: "change-request",
+          provider: "github",
+          reference: "owner/repo#7",
+          detail: {
+            provider: "github",
+            number: 7,
+            title: "Add dark mode",
+            url: "https://github.com/owner/repo/pull/7",
+            baseRefName: "main",
+            headRefName: "feature/dark-mode",
+            state: "open",
+            updatedAt: Option.none(),
+            body: "Implements dark mode toggle.",
+            comments: [],
+            truncated: false,
+          },
+          fetchedAt,
+          staleAfter,
+        },
+      ],
+    };
+
+    const encodeSync = Schema.encodeSync(ProviderSendTurnInput);
+    const decodeUnknownSync = Schema.decodeUnknownSync(ProviderSendTurnInput);
+
+    const encoded = encodeSync(input);
+    const decoded = decodeUnknownSync(encoded);
+
+    expect(decoded.sourceControlContexts).toHaveLength(2);
+    expect(decoded.sourceControlContexts![0]!.id).toBe("ctx-issue-1");
+    expect(decoded.sourceControlContexts![0]!.kind).toBe("issue");
+    expect(decoded.sourceControlContexts![1]!.id).toBe("ctx-cr-1");
+    expect(decoded.sourceControlContexts![1]!.kind).toBe("change-request");
+    expect(Option.isSome(decoded.sourceControlContexts![0]!.detail.updatedAt)).toBe(true);
+    expect(Option.isNone(decoded.sourceControlContexts![1]!.detail.updatedAt)).toBe(true);
   });
 });
 

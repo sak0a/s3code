@@ -22,6 +22,9 @@ import {
   RuntimeMode,
 } from "./orchestration.ts";
 import { ProviderInstanceId, ProviderDriverKind } from "./providerInstance.ts";
+import { ComposerSourceControlContext } from "./sourceControl.ts";
+
+export const PROVIDER_SEND_TURN_MAX_SOURCE_CONTROL_CONTEXTS = 10;
 
 const ProviderSessionStatus = Schema.Literals([
   "connecting",
@@ -71,6 +74,11 @@ export const ProviderSendTurnInput = Schema.Struct({
   ),
   attachments: Schema.optional(
     Schema.Array(ChatAttachment).check(Schema.isMaxLength(PROVIDER_SEND_TURN_MAX_ATTACHMENTS)),
+  ),
+  sourceControlContexts: Schema.optional(
+    Schema.Array(ComposerSourceControlContext).check(
+      Schema.isMaxLength(PROVIDER_SEND_TURN_MAX_SOURCE_CONTROL_CONTEXTS),
+    ),
   ),
   modelSelection: Schema.optional(ModelSelection),
   interactionMode: Schema.optional(ProviderInteractionMode),
