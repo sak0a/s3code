@@ -11,14 +11,9 @@ import {
 } from "~/lib/sourceControlContextRpc";
 import { searchSourceControlSummaries } from "./composerSourceControlContextSearch";
 import { ContextPickerList } from "./ContextPickerList";
-import { ContextPickerTabs, type ContextPickerTab } from "./ContextPickerTabs";
+import { ContextPickerTabs } from "./ContextPickerTabs";
 
 type TabId = "issues" | "prs";
-
-const TABS: ReadonlyArray<ContextPickerTab> = [
-  { id: "issues", label: "GH Issues" },
-  { id: "prs", label: "GH PRs" },
-];
 
 export function ContextPickerPopup(props: {
   environmentId: EnvironmentId | null;
@@ -169,7 +164,10 @@ export function ContextPickerPopup(props: {
         <>
           {/* Tabs */}
           <ContextPickerTabs
-            tabs={TABS}
+            tabs={[
+              { id: "issues", label: "GH Issues", count: cachedIssues.length },
+              { id: "prs", label: "GH PRs", count: cachedPrs.length },
+            ]}
             activeId={activeTab}
             onSelect={(id) => setActiveTab(id as TabId)}
           />
