@@ -111,6 +111,7 @@ import * as VcsDriverRegistry from "./vcs/VcsDriverRegistry.ts";
 import * as VcsProvisioningService from "./vcs/VcsProvisioningService.ts";
 import * as GitWorkflowService from "./git/GitWorkflowService.ts";
 import * as SourceControlRepositoryService from "./sourceControl/SourceControlRepositoryService.ts";
+import * as SourceControlProviderRegistry from "./sourceControl/SourceControlProviderRegistry.ts";
 import { ServerSecretStoreLive } from "./auth/Layers/ServerSecretStore.ts";
 import { ServerAuthLive } from "./auth/Layers/ServerAuth.ts";
 
@@ -543,6 +544,14 @@ const buildAppUnderTest = (options?: {
       Layer.provide(
         Layer.mock(SourceControlRepositoryService.SourceControlRepositoryService)({
           ...options?.layers?.sourceControlRepositoryService,
+        }),
+      ),
+      Layer.provide(
+        Layer.mock(SourceControlProviderRegistry.SourceControlProviderRegistry)({
+          get: () => Effect.die("not implemented in test"),
+          resolveHandle: () => Effect.die("not implemented in test"),
+          resolve: () => Effect.die("not implemented in test"),
+          discover: Effect.die("not implemented in test"),
         }),
       ),
       Layer.provideMerge(vcsStatusBroadcasterLayer),
