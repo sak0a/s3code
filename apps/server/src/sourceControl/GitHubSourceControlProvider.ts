@@ -256,12 +256,10 @@ export const make = Effect.fn("makeGitHubSourceControlProvider")(function* () {
           Effect.mapError((error) => providerError("listIssues", error)),
         ),
     getIssue: (input) =>
-      github
-        .getIssue({ cwd: input.cwd, reference: input.reference })
-        .pipe(
-          Effect.map(toIssueDetail),
-          Effect.mapError((error) => providerError("getIssue", error)),
-        ),
+      github.getIssue({ cwd: input.cwd, reference: input.reference }).pipe(
+        Effect.map(toIssueDetail),
+        Effect.mapError((error) => providerError("getIssue", error)),
+      ),
     searchIssues: (input) =>
       github
         .searchIssues({
@@ -285,12 +283,10 @@ export const make = Effect.fn("makeGitHubSourceControlProvider")(function* () {
           Effect.mapError((error) => providerError("searchChangeRequests", error)),
         ),
     getChangeRequestDetail: (input) =>
-      github
-        .getPullRequestDetail({ cwd: input.cwd, reference: input.reference })
-        .pipe(
-          Effect.map(toChangeRequestDetail),
-          Effect.mapError((error) => providerError("getChangeRequestDetail", error)),
-        ),
+      github.getPullRequestDetail({ cwd: input.cwd, reference: input.reference }).pipe(
+        Effect.map(toChangeRequestDetail),
+        Effect.mapError((error) => providerError("getChangeRequestDetail", error)),
+      ),
   });
 });
 

@@ -53,10 +53,7 @@ export function SourceControlContextChip(props: SourceControlContextChipProps) {
     <Tooltip>
       <TooltipTrigger
         render={
-          <span
-            className={COMPOSER_INLINE_CHIP_CLASS_NAME}
-            data-context-id={context.id}
-          >
+          <span className={COMPOSER_INLINE_CHIP_CLASS_NAME} data-context-id={context.id}>
             <Icon
               className={cn(COMPOSER_INLINE_CHIP_ICON_CLASS_NAME, "size-3.5")}
               aria-hidden="true"

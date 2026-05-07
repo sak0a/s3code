@@ -151,8 +151,7 @@ it.effect("dispatches listIssues to the GitHub provider for GitHub remotes", () 
     const registry = yield* makeRegistry({
       remotes: [{ name: "origin", url: "git@github.com:pingdotgg/t3code.git" }],
       githubCli: {
-        listIssues: (_input) =>
-          Effect.tap(Effect.succeed([]), () => Ref.set(called, true)),
+        listIssues: (_input) => Effect.tap(Effect.succeed([]), () => Ref.set(called, true)),
       },
     });
 
@@ -163,61 +162,71 @@ it.effect("dispatches listIssues to the GitHub provider for GitHub remotes", () 
   }),
 );
 
-it.effect("dispatches getIssue, searchIssues, searchChangeRequests, and getChangeRequestDetail to the GitHub provider", () =>
-  Effect.gen(function* () {
-    const getIssueCalled = yield* Ref.make(false);
-    const searchIssuesCalled = yield* Ref.make(false);
-    const searchChangeRequestsCalled = yield* Ref.make(false);
-    const getChangeRequestDetailCalled = yield* Ref.make(false);
+it.effect(
+  "dispatches getIssue, searchIssues, searchChangeRequests, and getChangeRequestDetail to the GitHub provider",
+  () =>
+    Effect.gen(function* () {
+      const getIssueCalled = yield* Ref.make(false);
+      const searchIssuesCalled = yield* Ref.make(false);
+      const searchChangeRequestsCalled = yield* Ref.make(false);
+      const getChangeRequestDetailCalled = yield* Ref.make(false);
 
-    const registry = yield* makeRegistry({
-      remotes: [{ name: "origin", url: "git@github.com:pingdotgg/t3code.git" }],
-      githubCli: {
-        getIssue: (_input) =>
-          Effect.tap(
-            Effect.succeed({
-              number: 1,
-              title: "Test issue",
-              url: "https://github.com/pingdotgg/t3code/issues/1",
-              state: "open" as const,
-              author: null,
-              updatedAt: Option.none(),
-              labels: [],
-              body: "body",
-              comments: [],
-            }),
-            () => Ref.set(getIssueCalled, true),
-          ),
-        searchIssues: (_input) =>
-          Effect.tap(Effect.succeed([]), () => Ref.set(searchIssuesCalled, true)),
-        searchPullRequests: (_input) =>
-          Effect.tap(Effect.succeed([]), () => Ref.set(searchChangeRequestsCalled, true)),
-        getPullRequestDetail: (_input) =>
-          Effect.tap(
-            Effect.succeed({
-              number: 1,
-              title: "Test PR",
-              url: "https://github.com/pingdotgg/t3code/pull/1",
-              baseRefName: "main",
-              headRefName: "feature/test",
-              body: "body",
-              comments: [],
-            }),
-            () => Ref.set(getChangeRequestDetailCalled, true),
-          ),
-      },
-    });
+      const registry = yield* makeRegistry({
+        remotes: [{ name: "origin", url: "git@github.com:pingdotgg/t3code.git" }],
+        githubCli: {
+          getIssue: (_input) =>
+            Effect.tap(
+              Effect.succeed({
+                number: 1,
+                title: "Test issue",
+                url: "https://github.com/pingdotgg/t3code/issues/1",
+                state: "open" as const,
+                author: null,
+                updatedAt: Option.none(),
+                labels: [],
+                body: "body",
+                comments: [],
+              }),
+              () => Ref.set(getIssueCalled, true),
+            ),
+          searchIssues: (_input) =>
+            Effect.tap(Effect.succeed([]), () => Ref.set(searchIssuesCalled, true)),
+          searchPullRequests: (_input) =>
+            Effect.tap(Effect.succeed([]), () => Ref.set(searchChangeRequestsCalled, true)),
+          getPullRequestDetail: (_input) =>
+            Effect.tap(
+              Effect.succeed({
+                number: 1,
+                title: "Test PR",
+                url: "https://github.com/pingdotgg/t3code/pull/1",
+                baseRefName: "main",
+                headRefName: "feature/test",
+                body: "body",
+                comments: [],
+              }),
+              () => Ref.set(getChangeRequestDetailCalled, true),
+            ),
+        },
+      });
 
-    const provider = yield* registry.resolve({ cwd: "/repo" });
+      const provider = yield* registry.resolve({ cwd: "/repo" });
 
-    yield* provider.getIssue({ cwd: "/repo", reference: "1" });
-    yield* provider.searchIssues({ cwd: "/repo", query: "bug" });
-    yield* provider.searchChangeRequests({ cwd: "/repo", query: "fix" });
-    yield* provider.getChangeRequestDetail({ cwd: "/repo", reference: "1" });
+      yield* provider.getIssue({ cwd: "/repo", reference: "1" });
+      yield* provider.searchIssues({ cwd: "/repo", query: "bug" });
+      yield* provider.searchChangeRequests({ cwd: "/repo", query: "fix" });
+      yield* provider.getChangeRequestDetail({ cwd: "/repo", reference: "1" });
 
-    assert.strictEqual(yield* Ref.get(getIssueCalled), true, "getIssue should be called");
-    assert.strictEqual(yield* Ref.get(searchIssuesCalled), true, "searchIssues should be called");
-    assert.strictEqual(yield* Ref.get(searchChangeRequestsCalled), true, "searchChangeRequests should be called");
-    assert.strictEqual(yield* Ref.get(getChangeRequestDetailCalled), true, "getChangeRequestDetail should be called");
-  }),
+      assert.strictEqual(yield* Ref.get(getIssueCalled), true, "getIssue should be called");
+      assert.strictEqual(yield* Ref.get(searchIssuesCalled), true, "searchIssues should be called");
+      assert.strictEqual(
+        yield* Ref.get(searchChangeRequestsCalled),
+        true,
+        "searchChangeRequests should be called",
+      );
+      assert.strictEqual(
+        yield* Ref.get(getChangeRequestDetailCalled),
+        true,
+        "getChangeRequestDetail should be called",
+      );
+    }),
 );

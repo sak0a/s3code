@@ -4,9 +4,30 @@ import type { SourceControlIssueSummary } from "@t3tools/contracts";
 import { searchSourceControlSummaries } from "./composerSourceControlContextSearch";
 
 const summaries: SourceControlIssueSummary[] = [
-  { provider: "github", number: 42 as any, title: "Remove stale todos_manager.html" as any, url: "u" as any, state: "open", updatedAt: Option.none() },
-  { provider: "github", number: 41 as any, title: "remote-install.sh shows wrong port" as any, url: "u" as any, state: "open", updatedAt: Option.none() },
-  { provider: "github", number: 40 as any, title: "AK-47 keychain canvas position not calibrated" as any, url: "u" as any, state: "open", updatedAt: Option.none() },
+  {
+    provider: "github",
+    number: 42 as any,
+    title: "Remove stale todos_manager.html" as any,
+    url: "u" as any,
+    state: "open",
+    updatedAt: Option.none(),
+  },
+  {
+    provider: "github",
+    number: 41 as any,
+    title: "remote-install.sh shows wrong port" as any,
+    url: "u" as any,
+    state: "open",
+    updatedAt: Option.none(),
+  },
+  {
+    provider: "github",
+    number: 40 as any,
+    title: "AK-47 keychain canvas position not calibrated" as any,
+    url: "u" as any,
+    state: "open",
+    updatedAt: Option.none(),
+  },
 ];
 
 describe("searchSourceControlSummaries", () => {
@@ -22,7 +43,17 @@ describe("searchSourceControlSummaries", () => {
     expect(result[0]?.number).toBe(42);
   });
   it("ranks prefix matches above substring matches", () => {
-    const more = [...summaries, { provider: "github" as const, number: 1 as any, title: "ak-47 followup" as any, url: "u" as any, state: "open" as const, updatedAt: Option.none() }];
+    const more = [
+      ...summaries,
+      {
+        provider: "github" as const,
+        number: 1 as any,
+        title: "ak-47 followup" as any,
+        url: "u" as any,
+        state: "open" as const,
+        updatedAt: Option.none(),
+      },
+    ];
     const result = searchSourceControlSummaries(more, "ak-47");
     expect(result[0]?.number).toBe(1);
   });

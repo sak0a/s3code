@@ -16,40 +16,40 @@
 
 ## File Structure (preview)
 
-| Path | Status | Responsibility |
-|---|---|---|
-| `packages/contracts/src/sourceControl.ts` | modify | Add issue + detail + composer-context schemas + token caps. |
-| `packages/contracts/src/provider.ts` | modify | Extend `ProviderSendTurnInput` with `sourceControlContexts`. |
-| `apps/server/src/sourceControl/gitHubIssues.ts` | create | `gh` JSON decoders for issue list/detail. |
-| `apps/server/src/sourceControl/gitHubIssues.test.ts` | create | Decoder unit tests. |
-| `apps/server/src/sourceControl/GitHubCli.ts` | modify | Add `listIssues`, `getIssue`, `searchIssues`, `searchPullRequests`, extend `getPullRequest` to fetch body+comments. |
-| `apps/server/src/sourceControl/GitHubCli.test.ts` | modify | Unit tests for new CLI invocations + error normalization. |
-| `apps/server/src/sourceControl/SourceControlProvider.ts` | modify | Extend `SourceControlProviderShape` with new methods. |
-| `apps/server/src/sourceControl/GitHubSourceControlProvider.ts` | modify | Wire new methods to `GitHubCli`. |
-| `apps/server/src/sourceControl/GitHubSourceControlProvider.test.ts` | modify | Provider-level tests for new methods. |
-| `apps/server/src/sourceControl/GitLabSourceControlProvider.ts` | modify | Stub new methods → `unsupported`. |
-| `apps/server/src/sourceControl/BitbucketSourceControlProvider.ts` | modify | Stub new methods → `unsupported`. |
-| `apps/server/src/sourceControl/AzureDevOpsSourceControlProvider.ts` | modify | Stub new methods → `unsupported`. |
-| `apps/server/src/sourceControl/SourceControlProviderRegistry.ts` | modify | Dispatch new methods + extend `unsupported` fallback. |
-| `apps/server/src/sourceControl/SourceControlProviderRegistry.test.ts` | modify | Dispatch tests for new methods. |
-| `apps/server/src/wsServer.ts` | modify | Add WS routes for new operations. |
-| `apps/web/src/composerDraftStore.ts` | modify | Add `sourceControlContexts` slice + actions. |
-| `apps/web/src/composerDraftStore.test.tsx` | modify | Tests for new slice + dedupe + clear-on-send. |
-| `apps/web/src/composer-logic.ts` | modify | `#` trigger detection (`detectComposerTrigger`). |
-| `apps/web/src/composer-logic.test.ts` | modify | Tests for `#` trigger detection. |
-| `apps/web/src/components/chat/ContextPickerList.tsx` | create | Virtualized list of issue/PR summaries. |
-| `apps/web/src/components/chat/ContextPickerTabs.tsx` | create | Tab strip (`GH Issues`, `GH PRs`). |
-| `apps/web/src/components/chat/ContextPickerPopup.tsx` | create | Popover content (search + tabs + list + paperclip). |
-| `apps/web/src/components/chat/ContextPickerButton.tsx` | create | Composer-footer button. |
-| `apps/web/src/components/chat/SourceControlContextChip.tsx` | create | Chip rendered in composer above textarea. |
-| `apps/web/src/components/chat/SourceControlContextChip.test.tsx` | create | Chip render + dismiss tests. |
-| `apps/web/src/components/chat/ContextPickerPopup.browser.tsx` | create | Browser test for popup flow. |
-| `apps/web/src/components/chat/composerSourceControlContextSearch.ts` | create | Client-side fuzzy filter for cached lists. |
-| `apps/web/src/components/chat/composerSourceControlContextSearch.test.ts` | create | Filter ranking tests. |
-| `apps/web/src/components/chat/ComposerCommandMenu.tsx` | modify | New item types `source-control-issue` / `source-control-pr`. |
-| `apps/web/src/components/chat/ChatComposer.tsx` | modify | Render button, chip row, wire `#` trigger to command menu. |
-| `apps/web/src/components/ChatView.logic.ts` | modify | Serialize `sourceControlContexts` into turn payload. |
-| `apps/web/src/lib/sourceControlContextRpc.ts` | create | Thin TanStack Query helpers for the new WS routes. |
+| Path                                                                      | Status | Responsibility                                                                                                      |
+| ------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------- |
+| `packages/contracts/src/sourceControl.ts`                                 | modify | Add issue + detail + composer-context schemas + token caps.                                                         |
+| `packages/contracts/src/provider.ts`                                      | modify | Extend `ProviderSendTurnInput` with `sourceControlContexts`.                                                        |
+| `apps/server/src/sourceControl/gitHubIssues.ts`                           | create | `gh` JSON decoders for issue list/detail.                                                                           |
+| `apps/server/src/sourceControl/gitHubIssues.test.ts`                      | create | Decoder unit tests.                                                                                                 |
+| `apps/server/src/sourceControl/GitHubCli.ts`                              | modify | Add `listIssues`, `getIssue`, `searchIssues`, `searchPullRequests`, extend `getPullRequest` to fetch body+comments. |
+| `apps/server/src/sourceControl/GitHubCli.test.ts`                         | modify | Unit tests for new CLI invocations + error normalization.                                                           |
+| `apps/server/src/sourceControl/SourceControlProvider.ts`                  | modify | Extend `SourceControlProviderShape` with new methods.                                                               |
+| `apps/server/src/sourceControl/GitHubSourceControlProvider.ts`            | modify | Wire new methods to `GitHubCli`.                                                                                    |
+| `apps/server/src/sourceControl/GitHubSourceControlProvider.test.ts`       | modify | Provider-level tests for new methods.                                                                               |
+| `apps/server/src/sourceControl/GitLabSourceControlProvider.ts`            | modify | Stub new methods → `unsupported`.                                                                                   |
+| `apps/server/src/sourceControl/BitbucketSourceControlProvider.ts`         | modify | Stub new methods → `unsupported`.                                                                                   |
+| `apps/server/src/sourceControl/AzureDevOpsSourceControlProvider.ts`       | modify | Stub new methods → `unsupported`.                                                                                   |
+| `apps/server/src/sourceControl/SourceControlProviderRegistry.ts`          | modify | Dispatch new methods + extend `unsupported` fallback.                                                               |
+| `apps/server/src/sourceControl/SourceControlProviderRegistry.test.ts`     | modify | Dispatch tests for new methods.                                                                                     |
+| `apps/server/src/wsServer.ts`                                             | modify | Add WS routes for new operations.                                                                                   |
+| `apps/web/src/composerDraftStore.ts`                                      | modify | Add `sourceControlContexts` slice + actions.                                                                        |
+| `apps/web/src/composerDraftStore.test.tsx`                                | modify | Tests for new slice + dedupe + clear-on-send.                                                                       |
+| `apps/web/src/composer-logic.ts`                                          | modify | `#` trigger detection (`detectComposerTrigger`).                                                                    |
+| `apps/web/src/composer-logic.test.ts`                                     | modify | Tests for `#` trigger detection.                                                                                    |
+| `apps/web/src/components/chat/ContextPickerList.tsx`                      | create | Virtualized list of issue/PR summaries.                                                                             |
+| `apps/web/src/components/chat/ContextPickerTabs.tsx`                      | create | Tab strip (`GH Issues`, `GH PRs`).                                                                                  |
+| `apps/web/src/components/chat/ContextPickerPopup.tsx`                     | create | Popover content (search + tabs + list + paperclip).                                                                 |
+| `apps/web/src/components/chat/ContextPickerButton.tsx`                    | create | Composer-footer button.                                                                                             |
+| `apps/web/src/components/chat/SourceControlContextChip.tsx`               | create | Chip rendered in composer above textarea.                                                                           |
+| `apps/web/src/components/chat/SourceControlContextChip.test.tsx`          | create | Chip render + dismiss tests.                                                                                        |
+| `apps/web/src/components/chat/ContextPickerPopup.browser.tsx`             | create | Browser test for popup flow.                                                                                        |
+| `apps/web/src/components/chat/composerSourceControlContextSearch.ts`      | create | Client-side fuzzy filter for cached lists.                                                                          |
+| `apps/web/src/components/chat/composerSourceControlContextSearch.test.ts` | create | Filter ranking tests.                                                                                               |
+| `apps/web/src/components/chat/ComposerCommandMenu.tsx`                    | modify | New item types `source-control-issue` / `source-control-pr`.                                                        |
+| `apps/web/src/components/chat/ChatComposer.tsx`                           | modify | Render button, chip row, wire `#` trigger to command menu.                                                          |
+| `apps/web/src/components/ChatView.logic.ts`                               | modify | Serialize `sourceControlContexts` into turn payload.                                                                |
+| `apps/web/src/lib/sourceControlContextRpc.ts`                             | create | Thin TanStack Query helpers for the new WS routes.                                                                  |
 
 ---
 
@@ -58,6 +58,7 @@
 ### Task 1: Token-budget caps + issue summary/detail schemas
 
 **Files:**
+
 - Modify: `packages/contracts/src/sourceControl.ts`
 
 - [ ] **Step 1: Add token-budget constants and issue schemas**
@@ -68,7 +69,7 @@ Append after the existing `ChangeRequest` schema:
 // Token-budget caps. Server enforces these before responding so the web client
 // always receives bounded payloads. Keep these here so server, web, and tests
 // reference the same constants.
-export const SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES = 8 * 1024;        // 8 KB
+export const SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES = 8 * 1024; // 8 KB
 export const SOURCE_CONTROL_DETAIL_COMMENT_BODY_MAX_BYTES = 2 * 1024; // 2 KB
 export const SOURCE_CONTROL_DETAIL_MAX_COMMENTS = 5;
 
@@ -128,6 +129,7 @@ git commit -m "contracts: add source-control issue + detail schemas"
 ### Task 2: ComposerSourceControlContext schema
 
 **Files:**
+
 - Modify: `packages/contracts/src/sourceControl.ts`
 
 - [ ] **Step 1: Append composer-context schema**
@@ -139,16 +141,13 @@ export const ComposerSourceControlContextKind = Schema.Literals(["issue", "chang
 export type ComposerSourceControlContextKind = typeof ComposerSourceControlContextKind.Type;
 
 export const ComposerSourceControlContext = Schema.Struct({
-  id: TrimmedNonEmptyString,                 // local UUID, generated client-side
+  id: TrimmedNonEmptyString, // local UUID, generated client-side
   kind: ComposerSourceControlContextKind,
   provider: SourceControlProviderKind,
-  reference: TrimmedNonEmptyString,          // 'owner/repo#42' or full URL
-  detail: Schema.Union(
-    SourceControlIssueDetail,
-    SourceControlChangeRequestDetail,
-  ),
+  reference: TrimmedNonEmptyString, // 'owner/repo#42' or full URL
+  detail: Schema.Union(SourceControlIssueDetail, SourceControlChangeRequestDetail),
   fetchedAt: Schema.DateTimeUtc,
-  staleAfter: Schema.DateTimeUtc,            // fetchedAt + 5 minutes
+  staleAfter: Schema.DateTimeUtc, // fetchedAt + 5 minutes
 });
 export type ComposerSourceControlContext = typeof ComposerSourceControlContext.Type;
 ```
@@ -170,6 +169,7 @@ git commit -m "contracts: add ComposerSourceControlContext schema"
 ### Task 3: Extend `ProviderSendTurnInput` with source-control contexts
 
 **Files:**
+
 - Modify: `packages/contracts/src/provider.ts`
 - Modify: `packages/contracts/src/provider.test.ts`
 
@@ -225,6 +225,7 @@ git commit -m "contracts: extend ProviderSendTurnInput with sourceControlContext
 ### Task 4: `gitHubIssues.ts` decoder module
 
 **Files:**
+
 - Create: `apps/server/src/sourceControl/gitHubIssues.ts`
 - Create: `apps/server/src/sourceControl/gitHubIssues.test.ts`
 
@@ -313,12 +314,8 @@ const GitHubIssueSchema = Schema.Struct({
   url: TrimmedNonEmptyString,
   state: Schema.optional(Schema.NullOr(Schema.String)),
   updatedAt: Schema.optional(Schema.NullOr(Schema.String)),
-  author: Schema.optional(
-    Schema.NullOr(Schema.Struct({ login: Schema.String })),
-  ),
-  labels: Schema.optional(
-    Schema.Array(Schema.Struct({ name: Schema.String })),
-  ),
+  author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
+  labels: Schema.optional(Schema.Array(Schema.Struct({ name: Schema.String }))),
   body: Schema.optional(Schema.NullOr(Schema.String)),
   comments: Schema.optional(
     Schema.Array(
@@ -446,6 +443,7 @@ git commit -m "server(sc): add gitHubIssues decoder module"
 ### Task 5: Truncation helper in contracts module
 
 **Files:**
+
 - Modify: `packages/contracts/src/sourceControl.ts`
 - Create: `packages/contracts/src/sourceControl.test.ts` (if doesn't exist) or modify existing
 
@@ -490,7 +488,9 @@ describe("truncateSourceControlDetailContent", () => {
     const result = truncateSourceControlDetailContent({ body: "ok", comments });
     expect(result.truncated).toBe(true);
     expect(result.comments).toHaveLength(SOURCE_CONTROL_DETAIL_MAX_COMMENTS);
-    expect(result.comments[0]?.body).toBe(`c${comments.length - SOURCE_CONTROL_DETAIL_MAX_COMMENTS}`);
+    expect(result.comments[0]?.body).toBe(
+      `c${comments.length - SOURCE_CONTROL_DETAIL_MAX_COMMENTS}`,
+    );
   });
 });
 ```
@@ -583,6 +583,7 @@ git commit -m "contracts(sc): add truncateSourceControlDetailContent helper"
 ### Task 6: Extend `GitHubCli` interface with new methods
 
 **Files:**
+
 - Modify: `apps/server/src/sourceControl/GitHubCli.ts`
 
 - [ ] **Step 1: Extend `GitHubCliShape` interface**
@@ -673,6 +674,7 @@ git commit -m "server(sc): extend GitHubCli shape with new methods (stubbed)"
 ### Task 7: Implement `listIssues`
 
 **Files:**
+
 - Modify: `apps/server/src/sourceControl/GitHubCli.ts`
 - Modify: `apps/server/src/sourceControl/GitHubCli.test.ts`
 
@@ -687,21 +689,25 @@ describe("listIssues", () => {
   it("invokes gh issue list with correct args and decodes output", () =>
     Effect.gen(function* () {
       const fakeProcess = makeFakeVcsProcess({
-        stdout: JSON.stringify([
-          { number: 42, title: "Bug", url: "https://x/42", state: "OPEN" },
-        ]),
+        stdout: JSON.stringify([{ number: 42, title: "Bug", url: "https://x/42", state: "OPEN" }]),
       });
       const cli = yield* GitHubCli;
       const issues = yield* cli.listIssues({ cwd: "/tmp", state: "open", limit: 20 });
       expect(issues).toHaveLength(1);
       expect(issues[0]?.number).toBe(42);
       expect(fakeProcess.lastArgs).toEqual([
-        "issue", "list",
-        "--state", "open",
-        "--limit", "20",
-        "--json", "number,title,url,state,updatedAt,author,labels",
+        "issue",
+        "list",
+        "--state",
+        "open",
+        "--limit",
+        "20",
+        "--json",
+        "number,title,url,state,updatedAt,author,labels",
       ]);
-    }).pipe(Effect.provide(GitHubCli.layer), Effect.provide(fakeProcessLayer)).pipe(Effect.runPromise));
+    })
+      .pipe(Effect.provide(GitHubCli.layer), Effect.provide(fakeProcessLayer))
+      .pipe(Effect.runPromise));
 });
 ```
 
@@ -773,6 +779,7 @@ git commit -m "server(sc): implement GitHubCli.listIssues"
 ### Task 8: Implement `getIssue` (with cross-repo URL support + truncation)
 
 **Files:**
+
 - Modify: `apps/server/src/sourceControl/GitHubCli.ts`
 - Modify: `apps/server/src/sourceControl/GitHubCli.test.ts`
 
@@ -784,11 +791,12 @@ describe("getIssue", () => {
     Effect.gen(function* () {
       const fake = makeFakeVcsProcess({
         stdout: JSON.stringify({
-          number: 42, title: "t", url: "https://x/42", state: "OPEN",
+          number: 42,
+          title: "t",
+          url: "https://x/42",
+          state: "OPEN",
           body: "BODY",
-          comments: [
-            { author: { login: "bob" }, body: "hi", createdAt: "2026-03-14T10:00:00Z" },
-          ],
+          comments: [{ author: { login: "bob" }, body: "hi", createdAt: "2026-03-14T10:00:00Z" }],
         }),
       });
       const cli = yield* GitHubCli;
@@ -796,23 +804,34 @@ describe("getIssue", () => {
       expect(detail.body).toBe("BODY");
       expect(detail.comments[0]?.author).toBe("bob");
       expect(fake.lastArgs).toEqual([
-        "issue", "view", "42",
-        "--json", "number,title,url,state,updatedAt,author,labels,body,comments",
+        "issue",
+        "view",
+        "42",
+        "--json",
+        "number,title,url,state,updatedAt,author,labels,body,comments",
       ]);
-    }).pipe(/* same provide pattern */).pipe(Effect.runPromise));
+    })
+      .pipe(/* same provide pattern */)
+      .pipe(Effect.runPromise));
 
   it("passes URL as-is for cross-repo references", () =>
     Effect.gen(function* () {
       const fake = makeFakeVcsProcess({
         stdout: JSON.stringify({
-          number: 9, title: "x", url: "https://github.com/foo/bar/issues/9", state: "CLOSED",
-          body: "", comments: [],
+          number: 9,
+          title: "x",
+          url: "https://github.com/foo/bar/issues/9",
+          state: "CLOSED",
+          body: "",
+          comments: [],
         }),
       });
       const cli = yield* GitHubCli;
       yield* cli.getIssue({ cwd: "/tmp", reference: "https://github.com/foo/bar/issues/9" });
       expect(fake.lastArgs[2]).toBe("https://github.com/foo/bar/issues/9");
-    }).pipe(/* provide */).pipe(Effect.runPromise));
+    })
+      .pipe(/* provide */)
+      .pipe(Effect.runPromise));
 });
 ```
 
@@ -876,6 +895,7 @@ git commit -m "server(sc): implement GitHubCli.getIssue with cross-repo URL supp
 ### Task 9: Implement `searchIssues` and `searchPullRequests`
 
 **Files:**
+
 - Modify: `apps/server/src/sourceControl/GitHubCli.ts`
 - Modify: `apps/server/src/sourceControl/GitHubCli.test.ts`
 
@@ -886,18 +906,26 @@ Two tests, one for each, asserting CLI args:
 ```ts
 // searchIssues uses `gh issue list --search "<query>"`.
 expect(fake.lastArgs).toEqual([
-  "issue", "list",
-  "--search", "bug",
-  "--limit", "20",
-  "--json", "number,title,url,state,updatedAt,author,labels",
+  "issue",
+  "list",
+  "--search",
+  "bug",
+  "--limit",
+  "20",
+  "--json",
+  "number,title,url,state,updatedAt,author,labels",
 ]);
 
 // searchPullRequests uses `gh pr list --search "<query>"`.
 expect(fake.lastArgs).toEqual([
-  "pr", "list",
-  "--search", "fix",
-  "--limit", "20",
-  "--json", "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner",
+  "pr",
+  "list",
+  "--search",
+  "fix",
+  "--limit",
+  "20",
+  "--json",
+  "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner",
 ]);
 ```
 
@@ -953,6 +981,7 @@ git commit -m "server(sc): implement GitHubCli search* methods"
 ### Task 10: Implement `getPullRequestDetail`
 
 **Files:**
+
 - Modify: `apps/server/src/sourceControl/gitHubPullRequests.ts`
 - Modify: `apps/server/src/sourceControl/GitHubCli.ts`
 - Modify: `apps/server/src/sourceControl/GitHubCli.test.ts`
@@ -996,6 +1025,7 @@ git commit -m "server(sc): add GitHubCli.getPullRequestDetail with body + commen
 ### Task 11: Extend `SourceControlProvider` interface
 
 **Files:**
+
 - Modify: `apps/server/src/sourceControl/SourceControlProvider.ts`
 
 - [ ] **Step 1: Add new methods to `SourceControlProviderShape`**
@@ -1054,6 +1084,7 @@ Expected: errors in all four `*SourceControlProvider.ts` files because they don'
 ### Task 12: Stub the non-GitHub providers
 
 **Files:**
+
 - Modify: `apps/server/src/sourceControl/GitLabSourceControlProvider.ts`
 - Modify: `apps/server/src/sourceControl/BitbucketSourceControlProvider.ts`
 - Modify: `apps/server/src/sourceControl/AzureDevOpsSourceControlProvider.ts`
@@ -1120,6 +1151,7 @@ Expected: PASS (or only fails inside `GitHubSourceControlProvider.ts` — Task 1
 ### Task 13: Implement new methods in `GitHubSourceControlProvider`
 
 **Files:**
+
 - Modify: `apps/server/src/sourceControl/GitHubSourceControlProvider.ts`
 - Modify: `apps/server/src/sourceControl/GitHubSourceControlProvider.test.ts`
 
@@ -1143,9 +1175,7 @@ const toIssueSummary = (
   labels: raw.labels,
 });
 
-const toIssueDetail = (
-  raw: GitHubIssues.NormalizedGitHubIssueDetail,
-): SourceControlIssueDetail => {
+const toIssueDetail = (raw: GitHubIssues.NormalizedGitHubIssueDetail): SourceControlIssueDetail => {
   const truncated = truncateSourceControlDetailContent({
     body: raw.body,
     comments: raw.comments,
@@ -1243,6 +1273,7 @@ git commit -m "server(sc): extend provider interface with issues + search + deta
 ### Task 14: Update `SourceControlProviderRegistry` dispatch
 
 **Files:**
+
 - Modify: `apps/server/src/sourceControl/SourceControlProviderRegistry.ts`
 - Modify: `apps/server/src/sourceControl/SourceControlProviderRegistry.test.ts`
 - Modify: `apps/server/src/sourceControl/SourceControlRepositoryService.test.ts` (the `unsupported` mock)
@@ -1285,6 +1316,7 @@ git commit -m "server(sc): extend provider registry dispatch for issues + search
 ### Task 15: Add WS routes
 
 **Files:**
+
 - Modify: `apps/server/src/wsServer.ts`
 
 Pattern reference: search for the existing `sourceControl.listChangeRequests` route and mirror it.
@@ -1300,6 +1332,7 @@ Note the registration pattern (probably an object literal mapping operation name
 - [ ] **Step 2: Add five new routes**
 
 For each of:
+
 - `sourceControl.listIssues`
 - `sourceControl.getIssue`
 - `sourceControl.searchIssues`
@@ -1334,6 +1367,7 @@ git commit -m "server(ws): add sourceControl issue + search + detail routes"
 ### Task 16: Extend `composerDraftStore` with `sourceControlContexts`
 
 **Files:**
+
 - Modify: `apps/web/src/composerDraftStore.ts`
 - Modify: `apps/web/src/composerDraftStore.test.tsx`
 
@@ -1416,6 +1450,7 @@ git commit -m "web(composer): persist source-control contexts in draft store"
 ### Task 17: TanStack Query helpers for new WS routes
 
 **Files:**
+
 - Create: `apps/web/src/lib/sourceControlContextRpc.ts`
 
 - [ ] **Step 1: Define query-options factories**
@@ -1425,7 +1460,7 @@ Pattern reference: `apps/web/src/lib/projectReactQuery.ts`. **Read it first** to
 ```ts
 import { queryOptions } from "@tanstack/react-query";
 import type { SourceControlIssueSummary, SourceControlIssueDetail } from "@t3tools/contracts";
-import { invokeRpc } from "./rpc";   // ← REPLACE with actual helper from projectReactQuery.ts
+import { invokeRpc } from "./rpc"; // ← REPLACE with actual helper from projectReactQuery.ts
 
 export const issueListQueryOptions = (input: {
   cwd: string;
@@ -1434,7 +1469,10 @@ export const issueListQueryOptions = (input: {
 }) =>
   queryOptions({
     queryKey: ["sourceControl", "listIssues", input.cwd, input.state, input.limit ?? 50],
-    queryFn: () => invokeRpc("sourceControl.listIssues", input) as Promise<ReadonlyArray<SourceControlIssueSummary>>,
+    queryFn: () =>
+      invokeRpc("sourceControl.listIssues", input) as Promise<
+        ReadonlyArray<SourceControlIssueSummary>
+      >,
     staleTime: 60_000,
   });
 
@@ -1473,6 +1511,7 @@ git commit -m "web(sc): add TanStack Query helpers for source-control RPCs"
 ### Task 18: `#` trigger in `composer-logic.ts`
 
 **Files:**
+
 - Modify: `apps/web/src/composer-logic.ts`
 - Modify: `apps/web/src/composer-logic.test.ts`
 
@@ -1546,6 +1585,7 @@ git commit -m "web(composer): add # trigger detection for source-control items"
 ### Task 19: Client-side fuzzy filter
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/composerSourceControlContextSearch.ts`
 - Create: `apps/web/src/components/chat/composerSourceControlContextSearch.test.ts`
 
@@ -1559,9 +1599,27 @@ import { searchSourceControlSummaries } from "./composerSourceControlContextSear
 import type { SourceControlIssueSummary } from "@t3tools/contracts";
 
 const summaries: SourceControlIssueSummary[] = [
-  { provider: "github", number: 42, title: "Remove stale todos_manager.html", url: "u", state: "open" },
-  { provider: "github", number: 41, title: "remote-install.sh shows wrong port", url: "u", state: "open" },
-  { provider: "github", number: 40, title: "AK-47 keychain canvas position not calibrated", url: "u", state: "open" },
+  {
+    provider: "github",
+    number: 42,
+    title: "Remove stale todos_manager.html",
+    url: "u",
+    state: "open",
+  },
+  {
+    provider: "github",
+    number: 41,
+    title: "remote-install.sh shows wrong port",
+    url: "u",
+    state: "open",
+  },
+  {
+    provider: "github",
+    number: 40,
+    title: "AK-47 keychain canvas position not calibrated",
+    url: "u",
+    state: "open",
+  },
 ];
 
 describe("searchSourceControlSummaries", () => {
@@ -1577,7 +1635,16 @@ describe("searchSourceControlSummaries", () => {
     expect(result[0]?.number).toBe(42);
   });
   it("ranks prefix matches above substring matches", () => {
-    const more = [...summaries, { provider: "github" as const, number: 1, title: "ak-47 followup", url: "u", state: "open" as const }];
+    const more = [
+      ...summaries,
+      {
+        provider: "github" as const,
+        number: 1,
+        title: "ak-47 followup",
+        url: "u",
+        state: "open" as const,
+      },
+    ];
     const result = searchSourceControlSummaries(more, "ak-47");
     expect(result[0]?.number).toBe(1);
   });
@@ -1631,6 +1698,7 @@ git commit -m "web(sc): add client-side fuzzy filter for issue/PR summaries"
 ### Task 20: `ContextPickerList` component
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/ContextPickerList.tsx`
 
 - [ ] **Step 1: Implement the list**
@@ -1699,6 +1767,7 @@ git commit -m "web(sc): add ContextPickerList component"
 ### Task 21: `ContextPickerTabs` component
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/ContextPickerTabs.tsx`
 
 - [ ] **Step 1: Implement**
@@ -1759,12 +1828,14 @@ git commit -m "web(sc): add ContextPickerTabs component"
 ### Task 22: `ContextPickerPopup` (the main popup)
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/ContextPickerPopup.tsx`
 - Create: `apps/web/src/components/chat/ContextPickerPopup.browser.tsx`
 
 - [ ] **Step 1: Implement the popup**
 
 The popup:
+
 1. Manages local state: `query: string`, `activeTab: 'issues' | 'prs'`.
 2. Uses TanStack Query to fetch the cached list for the active tab via `issueListQueryOptions` / `changeRequestListQueryOptions`.
 3. Runs `searchSourceControlSummaries` against the query.
@@ -1808,11 +1879,12 @@ export function ContextPickerPopup(props: {
 }
 ```
 
-(Full implementation should keep the popup focused — no business logic beyond what's listed. The popup's paperclip opens a native `<input type="file">`; the popup body is also a drop target — both call `props.onAttachFile(file)`. The composer's existing paste/drop handlers are unchanged; this popup adds *additional* entry points using the same pipeline. If `ChatComposer` does not already export the per-file `onAddImage` handler, extract a shared module — search for `addImage` / `nextImages` in `ChatComposer.tsx` to find the function to lift.)
+(Full implementation should keep the popup focused — no business logic beyond what's listed. The popup's paperclip opens a native `<input type="file">`; the popup body is also a drop target — both call `props.onAttachFile(file)`. The composer's existing paste/drop handlers are unchanged; this popup adds _additional_ entry points using the same pipeline. If `ChatComposer` does not already export the per-file `onAddImage` handler, extract a shared module — search for `addImage` / `nextImages` in `ChatComposer.tsx` to find the function to lift.)
 
 - [ ] **Step 2: Browser test**
 
 In `ContextPickerPopup.browser.tsx`, add a Vitest browser test that:
+
 - Renders the popup with a mocked TanStack QueryClient pre-populated with two issues.
 - Asserts the issues render.
 - Types into the search input → asserts client-side filter narrows the list.
@@ -1841,6 +1913,7 @@ git commit -m "web(sc): add ContextPickerPopup with tabs, search, and filter fal
 ### Task 23: `ContextPickerButton` component
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/ContextPickerButton.tsx`
 
 - [ ] **Step 1: Implement**
@@ -1862,7 +1935,9 @@ export function ContextPickerButton(props: {
   return (
     <Popover>
       <Tooltip>
-        <TooltipTrigger render={<PopoverTrigger render={<button type="button" aria-label="Add context" />} />}>
+        <TooltipTrigger
+          render={<PopoverTrigger render={<button type="button" aria-label="Add context" />} />}
+        >
           <PaperclipIcon className="size-4" />
         </TooltipTrigger>
         <TooltipPopup>Add context</TooltipPopup>
@@ -1896,6 +1971,7 @@ git commit -m "web(sc): add ContextPickerButton (popover trigger)"
 ### Task 24: `SourceControlContextChip` component
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/SourceControlContextChip.tsx`
 - Create: `apps/web/src/components/chat/SourceControlContextChip.test.tsx`
 
@@ -1997,11 +2073,13 @@ git commit -m "web(sc): add SourceControlContextChip with preview + remove"
 ### Task 25: Wire `ContextPickerButton` into the composer footer
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/ChatComposer.tsx`
 
 - [ ] **Step 1: Add the button next to existing footer controls**
 
 Find the existing footer-actions block (look for `ComposerPrimaryActions` and the surrounding controls). Render `<ContextPickerButton>` next to them. Pass:
+
 - `cwd` from the active project.
 - `hasSourceControlRemote` from the existing source-control-status hook (find it via grep — the codebase already detects this).
 - `onSelectIssue` → fetch detail via `getIssue` → call `addSourceControlContext` on the draft store.
@@ -2036,6 +2114,7 @@ git commit -m "web(composer): wire ContextPickerButton into footer"
 ### Task 26: Render context chips above the textarea
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/ChatComposer.tsx`
 
 - [ ] **Step 1: Render the chip row**
@@ -2045,6 +2124,7 @@ Find the existing pending-context chip rendering (search for `TerminalContextInl
 - [ ] **Step 2: Browser test extension**
 
 Extend the smoke test from Task 25:
+
 - Open popup, select an issue.
 - Assert chip appears in composer.
 - Click X on chip → assert chip disappears.
@@ -2069,6 +2149,7 @@ git commit -m "web(composer): render source-control context chips above textarea
 ### Task 27: Wire `#` trigger into `ComposerCommandMenu`
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/ComposerCommandMenu.tsx`
 - Modify: `apps/web/src/components/chat/ChatComposer.tsx`
 
@@ -2098,6 +2179,7 @@ Render with a `GitCommitIcon` or similar lucide icon next to it (pick something 
 - [ ] **Step 2: Wire detection in `ChatComposer.tsx`**
 
 When `detectComposerTrigger` returns `kind: "source-control"`:
+
 1. Open the inline command menu (the existing path that's used for `@` and `/`).
 2. Populate items from `useQuery(issueListQueryOptions(...))` result, filtered by `searchSourceControlSummaries(items, trigger.query)`.
 3. On select: insert a chip into the draft (don't replace the trigger text — instead delete the `#…` text range AND attach the chip via `addSourceControlContext`).
@@ -2106,6 +2188,7 @@ When `detectComposerTrigger` returns `kind: "source-control"`:
 - [ ] **Step 3: Browser test**
 
 Extend the existing composer browser test:
+
 - Type `#` → assert command menu opens with issue items.
 - Type `#42` → assert direct-attach (chip appears, no menu remaining).
 - Type `#bug` → menu filters; pick item; assert chip appears, `#bug` text removed.
@@ -2130,6 +2213,7 @@ git commit -m "web(composer): wire # trigger to inline command menu for issues/P
 ### Task 28: Serialize `sourceControlContexts` into the turn payload
 
 **Files:**
+
 - Modify: `apps/web/src/components/ChatView.logic.ts`
 - Modify: `apps/web/src/components/ChatView.logic.test.ts` (or wherever the existing turn-builder tests live; grep for `ProviderSendTurnInput` in tests)
 
@@ -2177,6 +2261,7 @@ git commit -m "web(composer): serialize source-control contexts into turn payloa
 ### Task 29: Stale-on-send refetch
 
 **Files:**
+
 - Modify: `apps/web/src/components/ChatView.logic.ts` (or wherever send happens)
 
 - [ ] **Step 1: Failing test**
@@ -2225,6 +2310,7 @@ Expected: all PASS.
 - [ ] **Step 2: Manual smoke (in a real GitHub repo workspace)**
 
 Walk through:
+
 - [ ] Open S3Code in a workspace cloned from a GitHub repo. `gh` is installed and authed.
 - [ ] Click 📎 in the composer footer. Popup opens with cached issues.
 - [ ] Type `bug` in search → list narrows.

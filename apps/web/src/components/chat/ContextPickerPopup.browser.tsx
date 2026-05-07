@@ -50,7 +50,15 @@ const prListData: ChangeRequest[] = [
 
 vi.mock("~/lib/sourceControlContextRpc", () => ({
   issueListQueryOptions: vi.fn((input: { environmentId: unknown; cwd: string; state: string }) => ({
-    queryKey: ["sourceControl", "issues", input.environmentId, input.cwd, "list", input.state, null],
+    queryKey: [
+      "sourceControl",
+      "issues",
+      input.environmentId,
+      input.cwd,
+      "list",
+      input.state,
+      null,
+    ],
     queryFn: async () => issueListData,
     enabled: true,
     staleTime: 60_000,
@@ -78,15 +86,7 @@ vi.mock("~/lib/sourceControlContextRpc", () => ({
     staleTime: 30_000,
   })),
   searchChangeRequestsQueryOptions: vi.fn((input: { query: string; enabled?: boolean }) => ({
-    queryKey: [
-      "sourceControl",
-      "changeRequests",
-      null,
-      null,
-      "search",
-      input.query,
-      null,
-    ],
+    queryKey: ["sourceControl", "changeRequests", null, null, "search", input.query, null],
     queryFn: async () => [],
     enabled: input.enabled ?? false,
     staleTime: 30_000,
@@ -256,9 +256,7 @@ describe("ContextPickerPopup", () => {
         expect(document.body.textContent).toContain("Fix the authentication bug");
       });
 
-      await userEvent.click(
-        page.getByRole("button", { name: /Fix the authentication bug/i }),
-      );
+      await userEvent.click(page.getByRole("button", { name: /Fix the authentication bug/i }));
 
       await vi.waitFor(() => {
         expect(onSelectIssue).toHaveBeenCalledTimes(1);

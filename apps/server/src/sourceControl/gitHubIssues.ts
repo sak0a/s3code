@@ -27,12 +27,8 @@ const GitHubIssueSchema = Schema.Struct({
   url: TrimmedNonEmptyString,
   state: Schema.optional(Schema.NullOr(Schema.String)),
   updatedAt: Schema.optional(Schema.NullOr(Schema.String)),
-  author: Schema.optional(
-    Schema.NullOr(Schema.Struct({ login: Schema.String })),
-  ),
-  labels: Schema.optional(
-    Schema.Array(Schema.Struct({ name: Schema.String })),
-  ),
+  author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
+  labels: Schema.optional(Schema.Array(Schema.Struct({ name: Schema.String }))),
   body: Schema.optional(Schema.NullOr(Schema.String)),
   comments: Schema.optional(
     Schema.Array(

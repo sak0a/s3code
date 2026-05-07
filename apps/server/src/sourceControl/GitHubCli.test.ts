@@ -492,9 +492,7 @@ describe("GitHubCli.layer", () => {
         mockRun.mockReturnValueOnce(
           Effect.succeed(
             processOutput(
-              JSON.stringify([
-                { number: 42, title: "Bug", url: "https://x/42", state: "OPEN" },
-              ]),
+              JSON.stringify([{ number: 42, title: "Bug", url: "https://x/42", state: "OPEN" }]),
             ),
           ),
         );

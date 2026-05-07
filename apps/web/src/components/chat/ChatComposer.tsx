@@ -973,13 +973,14 @@ export const ChatComposer = memo(
         const filteredIssues = searchSourceControlSummaries(issues, query);
         // ChangeRequest has number/title but is a different type; filter manually
         const q = query.trim().toLowerCase();
-        const filteredPrs = q.length === 0
-          ? prs
-          : prs.filter((pr) => {
-              const num = String(pr.number);
-              const title = pr.title.toLowerCase();
-              return num === q || num.startsWith(q) || title.includes(q);
-            });
+        const filteredPrs =
+          q.length === 0
+            ? prs
+            : prs.filter((pr) => {
+                const num = String(pr.number);
+                const title = pr.title.toLowerCase();
+                return num === q || num.startsWith(q) || title.includes(q);
+              });
         const issueItems: ComposerCommandItem[] = filteredIssues.map((issue) => ({
           id: `source-control-issue:${issue.provider}:${issue.number}`,
           type: "source-control-issue" as const,

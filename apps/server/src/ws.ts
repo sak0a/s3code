@@ -166,7 +166,8 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
       const serverAuth = yield* ServerAuth;
       const sourceControlDiscovery = yield* SourceControlDiscoveryLayer.SourceControlDiscovery;
       const sourceControlRepositories = yield* SourceControlRepositoryService;
-      const sourceControlRegistry = yield* SourceControlProviderRegistry.SourceControlProviderRegistry;
+      const sourceControlRegistry =
+        yield* SourceControlProviderRegistry.SourceControlProviderRegistry;
       const bootstrapCredentials = yield* BootstrapCredentialService;
       const sessions = yield* SessionCredentialService;
       const serverCommandId = (tag: string) =>
@@ -850,17 +851,15 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
         [WS_METHODS.sourceControlListIssues]: ({ cwd, state, limit }) =>
           observeRpcEffect(
             WS_METHODS.sourceControlListIssues,
-            sourceControlRegistry
-              .resolve({ cwd })
-              .pipe(
-                Effect.flatMap((provider) =>
-                  provider.listIssues({
-                    cwd,
-                    state,
-                    ...(limit !== undefined ? { limit } : {}),
-                  }),
-                ),
+            sourceControlRegistry.resolve({ cwd }).pipe(
+              Effect.flatMap((provider) =>
+                provider.listIssues({
+                  cwd,
+                  state,
+                  ...(limit !== undefined ? { limit } : {}),
+                }),
               ),
+            ),
             {
               "rpc.aggregate": "source-control",
             },
@@ -878,17 +877,15 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
         [WS_METHODS.sourceControlSearchIssues]: ({ cwd, query, limit }) =>
           observeRpcEffect(
             WS_METHODS.sourceControlSearchIssues,
-            sourceControlRegistry
-              .resolve({ cwd })
-              .pipe(
-                Effect.flatMap((provider) =>
-                  provider.searchIssues({
-                    cwd,
-                    query,
-                    ...(limit !== undefined ? { limit } : {}),
-                  }),
-                ),
+            sourceControlRegistry.resolve({ cwd }).pipe(
+              Effect.flatMap((provider) =>
+                provider.searchIssues({
+                  cwd,
+                  query,
+                  ...(limit !== undefined ? { limit } : {}),
+                }),
               ),
+            ),
             {
               "rpc.aggregate": "source-control",
             },
@@ -896,17 +893,15 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
         [WS_METHODS.sourceControlSearchChangeRequests]: ({ cwd, query, limit }) =>
           observeRpcEffect(
             WS_METHODS.sourceControlSearchChangeRequests,
-            sourceControlRegistry
-              .resolve({ cwd })
-              .pipe(
-                Effect.flatMap((provider) =>
-                  provider.searchChangeRequests({
-                    cwd,
-                    query,
-                    ...(limit !== undefined ? { limit } : {}),
-                  }),
-                ),
+            sourceControlRegistry.resolve({ cwd }).pipe(
+              Effect.flatMap((provider) =>
+                provider.searchChangeRequests({
+                  cwd,
+                  query,
+                  ...(limit !== undefined ? { limit } : {}),
+                }),
               ),
+            ),
             {
               "rpc.aggregate": "source-control",
             },
@@ -916,7 +911,9 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             WS_METHODS.sourceControlGetChangeRequestDetail,
             sourceControlRegistry
               .resolve({ cwd })
-              .pipe(Effect.flatMap((provider) => provider.getChangeRequestDetail({ cwd, reference }))),
+              .pipe(
+                Effect.flatMap((provider) => provider.getChangeRequestDetail({ cwd, reference })),
+              ),
             {
               "rpc.aggregate": "source-control",
             },

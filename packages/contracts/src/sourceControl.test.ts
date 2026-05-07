@@ -34,6 +34,8 @@ describe("truncateSourceControlDetailContent", () => {
     const result = truncateSourceControlDetailContent({ body: "ok", comments });
     expect(result.truncated).toBe(true);
     expect(result.comments).toHaveLength(SOURCE_CONTROL_DETAIL_MAX_COMMENTS);
-    expect(result.comments[0]?.body).toBe(`c${comments.length - SOURCE_CONTROL_DETAIL_MAX_COMMENTS}`);
+    expect(result.comments[0]?.body).toBe(
+      `c${comments.length - SOURCE_CONTROL_DETAIL_MAX_COMMENTS}`,
+    );
   });
 });

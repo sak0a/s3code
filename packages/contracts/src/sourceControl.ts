@@ -39,7 +39,7 @@ export type ChangeRequest = typeof ChangeRequest.Type;
 // Token-budget caps. Server enforces these before responding so the web client
 // always receives bounded payloads. Keep these here so server, web, and tests
 // reference the same constants.
-export const SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES = 8 * 1024;        // 8 KB
+export const SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES = 8 * 1024; // 8 KB
 export const SOURCE_CONTROL_DETAIL_COMMENT_BODY_MAX_BYTES = 2 * 1024; // 2 KB
 export const SOURCE_CONTROL_DETAIL_MAX_COMMENTS = 5;
 
@@ -85,16 +85,13 @@ export const ComposerSourceControlContextKind = Schema.Literals(["issue", "chang
 export type ComposerSourceControlContextKind = typeof ComposerSourceControlContextKind.Type;
 
 export const ComposerSourceControlContext = Schema.Struct({
-  id: TrimmedNonEmptyString,                 // local UUID, generated client-side
+  id: TrimmedNonEmptyString, // local UUID, generated client-side
   kind: ComposerSourceControlContextKind,
   provider: SourceControlProviderKind,
-  reference: TrimmedNonEmptyString,          // 'owner/repo#42' or full URL
-  detail: Schema.Union([
-    SourceControlIssueDetail,
-    SourceControlChangeRequestDetail,
-  ]),
+  reference: TrimmedNonEmptyString, // 'owner/repo#42' or full URL
+  detail: Schema.Union([SourceControlIssueDetail, SourceControlChangeRequestDetail]),
   fetchedAt: Schema.DateTimeUtc,
-  staleAfter: Schema.DateTimeUtc,            // fetchedAt + 5 minutes
+  staleAfter: Schema.DateTimeUtc, // fetchedAt + 5 minutes
 });
 export type ComposerSourceControlContext = typeof ComposerSourceControlContext.Type;
 

@@ -10,15 +10,7 @@ export const sourceControlContextQueryKeys = {
     state: "open" | "closed" | "all",
     limit?: number,
   ) =>
-    [
-      "sourceControl",
-      "issues",
-      environmentId ?? null,
-      cwd,
-      "list",
-      state,
-      limit ?? null,
-    ] as const,
+    ["sourceControl", "issues", environmentId ?? null, cwd, "list", state, limit ?? null] as const,
   issueDetail: (environmentId: EnvironmentId | null, cwd: string | null, reference: string) =>
     ["sourceControl", "issues", environmentId ?? null, cwd, "detail", reference] as const,
   issueSearch: (
@@ -56,14 +48,7 @@ export const sourceControlContextQueryKeys = {
     cwd: string | null,
     reference: string,
   ) =>
-    [
-      "sourceControl",
-      "changeRequests",
-      environmentId ?? null,
-      cwd,
-      "detail",
-      reference,
-    ] as const,
+    ["sourceControl", "changeRequests", environmentId ?? null, cwd, "detail", reference] as const,
   changeRequestSearch: (
     environmentId: EnvironmentId | null,
     cwd: string | null,
