@@ -4,7 +4,10 @@ import { formatSourceControlContextsForAgent } from "./sourceControlContextForma
 
 // Build minimal fake DateTime-like values that satisfy the type.
 const fakeDateTime = (iso: string) =>
-  ({ toJSON: () => iso, toString: () => iso }) as unknown as ComposerSourceControlContext["fetchedAt"];
+  ({
+    toJSON: () => iso,
+    toString: () => iso,
+  }) as unknown as ComposerSourceControlContext["fetchedAt"];
 
 type Detail = ComposerSourceControlContext["detail"];
 
@@ -22,7 +25,9 @@ const issueDetail: Detail = {
     {
       author: "bob",
       body: "I can reproduce this.",
-      createdAt: fakeDateTime("2024-06-01T13:00:00Z") as unknown as Detail["comments"][number]["createdAt"],
+      createdAt: fakeDateTime(
+        "2024-06-01T13:00:00Z",
+      ) as unknown as Detail["comments"][number]["createdAt"],
     },
   ],
   truncated: false,

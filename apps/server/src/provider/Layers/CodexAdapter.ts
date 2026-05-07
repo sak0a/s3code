@@ -1505,10 +1505,7 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
         ? getModelSelectionBooleanOptionValue(input.modelSelection, "fastMode")
         : undefined;
     const formatted = formatSourceControlContextsForAgent(input.sourceControlContexts ?? []);
-    const codexInput =
-      formatted
-        ? formatted + "\n\n" + (input.input ?? "")
-        : input.input;
+    const codexInput = formatted ? formatted + "\n\n" + (input.input ?? "") : input.input;
     return yield* session.runtime
       .sendTurn({
         ...(codexInput !== undefined ? { input: codexInput } : {}),
