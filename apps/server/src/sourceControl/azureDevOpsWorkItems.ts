@@ -57,7 +57,10 @@ function normalizeState(raw: string | null | undefined): "open" | "closed" {
 }
 
 function authorOf(
-  user: { readonly uniqueName?: string; readonly displayName?: string } | null | undefined,
+  user:
+    | { readonly uniqueName?: string | undefined; readonly displayName?: string | undefined }
+    | null
+    | undefined,
 ): string | null {
   return user?.uniqueName?.trim() || user?.displayName?.trim() || null;
 }
