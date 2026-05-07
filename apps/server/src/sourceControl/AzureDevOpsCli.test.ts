@@ -82,6 +82,7 @@ describe("AzureDevOpsCli.layer", () => {
         ],
         cwd: "/repo",
         timeoutMs: 30_000,
+        env: { LC_ALL: "C" },
       });
     }).pipe(Effect.provide(layer)),
   );
@@ -140,6 +141,7 @@ describe("AzureDevOpsCli.layer", () => {
         ],
         cwd: "/repo",
         timeoutMs: 30_000,
+        env: { LC_ALL: "C" },
       });
     }).pipe(Effect.provide(layer)),
   );
@@ -224,6 +226,7 @@ describe("AzureDevOpsCli.layer", () => {
         ],
         cwd: "/repo",
         timeoutMs: 30_000,
+        env: { LC_ALL: "C" },
       });
     }).pipe(Effect.provide(layer)),
   );
@@ -282,6 +285,7 @@ describe("AzureDevOpsCli.layer", () => {
         ],
         cwd: "/repo",
         timeoutMs: 30_000,
+        env: { LC_ALL: "C" },
       });
     }).pipe(Effect.provide(layer)),
   );

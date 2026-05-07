@@ -7,6 +7,12 @@ import {
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as AzureDevOpsPullRequests from "./azureDevOpsPullRequests.ts";
+import type { NormalizedAzureDevOpsPullRequestDetail } from "./azureDevOpsPullRequests.ts";
+import * as AzureDevOpsWorkItems from "./azureDevOpsWorkItems.ts";
+import type {
+  NormalizedAzureDevOpsWorkItemDetail,
+  NormalizedAzureDevOpsWorkItemRecord,
+} from "./azureDevOpsWorkItems.ts";
 import * as SourceControlProvider from "./SourceControlProvider.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -86,6 +92,37 @@ export interface AzureDevOpsCliShape {
     readonly reference: string;
     readonly remoteName?: string;
   }) => Effect.Effect<void, AzureDevOpsCliError>;
+
+  readonly listWorkItems: (input: {
+    readonly cwd: string;
+    readonly state: "open" | "closed" | "all";
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<NormalizedAzureDevOpsWorkItemRecord>, AzureDevOpsCliError>;
+
+  readonly getWorkItem: (input: {
+    readonly cwd: string;
+    readonly reference: string;
+  }) => Effect.Effect<NormalizedAzureDevOpsWorkItemDetail, AzureDevOpsCliError>;
+
+  readonly searchWorkItems: (input: {
+    readonly cwd: string;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<NormalizedAzureDevOpsWorkItemRecord>, AzureDevOpsCliError>;
+
+  readonly searchPullRequests: (input: {
+    readonly cwd: string;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<
+    ReadonlyArray<AzureDevOpsPullRequests.NormalizedAzureDevOpsPullRequestRecord>,
+    AzureDevOpsCliError
+  >;
+
+  readonly getPullRequestDetail: (input: {
+    readonly cwd: string;
+    readonly reference: string;
+  }) => Effect.Effect<NormalizedAzureDevOpsPullRequestDetail, AzureDevOpsCliError>;
 }
 
 export class AzureDevOpsCli extends Context.Service<AzureDevOpsCli, AzureDevOpsCliShape>()(
@@ -242,6 +279,7 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
         args: input.args,
         cwd: input.cwd,
         timeoutMs: input.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        env: { LC_ALL: "C" },
       })
       .pipe(Effect.mapError((error) => normalizeAzureDevOpsCliError("execute", error)));
 
@@ -423,6 +461,18 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
           input.remoteName ?? "origin",
         ],
       }).pipe(Effect.asVoid),
+    listWorkItems: () =>
+      Effect.fail(new AzureDevOpsCliError({ operation: "listWorkItems", detail: "stub" })),
+    getWorkItem: () =>
+      Effect.fail(new AzureDevOpsCliError({ operation: "getWorkItem", detail: "stub" })),
+    searchWorkItems: () =>
+      Effect.fail(new AzureDevOpsCliError({ operation: "searchWorkItems", detail: "stub" })),
+    searchPullRequests: () =>
+      Effect.fail(new AzureDevOpsCliError({ operation: "searchPullRequests", detail: "stub" })),
+    getPullRequestDetail: () =>
+      Effect.fail(
+        new AzureDevOpsCliError({ operation: "getPullRequestDetail", detail: "stub" }),
+      ),
   });
 });
 
