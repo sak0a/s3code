@@ -288,4 +288,55 @@ describe("GitHubCli.layer", () => {
       assert.equal(error.message.includes("Pull request not found"), true);
     }).pipe(Effect.provide(layer)),
   );
+
+  describe("listIssues", () => {
+    it.effect("invokes gh issue list with correct args and decodes output", () =>
+      Effect.gen(function* () {
+        mockRun.mockReturnValueOnce(
+          Effect.succeed(
+            processOutput(
+              JSON.stringify([
+                { number: 42, title: "Bug", url: "https://x/42", state: "OPEN" },
+              ]),
+            ),
+          ),
+        );
+
+        const gh = yield* GitHubCli.GitHubCli;
+        const issues = yield* gh.listIssues({ cwd: "/tmp", state: "open", limit: 20 });
+        assert.equal(issues.length, 1);
+        assert.equal(issues[0]?.number, 42);
+        expect(mockRun).toHaveBeenCalledWith({
+          operation: "GitHubCli.execute",
+          command: "gh",
+          args: [
+            "issue",
+            "list",
+            "--state",
+            "open",
+            "--limit",
+            "20",
+            "--json",
+            "number,title,url,state,updatedAt,author,labels",
+          ],
+          cwd: "/tmp",
+          timeoutMs: 30_000,
+        });
+      }).pipe(Effect.provide(layer)),
+    );
+
+    it.effect("uses default limit of 50 when not specified", () =>
+      Effect.gen(function* () {
+        mockRun.mockReturnValueOnce(Effect.succeed(processOutput("[]")));
+
+        const gh = yield* GitHubCli.GitHubCli;
+        yield* gh.listIssues({ cwd: "/tmp", state: "open" });
+        expect(mockRun).toHaveBeenCalledWith(
+          expect.objectContaining({
+            args: expect.arrayContaining(["--limit", "50"]),
+          }),
+        );
+      }).pipe(Effect.provide(layer)),
+    );
+  });
 });

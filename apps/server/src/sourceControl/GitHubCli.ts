@@ -403,8 +403,39 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
         cwd: input.cwd,
         args: ["pr", "checkout", input.reference, ...(input.force ? ["--force"] : [])],
       }).pipe(Effect.asVoid),
-    listIssues: () =>
-      Effect.fail(new GitHubCliError({ operation: "listIssues", detail: "stub" })),
+    listIssues: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: [
+          "issue",
+          "list",
+          "--state",
+          input.state,
+          "--limit",
+          String(input.limit ?? 50),
+          "--json",
+          "number,title,url,state,updatedAt,author,labels",
+        ],
+      }).pipe(
+        Effect.map((r) => r.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() => GitHubIssues.decodeGitHubIssueListJson(raw)).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success)
+                    : Effect.fail(
+                        new GitHubCliError({
+                          operation: "listIssues",
+                          detail: `GitHub CLI returned invalid issue list JSON: ${GitHubIssues.formatGitHubIssueDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
+      ),
     getIssue: () =>
       Effect.fail(new GitHubCliError({ operation: "getIssue", detail: "stub" })),
     searchIssues: () =>
