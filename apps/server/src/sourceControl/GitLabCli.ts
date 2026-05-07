@@ -565,9 +565,38 @@ export const make = Effect.fn("makeGitLabCli")(function* () {
               ),
         ),
       ),
-    searchMergeRequests: () =>
-      Effect.fail(
-        new GitLabCliError({ operation: "searchMergeRequests", detail: "stub" }),
+    searchMergeRequests: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: [
+          "mr",
+          "list",
+          "--search",
+          input.query,
+          "--per-page",
+          String(input.limit ?? 20),
+          "--output",
+          "json",
+        ],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() => GitLabMergeRequests.decodeGitLabMergeRequestListJson(raw)).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success.map(toSummaryWithOptionalUpdatedAt))
+                    : Effect.fail(
+                        new GitLabCliError({
+                          operation: "searchMergeRequests",
+                          detail: `GitLab CLI returned invalid MR list JSON: ${GitLabMergeRequests.formatGitLabJsonDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
       ),
     getMergeRequestDetail: () =>
       Effect.fail(

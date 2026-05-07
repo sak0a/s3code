@@ -324,6 +324,32 @@ layer("GitLabCli.layer", (it) => {
     }),
   );
 
+  it.effect("searchMergeRequests forwards query to glab mr list --search", () =>
+    Effect.gen(function* () {
+      mockedRun.mockReturnValueOnce(Effect.succeed(processOutput("[]")));
+      yield* Effect.gen(function* () {
+        const glab = yield* GitLabCli.GitLabCli;
+        return yield* glab.searchMergeRequests({ cwd: "/repo", query: "fix" });
+      });
+      expect(mockedRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: "glab",
+          cwd: "/repo",
+          args: [
+            "mr",
+            "list",
+            "--search",
+            "fix",
+            "--per-page",
+            "20",
+            "--output",
+            "json",
+          ],
+        }),
+      );
+    }),
+  );
+
   it.effect("searchIssues forwards query and limit to glab issue list --search", () =>
     Effect.gen(function* () {
       mockedRun.mockReturnValueOnce(Effect.succeed(processOutput("[]")));
