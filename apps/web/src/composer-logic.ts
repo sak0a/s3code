@@ -256,7 +256,7 @@ export function detectComposerTrigger(text: string, cursorInput: number): Compos
       query,
       rangeStart: tokenStart,
       rangeEnd: cursor,
-      directAttach: /^\d+$/.test(query),
+      directAttach: /^[1-9]\d*$/.test(query),
     };
   }
   if (!token.startsWith("@")) {

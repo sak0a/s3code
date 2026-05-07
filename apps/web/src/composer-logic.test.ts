@@ -349,6 +349,18 @@ describe("detectComposerTrigger – source control", () => {
     if (t?.kind !== "source-control") return;
     expect(t.directAttach).toBe(false);
   });
+  it("does not flag '#0' as directAttach (positive integers only)", () => {
+    const t = detectComposerTrigger("see #0 ", 6);
+    expect(t?.kind).toBe("source-control");
+    if (t?.kind !== "source-control") return;
+    expect(t.directAttach).toBe(false);
+  });
+  it("does not flag leading-zero '#042' as directAttach", () => {
+    const t = detectComposerTrigger("see #042 ", 8);
+    expect(t?.kind).toBe("source-control");
+    if (t?.kind !== "source-control") return;
+    expect(t.directAttach).toBe(false);
+  });
 });
 
 describe("parseStandaloneComposerSlashCommand", () => {

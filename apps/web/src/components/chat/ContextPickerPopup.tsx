@@ -165,8 +165,8 @@ export function ContextPickerPopup(props: {
           {/* Tabs */}
           <ContextPickerTabs
             tabs={[
-              { id: "issues", label: "GH Issues", count: cachedIssues.length },
-              { id: "prs", label: "GH PRs", count: cachedPrs.length },
+              { id: "issues", label: "Issues", count: cachedIssues.length },
+              { id: "prs", label: "PRs", count: cachedPrs.length },
             ]}
             activeId={activeTab}
             onSelect={(id) => setActiveTab(id as TabId)}

@@ -815,7 +815,8 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
               : input.state === "closed"
                 ? "&state=resolved&state=closed&state=on%20hold&state=invalid&state=duplicate&state=wontfix"
                 : "";
-          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues?pagelen=${input.limit ?? 50}&sort=-updated_on${stateQuery}`;
+          const pagelen = Math.max(1, Math.min(input.limit ?? 50, 50));
+          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues?pagelen=${pagelen}&sort=-updated_on${stateQuery}`;
           return executeJson(
             "listIssues",
             HttpClientRequest.get(apiUrl(path)),
@@ -838,6 +839,9 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
       }).pipe(
         Effect.flatMap((repo) => {
           const issuePath = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues/${encodeURIComponent(referenceId)}`;
+          // pagelen is clamped per Bitbucket Cloud's [1, 100] limit; we fetch
+          // 6 newest so truncateSourceControlDetailContent can emit a "truncated"
+          // signal when the thread has more than 5 comments.
           const commentsPath = `${issuePath}/comments?pagelen=6&sort=-created_on`;
           const issue = executeJson(
             "getIssue",
@@ -879,7 +883,8 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
         Effect.flatMap((repo) => {
           const escaped = input.query.replace(/"/g, '\\"');
           const q = `title ~ "${escaped}"`;
-          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues?q=${encodeURIComponent(q)}&pagelen=${input.limit ?? 20}&sort=-updated_on`;
+          const pagelen = Math.max(1, Math.min(input.limit ?? 20, 50));
+          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues?q=${encodeURIComponent(q)}&pagelen=${pagelen}&sort=-updated_on`;
           return executeJson(
             "searchIssues",
             HttpClientRequest.get(apiUrl(path)),
@@ -902,7 +907,8 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
         Effect.flatMap((repo) => {
           const escaped = input.query.replace(/"/g, '\\"');
           const q = `title ~ "${escaped}"`;
-          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/pullrequests?q=${encodeURIComponent(q)}&pagelen=${input.limit ?? 20}&sort=-updated_on`;
+          const pagelen = Math.max(1, Math.min(input.limit ?? 20, 50));
+          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/pullrequests?q=${encodeURIComponent(q)}&pagelen=${pagelen}&sort=-updated_on`;
           return executeJson(
             "searchPullRequests",
             HttpClientRequest.get(apiUrl(path)),
@@ -910,6 +916,11 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
           ).pipe(
             Effect.map((list) =>
               list.values.map(BitbucketPullRequests.normalizeBitbucketPullRequestRecord),
+            ),
+            Effect.catch((err) =>
+              isBitbucketApiError(err) && err.status === 404
+                ? Effect.succeed([])
+                : Effect.fail(err),
             ),
           );
         }),

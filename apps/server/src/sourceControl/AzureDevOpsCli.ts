@@ -616,7 +616,11 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
               ),
         ),
       );
-      // Fetch comment threads in parallel; silently fall back to [] on any error.
+      // Fetch comment threads in parallel. The `list-comments` subcommand
+      // doesn't exist on every `azure-devops` extension version, so we fall
+      // back to an empty array on any error — but log the cause so a
+      // misconfigured CLI / auth-expired session is still distinguishable
+      // from a PR that genuinely has no threads.
       const commentsCmd = executeJson({
         cwd: input.cwd,
         args: ["repos", "pr", "list-comments", "--detect", "true", "--id", id],
@@ -630,7 +634,13 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
             ? Effect.succeed(decoded.success)
             : Effect.succeed([] as ReadonlyArray<NormalizedAzureDevOpsThreadComment>),
         ),
-        Effect.catch(() => Effect.succeed([] as ReadonlyArray<NormalizedAzureDevOpsThreadComment>)),
+        Effect.catch((cause) =>
+          Effect.logWarning("AzureDevOpsCli.getPullRequestDetail: failed to load comment threads", {
+            pullRequestId: id,
+            detail: cause instanceof Error ? cause.message : String(cause),
+            cause,
+          }).pipe(Effect.as([] as ReadonlyArray<NormalizedAzureDevOpsThreadComment>)),
+        ),
       );
       return Effect.all([showCmd, commentsCmd], { concurrency: 2 }).pipe(
         Effect.map(([detail, comments]) => ({ ...detail, comments })),
