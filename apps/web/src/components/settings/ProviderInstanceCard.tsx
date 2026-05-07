@@ -37,7 +37,7 @@ import {
   availablePercent,
   clampUsedPercent,
   describeRateLimitWindow,
-  formatRateLimitResetLabel,
+  formatRateLimitResetText,
 } from "./codexUsageLimits";
 
 const PROVIDER_ACCENT_SWATCHES = [
@@ -248,7 +248,7 @@ function ProviderUsageLimitWindowRow(props: {
     props.window.windowDurationMins === undefined ? props.fallbackLabel : descriptor.label;
   const used = clampUsedPercent(props.window.usedPercent);
   const available = availablePercent(props.window.usedPercent);
-  const resetLabel = formatRateLimitResetLabel(props.window.resetsAt);
+  const resetText = formatRateLimitResetText(props.window.resetsAt);
   // Past 75% used the user cares about consumption, not headroom — flip
   // the headline so the number they're about to act on is the prominent
   // one and tint the bar to match.
@@ -280,7 +280,7 @@ function ProviderUsageLimitWindowRow(props: {
       </div>
       <div className="flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground">
         <span>{trailingValue}</span>
-        {resetLabel ? <span>Resets {resetLabel}</span> : null}
+        {resetText ? <span className="first-letter:uppercase">{resetText}</span> : null}
       </div>
     </div>
   );
