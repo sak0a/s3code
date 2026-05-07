@@ -615,6 +615,43 @@ it.effect("listIssues returns empty array when Bitbucket replies 404", () => {
   }).pipe(Effect.provide(layer));
 });
 
+it.effect("getIssue returns body and comments via two REST calls", () => {
+  const { execute, layer } = makeLayer({
+    response: (request) => {
+      if (request.url.includes("/comments")) {
+        return Response.json({
+          values: [
+            {
+              user: { username: "alice", display_name: "Alice" },
+              content: { raw: "first comment" },
+              created_on: "2026-03-14T10:00:00Z",
+            },
+          ],
+        });
+      }
+      return Response.json({
+        id: 42,
+        title: "Bug report",
+        state: "open",
+        content: { raw: "issue body" },
+        reporter: { username: "alice", display_name: "Alice" },
+        links: { html: { href: "https://bitbucket.org/pingdotgg/t3code/issues/42" } },
+      });
+    },
+  });
+
+  return Effect.gen(function* () {
+    const bitbucket = yield* BitbucketApi.BitbucketApi;
+    const detail = yield* bitbucket.getIssue({ cwd: "/repo", reference: "42" });
+    assert.strictEqual(detail.number, 42);
+    assert.strictEqual(detail.body, "issue body");
+    assert.strictEqual(detail.comments.length, 1);
+    assert.strictEqual(detail.comments[0]?.author, "alice");
+    // Two calls: issue + comments
+    assert.strictEqual(execute.mock.calls.length, 2);
+  }).pipe(Effect.provide(layer));
+});
+
 it.effect("listIssues fetches open issues and returns normalized records", () => {
   const { execute, layer } = makeLayer({
     response: () =>

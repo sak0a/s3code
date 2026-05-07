@@ -821,8 +821,46 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
           );
         }),
       ),
-    getIssue: () =>
-      Effect.fail(new BitbucketApiError({ operation: "getIssue", detail: "stub" })),
+    getIssue: (input) => {
+      const referenceId =
+        input.reference.trim().replace(/^#/, "").split("/").pop() ?? input.reference;
+      return resolveRepository({
+        cwd: input.cwd,
+        ...(input.context ? { context: input.context } : {}),
+      }).pipe(
+        Effect.flatMap((repo) => {
+          const issuePath = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues/${encodeURIComponent(referenceId)}`;
+          const commentsPath = `${issuePath}/comments?pagelen=10&sort=-created_on`;
+          const issue = executeJson(
+            "getIssue",
+            HttpClientRequest.get(apiUrl(issuePath)),
+            BitbucketIssues.BitbucketIssueSchema,
+          );
+          const comments = executeJson(
+            "getIssueComments",
+            HttpClientRequest.get(apiUrl(commentsPath)),
+            BitbucketIssues.BitbucketCommentListSchema,
+          ).pipe(
+            Effect.map(BitbucketIssues.normalizeBitbucketCommentList),
+            Effect.catch((err) =>
+              isBitbucketApiError(err) && err.status === 404
+                ? Effect.succeed([])
+                : Effect.fail(err),
+            ),
+          );
+          return Effect.all([issue, comments], { concurrency: 2 }).pipe(
+            Effect.map(([rawIssue, normalizedComments]) => {
+              const summary = BitbucketIssues.normalizeBitbucketIssueRecord(rawIssue);
+              return {
+                ...summary,
+                body: rawIssue.content?.raw ?? "",
+                comments: normalizedComments,
+              };
+            }),
+          );
+        }),
+      );
+    },
     searchIssues: () =>
       Effect.fail(new BitbucketApiError({ operation: "searchIssues", detail: "stub" })),
     searchPullRequests: () =>
