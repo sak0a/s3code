@@ -636,6 +636,12 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
               cwd: commandInput.cwd,
               env: {
                 ...process.env,
+                // Force English locale so stderr parsing (e.g. "not a git repository")
+                // is deterministic across user systems. We only ever parse git's output
+                // programmatically — we never display it to the user — so localization
+                // is a liability, not a feature.
+                LC_ALL: "C",
+                LANG: "C",
                 ...input.env,
                 ...trace2Monitor.env,
               },
@@ -1177,6 +1183,9 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
 
     if (statusResult.exitCode !== 0) {
       const stderr = statusResult.stderr.trim();
+      if (stderr.toLowerCase().includes("not a git repository")) {
+        return NON_REPOSITORY_STATUS_DETAILS;
+      }
       return yield* createGitCommandError(
         "GitVcsDriver.statusDetails.status",
         cwd,

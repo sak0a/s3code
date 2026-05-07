@@ -39,6 +39,16 @@ const GitHubPullRequestSchema = Schema.Struct({
       }),
     ),
   ),
+  body: Schema.optional(Schema.NullOr(Schema.String)),
+  comments: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
+        body: Schema.String,
+        createdAt: Schema.String,
+      }),
+    ),
+  ),
 });
 
 function trimOptionalString(value: string | null | undefined): string | null {
@@ -124,4 +134,31 @@ export function decodeGitHubPullRequestJson(
     return Result.succeed(normalizeGitHubPullRequestRecord(result.success));
   }
   return Result.fail(result.failure);
+}
+
+export interface NormalizedGitHubPullRequestDetail extends NormalizedGitHubPullRequestRecord {
+  readonly body: string;
+  readonly comments: ReadonlyArray<{
+    readonly author: string;
+    readonly body: string;
+    readonly createdAt: string;
+  }>;
+}
+
+export function decodeGitHubPullRequestDetailJson(
+  raw: string,
+): Result.Result<NormalizedGitHubPullRequestDetail, Cause.Cause<Schema.SchemaError>> {
+  const result = decodeGitHubPullRequest(raw);
+  if (!Result.isSuccess(result)) return Result.fail(result.failure);
+  const summary = normalizeGitHubPullRequestRecord(result.success);
+  const detail: NormalizedGitHubPullRequestDetail = {
+    ...summary,
+    body: result.success.body ?? "",
+    comments: (result.success.comments ?? []).map((c) => ({
+      author: c.author?.login ?? "unknown",
+      body: c.body,
+      createdAt: c.createdAt,
+    })),
+  };
+  return Result.succeed(detail);
 }

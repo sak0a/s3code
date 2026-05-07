@@ -1,0 +1,41 @@
+import type { SourceControlIssueSummary } from "@t3tools/contracts";
+import { memo } from "react";
+import { cn } from "~/lib/utils";
+
+type Item = SourceControlIssueSummary;
+
+export const ContextPickerList = memo(function ContextPickerList(props: {
+  items: ReadonlyArray<Item>;
+  isLoading: boolean;
+  emptyText: string;
+  onSelect: (item: Item) => void;
+}) {
+  if (props.isLoading && props.items.length === 0) {
+    return <div className="px-3 py-4 text-xs text-muted-foreground">Loading…</div>;
+  }
+  if (props.items.length === 0) {
+    return <div className="px-3 py-4 text-xs text-muted-foreground">{props.emptyText}</div>;
+  }
+  return (
+    <ul className="max-h-72 overflow-y-auto" role="listbox">
+      {props.items.map((item) => (
+        <li key={`${item.provider}:${item.number}`}>
+          <button
+            type="button"
+            onClick={() => props.onSelect(item)}
+            className={cn(
+              "flex w-full items-center gap-2 px-3 py-2 text-left text-sm",
+              "hover:bg-accent",
+            )}
+          >
+            <span className="shrink-0 text-muted-foreground">#{item.number}</span>
+            <span className="min-w-0 flex-1 truncate">{item.title}</span>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {/* date — format updatedAt if present */}
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+});

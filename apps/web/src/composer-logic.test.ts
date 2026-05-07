@@ -295,6 +295,37 @@ describe("isCollapsedCursorAdjacentToInlineToken", () => {
   });
 });
 
+describe("detectComposerTrigger – source control", () => {
+  it("matches '#' at start", () => {
+    const text = "#";
+    const t = detectComposerTrigger(text, 1);
+    expect(t).toEqual({ kind: "source-control", query: "", rangeStart: 0, rangeEnd: 1 });
+  });
+  it("matches '#42' as numeric reference", () => {
+    const text = "see #42 ";
+    const t = detectComposerTrigger(text, 7);
+    expect(t?.kind).toBe("source-control");
+    expect(t?.query).toBe("42");
+  });
+  it("matches '#bug ' as text query", () => {
+    const text = "fixing #bug now";
+    // cursor=11 is right after "bug" (at the space), so token is "#bug"
+    const t = detectComposerTrigger(text, 11);
+    expect(t?.kind).toBe("source-control");
+    expect(t?.query).toBe("bug");
+  });
+  it("matches '#https://github.com/.../issues/9' as URL", () => {
+    const text = "ref #https://github.com/foo/bar/issues/9";
+    const t = detectComposerTrigger(text, text.length);
+    expect(t?.kind).toBe("source-control");
+    expect(t?.query).toBe("https://github.com/foo/bar/issues/9");
+  });
+  it("does NOT match '#' mid-word", () => {
+    const t = detectComposerTrigger("abc#42", 6);
+    expect(t?.kind).not.toBe("source-control");
+  });
+});
+
 describe("parseStandaloneComposerSlashCommand", () => {
   it("parses standalone /plan command", () => {
     expect(parseStandaloneComposerSlashCommand(" /plan ")).toBe("plan");

@@ -36,6 +36,65 @@ export const ChangeRequest = Schema.Struct({
 });
 export type ChangeRequest = typeof ChangeRequest.Type;
 
+// Token-budget caps. Server enforces these before responding so the web client
+// always receives bounded payloads. Keep these here so server, web, and tests
+// reference the same constants.
+export const SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES = 8 * 1024; // 8 KB
+export const SOURCE_CONTROL_DETAIL_COMMENT_BODY_MAX_BYTES = 2 * 1024; // 2 KB
+export const SOURCE_CONTROL_DETAIL_MAX_COMMENTS = 5;
+
+export const SourceControlIssueState = Schema.Literals(["open", "closed"]);
+export type SourceControlIssueState = typeof SourceControlIssueState.Type;
+
+export const SourceControlIssueSummary = Schema.Struct({
+  provider: SourceControlProviderKind,
+  number: PositiveInt,
+  title: TrimmedNonEmptyString,
+  url: TrimmedNonEmptyString,
+  state: SourceControlIssueState,
+  author: Schema.optional(TrimmedNonEmptyString),
+  updatedAt: Schema.Option(Schema.DateTimeUtc),
+  labels: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
+});
+export type SourceControlIssueSummary = typeof SourceControlIssueSummary.Type;
+
+export const SourceControlIssueComment = Schema.Struct({
+  author: Schema.String,
+  body: Schema.String,
+  createdAt: Schema.DateTimeUtc,
+});
+export type SourceControlIssueComment = typeof SourceControlIssueComment.Type;
+
+export const SourceControlIssueDetail = Schema.Struct({
+  ...SourceControlIssueSummary.fields,
+  body: Schema.String,
+  comments: Schema.Array(SourceControlIssueComment),
+  truncated: Schema.Boolean,
+});
+export type SourceControlIssueDetail = typeof SourceControlIssueDetail.Type;
+
+export const SourceControlChangeRequestDetail = Schema.Struct({
+  ...ChangeRequest.fields,
+  body: Schema.String,
+  comments: Schema.Array(SourceControlIssueComment),
+  truncated: Schema.Boolean,
+});
+export type SourceControlChangeRequestDetail = typeof SourceControlChangeRequestDetail.Type;
+
+export const ComposerSourceControlContextKind = Schema.Literals(["issue", "change-request"]);
+export type ComposerSourceControlContextKind = typeof ComposerSourceControlContextKind.Type;
+
+export const ComposerSourceControlContext = Schema.Struct({
+  id: TrimmedNonEmptyString, // local UUID, generated client-side
+  kind: ComposerSourceControlContextKind,
+  provider: SourceControlProviderKind,
+  reference: TrimmedNonEmptyString, // 'owner/repo#42' or full URL
+  detail: Schema.Union([SourceControlIssueDetail, SourceControlChangeRequestDetail]),
+  fetchedAt: Schema.DateTimeUtc,
+  staleAfter: Schema.DateTimeUtc, // fetchedAt + 5 minutes
+});
+export type ComposerSourceControlContext = typeof ComposerSourceControlContext.Type;
+
 export const SourceControlRepositoryCloneUrls = Schema.Struct({
   nameWithOwner: TrimmedNonEmptyString,
   url: TrimmedNonEmptyString,
@@ -176,4 +235,58 @@ export class SourceControlRepositoryError extends Schema.TaggedErrorClass<Source
   override get message(): string {
     return `Source control repository operation ${this.operation} failed for ${this.provider}: ${this.detail}`;
   }
+}
+
+export interface SourceControlDetailContentInput {
+  readonly body: string;
+  readonly comments: ReadonlyArray<{
+    readonly author: string;
+    readonly body: string;
+    readonly createdAt: string;
+  }>;
+}
+
+export interface SourceControlDetailContentOutput {
+  readonly body: string;
+  readonly comments: ReadonlyArray<{
+    readonly author: string;
+    readonly body: string;
+    readonly createdAt: string;
+  }>;
+  readonly truncated: boolean;
+}
+
+function truncateUtf8(value: string, maxBytes: number): { value: string; truncated: boolean } {
+  if (Buffer.byteLength(value, "utf8") <= maxBytes) return { value, truncated: false };
+  const buf = Buffer.from(value, "utf8").subarray(0, maxBytes);
+  // Avoid splitting a multi-byte char at the tail.
+  return { value: buf.toString("utf8"), truncated: true };
+}
+
+export function truncateSourceControlDetailContent(
+  input: SourceControlDetailContentInput,
+): SourceControlDetailContentOutput {
+  let truncated = false;
+  const { value: body, truncated: bodyCut } = truncateUtf8(
+    input.body,
+    SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES,
+  );
+  if (bodyCut) truncated = true;
+
+  let comments = input.comments;
+  if (comments.length > SOURCE_CONTROL_DETAIL_MAX_COMMENTS) {
+    comments = comments.slice(comments.length - SOURCE_CONTROL_DETAIL_MAX_COMMENTS);
+    truncated = true;
+  }
+
+  const cappedComments = comments.map((c) => {
+    const { value, truncated: cBodyCut } = truncateUtf8(
+      c.body,
+      SOURCE_CONTROL_DETAIL_COMMENT_BODY_MAX_BYTES,
+    );
+    if (cBodyCut) truncated = true;
+    return { author: c.author, body: value, createdAt: c.createdAt };
+  });
+
+  return { body, comments: cappedComments, truncated };
 }

@@ -1,5 +1,7 @@
 import type {
   ApprovalRequestId,
+  ChangeRequest,
+  ComposerSourceControlContext,
   EnvironmentId,
   ModelSelection,
   ProjectEntry,
@@ -9,6 +11,7 @@ import type {
   RuntimeMode,
   ScopedThreadRef,
   ServerProvider,
+  SourceControlIssueSummary,
   ThreadId,
   TurnId,
 } from "@t3tools/contracts";
@@ -30,7 +33,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { projectSearchEntriesQueryOptions } from "~/lib/projectReactQuery";
 import {
@@ -50,6 +53,15 @@ import {
   useComposerThreadDraft,
   useEffectiveComposerModelState,
 } from "../../composerDraftStore";
+import { DateTime } from "effect";
+import {
+  issueDetailQueryOptions,
+  changeRequestDetailQueryOptions,
+  issueListQueryOptions,
+  changeRequestListQueryOptions,
+} from "../../lib/sourceControlContextRpc";
+import { searchSourceControlSummaries } from "./composerSourceControlContextSearch";
+import { ContextPickerButton } from "./ContextPickerButton";
 import {
   type TerminalContextDraft,
   type TerminalContextSelection,
@@ -78,6 +90,7 @@ import {
 } from "./composerProviderState";
 import { ContextWindowMeter } from "./ContextWindowMeter";
 import { buildExpandedImagePreview, type ExpandedImagePreview } from "./ExpandedImagePreview";
+import { SourceControlContextChip } from "./SourceControlContextChip";
 import { basenameOfPath } from "../../vscode-icons";
 import { cn, randomUUID } from "~/lib/utils";
 import { Separator } from "../ui/separator";
@@ -367,6 +380,7 @@ export interface ChatComposerHandle {
     prompt: string;
     images: ComposerImageAttachment[];
     terminalContexts: TerminalContextDraft[];
+    sourceControlContexts: ComposerSourceControlContext[];
     selectedPromptEffort: string | null;
     selectedModelOptionsForDispatch: unknown;
     selectedModelSelection: ModelSelection;
@@ -569,6 +583,7 @@ export const ChatComposer = memo(
     const prompt = composerDraft.prompt;
     const composerImages = composerDraft.images;
     const composerTerminalContexts = composerDraft.terminalContexts;
+    const composerSourceControlContexts = composerDraft.sourceControlContexts;
     const nonPersistedComposerImageIds = composerDraft.nonPersistedImageIds;
 
     const setComposerDraftPrompt = useComposerDraftStore((store) => store.setPrompt);
@@ -591,6 +606,12 @@ export const ChatComposer = memo(
       (store) => store.syncPersistedAttachments,
     );
     const getComposerDraft = useComposerDraftStore((store) => store.getComposerDraft);
+    const addSourceControlContextToDraft = useComposerDraftStore(
+      (store) => store.addSourceControlContext,
+    );
+    const removeSourceControlContextFromDraft = useComposerDraftStore(
+      (store) => store.removeSourceControlContext,
+    );
 
     // ------------------------------------------------------------------
     // Model state
@@ -829,8 +850,9 @@ export const ChatComposer = memo(
           prompt,
           imageCount: composerImages.length,
           terminalContexts: composerTerminalContexts,
+          sourceControlContexts: composerSourceControlContexts,
         }),
-      [composerImages.length, composerTerminalContexts, prompt],
+      [composerImages.length, composerSourceControlContexts, composerTerminalContexts, prompt],
     );
 
     // ------------------------------------------------------------------
@@ -855,6 +877,26 @@ export const ChatComposer = memo(
       }),
     );
     const workspaceEntries = workspaceEntriesQuery.data?.entries ?? EMPTY_PROJECT_ENTRIES;
+
+    const isSourceControlTrigger = composerTriggerKind === "source-control";
+    const issueListQuery = useQuery(
+      issueListQueryOptions({
+        environmentId,
+        cwd: gitCwd,
+        state: "open",
+        limit: 50,
+        enabled: isSourceControlTrigger,
+      }),
+    );
+    const changeRequestListQuery = useQuery(
+      changeRequestListQueryOptions({
+        environmentId,
+        cwd: gitCwd,
+        state: "open",
+        limit: 50,
+        enabled: isSourceControlTrigger,
+      }),
+    );
 
     const composerMenuItems = useMemo<ComposerCommandItem[]>(() => {
       if (!composerTrigger) return [];
@@ -925,8 +967,46 @@ export const ChatComposer = memo(
             (skill.scope ? `${skill.scope} skill` : "Run provider skill"),
         }));
       }
+      if (composerTrigger.kind === "source-control") {
+        const query = composerTrigger.query;
+        const issues = issueListQuery.data ?? [];
+        const prs = changeRequestListQuery.data ?? [];
+        const filteredIssues = searchSourceControlSummaries(issues, query);
+        // ChangeRequest has number/title but is a different type; filter manually
+        const q = query.trim().toLowerCase();
+        const filteredPrs =
+          q.length === 0
+            ? prs
+            : prs.filter((pr) => {
+                const num = String(pr.number);
+                const title = pr.title.toLowerCase();
+                return num === q || num.startsWith(q) || title.includes(q);
+              });
+        const issueItems: ComposerCommandItem[] = filteredIssues.map((issue) => ({
+          id: `source-control-issue:${issue.provider}:${issue.number}`,
+          type: "source-control-issue" as const,
+          summary: issue,
+          label: `#${issue.number}`,
+          description: issue.title,
+        }));
+        const prItems: ComposerCommandItem[] = filteredPrs.map((pr) => ({
+          id: `source-control-pr:${pr.provider}:${pr.number}`,
+          type: "source-control-pr" as const,
+          summary: pr,
+          label: `#${pr.number}`,
+          description: pr.title,
+        }));
+        return [...issueItems, ...prItems];
+      }
       return [];
-    }, [composerTrigger, selectedProvider, selectedProviderStatus, workspaceEntries]);
+    }, [
+      composerTrigger,
+      issueListQuery.data,
+      changeRequestListQuery.data,
+      selectedProvider,
+      selectedProviderStatus,
+      workspaceEntries,
+    ]);
 
     const composerMenuOpen = Boolean(composerTrigger);
     const composerMenuSearchKey = composerTrigger
@@ -991,13 +1071,18 @@ export const ChatComposer = memo(
     ]);
 
     const isComposerMenuLoading =
-      composerTriggerKind === "path" &&
-      ((pathTriggerQuery.length > 0 && composerPathQueryDebouncer.state.isPending) ||
-        workspaceEntriesQuery.isLoading ||
-        workspaceEntriesQuery.isFetching);
+      (composerTriggerKind === "path" &&
+        ((pathTriggerQuery.length > 0 && composerPathQueryDebouncer.state.isPending) ||
+          workspaceEntriesQuery.isLoading ||
+          workspaceEntriesQuery.isFetching)) ||
+      (composerTriggerKind === "source-control" &&
+        (issueListQuery.isLoading || changeRequestListQuery.isLoading));
     const composerMenuEmptyState = useMemo(() => {
       if (composerTriggerKind === "skill") {
         return "No skills found. Try / to browse provider commands.";
+      }
+      if (composerTriggerKind === "source-control") {
+        return "No matching issues or pull requests.";
       }
       return composerTriggerKind === "path"
         ? "No matching files or folders."
@@ -1477,6 +1562,81 @@ export const ChatComposer = memo(
       };
     }, [readComposerSnapshot]);
 
+    // ------------------------------------------------------------------
+    // Callbacks: source-control context picker
+    // ------------------------------------------------------------------
+    const queryClient = useQueryClient();
+
+    const handleSelectIssue = useCallback(
+      async (issue: SourceControlIssueSummary) => {
+        if (!environmentId || !gitCwd) return;
+        const reference = `${issue.provider}#${issue.number}`;
+        try {
+          const detail = await queryClient.fetchQuery(
+            issueDetailQueryOptions({
+              environmentId,
+              cwd: gitCwd,
+              reference: String(issue.number),
+            }),
+          );
+          const now = DateTime.fromDateUnsafe(new Date());
+          const staleAfter = DateTime.fromDateUnsafe(new Date(Date.now() + 5 * 60 * 1000));
+          const context: ComposerSourceControlContext = {
+            id: randomUUID(),
+            kind: "issue",
+            provider: issue.provider,
+            reference,
+            detail,
+            fetchedAt: now,
+            staleAfter,
+          };
+          addSourceControlContextToDraft(composerDraftTarget, context);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "unknown error";
+          toastManager.add({
+            type: "error",
+            title: `Couldn't fetch ${reference}: ${message}`,
+          });
+        }
+      },
+      [environmentId, gitCwd, queryClient, composerDraftTarget, addSourceControlContextToDraft],
+    );
+
+    const handleSelectChangeRequest = useCallback(
+      async (cr: ChangeRequest) => {
+        if (!environmentId || !gitCwd) return;
+        const reference = `${cr.provider}#${cr.number}`;
+        try {
+          const detail = await queryClient.fetchQuery(
+            changeRequestDetailQueryOptions({
+              environmentId,
+              cwd: gitCwd,
+              reference: String(cr.number),
+            }),
+          );
+          const now = DateTime.fromDateUnsafe(new Date());
+          const staleAfter = DateTime.fromDateUnsafe(new Date(Date.now() + 5 * 60 * 1000));
+          const context: ComposerSourceControlContext = {
+            id: randomUUID(),
+            kind: "change-request",
+            provider: cr.provider,
+            reference,
+            detail,
+            fetchedAt: now,
+            staleAfter,
+          };
+          addSourceControlContextToDraft(composerDraftTarget, context);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "unknown error";
+          toastManager.add({
+            type: "error",
+            title: `Couldn't fetch ${reference}: ${message}`,
+          });
+        }
+      },
+      [environmentId, gitCwd, queryClient, composerDraftTarget, addSourceControlContextToDraft],
+    );
+
     const onSelectComposerItem = useCallback(
       (item: ComposerCommandItem) => {
         if (composerSelectLockRef.current) return;
@@ -1561,8 +1721,38 @@ export const ChatComposer = memo(
           }
           return;
         }
+        if (item.type === "source-control-issue") {
+          // Delete the `#...` text range from the composer
+          const applied = applyPromptReplacement(trigger.rangeStart, trigger.rangeEnd, "", {
+            expectedText: snapshot.value.slice(trigger.rangeStart, trigger.rangeEnd),
+          });
+          if (applied) {
+            setComposerHighlightedItemId(null);
+          }
+          // Fetch detail and attach chip (event-driven, non-blocking)
+          void handleSelectIssue(item.summary);
+          return;
+        }
+        if (item.type === "source-control-pr") {
+          // Delete the `#...` text range from the composer
+          const applied = applyPromptReplacement(trigger.rangeStart, trigger.rangeEnd, "", {
+            expectedText: snapshot.value.slice(trigger.rangeStart, trigger.rangeEnd),
+          });
+          if (applied) {
+            setComposerHighlightedItemId(null);
+          }
+          // Fetch detail and attach chip (event-driven, non-blocking)
+          void handleSelectChangeRequest(item.summary);
+          return;
+        }
       },
-      [applyPromptReplacement, handleInteractionModeChange, resolveActiveComposerTrigger],
+      [
+        applyPromptReplacement,
+        handleInteractionModeChange,
+        handleSelectIssue,
+        handleSelectChangeRequest,
+        resolveActiveComposerTrigger,
+      ],
     );
 
     const onComposerMenuItemHighlighted = useCallback(
@@ -1741,6 +1931,13 @@ export const ChatComposer = memo(
       removeComposerImageFromDraft(imageId);
     };
 
+    const handleRemoveSourceControlContext = useCallback(
+      (id: string) => {
+        removeSourceControlContextFromDraft(composerDraftTarget, id);
+      },
+      [composerDraftTarget, removeSourceControlContextFromDraft],
+    );
+
     // ------------------------------------------------------------------
     // Callbacks: paste / drag
     // ------------------------------------------------------------------
@@ -1917,6 +2114,7 @@ export const ChatComposer = memo(
           prompt: promptRef.current,
           images: composerImagesRef.current,
           terminalContexts: composerTerminalContextsRef.current,
+          sourceControlContexts: composerSourceControlContexts,
           selectedPromptEffort,
           selectedModelOptionsForDispatch,
           selectedModelSelection,
@@ -1929,6 +2127,7 @@ export const ChatComposer = memo(
         activeThread,
         composerDraftTarget,
         composerCursor,
+        composerSourceControlContexts,
         composerTerminalContexts,
         insertComposerDraftTerminalContext,
         promptRef,
@@ -2168,6 +2367,21 @@ export const ChatComposer = memo(
               {!isComposerCollapsedMobile &&
                 !isComposerApprovalState &&
                 pendingUserInputs.length === 0 &&
+                composerSourceControlContexts.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {composerSourceControlContexts.map((ctx) => (
+                      <SourceControlContextChip
+                        key={ctx.id}
+                        context={ctx}
+                        onRemove={handleRemoveSourceControlContext}
+                      />
+                    ))}
+                  </div>
+                )}
+
+              {!isComposerCollapsedMobile &&
+                !isComposerApprovalState &&
+                pendingUserInputs.length === 0 &&
                 composerImages.length > 0 && (
                   <div className="mb-3 flex flex-wrap gap-2">
                     {composerImages.map((image) => (
@@ -2325,6 +2539,15 @@ export const ChatComposer = memo(
                 )}
               >
                 <div className="-m-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <ContextPickerButton
+                    environmentId={environmentId}
+                    cwd={gitCwd ?? ""}
+                    hasSourceControlRemote={true}
+                    onSelectIssue={handleSelectIssue}
+                    onSelectChangeRequest={handleSelectChangeRequest}
+                    onAttachFile={(file) => addComposerImages([file])}
+                  />
+                  <Separator orientation="vertical" className="mx-0.5 hidden h-4 sm:block" />
                   <ProviderModelPicker
                     compact={isComposerFooterCompact}
                     activeInstanceId={selectedInstanceId}

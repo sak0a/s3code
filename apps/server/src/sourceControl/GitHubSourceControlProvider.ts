@@ -1,11 +1,16 @@
-import { Effect, Layer, Option, Result, Schema } from "effect";
+import { DateTime, Effect, Layer, Option, Result, Schema } from "effect";
 import {
   SourceControlProviderError,
+  truncateSourceControlDetailContent,
   type ChangeRequest,
   type ChangeRequestState,
+  type SourceControlChangeRequestDetail,
+  type SourceControlIssueDetail,
+  type SourceControlIssueSummary,
 } from "@t3tools/contracts";
 
 import * as GitHubCli from "./GitHubCli.ts";
+import * as GitHubIssues from "./gitHubIssues.ts";
 import * as GitHubPullRequests from "./gitHubPullRequests.ts";
 import * as SourceControlProvider from "./SourceControlProvider.ts";
 import * as SourceControlProviderDiscovery from "./SourceControlProviderDiscovery.ts";
@@ -41,6 +46,55 @@ function toChangeRequest(summary: GitHubCli.GitHubPullRequestSummary): ChangeReq
     ...(summary.headRepositoryOwnerLogin !== undefined
       ? { headRepositoryOwnerLogin: summary.headRepositoryOwnerLogin }
       : {}),
+  };
+}
+
+function toIssueSummary(raw: GitHubIssues.NormalizedGitHubIssueRecord): SourceControlIssueSummary {
+  return {
+    provider: "github",
+    number: raw.number,
+    title: raw.title,
+    url: raw.url,
+    state: raw.state,
+    ...(raw.author ? { author: raw.author } : {}),
+    updatedAt: raw.updatedAt.pipe(Option.map((s) => DateTime.fromDateUnsafe(new Date(s)))),
+    labels: raw.labels,
+  };
+}
+
+function toIssueDetail(raw: GitHubIssues.NormalizedGitHubIssueDetail): SourceControlIssueDetail {
+  const truncated = truncateSourceControlDetailContent({
+    body: raw.body,
+    comments: raw.comments,
+  });
+  return {
+    ...toIssueSummary(raw),
+    body: truncated.body,
+    comments: truncated.comments.map((c) => ({
+      author: c.author,
+      body: c.body,
+      createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
+    })),
+    truncated: truncated.truncated,
+  };
+}
+
+function toChangeRequestDetail(
+  raw: GitHubCli.GitHubPullRequestDetail,
+): SourceControlChangeRequestDetail {
+  const truncated = truncateSourceControlDetailContent({
+    body: raw.body,
+    comments: raw.comments,
+  });
+  return {
+    ...toChangeRequest(raw),
+    body: truncated.body,
+    comments: truncated.comments.map((c) => ({
+      author: c.author,
+      body: c.body,
+      createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
+    })),
+    truncated: truncated.truncated,
   };
 }
 
@@ -190,6 +244,49 @@ export const make = Effect.fn("makeGitHubSourceControlProvider")(function* () {
       github
         .checkoutPullRequest(input)
         .pipe(Effect.mapError((error) => providerError("checkoutChangeRequest", error))),
+    listIssues: (input) =>
+      github
+        .listIssues({
+          cwd: input.cwd,
+          state: input.state,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toIssueSummary)),
+          Effect.mapError((error) => providerError("listIssues", error)),
+        ),
+    getIssue: (input) =>
+      github.getIssue({ cwd: input.cwd, reference: input.reference }).pipe(
+        Effect.map(toIssueDetail),
+        Effect.mapError((error) => providerError("getIssue", error)),
+      ),
+    searchIssues: (input) =>
+      github
+        .searchIssues({
+          cwd: input.cwd,
+          query: input.query,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toIssueSummary)),
+          Effect.mapError((error) => providerError("searchIssues", error)),
+        ),
+    searchChangeRequests: (input) =>
+      github
+        .searchPullRequests({
+          cwd: input.cwd,
+          query: input.query,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toChangeRequest)),
+          Effect.mapError((error) => providerError("searchChangeRequests", error)),
+        ),
+    getChangeRequestDetail: (input) =>
+      github.getPullRequestDetail({ cwd: input.cwd, reference: input.reference }).pipe(
+        Effect.map(toChangeRequestDetail),
+        Effect.mapError((error) => providerError("getChangeRequestDetail", error)),
+      ),
   });
 });
 

@@ -592,6 +592,15 @@ function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
           cwd: input.cwd,
           args: ["pr", "checkout", input.reference, ...(input.force ? ["--force"] : [])],
         }).pipe(Effect.asVoid),
+      listIssues: () =>
+        Effect.fail(new GitHubCliError({ operation: "listIssues", detail: "stub" })),
+      getIssue: () => Effect.fail(new GitHubCliError({ operation: "getIssue", detail: "stub" })),
+      searchIssues: () =>
+        Effect.fail(new GitHubCliError({ operation: "searchIssues", detail: "stub" })),
+      searchPullRequests: () =>
+        Effect.fail(new GitHubCliError({ operation: "searchPullRequests", detail: "stub" })),
+      getPullRequestDetail: () =>
+        Effect.fail(new GitHubCliError({ operation: "getPullRequestDetail", detail: "stub" })),
     },
     ghCalls,
   };

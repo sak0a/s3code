@@ -15,6 +15,7 @@ import {
 import { Cause, Effect, Exit, Queue, Random, Ref, Scope, Stream } from "effect";
 import type { OpencodeClient, Part, PermissionRequest, QuestionRequest } from "@opencode-ai/sdk/v2";
 import { getModelSelectionStringOptionValue } from "@t3tools/shared/model";
+import { formatSourceControlContextsForAgent } from "@t3tools/shared/sourceControlContextFormatter";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import { ServerConfig } from "../../config.ts";
@@ -1162,7 +1163,10 @@ export function makeOpenCodeAdapter(
         });
       }
 
-      const text = input.input?.trim();
+      const formatted = formatSourceControlContextsForAgent(input.sourceControlContexts ?? []);
+      const text = formatted
+        ? formatted + "\n\n" + (input.input?.trim() ?? "")
+        : input.input?.trim();
       const fileParts = toOpenCodeFileParts({
         attachments: input.attachments,
         resolveAttachmentPath: (attachment) =>

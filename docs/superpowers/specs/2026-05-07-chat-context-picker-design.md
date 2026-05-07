@@ -155,7 +155,7 @@ export const SourceControlIssueSummary = Schema.Struct({
 
 export const SourceControlIssueComment = Schema.Struct({
   author: Schema.String,
-  body: Schema.String,        // body cap enforced server-side, not in schema
+  body: Schema.String, // body cap enforced server-side, not in schema
   createdAt: Schema.DateTimeUtcFromString,
 });
 
@@ -178,20 +178,14 @@ export const SourceControlChangeRequestDetail = Schema.Struct({
 ### `ComposerSourceControlContext` (turn-payload addition)
 
 ```ts
-export const ComposerSourceControlContextKind = Schema.Literal(
-  "issue",
-  "change-request",
-);
+export const ComposerSourceControlContextKind = Schema.Literal("issue", "change-request");
 
 export const ComposerSourceControlContext = Schema.Struct({
-  id: TrimmedNonEmptyString,                // local UUID
+  id: TrimmedNonEmptyString, // local UUID
   kind: ComposerSourceControlContextKind,
   provider: SourceControlProviderKind,
-  reference: TrimmedNonEmptyString,         // 'owner/repo#42' or full URL
-  detail: Schema.Union(
-    SourceControlIssueDetail,
-    SourceControlChangeRequestDetail,
-  ),
+  reference: TrimmedNonEmptyString, // 'owner/repo#42' or full URL
+  detail: Schema.Union(SourceControlIssueDetail, SourceControlChangeRequestDetail),
   fetchedAt: Schema.DateTimeUtcFromString,
   staleAfter: Schema.DateTimeUtcFromString, // fetchedAt + 5 min
 });
@@ -204,11 +198,11 @@ alongside the existing `attachments` (images) and terminal contexts.
 
 ### Token-budget caps (server-enforced before response)
 
-| Field | Cap | When exceeded |
-|---|---|---|
-| `body` | 8 KB | Truncate, set `truncated: true` |
-| `comments` | last 5 most recent | Drop older, set `truncated: true` |
-| `comment.body` | 2 KB | Truncate per-comment, set `truncated: true` |
+| Field          | Cap                | When exceeded                               |
+| -------------- | ------------------ | ------------------------------------------- |
+| `body`         | 8 KB               | Truncate, set `truncated: true`             |
+| `comments`     | last 5 most recent | Drop older, set `truncated: true`           |
+| `comment.body` | 2 KB               | Truncate per-comment, set `truncated: true` |
 
 Caps live in a single shared module (`packages/contracts/src/sourceControl.ts`)
 so server and tests reference the same constants.
@@ -250,12 +244,12 @@ remain.
 
 ### Per-provider implementations
 
-| File | New method invocations |
-|---|---|
-| `GitHubCli.ts` | `gh issue list --json …`, `gh issue view <ref> --json …`, `gh issue list --search "<q>"`, `gh pr list --search "<q>" --json …`, `gh issue view <url>` for cross-repo paste; `gh pr view --json` extended with `body,comments` for new detail shape |
-| `GitLabCli.ts` | `glab issue list/view`, `glab issue list --search`, `glab mr list --search`, `glab mr view --comments` |
-| `BitbucketApi.ts` | `GET /repositories/{w}/{r}/issues`, `GET /issues/{id}`, `GET /issues?q=…`, `GET /pullrequests?q=…` |
-| `AzureDevOpsCli.ts` | `az boards work-item list/show`, `az boards query` for search, `az repos pr list` extended with detail |
+| File                | New method invocations                                                                                                                                                                                                                             |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GitHubCli.ts`      | `gh issue list --json …`, `gh issue view <ref> --json …`, `gh issue list --search "<q>"`, `gh pr list --search "<q>" --json …`, `gh issue view <url>` for cross-repo paste; `gh pr view --json` extended with `body,comments` for new detail shape |
+| `GitLabCli.ts`      | `glab issue list/view`, `glab issue list --search`, `glab mr list --search`, `glab mr view --comments`                                                                                                                                             |
+| `BitbucketApi.ts`   | `GET /repositories/{w}/{r}/issues`, `GET /issues/{id}`, `GET /issues?q=…`, `GET /pullrequests?q=…`                                                                                                                                                 |
+| `AzureDevOpsCli.ts` | `az boards work-item list/show`, `az boards query` for search, `az repos pr list` extended with detail                                                                                                                                             |
 
 New decoder modules (one per provider) following `gitHubPullRequests.ts`:
 
@@ -303,24 +297,24 @@ Reuses the existing per-provider error-normalization functions
 
 ### New components (under `apps/web/src/components/chat/`)
 
-| File | Role |
-|---|---|
-| `ContextPickerButton.tsx` | The 📎 button in composer footer; opens the popup. Always enabled — when no source-control remote is detected, the popup still serves file/image attach. |
-| `ContextPickerPopup.tsx` | The full popup: header with provider icons, search input, tab strip, list. Uses Base UI `Popover`. |
-| `ContextPickerTabs.tsx` | Tab strip; tabs are derived from detected providers and which kinds (`Issues`, `PRs/MRs`) the provider supports. |
-| `ContextPickerList.tsx` | Virtualized list rendering `SourceControlIssueSummary` rows. Reuses the visual pattern from `ModelPickerContent.tsx`. |
+| File                           | Role                                                                                                                                                                                                                                                 |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ContextPickerButton.tsx`      | The 📎 button in composer footer; opens the popup. Always enabled — when no source-control remote is detected, the popup still serves file/image attach.                                                                                             |
+| `ContextPickerPopup.tsx`       | The full popup: header with provider icons, search input, tab strip, list. Uses Base UI `Popover`.                                                                                                                                                   |
+| `ContextPickerTabs.tsx`        | Tab strip; tabs are derived from detected providers and which kinds (`Issues`, `PRs/MRs`) the provider supports.                                                                                                                                     |
+| `ContextPickerList.tsx`        | Virtualized list rendering `SourceControlIssueSummary` rows. Reuses the visual pattern from `ModelPickerContent.tsx`.                                                                                                                                |
 | `SourceControlContextChip.tsx` | The chip rendered in the composer once an item is attached. Displays provider-glyph + reference (`#42` for same-repo, `owner/repo#9` for cross-repo) + truncated title; click → expand preview, X → remove. Mirrors `TerminalContextInlineChip.tsx`. |
 
 ### Modified files
 
-| File | Change |
-|---|---|
-| `ChatComposer.tsx` | Render `<ContextPickerButton>` next to the existing footer controls. Render the new chip row alongside existing pending-context chips. |
-| `composerDraftStore.ts` | Extend `ComposerThreadDraft` with `sourceControlContexts: ComposerSourceControlContext[]`. Add `addSourceControlContext`, `removeSourceControlContext`, `clearSourceControlContexts` actions. Persist via the same lifecycle as image attachments. |
-| `ComposerPromptEditor.tsx` | Register `#` trigger (parallel to existing `@` for paths). |
-| `composer-logic.ts` | Add `'source-control'` to `ComposerTriggerKind`. Matcher recognizes `#42`, `#bug …`, `#https://…/issues/9`. |
-| `ComposerCommandMenu.tsx` | Add new item types `'source-control-issue'` and `'source-control-pr'` with provider-specific icons. |
-| `ChatView.logic.ts` | When building the turn payload, include `draft.sourceControlContexts`. |
+| File                       | Change                                                                                                                                                                                                                                             |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ChatComposer.tsx`         | Render `<ContextPickerButton>` next to the existing footer controls. Render the new chip row alongside existing pending-context chips.                                                                                                             |
+| `composerDraftStore.ts`    | Extend `ComposerThreadDraft` with `sourceControlContexts: ComposerSourceControlContext[]`. Add `addSourceControlContext`, `removeSourceControlContext`, `clearSourceControlContexts` actions. Persist via the same lifecycle as image attachments. |
+| `ComposerPromptEditor.tsx` | Register `#` trigger (parallel to existing `@` for paths).                                                                                                                                                                                         |
+| `composer-logic.ts`        | Add `'source-control'` to `ComposerTriggerKind`. Matcher recognizes `#42`, `#bug …`, `#https://…/issues/9`.                                                                                                                                        |
+| `ComposerCommandMenu.tsx`  | Add new item types `'source-control-issue'` and `'source-control-pr'` with provider-specific icons.                                                                                                                                                |
+| `ChatView.logic.ts`        | When building the turn payload, include `draft.sourceControlContexts`.                                                                                                                                                                             |
 
 ### Caching strategy
 
@@ -335,25 +329,25 @@ with `staleTime: 30_000` and a 200ms debounce on the input.
 
 ### `#` keyboard trigger UX
 
-| Input | Behavior |
-|---|---|
-| `#` | Opens inline command menu with cached top-N issues for active provider. |
+| Input             | Behavior                                                                                           |
+| ----------------- | -------------------------------------------------------------------------------------------------- |
+| `#`               | Opens inline command menu with cached top-N issues for active provider.                            |
 | `#42` + Tab/Enter | Direct-attach issue or PR with that number (whichever resolves; issues preferred when both exist). |
-| `#bug ` (text) | Filters cached list, falls through to server search after 2+ chars. |
-| `#https://…` | Recognized as URL → fetch and attach via `getIssue`/`getChangeRequest`. |
-| `#` mid-word | Not a trigger (matches existing `@` mid-word behavior). |
+| `#bug ` (text)    | Filters cached list, falls through to server search after 2+ chars.                                |
+| `#https://…`      | Recognized as URL → fetch and attach via `getIssue`/`getChangeRequest`.                            |
+| `#` mid-word      | Not a trigger (matches existing `@` mid-word behavior).                                            |
 
 ## Behavior
 
 ### Picker open
 
-| State | UI |
-|---|---|
-| Workspace has no git remote | Button stays enabled. Popup opens with source-control tabs hidden and a single line: "No source-control remote detected." File/image attach via the popup's 📎 still works. |
-| Remote on unsupported host | Same as above, line reads: "Unsupported source-control host: <host>." |
-| Provider matched, CLI installed and authed | Tabs render; cached list shows immediately. |
-| Provider matched, CLI not installed | Tab body shows "`gh` is required. Install: `brew install gh`" (or platform-appropriate command), with copy-button. |
-| Provider matched, CLI not authed | Tab body shows "Run `gh auth login` to load issues" with copy-button. |
+| State                                      | UI                                                                                                                                                                          |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace has no git remote                | Button stays enabled. Popup opens with source-control tabs hidden and a single line: "No source-control remote detected." File/image attach via the popup's 📎 still works. |
+| Remote on unsupported host                 | Same as above, line reads: "Unsupported source-control host: <host>."                                                                                                       |
+| Provider matched, CLI installed and authed | Tabs render; cached list shows immediately.                                                                                                                                 |
+| Provider matched, CLI not installed        | Tab body shows "`gh` is required. Install: `brew install gh`" (or platform-appropriate command), with copy-button.                                                          |
+| Provider matched, CLI not authed           | Tab body shows "Run `gh auth login` to load issues" with copy-button.                                                                                                       |
 
 ### Search
 
@@ -392,20 +386,20 @@ with `staleTime: 30_000` and a 200ms debounce on the input.
 
 ## Edge cases
 
-| Case | Handling |
-|---|---|
-| Workspace has no git remote | Source-control tabs hidden; file/image attach still works. Button never becomes disabled. |
-| Multiple remotes (`origin` + `upstream`) | Resolve `origin` first; fall through to next remote if `origin` is unsupported. No remote-picker UI in v1. |
-| Pasted URL from a different repo | Allowed. Resolved via `gh issue view <url>` / `gh pr view <url>`. Chip shows cross-repo reference (`owner/repo#9`). |
-| Pasted URL the CLI can't resolve | Chip never created; toast: "Couldn't fetch <url>: <reason>". |
-| CLI not installed | Tab body shows install instructions for that provider. |
-| CLI not authenticated | Tab body shows the auth-command with copy-to-clipboard. |
-| Token-budget overflow | Truncated server-side per the caps in **Contracts**; chip displays a small "truncated" badge. |
-| Stale chip on send | Refetch in background; on failure, send cached + a one-line "context may be stale, last fetched <time>" note in the payload. |
-| Same item attached twice | Deduplicate by `provider:owner/repo#number`; second attach is a no-op + toast. |
-| Thread switch mid-popup | Popup closes; half-typed search discarded. Already-attached chips persist with their thread's draft. |
-| Sending the turn | All attached source-control contexts cleared from the draft on `turn-accepted` ack. |
-| Offline / WS disconnected | Tab bodies show "Reconnecting…"; no fetches dispatched. Already-attached chips remain visible and send normally on reconnect. |
+| Case                                     | Handling                                                                                                                      |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Workspace has no git remote              | Source-control tabs hidden; file/image attach still works. Button never becomes disabled.                                     |
+| Multiple remotes (`origin` + `upstream`) | Resolve `origin` first; fall through to next remote if `origin` is unsupported. No remote-picker UI in v1.                    |
+| Pasted URL from a different repo         | Allowed. Resolved via `gh issue view <url>` / `gh pr view <url>`. Chip shows cross-repo reference (`owner/repo#9`).           |
+| Pasted URL the CLI can't resolve         | Chip never created; toast: "Couldn't fetch <url>: <reason>".                                                                  |
+| CLI not installed                        | Tab body shows install instructions for that provider.                                                                        |
+| CLI not authenticated                    | Tab body shows the auth-command with copy-to-clipboard.                                                                       |
+| Token-budget overflow                    | Truncated server-side per the caps in **Contracts**; chip displays a small "truncated" badge.                                 |
+| Stale chip on send                       | Refetch in background; on failure, send cached + a one-line "context may be stale, last fetched <time>" note in the payload.  |
+| Same item attached twice                 | Deduplicate by `provider:owner/repo#number`; second attach is a no-op + toast.                                                |
+| Thread switch mid-popup                  | Popup closes; half-typed search discarded. Already-attached chips persist with their thread's draft.                          |
+| Sending the turn                         | All attached source-control contexts cleared from the draft on `turn-accepted` ack.                                           |
+| Offline / WS disconnected                | Tab bodies show "Reconnecting…"; no fetches dispatched. Already-attached chips remain visible and send normally on reconnect. |
 
 ## Testing
 
@@ -413,23 +407,23 @@ Vitest, browser-mode for components, `*.test.ts` colocated with source.
 
 ### Server / unit
 
-| File | Coverage |
-|---|---|
-| `gitHubIssues.test.ts` (new; siblings for GL/BB/AZ) | JSON decoder round-trip + malformed-input rejection, mirroring `gitHubPullRequests.test.ts`. |
-| `GitHubCli.test.ts` (extend; siblings for GL/BB/AZ) | New CLI invocations: correct `args`, correct error normalization for missing-CLI / unauthenticated / not-found / invalid-reference. |
-| `GitHubSourceControlProvider.test.ts` (extend; siblings) | `listIssues`, `getIssue`, `searchIssues`, `searchChangeRequests` against fake CLIs. Truncation caps applied. |
-| `SourceControlProviderRegistry.test.ts` (extend) | Dispatch by remote → correct provider for new methods. |
+| File                                                     | Coverage                                                                                                                            |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `gitHubIssues.test.ts` (new; siblings for GL/BB/AZ)      | JSON decoder round-trip + malformed-input rejection, mirroring `gitHubPullRequests.test.ts`.                                        |
+| `GitHubCli.test.ts` (extend; siblings for GL/BB/AZ)      | New CLI invocations: correct `args`, correct error normalization for missing-CLI / unauthenticated / not-found / invalid-reference. |
+| `GitHubSourceControlProvider.test.ts` (extend; siblings) | `listIssues`, `getIssue`, `searchIssues`, `searchChangeRequests` against fake CLIs. Truncation caps applied.                        |
+| `SourceControlProviderRegistry.test.ts` (extend)         | Dispatch by remote → correct provider for new methods.                                                                              |
 
 ### Web / unit + browser
 
-| File | Coverage |
-|---|---|
-| `composerSourceControlContextSearch.test.ts` (new) | Client-side filter ranking; "no client match → server fallback" trigger. |
-| `composer-logic.test.ts` (extend) | `#42`, `#bug `, `#https://…/issues/9` trigger detection and replacement-range math. |
-| `ContextPickerPopup.browser.tsx` (new) | Tab switching, search debounce, item selection attaches a chip, empty-state messaging per provider state. |
-| `SourceControlContextChip.test.tsx` (new) | Renders title + reference, click expands preview, X removes from draft store. |
-| `composerDraftStore.test.tsx` (extend) | Draft persists `sourceControlContexts`, dedupe rule, clear-on-send semantics. |
-| `ChatComposer.tsx` browser flow (extend) | `#` trigger surfaces command menu; popup open + select cycle; chip survives thread reload, clears on send. |
+| File                                               | Coverage                                                                                                   |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `composerSourceControlContextSearch.test.ts` (new) | Client-side filter ranking; "no client match → server fallback" trigger.                                   |
+| `composer-logic.test.ts` (extend)                  | `#42`, `#bug `, `#https://…/issues/9` trigger detection and replacement-range math.                        |
+| `ContextPickerPopup.browser.tsx` (new)             | Tab switching, search debounce, item selection attaches a chip, empty-state messaging per provider state.  |
+| `SourceControlContextChip.test.tsx` (new)          | Renders title + reference, click expands preview, X removes from draft store.                              |
+| `composerDraftStore.test.tsx` (extend)             | Draft persists `sourceControlContexts`, dedupe rule, clear-on-send semantics.                              |
+| `ChatComposer.tsx` browser flow (extend)           | `#` trigger surfaces command menu; popup open + select cycle; chip survives thread reload, clears on send. |
 
 ### End-to-end smoke (manual checklist)
 
@@ -442,11 +436,11 @@ Vitest, browser-mode for components, `*.test.ts` colocated with source.
 
 ### Performance budget
 
-| Surface | Target |
-|---|---|
-| Popup open → first paint of cached list | ≤ 50 ms (no network) |
-| Cold list fetch via CLI | ≤ 2 s p95 (existing `VcsProcess` timeout already enforces) |
-| Full issue/PR fetch | ≤ 3 s p95 |
+| Surface                                 | Target                                                     |
+| --------------------------------------- | ---------------------------------------------------------- |
+| Popup open → first paint of cached list | ≤ 50 ms (no network)                                       |
+| Cold list fetch via CLI                 | ≤ 2 s p95 (existing `VcsProcess` timeout already enforces) |
+| Full issue/PR fetch                     | ≤ 3 s p95                                                  |
 
 ## Pre-merge gate
 

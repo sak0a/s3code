@@ -51,6 +51,7 @@ import {
   getProviderOptionDescriptors,
   resolvePromptInjectedEffort,
 } from "@t3tools/shared/model";
+import { formatSourceControlContextsForAgent } from "@t3tools/shared/sourceControlContextFormatter";
 import {
   Cause,
   DateTime,
@@ -583,7 +584,12 @@ function buildPromptText(
   const caps = getClaudeModelCapabilities(claudeModel);
 
   const promptEffort = resolvePromptInjectedEffort(caps, rawEffort);
-  return applyClaudePromptEffortPrefix(input.input?.trim() ?? "", promptEffort);
+  const formatted = formatSourceControlContextsForAgent(input.sourceControlContexts ?? []);
+  const text = applyClaudePromptEffortPrefix(
+    formatted ? formatted + "\n\n" + (input.input?.trim() ?? "") : (input.input?.trim() ?? ""),
+    promptEffort,
+  );
+  return text;
 }
 
 function buildUserMessage(input: {

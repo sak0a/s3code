@@ -14,6 +14,7 @@ import {
   type ScopedProjectRef,
   type ScopedThreadRef,
   ThreadId,
+  type ComposerSourceControlContext,
 } from "@t3tools/contracts";
 import {
   parseScopedProjectKey,
@@ -215,6 +216,8 @@ export interface ComposerThreadDraftState {
   nonPersistedImageIds: string[];
   persistedAttachments: PersistedComposerImageAttachment[];
   terminalContexts: TerminalContextDraft[];
+  /** Source-control contexts (issues / change requests) attached to this draft. Not persisted. */
+  sourceControlContexts: ComposerSourceControlContext[];
   /**
    * Per-instance model selection. Keyed by `ProviderInstanceId` (open
    * branded slug) so a default `codex` instance and a user-authored
@@ -395,6 +398,12 @@ interface ComposerDraftStoreState {
   addTerminalContexts: (threadRef: ComposerThreadTarget, contexts: TerminalContextDraft[]) => void;
   removeTerminalContext: (threadRef: ComposerThreadTarget, contextId: string) => void;
   clearTerminalContexts: (threadRef: ComposerThreadTarget) => void;
+  addSourceControlContext: (
+    threadRef: ComposerThreadTarget,
+    context: ComposerSourceControlContext,
+  ) => void;
+  removeSourceControlContext: (threadRef: ComposerThreadTarget, id: string) => void;
+  clearSourceControlContexts: (threadRef: ComposerThreadTarget) => void;
   clearPersistedAttachments: (threadRef: ComposerThreadTarget) => void;
   syncPersistedAttachments: (
     threadRef: ComposerThreadTarget,
@@ -468,9 +477,11 @@ const EMPTY_IMAGES: ComposerImageAttachment[] = [];
 const EMPTY_IDS: string[] = [];
 const EMPTY_PERSISTED_ATTACHMENTS: PersistedComposerImageAttachment[] = [];
 const EMPTY_TERMINAL_CONTEXTS: TerminalContextDraft[] = [];
+const EMPTY_SOURCE_CONTROL_CONTEXTS: ComposerSourceControlContext[] = [];
 Object.freeze(EMPTY_IMAGES);
 Object.freeze(EMPTY_IDS);
 Object.freeze(EMPTY_PERSISTED_ATTACHMENTS);
+Object.freeze(EMPTY_SOURCE_CONTROL_CONTEXTS);
 const EMPTY_MODEL_SELECTION_BY_PROVIDER: Partial<Record<ProviderDriverKind, ModelSelection>> =
   Object.freeze({});
 const EMPTY_COMPOSER_DRAFT_MODEL_STATE = Object.freeze<ComposerDraftModelState>({
@@ -484,6 +495,7 @@ const EMPTY_THREAD_DRAFT = Object.freeze<ComposerThreadDraftState>({
   nonPersistedImageIds: EMPTY_IDS,
   persistedAttachments: EMPTY_PERSISTED_ATTACHMENTS,
   terminalContexts: EMPTY_TERMINAL_CONTEXTS,
+  sourceControlContexts: EMPTY_SOURCE_CONTROL_CONTEXTS,
   modelSelectionByProvider: EMPTY_MODEL_SELECTION_BY_PROVIDER,
   activeProvider: null,
   runtimeMode: null,
@@ -497,6 +509,7 @@ function createEmptyThreadDraft(): ComposerThreadDraftState {
     nonPersistedImageIds: [],
     persistedAttachments: [],
     terminalContexts: [],
+    sourceControlContexts: [],
     modelSelectionByProvider: {},
     activeProvider: null,
     runtimeMode: null,
@@ -567,6 +580,7 @@ function shouldRemoveDraft(draft: ComposerThreadDraftState): boolean {
     draft.images.length === 0 &&
     draft.persistedAttachments.length === 0 &&
     draft.terminalContexts.length === 0 &&
+    draft.sourceControlContexts.length === 0 &&
     Object.keys(draft.modelSelectionByProvider).length === 0 &&
     draft.activeProvider === null &&
     draft.runtimeMode === null &&
@@ -1896,6 +1910,7 @@ function toHydratedThreadDraft(
         ...context,
         text: "",
       })) ?? [],
+    sourceControlContexts: [],
     modelSelectionByProvider,
     activeProvider,
     runtimeMode: persistedDraft.runtimeMode ?? null,
@@ -2805,6 +2820,77 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
             return { draftsByThreadKey: nextDraftsByThreadKey };
           });
         },
+        addSourceControlContext: (threadRef, context) => {
+          const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
+          if (threadKey.length === 0) {
+            return;
+          }
+          const dedupKey = `${context.provider}:${context.reference}`;
+          set((state) => {
+            const existing = state.draftsByThreadKey[threadKey] ?? createEmptyThreadDraft();
+            const alreadyPresent = existing.sourceControlContexts.some(
+              (ctx) => `${ctx.provider}:${ctx.reference}` === dedupKey,
+            );
+            if (alreadyPresent) {
+              return state;
+            }
+            return {
+              draftsByThreadKey: {
+                ...state.draftsByThreadKey,
+                [threadKey]: {
+                  ...existing,
+                  sourceControlContexts: [...existing.sourceControlContexts, context],
+                },
+              },
+            };
+          });
+        },
+        removeSourceControlContext: (threadRef, id) => {
+          const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
+          if (threadKey.length === 0) {
+            return;
+          }
+          set((state) => {
+            const current = state.draftsByThreadKey[threadKey];
+            if (!current) {
+              return state;
+            }
+            const nextDraft: ComposerThreadDraftState = {
+              ...current,
+              sourceControlContexts: current.sourceControlContexts.filter((ctx) => ctx.id !== id),
+            };
+            const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
+            if (shouldRemoveDraft(nextDraft)) {
+              delete nextDraftsByThreadKey[threadKey];
+            } else {
+              nextDraftsByThreadKey[threadKey] = nextDraft;
+            }
+            return { draftsByThreadKey: nextDraftsByThreadKey };
+          });
+        },
+        clearSourceControlContexts: (threadRef) => {
+          const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
+          if (threadKey.length === 0) {
+            return;
+          }
+          set((state) => {
+            const current = state.draftsByThreadKey[threadKey];
+            if (!current || current.sourceControlContexts.length === 0) {
+              return state;
+            }
+            const nextDraft: ComposerThreadDraftState = {
+              ...current,
+              sourceControlContexts: [],
+            };
+            const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
+            if (shouldRemoveDraft(nextDraft)) {
+              delete nextDraftsByThreadKey[threadKey];
+            } else {
+              nextDraftsByThreadKey[threadKey] = nextDraft;
+            }
+            return { draftsByThreadKey: nextDraftsByThreadKey };
+          });
+        },
         clearPersistedAttachments: (threadRef) => {
           const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
           if (threadKey.length === 0) {
@@ -2877,6 +2963,7 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
               nonPersistedImageIds: [],
               persistedAttachments: [],
               terminalContexts: [],
+              sourceControlContexts: [],
             };
             const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
             if (shouldRemoveDraft(nextDraft)) {

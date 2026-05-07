@@ -7,6 +7,8 @@ import {
 } from "@t3tools/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
+import * as GitHubIssues from "./gitHubIssues.ts";
+import type { NormalizedGitHubIssueDetail, NormalizedGitHubIssueRecord } from "./gitHubIssues.ts";
 import * as GitHubPullRequests from "./gitHubPullRequests.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -31,6 +33,15 @@ export interface GitHubPullRequestSummary {
   readonly isCrossRepository?: boolean;
   readonly headRepositoryNameWithOwner?: string | null;
   readonly headRepositoryOwnerLogin?: string | null;
+}
+
+export interface GitHubPullRequestDetail extends GitHubPullRequestSummary {
+  readonly body: string;
+  readonly comments: ReadonlyArray<{
+    readonly author: string;
+    readonly body: string;
+    readonly createdAt: string;
+  }>;
 }
 
 export interface GitHubRepositoryCloneUrls {
@@ -85,6 +96,34 @@ export interface GitHubCliShape {
     readonly reference: string;
     readonly force?: boolean;
   }) => Effect.Effect<void, GitHubCliError>;
+
+  readonly listIssues: (input: {
+    readonly cwd: string;
+    readonly state: "open" | "closed" | "all";
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<NormalizedGitHubIssueRecord>, GitHubCliError>;
+
+  readonly getIssue: (input: {
+    readonly cwd: string;
+    readonly reference: string;
+  }) => Effect.Effect<NormalizedGitHubIssueDetail, GitHubCliError>;
+
+  readonly searchIssues: (input: {
+    readonly cwd: string;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<NormalizedGitHubIssueRecord>, GitHubCliError>;
+
+  readonly searchPullRequests: (input: {
+    readonly cwd: string;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<GitHubPullRequestSummary>, GitHubCliError>;
+
+  readonly getPullRequestDetail: (input: {
+    readonly cwd: string;
+    readonly reference: string;
+  }) => Effect.Effect<GitHubPullRequestDetail, GitHubCliError>;
 }
 
 export class GitHubCli extends Context.Service<GitHubCli, GitHubCliShape>()(
@@ -364,6 +403,166 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
         cwd: input.cwd,
         args: ["pr", "checkout", input.reference, ...(input.force ? ["--force"] : [])],
       }).pipe(Effect.asVoid),
+    listIssues: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: [
+          "issue",
+          "list",
+          "--state",
+          input.state,
+          "--limit",
+          String(input.limit ?? 50),
+          "--json",
+          "number,title,url,state,updatedAt,author,labels",
+        ],
+      }).pipe(
+        Effect.map((r) => r.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() => GitHubIssues.decodeGitHubIssueListJson(raw)).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success)
+                    : Effect.fail(
+                        new GitHubCliError({
+                          operation: "listIssues",
+                          detail: `GitHub CLI returned invalid issue list JSON: ${GitHubIssues.formatGitHubIssueDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
+      ),
+    getIssue: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: [
+          "issue",
+          "view",
+          input.reference,
+          "--json",
+          "number,title,url,state,updatedAt,author,labels,body,comments",
+        ],
+      }).pipe(
+        Effect.map((r) => r.stdout.trim()),
+        Effect.flatMap((raw) =>
+          Effect.sync(() => GitHubIssues.decodeGitHubIssueDetailJson(raw)).pipe(
+            Effect.flatMap((decoded) =>
+              Result.isSuccess(decoded)
+                ? Effect.succeed(decoded.success)
+                : Effect.fail(
+                    new GitHubCliError({
+                      operation: "getIssue",
+                      detail: `GitHub CLI returned invalid issue JSON: ${GitHubIssues.formatGitHubIssueDecodeError(decoded.failure)}`,
+                      cause: decoded.failure,
+                    }),
+                  ),
+            ),
+          ),
+        ),
+      ),
+    searchIssues: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: [
+          "issue",
+          "list",
+          "--search",
+          input.query,
+          "--limit",
+          String(input.limit ?? 20),
+          "--json",
+          "number,title,url,state,updatedAt,author,labels",
+        ],
+      }).pipe(
+        Effect.map((r) => r.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() => GitHubIssues.decodeGitHubIssueListJson(raw)).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success)
+                    : Effect.fail(
+                        new GitHubCliError({
+                          operation: "searchIssues",
+                          detail: `GitHub CLI returned invalid issue list JSON: ${GitHubIssues.formatGitHubIssueDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
+      ),
+    searchPullRequests: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: [
+          "pr",
+          "list",
+          "--search",
+          input.query,
+          "--limit",
+          String(input.limit ?? 20),
+          "--json",
+          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner",
+        ],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() => GitHubPullRequests.decodeGitHubPullRequestListJson(raw)).pipe(
+                Effect.flatMap((decoded) => {
+                  if (!Result.isSuccess(decoded)) {
+                    return Effect.fail(
+                      new GitHubCliError({
+                        operation: "searchPullRequests",
+                        detail: `GitHub CLI returned invalid PR list JSON: ${GitHubPullRequests.formatGitHubJsonDecodeError(decoded.failure)}`,
+                        cause: decoded.failure,
+                      }),
+                    );
+                  }
+                  return Effect.succeed(
+                    decoded.success.map(({ updatedAt: _updatedAt, ...summary }) => summary),
+                  );
+                }),
+              ),
+        ),
+      ),
+    getPullRequestDetail: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: [
+          "pr",
+          "view",
+          input.reference,
+          "--json",
+          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner,body,comments",
+        ],
+      }).pipe(
+        Effect.map((r) => r.stdout.trim()),
+        Effect.flatMap((raw) =>
+          Effect.sync(() => GitHubPullRequests.decodeGitHubPullRequestDetailJson(raw)).pipe(
+            Effect.flatMap((decoded) => {
+              if (!Result.isSuccess(decoded)) {
+                return Effect.fail(
+                  new GitHubCliError({
+                    operation: "getPullRequestDetail",
+                    detail: `GitHub CLI returned invalid pull request JSON: ${GitHubPullRequests.formatGitHubJsonDecodeError(decoded.failure)}`,
+                    cause: decoded.failure,
+                  }),
+                );
+              }
+              const { updatedAt: _updatedAt, ...rest } = decoded.success;
+              return Effect.succeed(rest);
+            }),
+          ),
+        ),
+      ),
   });
 });
 

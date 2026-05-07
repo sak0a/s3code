@@ -33,6 +33,7 @@ import {
   getModelSelectionBooleanOptionValue,
   getModelSelectionStringOptionValue,
 } from "@t3tools/shared/model";
+import { formatSourceControlContextsForAgent } from "@t3tools/shared/sourceControlContextFormatter";
 
 import {
   ProviderAdapterRequestError,
@@ -1503,9 +1504,11 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
       input.modelSelection?.instanceId === boundInstanceId
         ? getModelSelectionBooleanOptionValue(input.modelSelection, "fastMode")
         : undefined;
+    const formatted = formatSourceControlContextsForAgent(input.sourceControlContexts ?? []);
+    const codexInput = formatted ? formatted + "\n\n" + (input.input ?? "") : input.input;
     return yield* session.runtime
       .sendTurn({
-        ...(input.input !== undefined ? { input: input.input } : {}),
+        ...(codexInput !== undefined ? { input: codexInput } : {}),
         ...(input.modelSelection?.instanceId === boundInstanceId
           ? { model: input.modelSelection.model }
           : {}),

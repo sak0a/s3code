@@ -92,6 +92,11 @@ import {
   SourceControlRepositoryError,
   SourceControlRepositoryInfo,
   SourceControlRepositoryLookupInput,
+  ChangeRequest,
+  SourceControlChangeRequestDetail,
+  SourceControlIssueDetail,
+  SourceControlIssueSummary,
+  SourceControlProviderError,
 } from "./sourceControl.ts";
 import { VcsError } from "./vcs.ts";
 
@@ -146,6 +151,11 @@ export const WS_METHODS = {
   sourceControlLookupRepository: "sourceControl.lookupRepository",
   sourceControlCloneRepository: "sourceControl.cloneRepository",
   sourceControlPublishRepository: "sourceControl.publishRepository",
+  sourceControlListIssues: "sourceControl.listIssues",
+  sourceControlGetIssue: "sourceControl.getIssue",
+  sourceControlSearchIssues: "sourceControl.searchIssues",
+  sourceControlSearchChangeRequests: "sourceControl.searchChangeRequests",
+  sourceControlGetChangeRequestDetail: "sourceControl.getChangeRequestDetail",
 
   // Streaming subscriptions
   subscribeVcsStatus: "subscribeVcsStatus",
@@ -218,6 +228,60 @@ export const WsSourceControlPublishRepositoryRpc = Rpc.make(
     payload: SourceControlPublishRepositoryInput,
     success: SourceControlPublishRepositoryResult,
     error: SourceControlRepositoryError,
+  },
+);
+
+export const WsSourceControlListIssuesRpc = Rpc.make(WS_METHODS.sourceControlListIssues, {
+  payload: Schema.Struct({
+    cwd: Schema.String,
+    state: Schema.Literals(["open", "closed", "all"]),
+    limit: Schema.optional(Schema.Number),
+  }),
+  success: Schema.Array(SourceControlIssueSummary),
+  error: SourceControlProviderError,
+});
+
+export const WsSourceControlGetIssueRpc = Rpc.make(WS_METHODS.sourceControlGetIssue, {
+  payload: Schema.Struct({
+    cwd: Schema.String,
+    reference: Schema.String,
+  }),
+  success: SourceControlIssueDetail,
+  error: SourceControlProviderError,
+});
+
+export const WsSourceControlSearchIssuesRpc = Rpc.make(WS_METHODS.sourceControlSearchIssues, {
+  payload: Schema.Struct({
+    cwd: Schema.String,
+    query: Schema.String,
+    limit: Schema.optional(Schema.Number),
+  }),
+  success: Schema.Array(SourceControlIssueSummary),
+  error: SourceControlProviderError,
+});
+
+export const WsSourceControlSearchChangeRequestsRpc = Rpc.make(
+  WS_METHODS.sourceControlSearchChangeRequests,
+  {
+    payload: Schema.Struct({
+      cwd: Schema.String,
+      query: Schema.String,
+      limit: Schema.optional(Schema.Number),
+    }),
+    success: Schema.Array(ChangeRequest),
+    error: SourceControlProviderError,
+  },
+);
+
+export const WsSourceControlGetChangeRequestDetailRpc = Rpc.make(
+  WS_METHODS.sourceControlGetChangeRequestDetail,
+  {
+    payload: Schema.Struct({
+      cwd: Schema.String,
+      reference: Schema.String,
+    }),
+    success: SourceControlChangeRequestDetail,
+    error: SourceControlProviderError,
   },
 );
 
@@ -442,6 +506,11 @@ export const WsRpcGroup = RpcGroup.make(
   WsSourceControlLookupRepositoryRpc,
   WsSourceControlCloneRepositoryRpc,
   WsSourceControlPublishRepositoryRpc,
+  WsSourceControlListIssuesRpc,
+  WsSourceControlGetIssueRpc,
+  WsSourceControlSearchIssuesRpc,
+  WsSourceControlSearchChangeRequestsRpc,
+  WsSourceControlGetChangeRequestDetailRpc,
   WsProjectsListEntriesRpc,
   WsProjectsSearchEntriesRpc,
   WsProjectsReadFileRpc,

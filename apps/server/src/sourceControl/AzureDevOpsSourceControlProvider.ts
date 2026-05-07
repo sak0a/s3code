@@ -138,6 +138,46 @@ export const make = Effect.fn("makeAzureDevOpsSourceControlProvider")(function* 
           ...(input.context ? { remoteName: input.context.remoteName } : {}),
         })
         .pipe(Effect.mapError((error) => providerError("checkoutChangeRequest", error))),
+    listIssues: () =>
+      Effect.fail(
+        new SourceControlProviderError({
+          provider: "azure-devops",
+          operation: "listIssues",
+          detail: "Not implemented for azure-devops yet (Plan 2).",
+        }),
+      ),
+    getIssue: () =>
+      Effect.fail(
+        new SourceControlProviderError({
+          provider: "azure-devops",
+          operation: "getIssue",
+          detail: "Not implemented for azure-devops yet (Plan 2).",
+        }),
+      ),
+    searchIssues: () =>
+      Effect.fail(
+        new SourceControlProviderError({
+          provider: "azure-devops",
+          operation: "searchIssues",
+          detail: "Not implemented for azure-devops yet (Plan 2).",
+        }),
+      ),
+    searchChangeRequests: () =>
+      Effect.fail(
+        new SourceControlProviderError({
+          provider: "azure-devops",
+          operation: "searchChangeRequests",
+          detail: "Not implemented for azure-devops yet (Plan 2).",
+        }),
+      ),
+    getChangeRequestDetail: () =>
+      Effect.fail(
+        new SourceControlProviderError({
+          provider: "azure-devops",
+          operation: "getChangeRequestDetail",
+          detail: "Not implemented for azure-devops yet (Plan 2).",
+        }),
+      ),
   });
 });
 
