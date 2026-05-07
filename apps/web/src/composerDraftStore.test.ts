@@ -55,6 +55,8 @@ function selectionsByProvider(
   return result;
 }
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Option } from "effect";
+import type { ComposerSourceControlContext } from "@t3tools/contracts";
 
 import {
   COMPOSER_DRAFT_STORAGE_KEY,
@@ -1510,5 +1512,91 @@ describe("createDebouncedStorage", () => {
     vi.advanceTimersByTime(300);
     expect(base.setItem).toHaveBeenCalledTimes(1);
     expect(base.setItem).toHaveBeenCalledWith("key", "v2");
+  });
+});
+
+function makeSourceControlContext(
+  id: string,
+  reference: string = "owner/repo#1",
+): ComposerSourceControlContext {
+  return {
+    id,
+    kind: "issue",
+    provider: "github",
+    reference,
+    detail: {
+      provider: "github",
+      number: 1 as any,
+      title: "Test issue" as any,
+      url: "https://github.com/owner/repo/issues/1" as any,
+      state: "open",
+      updatedAt: Option.none(),
+      body: "Issue body",
+      comments: [],
+      truncated: false,
+    },
+    fetchedAt: new Date().toISOString() as any,
+    staleAfter: new Date(Date.now() + 5 * 60 * 1000).toISOString() as any,
+  };
+}
+
+describe("composerDraftStore sourceControlContexts", () => {
+  const threadId = ThreadId.make("thread-sc-ctx");
+  const threadRef = scopeThreadRef(TEST_ENVIRONMENT_ID, threadId);
+
+  beforeEach(() => {
+    useComposerDraftStore.setState({
+      draftsByThreadKey: {},
+      draftThreadsByThreadKey: {},
+      logicalProjectDraftThreadKeyByLogicalProjectKey: {},
+      stickyModelSelectionByProvider: {},
+      stickyActiveProvider: null,
+    });
+  });
+
+  it("addSourceControlContext adds a context to the per-thread draft", () => {
+    const ctx = makeSourceControlContext("ctx-1", "owner/repo#1");
+
+    useComposerDraftStore.getState().addSourceControlContext(threadRef, ctx);
+
+    const draft = draftFor(threadId, TEST_ENVIRONMENT_ID);
+    expect(draft?.sourceControlContexts).toHaveLength(1);
+    expect(draft?.sourceControlContexts[0]?.id).toBe("ctx-1");
+  });
+
+  it("addSourceControlContext deduplicates by provider:reference — second add is a no-op", () => {
+    const ctx1 = makeSourceControlContext("ctx-1", "owner/repo#1");
+    const ctx2 = makeSourceControlContext("ctx-2", "owner/repo#1"); // same reference, different id
+
+    useComposerDraftStore.getState().addSourceControlContext(threadRef, ctx1);
+    useComposerDraftStore.getState().addSourceControlContext(threadRef, ctx2);
+
+    const draft = draftFor(threadId, TEST_ENVIRONMENT_ID);
+    expect(draft?.sourceControlContexts).toHaveLength(1);
+    expect(draft?.sourceControlContexts[0]?.id).toBe("ctx-1");
+  });
+
+  it("removeSourceControlContext removes a context by id", () => {
+    const ctx1 = makeSourceControlContext("ctx-1", "owner/repo#1");
+    const ctx2 = makeSourceControlContext("ctx-2", "owner/repo#2");
+
+    useComposerDraftStore.getState().addSourceControlContext(threadRef, ctx1);
+    useComposerDraftStore.getState().addSourceControlContext(threadRef, ctx2);
+    useComposerDraftStore.getState().removeSourceControlContext(threadRef, "ctx-1");
+
+    const draft = draftFor(threadId, TEST_ENVIRONMENT_ID);
+    expect(draft?.sourceControlContexts).toHaveLength(1);
+    expect(draft?.sourceControlContexts[0]?.id).toBe("ctx-2");
+  });
+
+  it("clearComposerContent wipes sourceControlContexts", () => {
+    const ctx = makeSourceControlContext("ctx-1", "owner/repo#1");
+
+    useComposerDraftStore.getState().addSourceControlContext(threadRef, ctx);
+    useComposerDraftStore.getState().setPrompt(threadRef, "hello");
+    useComposerDraftStore.getState().clearComposerContent(threadRef);
+
+    const draft = draftFor(threadId, TEST_ENVIRONMENT_ID);
+    expect(draft).toBeUndefined();
   });
 });
