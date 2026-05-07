@@ -77,6 +77,15 @@ export interface WsRpcClient {
     readonly lookupRepository: RpcUnaryMethod<typeof WS_METHODS.sourceControlLookupRepository>;
     readonly cloneRepository: RpcUnaryMethod<typeof WS_METHODS.sourceControlCloneRepository>;
     readonly publishRepository: RpcUnaryMethod<typeof WS_METHODS.sourceControlPublishRepository>;
+    readonly listIssues: RpcUnaryMethod<typeof WS_METHODS.sourceControlListIssues>;
+    readonly getIssue: RpcUnaryMethod<typeof WS_METHODS.sourceControlGetIssue>;
+    readonly searchIssues: RpcUnaryMethod<typeof WS_METHODS.sourceControlSearchIssues>;
+    readonly searchChangeRequests: RpcUnaryMethod<
+      typeof WS_METHODS.sourceControlSearchChangeRequests
+    >;
+    readonly getChangeRequestDetail: RpcUnaryMethod<
+      typeof WS_METHODS.sourceControlGetChangeRequestDetail
+    >;
   };
   readonly shell: {
     readonly openInEditor: (input: {
@@ -182,6 +191,18 @@ export function createWsRpcClient(transport: WsTransport): WsRpcClient {
         transport.request((client) => client[WS_METHODS.sourceControlCloneRepository](input)),
       publishRepository: (input) =>
         transport.request((client) => client[WS_METHODS.sourceControlPublishRepository](input)),
+      listIssues: (input) =>
+        transport.request((client) => client[WS_METHODS.sourceControlListIssues](input)),
+      getIssue: (input) =>
+        transport.request((client) => client[WS_METHODS.sourceControlGetIssue](input)),
+      searchIssues: (input) =>
+        transport.request((client) => client[WS_METHODS.sourceControlSearchIssues](input)),
+      searchChangeRequests: (input) =>
+        transport.request((client) => client[WS_METHODS.sourceControlSearchChangeRequests](input)),
+      getChangeRequestDetail: (input) =>
+        transport.request((client) =>
+          client[WS_METHODS.sourceControlGetChangeRequestDetail](input),
+        ),
     },
     shell: {
       openInEditor: (input) =>
