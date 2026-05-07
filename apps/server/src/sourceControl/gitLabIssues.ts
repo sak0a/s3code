@@ -60,7 +60,10 @@ function normalizeIssueState(raw: string | null | undefined): "open" | "closed" 
 }
 
 function authorName(
-  author: { readonly username?: string; readonly name?: string } | null | undefined,
+  author:
+    | { readonly username?: string | undefined; readonly name?: string | undefined }
+    | null
+    | undefined,
 ): string | null {
   return author?.username?.trim() || author?.name?.trim() || null;
 }

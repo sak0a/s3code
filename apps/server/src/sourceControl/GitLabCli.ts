@@ -3,7 +3,13 @@ import { Context, Effect, Layer, Option, Result, Schema, SchemaIssue, type DateT
 import { TrimmedNonEmptyString, type SourceControlRepositoryVisibility } from "@t3tools/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
+import * as GitLabIssues from "./gitLabIssues.ts";
+import type {
+  NormalizedGitLabIssueDetail,
+  NormalizedGitLabIssueRecord,
+} from "./gitLabIssues.ts";
 import * as GitLabMergeRequests from "./gitLabMergeRequests.ts";
+import type { NormalizedGitLabMergeRequestDetail } from "./gitLabMergeRequests.ts";
 import type * as SourceControlProvider from "./SourceControlProvider.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -87,6 +93,34 @@ export interface GitLabCliShape {
     readonly reference: string;
     readonly force?: boolean;
   }) => Effect.Effect<void, GitLabCliError>;
+
+  readonly listIssues: (input: {
+    readonly cwd: string;
+    readonly state: "open" | "closed" | "all";
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<NormalizedGitLabIssueRecord>, GitLabCliError>;
+
+  readonly getIssue: (input: {
+    readonly cwd: string;
+    readonly reference: string;
+  }) => Effect.Effect<NormalizedGitLabIssueDetail, GitLabCliError>;
+
+  readonly searchIssues: (input: {
+    readonly cwd: string;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<NormalizedGitLabIssueRecord>, GitLabCliError>;
+
+  readonly searchMergeRequests: (input: {
+    readonly cwd: string;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<GitLabMergeRequestSummary>, GitLabCliError>;
+
+  readonly getMergeRequestDetail: (input: {
+    readonly cwd: string;
+    readonly reference: string;
+  }) => Effect.Effect<NormalizedGitLabMergeRequestDetail, GitLabCliError>;
 }
 
 export class GitLabCli extends Context.Service<GitLabCli, GitLabCliShape>()(
@@ -436,6 +470,26 @@ export const make = Effect.fn("makeGitLabCli")(function* () {
         cwd: input.cwd,
         args: ["mr", "checkout", input.reference],
       }).pipe(Effect.asVoid),
+    listIssues: () =>
+      Effect.fail(
+        new GitLabCliError({ operation: "listIssues", detail: "stub" }),
+      ),
+    getIssue: () =>
+      Effect.fail(
+        new GitLabCliError({ operation: "getIssue", detail: "stub" }),
+      ),
+    searchIssues: () =>
+      Effect.fail(
+        new GitLabCliError({ operation: "searchIssues", detail: "stub" }),
+      ),
+    searchMergeRequests: () =>
+      Effect.fail(
+        new GitLabCliError({ operation: "searchMergeRequests", detail: "stub" }),
+      ),
+    getMergeRequestDetail: () =>
+      Effect.fail(
+        new GitLabCliError({ operation: "getMergeRequestDetail", detail: "stub" }),
+      ),
   });
 });
 
