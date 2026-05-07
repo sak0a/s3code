@@ -105,13 +105,15 @@ export function decodeAzureDevOpsPullRequestJson(
   return Result.fail(result.failure);
 }
 
+export interface NormalizedAzureDevOpsThreadComment {
+  readonly author: string;
+  readonly body: string;
+  readonly createdAt: string;
+}
+
 export interface NormalizedAzureDevOpsPullRequestDetail extends NormalizedAzureDevOpsPullRequestRecord {
   readonly body: string;
-  readonly comments: ReadonlyArray<{
-    readonly author: string;
-    readonly body: string;
-    readonly createdAt: string;
-  }>;
+  readonly comments: ReadonlyArray<NormalizedAzureDevOpsThreadComment>;
 }
 
 const AzureThreadCommentSchema = Schema.Struct({
@@ -127,17 +129,29 @@ const AzureThreadCommentSchema = Schema.Struct({
   publishedDate: Schema.optional(Schema.NullOr(Schema.String)),
 });
 
+const AzureThreadSchema = Schema.Struct({
+  comments: Schema.optional(Schema.Array(AzureThreadCommentSchema)),
+  isDeleted: Schema.optional(Schema.NullOr(Schema.Boolean)),
+});
+
+function flattenThreadComments(
+  threads: ReadonlyArray<Schema.Schema.Type<typeof AzureThreadSchema>>,
+): ReadonlyArray<NormalizedAzureDevOpsThreadComment> {
+  return threads
+    .filter((t) => !t.isDeleted)
+    .flatMap((t) => t.comments ?? [])
+    .filter((c) => (c.content?.trim() ?? "").length > 0)
+    .map((c) => ({
+      author: c.author?.uniqueName?.trim() ?? c.author?.displayName?.trim() ?? "unknown",
+      body: c.content ?? "",
+      createdAt: c.publishedDate ?? "",
+    }));
+}
+
 const AzureDevOpsPullRequestDetailSchema = Schema.Struct({
   ...AzureDevOpsPullRequestSchema.fields,
   description: Schema.optional(Schema.NullOr(Schema.String)),
-  threads: Schema.optional(
-    Schema.Array(
-      Schema.Struct({
-        comments: Schema.optional(Schema.Array(AzureThreadCommentSchema)),
-        isDeleted: Schema.optional(Schema.NullOr(Schema.Boolean)),
-      }),
-    ),
-  ),
+  threads: Schema.optional(Schema.Array(AzureThreadSchema)),
 });
 
 const decodeAzurePullRequestDetail = decodeJsonResult(AzureDevOpsPullRequestDetailSchema);
@@ -148,34 +162,14 @@ export function decodeAzureDevOpsPullRequestDetailJson(
   const result = decodeAzurePullRequestDetail(raw);
   if (!Result.isSuccess(result)) return Result.fail(result.failure);
   const summary = normalizeAzureDevOpsPullRequestRecord(result.success);
-  const comments = (result.success.threads ?? [])
-    .filter((t) => !t.isDeleted)
-    .flatMap((t) => t.comments ?? [])
-    .filter((c) => (c.content?.trim() ?? "").length > 0)
-    .map((c) => ({
-      author: c.author?.uniqueName?.trim() ?? c.author?.displayName?.trim() ?? "unknown",
-      body: c.content ?? "",
-      createdAt: c.publishedDate ?? "",
-    }));
   return Result.succeed({
     ...summary,
     body: result.success.description ?? "",
-    comments,
+    comments: flattenThreadComments(result.success.threads ?? []),
   });
 }
 
-export interface NormalizedAzureDevOpsThreadComment {
-  readonly author: string;
-  readonly body: string;
-  readonly createdAt: string;
-}
-
-const AzureDevOpsThreadListSchema = Schema.Array(
-  Schema.Struct({
-    comments: Schema.optional(Schema.Array(AzureThreadCommentSchema)),
-    isDeleted: Schema.optional(Schema.NullOr(Schema.Boolean)),
-  }),
-);
+const AzureDevOpsThreadListSchema = Schema.Array(AzureThreadSchema);
 
 const decodeThreadList = decodeJsonResult(AzureDevOpsThreadListSchema);
 
@@ -188,14 +182,5 @@ export function decodeAzureDevOpsPullRequestThreadsJson(
   if (raw.length === 0) return Result.succeed([]);
   const result = decodeThreadList(raw);
   if (!Result.isSuccess(result)) return Result.fail(result.failure);
-  const comments = result.success
-    .filter((t) => !t.isDeleted)
-    .flatMap((t) => t.comments ?? [])
-    .filter((c) => (c.content?.trim() ?? "").length > 0)
-    .map((c) => ({
-      author: c.author?.uniqueName?.trim() ?? c.author?.displayName?.trim() ?? "unknown",
-      body: c.content ?? "",
-      createdAt: c.publishedDate ?? "",
-    }));
-  return Result.succeed(comments);
+  return Result.succeed(flattenThreadComments(result.success));
 }
