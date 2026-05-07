@@ -2,6 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it, afterEach, describe, expect, vi } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Option } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
+import { VcsProcessExitError } from "@t3tools/contracts";
 import type { VcsError } from "@t3tools/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
@@ -357,6 +358,41 @@ describe("AzureDevOpsCli.layer", () => {
       const detail = yield* az.getPullRequestDetail({ cwd: "/repo", reference: "99" });
       expect(detail.body).toBe("PR body");
       expect(detail.comments[0]?.author).toBe("rev@example.com");
+    }).pipe(Effect.provide(layer)),
+  );
+
+  it.effect("getPullRequestDetail resolves with empty comments when list-comments fails", () =>
+    Effect.gen(function* () {
+      mockRun
+        .mockReturnValueOnce(
+          Effect.succeed(
+            processOutput(
+              JSON.stringify({
+                pullRequestId: 55,
+                title: "Feature branch",
+                description: "Some body",
+                status: "active",
+                sourceRefName: "refs/heads/feature/x",
+                targetRefName: "refs/heads/main",
+              }),
+            ),
+          ),
+        )
+        .mockReturnValueOnce(
+          Effect.fail(
+            new VcsProcessExitError({
+              operation: "AzureDevOpsCli.execute",
+              command: "az repos pr list-comments",
+              cwd: "/repo",
+              exitCode: 1,
+              detail: "The 'list-comments' command is not available in this version.",
+            }),
+          ),
+        );
+      const az = yield* AzureDevOpsCli.AzureDevOpsCli;
+      const detail = yield* az.getPullRequestDetail({ cwd: "/repo", reference: "55" });
+      expect(detail.body).toBe("Some body");
+      expect(detail.comments).toEqual([]);
     }).pipe(Effect.provide(layer)),
   );
 

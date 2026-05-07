@@ -165,3 +165,39 @@ export function decodeAzureDevOpsPullRequestDetailJson(
     comments,
   });
 }
+
+export interface NormalizedAzureDevOpsThreadComment {
+  readonly author: string;
+  readonly body: string;
+  readonly createdAt: string;
+}
+
+const AzureDevOpsThreadListSchema = Schema.Array(
+  Schema.Struct({
+    comments: Schema.optional(Schema.Array(AzureThreadCommentSchema)),
+    isDeleted: Schema.optional(Schema.NullOr(Schema.Boolean)),
+  }),
+);
+
+const decodeThreadList = decodeJsonResult(AzureDevOpsThreadListSchema);
+
+export function decodeAzureDevOpsPullRequestThreadsJson(
+  raw: string,
+): Result.Result<ReadonlyArray<NormalizedAzureDevOpsThreadComment>, Cause.Cause<Schema.SchemaError>> {
+  if (raw.length === 0) return Result.succeed([]);
+  const result = decodeThreadList(raw);
+  if (!Result.isSuccess(result)) return Result.fail(result.failure);
+  const comments = result.success
+    .filter((t) => !t.isDeleted)
+    .flatMap((t) => t.comments ?? [])
+    .filter((c) => (c.content?.trim() ?? "").length > 0)
+    .map((c) => ({
+      author:
+        c.author?.uniqueName?.trim() ??
+        c.author?.displayName?.trim() ??
+        "unknown",
+      body: c.content ?? "",
+      createdAt: c.publishedDate ?? "",
+    }));
+  return Result.succeed(comments);
+}
