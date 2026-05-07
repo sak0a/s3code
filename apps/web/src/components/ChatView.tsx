@@ -35,10 +35,16 @@ import {
 import { projectScriptCwd, projectScriptRuntimeEnv } from "@t3tools/shared/projectScripts";
 import { truncate } from "@t3tools/shared/String";
 import { Debouncer } from "@tanstack/react-pacer";
+import { useQueryClient } from "@tanstack/react-query";
+import { DateTime } from "effect";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useShallow } from "zustand/react/shallow";
 import { useGitStatus } from "~/lib/gitStatusState";
+import {
+  issueDetailQueryOptions,
+  changeRequestDetailQueryOptions,
+} from "~/lib/sourceControlContextRpc";
 import { usePrimaryEnvironmentId } from "../environments/primary";
 import { readEnvironmentApi } from "../environmentApi";
 import { isElectron } from "../env";
@@ -173,6 +179,7 @@ import {
   revokeUserMessagePreviewUrls,
   shouldWriteThreadErrorToCurrentServerThread,
   waitForStartedServerThread,
+  refreshStaleSourceControlContexts,
 } from "./ChatView.logic";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { useComposerHandleContext } from "../composerHandleContext";
@@ -1636,6 +1643,7 @@ export default function ChatView(props: ChatViewProps) {
       })
     : null;
   const gitStatusQuery = useGitStatus({ environmentId, cwd: gitCwd });
+  const queryClient = useQueryClient();
   const keybindings = useServerKeybindings();
   const availableEditors = useServerAvailableEditors();
   // Prefer an instance-id match so a custom Codex instance (e.g.
@@ -2766,6 +2774,7 @@ export default function ChatView(props: ChatViewProps) {
 
     const composerImagesSnapshot = [...composerImages];
     const composerTerminalContextsSnapshot = [...sendableComposerTerminalContexts];
+    const composerSourceControlContextsSnapshot = [...composerSourceControlContexts];
     const messageTextForSend = appendTerminalContextsToPrompt(
       promptForSend,
       composerTerminalContextsSnapshot,
@@ -2881,6 +2890,46 @@ export default function ChatView(props: ChatViewProps) {
       }
 
       const turnAttachments = await turnAttachmentsPromise;
+      // Refresh stale source-control contexts before sending (best-effort).
+      const freshSourceControlContexts = await refreshStaleSourceControlContexts(
+        composerSourceControlContextsSnapshot,
+        {
+          fetcher: async (ctx) => {
+            const cwd = gitCwd;
+            if (!cwd) return ctx;
+            const now = DateTime.fromDateUnsafe(new Date());
+            const staleAfterDate = DateTime.fromDateUnsafe(new Date(Date.now() + 5 * 60 * 1000));
+            if (ctx.kind === "issue") {
+              const detail = await queryClient.fetchQuery(
+                issueDetailQueryOptions({
+                  environmentId,
+                  cwd,
+                  reference: String(ctx.detail.number),
+                }),
+              );
+              return {
+                ...ctx,
+                detail,
+                fetchedAt: now,
+                staleAfter: staleAfterDate,
+              };
+            }
+            const detail = await queryClient.fetchQuery(
+              changeRequestDetailQueryOptions({
+                environmentId,
+                cwd,
+                reference: String(ctx.detail.number),
+              }),
+            );
+            return {
+              ...ctx,
+              detail,
+              fetchedAt: now,
+              staleAfter: staleAfterDate,
+            };
+          },
+        },
+      );
       const bootstrap =
         isLocalDraftThread || baseBranchForWorktree
           ? {
@@ -2926,8 +2975,8 @@ export default function ChatView(props: ChatViewProps) {
         runtimeMode,
         interactionMode,
         ...(bootstrap ? { bootstrap } : {}),
-        ...(composerSourceControlContexts.length > 0
-          ? { sourceControlContexts: composerSourceControlContexts }
+        ...(freshSourceControlContexts.length > 0
+          ? { sourceControlContexts: freshSourceControlContexts }
           : {}),
         createdAt: messageCreatedAt,
       });

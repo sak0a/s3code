@@ -1,4 +1,5 @@
 import {
+  type ComposerSourceControlContext,
   type EnvironmentId,
   isProviderDriverKind,
   ProjectId,
@@ -10,7 +11,7 @@ import {
 } from "@t3tools/contracts";
 import { type ChatMessage, type SessionPhase, type Thread, type ThreadSession } from "../types";
 import { type ComposerImageAttachment, type DraftThreadState } from "../composerDraftStore";
-import { Schema } from "effect";
+import { DateTime, Schema } from "effect";
 import { selectThreadByRef, useStore } from "../store";
 import {
   filterTerminalContextsWithText,
@@ -219,6 +220,32 @@ export function buildExpiredTerminalContextToastCopy(
     title: `${noun} omitted from message`,
     description: "Re-add it if you want that terminal output included.",
   };
+}
+
+/**
+ * For each context whose `staleAfter` timestamp has passed, calls `fetcher`
+ * to re-fetch detail and returns a new context with bumped timestamps.
+ * On any failure the original context is kept (best-effort semantics).
+ */
+export async function refreshStaleSourceControlContexts(
+  contexts: ReadonlyArray<ComposerSourceControlContext>,
+  options: {
+    fetcher: (context: ComposerSourceControlContext) => Promise<ComposerSourceControlContext>;
+  },
+): Promise<ComposerSourceControlContext[]> {
+  const now = DateTime.fromDateUnsafe(new Date());
+  return Promise.all(
+    contexts.map(async (ctx) => {
+      const isStale = DateTime.lessThanOrEqualTo(ctx.staleAfter, now);
+      if (!isStale) return ctx;
+      try {
+        return await options.fetcher(ctx);
+      } catch {
+        // best-effort: keep original on failure
+        return ctx;
+      }
+    }),
+  );
 }
 
 export function threadHasStarted(thread: Thread | null | undefined): boolean {
