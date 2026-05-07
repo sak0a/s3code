@@ -23,6 +23,7 @@ const TABS: ReadonlyArray<ContextPickerTab> = [
 export function ContextPickerPopup(props: {
   environmentId: EnvironmentId | null;
   cwd: string;
+  hasSourceControlRemote: boolean;
   onSelectIssue: (issue: SourceControlIssueSummary) => void;
   onSelectChangeRequest: (cr: ChangeRequest) => void;
   onAttachFile: (file: File) => void;
@@ -159,30 +160,38 @@ export function ContextPickerPopup(props: {
         />
       </div>
 
-      {/* Tabs */}
-      <ContextPickerTabs
-        tabs={TABS}
-        activeId={activeTab}
-        onSelect={(id) => setActiveTab(id as TabId)}
-      />
+      {props.hasSourceControlRemote ? (
+        <>
+          {/* Tabs */}
+          <ContextPickerTabs
+            tabs={TABS}
+            activeId={activeTab}
+            onSelect={(id) => setActiveTab(id as TabId)}
+          />
 
-      {/* List */}
-      {activeTab === "issues" ? (
-        <ContextPickerList
-          items={displayIssues}
-          isLoading={isLoadingIssues}
-          emptyText={query.length > 0 ? "No matching issues" : "No open issues"}
-          onSelect={props.onSelectIssue}
-        />
+          {/* List */}
+          {activeTab === "issues" ? (
+            <ContextPickerList
+              items={displayIssues}
+              isLoading={isLoadingIssues}
+              emptyText={query.length > 0 ? "No matching issues" : "No open issues"}
+              onSelect={props.onSelectIssue}
+            />
+          ) : (
+            <ContextPickerList
+              items={displayPrs as unknown as ReadonlyArray<SourceControlIssueSummary>}
+              isLoading={isLoadingPrs}
+              emptyText={query.length > 0 ? "No matching PRs" : "No open PRs"}
+              onSelect={(item) =>
+                props.onSelectChangeRequest(item as unknown as ChangeRequest)
+              }
+            />
+          )}
+        </>
       ) : (
-        <ContextPickerList
-          items={displayPrs as unknown as ReadonlyArray<SourceControlIssueSummary>}
-          isLoading={isLoadingPrs}
-          emptyText={query.length > 0 ? "No matching PRs" : "No open PRs"}
-          onSelect={(item) =>
-            props.onSelectChangeRequest(item as unknown as ChangeRequest)
-          }
-        />
+        <p className="px-3 py-4 text-xs text-muted-foreground">
+          No source-control remote detected. File attach is still available above.
+        </p>
       )}
     </div>
   );

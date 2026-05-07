@@ -159,6 +159,7 @@ async function mountPopup(overrides?: {
     <ContextPickerPopup
       environmentId={TEST_ENVIRONMENT_ID}
       cwd={TEST_CWD}
+      hasSourceControlRemote={true}
       onSelectIssue={onSelectIssue}
       onSelectChangeRequest={onSelectChangeRequest}
       onAttachFile={onAttachFile}
