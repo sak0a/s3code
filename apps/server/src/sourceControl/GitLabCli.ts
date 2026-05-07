@@ -294,6 +294,7 @@ export const make = Effect.fn("makeGitLabCli")(function* () {
         args: input.args,
         cwd: input.cwd,
         timeoutMs: input.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        env: { LC_ALL: "C" },
       })
       .pipe(Effect.mapError((error) => normalizeGitLabCliError("execute", error)));
 
@@ -470,10 +471,45 @@ export const make = Effect.fn("makeGitLabCli")(function* () {
         cwd: input.cwd,
         args: ["mr", "checkout", input.reference],
       }).pipe(Effect.asVoid),
-    listIssues: () =>
-      Effect.fail(
-        new GitLabCliError({ operation: "listIssues", detail: "stub" }),
-      ),
+    listIssues: (input) => {
+      const stateFlags =
+        input.state === "open"
+          ? []
+          : input.state === "closed"
+            ? ["--closed"]
+            : ["--all"];
+      return execute({
+        cwd: input.cwd,
+        args: [
+          "issue",
+          "list",
+          ...stateFlags,
+          "--per-page",
+          String(input.limit ?? 50),
+          "--output",
+          "json",
+        ],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() => GitLabIssues.decodeGitLabIssueListJson(raw)).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success)
+                    : Effect.fail(
+                        new GitLabCliError({
+                          operation: "listIssues",
+                          detail: `GitLab CLI returned invalid issue list JSON: ${GitLabIssues.formatGitLabIssueDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
+      );
+    },
     getIssue: () =>
       Effect.fail(
         new GitLabCliError({ operation: "getIssue", detail: "stub" }),

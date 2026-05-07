@@ -323,4 +323,39 @@ layer("GitLabCli.layer", (it) => {
       assert.equal(error.message.includes("Merge request not found"), true);
     }),
   );
+
+  it.effect("listIssues invokes glab with correct args and decodes output", () =>
+    Effect.gen(function* () {
+      mockedRun.mockReturnValueOnce(
+        Effect.succeed(
+          processOutput(
+            JSON.stringify([
+              {
+                iid: 42,
+                title: "Bug",
+                web_url: "https://gitlab.com/owner/repo/-/issues/42",
+                state: "opened",
+                author: { username: "alice" },
+                labels: ["bug"],
+              },
+            ]),
+          ),
+        ),
+      );
+      const issues = yield* Effect.gen(function* () {
+        const glab = yield* GitLabCli.GitLabCli;
+        return yield* glab.listIssues({ cwd: "/repo", state: "open", limit: 20 });
+      });
+      expect(issues).toHaveLength(1);
+      expect(issues[0]?.number).toBe(42);
+      expect(mockedRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: "glab",
+          cwd: "/repo",
+          args: ["issue", "list", "--per-page", "20", "--output", "json"],
+          env: expect.objectContaining({ LC_ALL: "C" }),
+        }),
+      );
+    }),
+  );
 });
