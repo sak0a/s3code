@@ -69,7 +69,10 @@ export interface BitbucketComment {
 
 function authorOf(
   reporter:
-    | { readonly username?: string; readonly display_name?: string }
+    | {
+        readonly username?: string | undefined;
+        readonly display_name?: string | undefined;
+      }
     | null
     | undefined,
 ): string | null {

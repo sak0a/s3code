@@ -9,6 +9,7 @@ import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstab
 import { sanitizeBranchFragment } from "@t3tools/shared/git";
 import { detectSourceControlProviderFromRemoteUrl } from "@t3tools/shared/sourceControl";
 
+import * as BitbucketIssues from "./bitbucketIssues.ts";
 import * as BitbucketPullRequests from "./bitbucketPullRequests.ts";
 import * as SourceControlProvider from "./SourceControlProvider.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
@@ -144,6 +145,43 @@ export interface BitbucketApiShape {
     readonly reference: string;
     readonly force?: boolean;
   }) => Effect.Effect<void, BitbucketApiError>;
+  readonly listIssues: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProvider.SourceControlProviderContext;
+    readonly state: "open" | "closed" | "all";
+    readonly limit?: number;
+  }) => Effect.Effect<
+    ReadonlyArray<BitbucketIssues.NormalizedBitbucketIssueRecord>,
+    BitbucketApiError
+  >;
+  readonly getIssue: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProvider.SourceControlProviderContext;
+    readonly reference: string;
+  }) => Effect.Effect<BitbucketIssues.NormalizedBitbucketIssueDetail, BitbucketApiError>;
+  readonly searchIssues: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProvider.SourceControlProviderContext;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<
+    ReadonlyArray<BitbucketIssues.NormalizedBitbucketIssueRecord>,
+    BitbucketApiError
+  >;
+  readonly searchPullRequests: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProvider.SourceControlProviderContext;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<
+    ReadonlyArray<BitbucketPullRequests.NormalizedBitbucketPullRequestRecord>,
+    BitbucketApiError
+  >;
+  readonly getPullRequestDetail: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProvider.SourceControlProviderContext;
+    readonly reference: string;
+  }) => Effect.Effect<BitbucketPullRequests.NormalizedBitbucketPullRequestDetail, BitbucketApiError>;
 }
 
 export class BitbucketApi extends Context.Service<BitbucketApi, BitbucketApiShape>()(
@@ -756,6 +794,16 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
               }),
         ),
       ),
+    listIssues: () =>
+      Effect.fail(new BitbucketApiError({ operation: "listIssues", detail: "stub" })),
+    getIssue: () =>
+      Effect.fail(new BitbucketApiError({ operation: "getIssue", detail: "stub" })),
+    searchIssues: () =>
+      Effect.fail(new BitbucketApiError({ operation: "searchIssues", detail: "stub" })),
+    searchPullRequests: () =>
+      Effect.fail(new BitbucketApiError({ operation: "searchPullRequests", detail: "stub" })),
+    getPullRequestDetail: () =>
+      Effect.fail(new BitbucketApiError({ operation: "getPullRequestDetail", detail: "stub" })),
   });
 });
 
