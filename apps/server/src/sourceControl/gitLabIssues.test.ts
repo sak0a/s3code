@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Result } from "effect";
-import {
-  decodeGitLabIssueDetailJson,
-  decodeGitLabIssueListJson,
-} from "./gitLabIssues.ts";
+import { decodeGitLabIssueDetailJson, decodeGitLabIssueListJson } from "./gitLabIssues.ts";
 
 describe("decodeGitLabIssueListJson", () => {
   it("decodes a valid list and normalizes state", () => {

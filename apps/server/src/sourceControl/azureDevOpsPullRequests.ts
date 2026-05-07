@@ -105,8 +105,7 @@ export function decodeAzureDevOpsPullRequestJson(
   return Result.fail(result.failure);
 }
 
-export interface NormalizedAzureDevOpsPullRequestDetail
-  extends NormalizedAzureDevOpsPullRequestRecord {
+export interface NormalizedAzureDevOpsPullRequestDetail extends NormalizedAzureDevOpsPullRequestRecord {
   readonly body: string;
   readonly comments: ReadonlyArray<{
     readonly author: string;
@@ -154,8 +153,7 @@ export function decodeAzureDevOpsPullRequestDetailJson(
     .flatMap((t) => t.comments ?? [])
     .filter((c) => (c.content?.trim() ?? "").length > 0)
     .map((c) => ({
-      author:
-        c.author?.uniqueName?.trim() ?? c.author?.displayName?.trim() ?? "unknown",
+      author: c.author?.uniqueName?.trim() ?? c.author?.displayName?.trim() ?? "unknown",
       body: c.content ?? "",
       createdAt: c.publishedDate ?? "",
     }));
@@ -183,7 +181,10 @@ const decodeThreadList = decodeJsonResult(AzureDevOpsThreadListSchema);
 
 export function decodeAzureDevOpsPullRequestThreadsJson(
   raw: string,
-): Result.Result<ReadonlyArray<NormalizedAzureDevOpsThreadComment>, Cause.Cause<Schema.SchemaError>> {
+): Result.Result<
+  ReadonlyArray<NormalizedAzureDevOpsThreadComment>,
+  Cause.Cause<Schema.SchemaError>
+> {
   if (raw.length === 0) return Result.succeed([]);
   const result = decodeThreadList(raw);
   if (!Result.isSuccess(result)) return Result.fail(result.failure);
@@ -192,10 +193,7 @@ export function decodeAzureDevOpsPullRequestThreadsJson(
     .flatMap((t) => t.comments ?? [])
     .filter((c) => (c.content?.trim() ?? "").length > 0)
     .map((c) => ({
-      author:
-        c.author?.uniqueName?.trim() ??
-        c.author?.displayName?.trim() ??
-        "unknown",
+      author: c.author?.uniqueName?.trim() ?? c.author?.displayName?.trim() ?? "unknown",
       body: c.content ?? "",
       createdAt: c.publishedDate ?? "",
     }));

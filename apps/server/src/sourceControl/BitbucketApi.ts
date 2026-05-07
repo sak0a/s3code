@@ -181,7 +181,10 @@ export interface BitbucketApiShape {
     readonly cwd: string;
     readonly context?: SourceControlProvider.SourceControlProviderContext;
     readonly reference: string;
-  }) => Effect.Effect<BitbucketPullRequests.NormalizedBitbucketPullRequestDetail, BitbucketApiError>;
+  }) => Effect.Effect<
+    BitbucketPullRequests.NormalizedBitbucketPullRequestDetail,
+    BitbucketApiError
+  >;
 }
 
 export class BitbucketApi extends Context.Service<BitbucketApi, BitbucketApiShape>()(
@@ -846,7 +849,9 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
             HttpClientRequest.get(apiUrl(commentsPath)),
             BitbucketIssues.BitbucketCommentListSchema,
           ).pipe(
-            Effect.map((list) => [...BitbucketIssues.normalizeBitbucketCommentList(list)].reverse()),
+            Effect.map((list) =>
+              [...BitbucketIssues.normalizeBitbucketCommentList(list)].reverse(),
+            ),
             Effect.catch((err) =>
               isBitbucketApiError(err) && err.status === 404
                 ? Effect.succeed([])
@@ -880,9 +885,7 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
             HttpClientRequest.get(apiUrl(path)),
             BitbucketIssues.BitbucketIssueListSchema,
           ).pipe(
-            Effect.map((value) =>
-              value.values.map(BitbucketIssues.normalizeBitbucketIssueRecord),
-            ),
+            Effect.map((value) => value.values.map(BitbucketIssues.normalizeBitbucketIssueRecord)),
             Effect.catch((err) =>
               isBitbucketApiError(err) && err.status === 404
                 ? Effect.succeed([])
@@ -930,7 +933,9 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
             HttpClientRequest.get(apiUrl(commentsPath)),
             BitbucketIssues.BitbucketCommentListSchema,
           ).pipe(
-            Effect.map((list) => [...BitbucketIssues.normalizeBitbucketCommentList(list)].reverse()),
+            Effect.map((list) =>
+              [...BitbucketIssues.normalizeBitbucketCommentList(list)].reverse(),
+            ),
             Effect.catch((err) =>
               isBitbucketApiError(err) && err.status === 404
                 ? Effect.succeed([])

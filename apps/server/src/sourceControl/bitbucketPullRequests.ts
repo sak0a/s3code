@@ -116,9 +116,7 @@ export interface NormalizedBitbucketPullRequestDetail extends NormalizedBitbucke
 export const BitbucketPullRequestDetailSchema = Schema.Struct({
   ...BitbucketPullRequestSchema.fields,
   summary: Schema.optional(
-    Schema.NullOr(
-      Schema.Struct({ raw: Schema.optional(Schema.NullOr(Schema.String)) }),
-    ),
+    Schema.NullOr(Schema.Struct({ raw: Schema.optional(Schema.NullOr(Schema.String)) })),
   ),
 });
 

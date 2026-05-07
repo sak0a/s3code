@@ -338,7 +338,11 @@ layer("GitLabCli.layer", (it) => {
               state: "opened",
               description: "MR body text",
               notes: [
-                { author: { username: "reviewer" }, body: "looks good", created_at: "2026-03-01T10:00:00Z" },
+                {
+                  author: { username: "reviewer" },
+                  body: "looks good",
+                  created_at: "2026-03-01T10:00:00Z",
+                },
               ],
             }),
           ),
@@ -371,16 +375,7 @@ layer("GitLabCli.layer", (it) => {
         expect.objectContaining({
           command: "glab",
           cwd: "/repo",
-          args: [
-            "mr",
-            "list",
-            "--search",
-            "fix",
-            "--per-page",
-            "20",
-            "--output",
-            "json",
-          ],
+          args: ["mr", "list", "--search", "fix", "--per-page", "20", "--output", "json"],
         }),
       );
     }),

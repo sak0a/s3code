@@ -186,9 +186,7 @@ it.effect("getChangeRequestDetail returns body and comments", () =>
           state: "open" as const,
           updatedAt: Option.none(),
           body: "PR body text",
-          comments: [
-            { author: "reviewer", body: "looks good", createdAt: "2026-03-01T10:00:00Z" },
-          ],
+          comments: [{ author: "reviewer", body: "looks good", createdAt: "2026-03-01T10:00:00Z" }],
         }),
     });
     const detail = yield* provider.getChangeRequestDetail({ cwd: "/repo", reference: "99" });

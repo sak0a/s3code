@@ -4,10 +4,7 @@ import { TrimmedNonEmptyString, type SourceControlRepositoryVisibility } from "@
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as GitLabIssues from "./gitLabIssues.ts";
-import type {
-  NormalizedGitLabIssueDetail,
-  NormalizedGitLabIssueRecord,
-} from "./gitLabIssues.ts";
+import type { NormalizedGitLabIssueDetail, NormalizedGitLabIssueRecord } from "./gitLabIssues.ts";
 import * as GitLabMergeRequests from "./gitLabMergeRequests.ts";
 import type { NormalizedGitLabMergeRequestDetail } from "./gitLabMergeRequests.ts";
 import type * as SourceControlProvider from "./SourceControlProvider.ts";
@@ -473,11 +470,7 @@ export const make = Effect.fn("makeGitLabCli")(function* () {
       }).pipe(Effect.asVoid),
     listIssues: (input) => {
       const stateFlags =
-        input.state === "open"
-          ? []
-          : input.state === "closed"
-            ? ["--closed"]
-            : ["--all"];
+        input.state === "open" ? [] : input.state === "closed" ? ["--closed"] : ["--all"];
       return execute({
         cwd: input.cwd,
         args: [

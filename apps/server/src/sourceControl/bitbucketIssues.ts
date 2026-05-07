@@ -37,9 +37,7 @@ export const BitbucketIssueSchema = Schema.Struct({
     self: Schema.optional(Schema.Struct({ href: Schema.String })),
   }),
   content: Schema.optional(
-    Schema.NullOr(
-      Schema.Struct({ raw: Schema.optional(Schema.NullOr(Schema.String)) }),
-    ),
+    Schema.NullOr(Schema.Struct({ raw: Schema.optional(Schema.NullOr(Schema.String)) })),
   ),
 });
 
@@ -50,9 +48,7 @@ export const BitbucketIssueListSchema = Schema.Struct({
 export const BitbucketCommentSchema = Schema.Struct({
   user: Schema.optional(Schema.NullOr(BitbucketUserSchema)),
   content: Schema.optional(
-    Schema.NullOr(
-      Schema.Struct({ raw: Schema.optional(Schema.NullOr(Schema.String)) }),
-    ),
+    Schema.NullOr(Schema.Struct({ raw: Schema.optional(Schema.NullOr(Schema.String)) })),
   ),
   created_on: Schema.String,
 });

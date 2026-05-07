@@ -480,22 +480,13 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
       const wiql = `SELECT [System.Id], [System.Title], [System.State], [System.Tags], [System.ChangedDate], [System.CreatedBy] FROM workItems WHERE [System.TeamProject] = @project${stateClause} ORDER BY [System.ChangedDate] DESC`;
       return executeJson({
         cwd: input.cwd,
-        args: [
-          "boards",
-          "query",
-          "--wiql",
-          wiql,
-          "--top",
-          String(input.limit ?? 50),
-        ],
+        args: ["boards", "query", "--wiql", wiql, "--top", String(input.limit ?? 50)],
       }).pipe(
         Effect.map((result) => result.stdout.trim()),
         Effect.flatMap((raw) =>
           raw.length === 0
             ? Effect.succeed([])
-            : Effect.sync(() =>
-                AzureDevOpsWorkItems.decodeAzureDevOpsWorkItemListJson(raw),
-              ).pipe(
+            : Effect.sync(() => AzureDevOpsWorkItems.decodeAzureDevOpsWorkItemListJson(raw)).pipe(
                 Effect.flatMap((decoded) =>
                   Result.isSuccess(decoded)
                     ? Effect.succeed(decoded.success)
@@ -519,9 +510,7 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
       }).pipe(
         Effect.map((result) => result.stdout.trim()),
         Effect.flatMap((raw) =>
-          Effect.sync(() =>
-            AzureDevOpsWorkItems.decodeAzureDevOpsWorkItemDetailJson(raw),
-          ).pipe(
+          Effect.sync(() => AzureDevOpsWorkItems.decodeAzureDevOpsWorkItemDetailJson(raw)).pipe(
             Effect.flatMap((decoded) =>
               Result.isSuccess(decoded)
                 ? Effect.succeed(decoded.success)
@@ -542,22 +531,13 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
       const wiql = `SELECT [System.Id], [System.Title], [System.State], [System.Tags], [System.ChangedDate], [System.CreatedBy] FROM workItems WHERE [System.TeamProject] = @project AND [System.Title] CONTAINS '${escapedQuery}' ORDER BY [System.ChangedDate] DESC`;
       return executeJson({
         cwd: input.cwd,
-        args: [
-          "boards",
-          "query",
-          "--wiql",
-          wiql,
-          "--top",
-          String(input.limit ?? 20),
-        ],
+        args: ["boards", "query", "--wiql", wiql, "--top", String(input.limit ?? 20)],
       }).pipe(
         Effect.map((result) => result.stdout.trim()),
         Effect.flatMap((raw) =>
           raw.length === 0
             ? Effect.succeed([])
-            : Effect.sync(() =>
-                AzureDevOpsWorkItems.decodeAzureDevOpsWorkItemListJson(raw),
-              ).pipe(
+            : Effect.sync(() => AzureDevOpsWorkItems.decodeAzureDevOpsWorkItemListJson(raw)).pipe(
                 Effect.flatMap((decoded) =>
                   Result.isSuccess(decoded)
                     ? Effect.succeed(decoded.success)
@@ -622,9 +602,7 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
       }).pipe(
         Effect.map((result) => result.stdout.trim()),
         Effect.flatMap((raw) =>
-          Effect.sync(() =>
-            AzureDevOpsPullRequests.decodeAzureDevOpsPullRequestDetailJson(raw),
-          ),
+          Effect.sync(() => AzureDevOpsPullRequests.decodeAzureDevOpsPullRequestDetailJson(raw)),
         ),
         Effect.flatMap((decoded) =>
           Result.isSuccess(decoded)
@@ -645,18 +623,14 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
       }).pipe(
         Effect.map((result) => result.stdout.trim()),
         Effect.flatMap((raw) =>
-          Effect.sync(() =>
-            AzureDevOpsPullRequests.decodeAzureDevOpsPullRequestThreadsJson(raw),
-          ),
+          Effect.sync(() => AzureDevOpsPullRequests.decodeAzureDevOpsPullRequestThreadsJson(raw)),
         ),
         Effect.flatMap((decoded) =>
           Result.isSuccess(decoded)
             ? Effect.succeed(decoded.success)
             : Effect.succeed([] as ReadonlyArray<NormalizedAzureDevOpsThreadComment>),
         ),
-        Effect.catch(() =>
-          Effect.succeed([] as ReadonlyArray<NormalizedAzureDevOpsThreadComment>),
-        ),
+        Effect.catch(() => Effect.succeed([] as ReadonlyArray<NormalizedAzureDevOpsThreadComment>)),
       );
       return Effect.all([showCmd, commentsCmd], { concurrency: 2 }).pipe(
         Effect.map(([detail, comments]) => ({ ...detail, comments })),

@@ -27,38 +27,38 @@
 
 ## File Structure (preview)
 
-| Path                                                                  | Status | Responsibility                                                                                                       |
-| --------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------- |
-| `apps/server/src/sourceControl/gitLabIssues.ts`                       | create | `glab` JSON decoders for issue list + detail.                                                                        |
-| `apps/server/src/sourceControl/gitLabIssues.test.ts`                  | create | Decoder unit tests.                                                                                                  |
-| `apps/server/src/sourceControl/gitLabMergeRequests.ts`                | modify | Add `decodeGitLabMergeRequestDetailJson` (body + notes/comments).                                                    |
-| `apps/server/src/sourceControl/gitLabMergeRequests.test.ts`           | create | Detail-decoder tests (file may not exist yet — test ergonomics modeled on `gitHubPullRequests.test.ts`).             |
-| `apps/server/src/sourceControl/GitLabCli.ts`                          | modify | Extend shape with `listIssues`, `getIssue`, `searchIssues`, `searchMergeRequests`, `getMergeRequestDetail`.          |
-| `apps/server/src/sourceControl/GitLabCli.test.ts`                     | modify | New CLI invocation tests.                                                                                            |
-| `apps/server/src/sourceControl/GitLabSourceControlProvider.ts`        | modify | Replace 5 `Effect.fail("not implemented")` stubs with real `GitLabCli` calls + truncation.                           |
-| `apps/server/src/sourceControl/GitLabSourceControlProvider.test.ts`   | modify | Provider-level tests for the 5 newly implemented methods.                                                            |
-| `apps/server/src/sourceControl/bitbucketIssues.ts`                    | create | Bitbucket REST JSON decoders for issue list + detail.                                                                |
-| `apps/server/src/sourceControl/bitbucketIssues.test.ts`               | create | Decoder unit tests.                                                                                                  |
-| `apps/server/src/sourceControl/bitbucketPullRequests.ts`              | modify | Add `decodeBitbucketPullRequestDetailJson` (body + comments).                                                        |
-| `apps/server/src/sourceControl/bitbucketPullRequests.test.ts`         | create | Detail-decoder tests (may not exist; mirror `gitHubPullRequests.test.ts`).                                           |
-| `apps/server/src/sourceControl/BitbucketApi.ts`                       | modify | Extend shape with `listIssues`, `getIssue`, `searchIssues`, `searchPullRequests`, `getPullRequestDetail`.            |
-| `apps/server/src/sourceControl/BitbucketApi.test.ts`                  | modify | New REST invocation tests with mocked `HttpClient`.                                                                  |
-| `apps/server/src/sourceControl/BitbucketSourceControlProvider.ts`     | modify | Replace 5 stubs with real `BitbucketApi` calls + truncation.                                                         |
-| `apps/server/src/sourceControl/BitbucketSourceControlProvider.test.ts`| modify | Provider tests for the 5 newly implemented methods.                                                                  |
-| `apps/server/src/sourceControl/azureDevOpsWorkItems.ts`               | create | `az boards work-item` JSON decoders for list + detail.                                                               |
-| `apps/server/src/sourceControl/azureDevOpsWorkItems.test.ts`          | create | Decoder unit tests.                                                                                                  |
-| `apps/server/src/sourceControl/azureDevOpsPullRequests.ts`            | modify | Add `decodeAzureDevOpsPullRequestDetailJson` (body + thread comments).                                               |
-| `apps/server/src/sourceControl/azureDevOpsPullRequests.test.ts`       | create | Detail-decoder tests (may not exist; mirror peer files).                                                             |
-| `apps/server/src/sourceControl/AzureDevOpsCli.ts`                     | modify | Extend shape with `listWorkItems`, `getWorkItem`, `searchWorkItems`, `searchPullRequests`, `getPullRequestDetail`.   |
-| `apps/server/src/sourceControl/AzureDevOpsCli.test.ts`                | modify | New CLI invocation tests.                                                                                            |
-| `apps/server/src/sourceControl/AzureDevOpsSourceControlProvider.ts`   | modify | Replace 5 stubs with real `AzureDevOpsCli` calls + truncation.                                                       |
-| `apps/server/src/sourceControl/AzureDevOpsSourceControlProvider.test.ts` | modify | Provider tests for the 5 newly implemented methods.                                                                  |
-| `apps/web/src/components/chat/ChatComposer.tsx`                       | modify | Wire `hasSourceControlRemote` to `useSourceControlDiscovery()`. Hook up "already attached" toast and (optional) direct-attach. |
-| `apps/web/src/components/chat/ContextPickerList.tsx`                  | modify | Render `updatedAt` date column.                                                                                      |
-| `apps/web/src/components/chat/ContextPickerPopup.tsx`                 | modify | Pass `count` for each tab.                                                                                           |
-| `apps/web/src/composerDraftStore.ts`                                  | modify | `addSourceControlContext` returns `{ added: boolean; reason?: 'duplicate' }`.                                        |
-| `apps/web/src/composerDraftStore.test.tsx`                            | modify | Tests for the new return shape + duplicate-no-op semantics.                                                          |
-| `apps/web/src/composer-logic.ts` *(optional)*                         | modify | Direct-attach when `#<digits>`+Enter and the menu is open with that issue.                                           |
+| Path                                                                     | Status | Responsibility                                                                                                                 |
+| ------------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/server/src/sourceControl/gitLabIssues.ts`                          | create | `glab` JSON decoders for issue list + detail.                                                                                  |
+| `apps/server/src/sourceControl/gitLabIssues.test.ts`                     | create | Decoder unit tests.                                                                                                            |
+| `apps/server/src/sourceControl/gitLabMergeRequests.ts`                   | modify | Add `decodeGitLabMergeRequestDetailJson` (body + notes/comments).                                                              |
+| `apps/server/src/sourceControl/gitLabMergeRequests.test.ts`              | create | Detail-decoder tests (file may not exist yet — test ergonomics modeled on `gitHubPullRequests.test.ts`).                       |
+| `apps/server/src/sourceControl/GitLabCli.ts`                             | modify | Extend shape with `listIssues`, `getIssue`, `searchIssues`, `searchMergeRequests`, `getMergeRequestDetail`.                    |
+| `apps/server/src/sourceControl/GitLabCli.test.ts`                        | modify | New CLI invocation tests.                                                                                                      |
+| `apps/server/src/sourceControl/GitLabSourceControlProvider.ts`           | modify | Replace 5 `Effect.fail("not implemented")` stubs with real `GitLabCli` calls + truncation.                                     |
+| `apps/server/src/sourceControl/GitLabSourceControlProvider.test.ts`      | modify | Provider-level tests for the 5 newly implemented methods.                                                                      |
+| `apps/server/src/sourceControl/bitbucketIssues.ts`                       | create | Bitbucket REST JSON decoders for issue list + detail.                                                                          |
+| `apps/server/src/sourceControl/bitbucketIssues.test.ts`                  | create | Decoder unit tests.                                                                                                            |
+| `apps/server/src/sourceControl/bitbucketPullRequests.ts`                 | modify | Add `decodeBitbucketPullRequestDetailJson` (body + comments).                                                                  |
+| `apps/server/src/sourceControl/bitbucketPullRequests.test.ts`            | create | Detail-decoder tests (may not exist; mirror `gitHubPullRequests.test.ts`).                                                     |
+| `apps/server/src/sourceControl/BitbucketApi.ts`                          | modify | Extend shape with `listIssues`, `getIssue`, `searchIssues`, `searchPullRequests`, `getPullRequestDetail`.                      |
+| `apps/server/src/sourceControl/BitbucketApi.test.ts`                     | modify | New REST invocation tests with mocked `HttpClient`.                                                                            |
+| `apps/server/src/sourceControl/BitbucketSourceControlProvider.ts`        | modify | Replace 5 stubs with real `BitbucketApi` calls + truncation.                                                                   |
+| `apps/server/src/sourceControl/BitbucketSourceControlProvider.test.ts`   | modify | Provider tests for the 5 newly implemented methods.                                                                            |
+| `apps/server/src/sourceControl/azureDevOpsWorkItems.ts`                  | create | `az boards work-item` JSON decoders for list + detail.                                                                         |
+| `apps/server/src/sourceControl/azureDevOpsWorkItems.test.ts`             | create | Decoder unit tests.                                                                                                            |
+| `apps/server/src/sourceControl/azureDevOpsPullRequests.ts`               | modify | Add `decodeAzureDevOpsPullRequestDetailJson` (body + thread comments).                                                         |
+| `apps/server/src/sourceControl/azureDevOpsPullRequests.test.ts`          | create | Detail-decoder tests (may not exist; mirror peer files).                                                                       |
+| `apps/server/src/sourceControl/AzureDevOpsCli.ts`                        | modify | Extend shape with `listWorkItems`, `getWorkItem`, `searchWorkItems`, `searchPullRequests`, `getPullRequestDetail`.             |
+| `apps/server/src/sourceControl/AzureDevOpsCli.test.ts`                   | modify | New CLI invocation tests.                                                                                                      |
+| `apps/server/src/sourceControl/AzureDevOpsSourceControlProvider.ts`      | modify | Replace 5 stubs with real `AzureDevOpsCli` calls + truncation.                                                                 |
+| `apps/server/src/sourceControl/AzureDevOpsSourceControlProvider.test.ts` | modify | Provider tests for the 5 newly implemented methods.                                                                            |
+| `apps/web/src/components/chat/ChatComposer.tsx`                          | modify | Wire `hasSourceControlRemote` to `useSourceControlDiscovery()`. Hook up "already attached" toast and (optional) direct-attach. |
+| `apps/web/src/components/chat/ContextPickerList.tsx`                     | modify | Render `updatedAt` date column.                                                                                                |
+| `apps/web/src/components/chat/ContextPickerPopup.tsx`                    | modify | Pass `count` for each tab.                                                                                                     |
+| `apps/web/src/composerDraftStore.ts`                                     | modify | `addSourceControlContext` returns `{ added: boolean; reason?: 'duplicate' }`.                                                  |
+| `apps/web/src/composerDraftStore.test.tsx`                               | modify | Tests for the new return shape + duplicate-no-op semantics.                                                                    |
+| `apps/web/src/composer-logic.ts` _(optional)_                            | modify | Direct-attach when `#<digits>`+Enter and the menu is open with that issue.                                                     |
 
 ---
 
@@ -112,10 +112,7 @@ Create `apps/server/src/sourceControl/gitLabIssues.test.ts`:
 ```ts
 import { describe, expect, it } from "vitest";
 import { Result } from "effect";
-import {
-  decodeGitLabIssueDetailJson,
-  decodeGitLabIssueListJson,
-} from "./gitLabIssues.ts";
+import { decodeGitLabIssueDetailJson, decodeGitLabIssueListJson } from "./gitLabIssues.ts";
 
 describe("decodeGitLabIssueListJson", () => {
   it("decodes a valid list and normalizes state", () => {
@@ -529,10 +526,7 @@ Edit `apps/server/src/sourceControl/GitLabCli.ts`. At the top of the file, after
 
 ```ts
 import * as GitLabIssues from "./gitLabIssues.ts";
-import type {
-  NormalizedGitLabIssueDetail,
-  NormalizedGitLabIssueRecord,
-} from "./gitLabIssues.ts";
+import type { NormalizedGitLabIssueDetail, NormalizedGitLabIssueRecord } from "./gitLabIssues.ts";
 import type { NormalizedGitLabMergeRequestDetail } from "./gitLabMergeRequests.ts";
 ```
 
@@ -891,16 +885,7 @@ it.effect("searchIssues forwards query and limit to glab issue list --search", (
       expect.objectContaining({
         command: "glab",
         cwd: "/repo",
-        args: [
-          "issue",
-          "list",
-          "--search",
-          "memory leak",
-          "--per-page",
-          "30",
-          "--output",
-          "json",
-        ],
+        args: ["issue", "list", "--search", "memory leak", "--per-page", "30", "--output", "json"],
       }),
     );
   }),
@@ -981,16 +966,7 @@ it.effect("searchMergeRequests forwards query to glab mr list --search", () =>
       expect.objectContaining({
         command: "glab",
         cwd: "/repo",
-        args: [
-          "mr",
-          "list",
-          "--search",
-          "fix",
-          "--per-page",
-          "20",
-          "--output",
-          "json",
-        ],
+        args: ["mr", "list", "--search", "fix", "--per-page", "20", "--output", "json"],
       }),
     );
   }),
@@ -1076,7 +1052,11 @@ it.effect("getMergeRequestDetail decodes description and notes", () =>
             state: "opened",
             description: "MR body text",
             notes: [
-              { author: { username: "reviewer" }, body: "looks good", created_at: "2026-03-01T10:00:00Z" },
+              {
+                author: { username: "reviewer" },
+                body: "looks good",
+                created_at: "2026-03-01T10:00:00Z",
+              },
             ],
           }),
         ),
@@ -1373,9 +1353,7 @@ it.effect("getChangeRequestDetail returns body and comments", () =>
           state: "open" as const,
           updatedAt: Option.none(),
           body: "MR body text",
-          comments: [
-            { author: "reviewer", body: "looks good", createdAt: "2026-03-01T10:00:00Z" },
-          ],
+          comments: [{ author: "reviewer", body: "looks good", createdAt: "2026-03-01T10:00:00Z" }],
         }),
     });
     const detail = yield* provider.getChangeRequestDetail({ cwd: "/repo", reference: "99" });
@@ -1462,10 +1440,7 @@ Create `apps/server/src/sourceControl/bitbucketIssues.test.ts`:
 ```ts
 import { describe, expect, it } from "vitest";
 import { Result } from "effect";
-import {
-  decodeBitbucketIssueDetailJson,
-  decodeBitbucketIssueListJson,
-} from "./bitbucketIssues.ts";
+import { decodeBitbucketIssueDetailJson, decodeBitbucketIssueListJson } from "./bitbucketIssues.ts";
 
 describe("decodeBitbucketIssueListJson", () => {
   it("decodes paged issues into normalized records", () => {
@@ -1581,9 +1556,7 @@ const BitbucketIssueSchema = Schema.Struct({
     self: Schema.optional(Schema.Struct({ href: Schema.String })),
   }),
   content: Schema.optional(
-    Schema.NullOr(
-      Schema.Struct({ raw: Schema.optional(Schema.NullOr(Schema.String)) }),
-    ),
+    Schema.NullOr(Schema.Struct({ raw: Schema.optional(Schema.NullOr(Schema.String)) })),
   ),
 });
 
@@ -1591,7 +1564,9 @@ const BitbucketIssueListSchema = Schema.Struct({
   values: Schema.Array(BitbucketIssueSchema),
 });
 
-function authorOf(reporter: { readonly username?: string; readonly display_name?: string } | null | undefined): string | null {
+function authorOf(
+  reporter: { readonly username?: string; readonly display_name?: string } | null | undefined,
+): string | null {
   return (reporter?.username?.trim() || reporter?.display_name?.trim()) ?? null;
 }
 
@@ -1601,7 +1576,9 @@ function normalizeState(raw: string | null | undefined): "open" | "closed" {
   return s === "new" || s === "open" || s === "submitted" ? "open" : "closed";
 }
 
-function normalize(raw: Schema.Schema.Type<typeof BitbucketIssueSchema>): NormalizedBitbucketIssueRecord {
+function normalize(
+  raw: Schema.Schema.Type<typeof BitbucketIssueSchema>,
+): NormalizedBitbucketIssueRecord {
   return {
     number: raw.id,
     title: raw.title,
@@ -1642,9 +1619,7 @@ export function decodeBitbucketIssueDetailJson(
 const BitbucketCommentSchema = Schema.Struct({
   user: Schema.optional(Schema.NullOr(BitbucketUserSchema)),
   content: Schema.optional(
-    Schema.NullOr(
-      Schema.Struct({ raw: Schema.optional(Schema.NullOr(Schema.String)) }),
-    ),
+    Schema.NullOr(Schema.Struct({ raw: Schema.optional(Schema.NullOr(Schema.String)) })),
   ),
   created_on: Schema.String,
 });
@@ -1751,9 +1726,7 @@ export interface NormalizedBitbucketPullRequestDetail extends NormalizedBitbucke
 const BitbucketPullRequestDetailSchema = Schema.Struct({
   ...BitbucketPullRequestSchema.fields,
   summary: Schema.optional(
-    Schema.NullOr(
-      Schema.Struct({ raw: Schema.optional(Schema.NullOr(Schema.String)) }),
-    ),
+    Schema.NullOr(Schema.Struct({ raw: Schema.optional(Schema.NullOr(Schema.String)) })),
   ),
 });
 
@@ -1984,6 +1957,7 @@ git commit -m "server(sc): implement BitbucketApi.listIssues (404 → empty)"
 - Modify: `apps/server/src/sourceControl/BitbucketApi.test.ts`
 
 Endpoints:
+
 - `GET /repositories/{w}/{r}/issues/{id}` → body
 - `GET /repositories/{w}/{r}/issues/{id}/comments?pagelen=10&sort=-created_on` → comments (cap to last 5 in detail-mapper later, but fetch a few extra so truncation has signal)
 
@@ -2202,6 +2176,7 @@ git commit -m "server(sc): implement BitbucketApi.searchPullRequests"
 - Modify: `apps/server/src/sourceControl/BitbucketApi.test.ts`
 
 Endpoints:
+
 - `GET /repositories/{w}/{r}/pullrequests/{id}` → body via `summary.raw`
 - `GET /repositories/{w}/{r}/pullrequests/{id}/comments?pagelen=10&sort=-created_on` → comments
 
@@ -2424,6 +2399,7 @@ getChangeRequestDetail: (input) =>
 - [ ] **Step 3: Add provider tests**
 
 Append to `apps/server/src/sourceControl/BitbucketSourceControlProvider.test.ts` — mirror the GitHub provider issue/MR-detail tests (Task 9 step 3) but with:
+
 - `provider: "bitbucket"`
 - `makeProvider(api: Partial<BitbucketApi.BitbucketApiShape>) { return BitbucketSourceControlProvider.make().pipe(Effect.provide(Layer.mock(BitbucketApi.BitbucketApi)(api))); }`
 
@@ -2511,7 +2487,7 @@ describe("decodeAzureDevOpsWorkItemListJson", () => {
           "System.State": "Active",
           "System.Tags": "frontend; bug",
           "System.ChangedDate": "2026-03-14T10:00:00Z",
-          "System.CreatedBy": { "uniqueName": "alice@example.com" },
+          "System.CreatedBy": { uniqueName: "alice@example.com" },
         },
         url: "https://dev.azure.com/org/proj/_apis/wit/workItems/42",
       },
@@ -2661,7 +2637,9 @@ function urlFor(raw: Schema.Schema.Type<typeof AzureWorkItemSchema>): string {
   return apiUrl;
 }
 
-function normalize(raw: Schema.Schema.Type<typeof AzureWorkItemSchema>): NormalizedAzureDevOpsWorkItemRecord {
+function normalize(
+  raw: Schema.Schema.Type<typeof AzureWorkItemSchema>,
+): NormalizedAzureDevOpsWorkItemRecord {
   return {
     number: raw.id,
     title: raw.fields["System.Title"]?.trim() ?? "",
@@ -2683,7 +2661,10 @@ export const formatAzureDevOpsWorkItemDecodeError = formatSchemaError;
 
 export function decodeAzureDevOpsWorkItemListJson(
   raw: string,
-): Result.Result<ReadonlyArray<NormalizedAzureDevOpsWorkItemRecord>, Cause.Cause<Schema.SchemaError>> {
+): Result.Result<
+  ReadonlyArray<NormalizedAzureDevOpsWorkItemRecord>,
+  Cause.Cause<Schema.SchemaError>
+> {
   const result = decodeWorkItemList(raw);
   if (!Result.isSuccess(result)) return Result.fail(result.failure);
   const items: NormalizedAzureDevOpsWorkItemRecord[] = [];
@@ -2829,10 +2810,7 @@ export function decodeAzureDevOpsPullRequestDetailJson(
     .flatMap((t) => t.comments ?? [])
     .filter((c) => (c.content?.trim() ?? "").length > 0)
     .map((c) => ({
-      author:
-        c.author?.uniqueName?.trim() ??
-        c.author?.displayName?.trim() ??
-        "unknown",
+      author: c.author?.uniqueName?.trim() ?? c.author?.displayName?.trim() ?? "unknown",
       body: c.content ?? "",
       createdAt: c.publishedDate ?? "",
     }));
@@ -3004,7 +2982,9 @@ it.effect("listWorkItems queries WIQL with state filter and decodes", () =>
     expect(call?.command).toBe("az");
     // First arg is "boards" — assert WIQL is in args.
     expect(call?.args).toContain("query");
-    expect(call?.args.some((a) => typeof a === "string" && a.toUpperCase().includes("SELECT"))).toBe(true);
+    expect(
+      call?.args.some((a) => typeof a === "string" && a.toUpperCase().includes("SELECT")),
+    ).toBe(true);
     expect(call?.env).toEqual(expect.objectContaining({ LC_ALL: "C" }));
   }),
 );
@@ -3464,6 +3444,7 @@ getPullRequestDetail: (input) => {
 ```
 
 > **Implementer note:** `az repos pr list-comments` may not exist as a single subcommand in older `azure-devops` extension versions. If the help output (research from Phase 3 header) shows it's not available, fall back to either:
+>
 > 1. `az devops invoke --area git --resource pullRequestThreads --route-parameters …` for the raw REST endpoint, or
 > 2. dropping comments and shipping just the body — log a TODO comment in the file but make the test still pass with the body-only return.
 >
@@ -3674,12 +3655,11 @@ Inside the `ChatComposer` component body (find a clean insertion point near exis
 
 ```ts
 const sourceControlDiscovery = useSourceControlDiscovery();
-const hasSourceControlRemote =
-  (sourceControlDiscovery.data?.sourceControlProviders ?? []).some(
-    (provider) =>
-      provider.status === "ok" &&
-      (provider.auth.status === "authenticated" || provider.auth.status === "unknown"),
-  );
+const hasSourceControlRemote = (sourceControlDiscovery.data?.sourceControlProviders ?? []).some(
+  (provider) =>
+    provider.status === "ok" &&
+    (provider.auth.status === "authenticated" || provider.auth.status === "unknown"),
+);
 ```
 
 - [ ] **Step 4: Replace the hardcoded prop**
@@ -3693,7 +3673,7 @@ hasSourceControlRemote={true}
 to:
 
 ```tsx
-hasSourceControlRemote={hasSourceControlRemote}
+hasSourceControlRemote = { hasSourceControlRemote };
 ```
 
 - [ ] **Step 5: Verify**
@@ -3754,9 +3734,7 @@ In the JSX, replace:
 with:
 
 ```tsx
-<span className="shrink-0 text-xs text-muted-foreground">
-  {formatItemDate(item.updatedAt)}
-</span>
+<span className="shrink-0 text-xs text-muted-foreground">{formatItemDate(item.updatedAt)}</span>
 ```
 
 - [ ] **Step 3: Verify**
@@ -3801,11 +3779,7 @@ const tabs: ReadonlyArray<ContextPickerTab> = [
 - [ ] **Step 2: Pass `tabs` instead of the constant**
 
 ```tsx
-<ContextPickerTabs
-  tabs={tabs}
-  activeId={activeTab}
-  onSelect={(id) => setActiveTab(id as TabId)}
-/>
+<ContextPickerTabs tabs={tabs} activeId={activeTab} onSelect={(id) => setActiveTab(id as TabId)} />
 ```
 
 - [ ] **Step 3: Remove the now-unused `TABS` constant** at the top of the file.
@@ -3933,7 +3907,7 @@ git commit -m "web(composer): toast when source-control context is already attac
 
 ---
 
-### Task 32 *(optional)*: Direct-attach `#42` + Enter
+### Task 32 _(optional)_: Direct-attach `#42` + Enter
 
 **Files:**
 

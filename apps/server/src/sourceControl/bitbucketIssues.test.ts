@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Result } from "effect";
-import {
-  decodeBitbucketIssueDetailJson,
-  decodeBitbucketIssueListJson,
-} from "./bitbucketIssues.ts";
+import { decodeBitbucketIssueDetailJson, decodeBitbucketIssueListJson } from "./bitbucketIssues.ts";
 
 describe("decodeBitbucketIssueListJson", () => {
   it("decodes paged issues into normalized records", () => {
