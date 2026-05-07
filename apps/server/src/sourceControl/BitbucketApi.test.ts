@@ -652,6 +652,32 @@ it.effect("getIssue returns body and comments via two REST calls", () => {
   }).pipe(Effect.provide(layer));
 });
 
+it.effect("searchIssues forwards BBQL to /issues endpoint", () => {
+  const { execute, layer } = makeLayer({
+    response: () =>
+      Response.json({
+        values: [
+          {
+            id: 5,
+            title: "memory leak in parser",
+            state: "open",
+            links: { html: { href: "https://bitbucket.org/pingdotgg/t3code/issues/5" } },
+          },
+        ],
+      }),
+  });
+
+  return Effect.gen(function* () {
+    const bitbucket = yield* BitbucketApi.BitbucketApi;
+    const results = yield* bitbucket.searchIssues({ cwd: "/repo", query: "memory leak" });
+    assert.strictEqual(results.length, 1);
+    assert.strictEqual(results[0]?.number, 5);
+    const url = execute.mock.calls[0]?.[0].url ?? "";
+    assert.ok(url.includes("/issues"), `URL should include /issues, got: ${url}`);
+    assert.ok(url.includes(encodeURIComponent('title ~ "memory leak"')), `URL should include BBQL, got: ${url}`);
+  }).pipe(Effect.provide(layer));
+});
+
 it.effect("listIssues fetches open issues and returns normalized records", () => {
   const { execute, layer } = makeLayer({
     response: () =>

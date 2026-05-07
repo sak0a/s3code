@@ -861,8 +861,31 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
         }),
       );
     },
-    searchIssues: () =>
-      Effect.fail(new BitbucketApiError({ operation: "searchIssues", detail: "stub" })),
+    searchIssues: (input) =>
+      resolveRepository({
+        cwd: input.cwd,
+        ...(input.context ? { context: input.context } : {}),
+      }).pipe(
+        Effect.flatMap((repo) => {
+          const escaped = input.query.replace(/"/g, '\\"');
+          const q = `title ~ "${escaped}"`;
+          const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues?q=${encodeURIComponent(q)}&pagelen=${input.limit ?? 20}&sort=-updated_on`;
+          return executeJson(
+            "searchIssues",
+            HttpClientRequest.get(apiUrl(path)),
+            BitbucketIssues.BitbucketIssueListSchema,
+          ).pipe(
+            Effect.map((value) =>
+              value.values.map(BitbucketIssues.normalizeBitbucketIssueRecord),
+            ),
+            Effect.catch((err) =>
+              isBitbucketApiError(err) && err.status === 404
+                ? Effect.succeed([])
+                : Effect.fail(err),
+            ),
+          );
+        }),
+      ),
     searchPullRequests: () =>
       Effect.fail(new BitbucketApiError({ operation: "searchPullRequests", detail: "stub" })),
     getPullRequestDetail: () =>
