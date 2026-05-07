@@ -533,8 +533,36 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
               ),
         ),
       ),
-    getPullRequestDetail: () =>
-      Effect.fail(new GitHubCliError({ operation: "getPullRequestDetail", detail: "stub" })),
+    getPullRequestDetail: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: [
+          "pr",
+          "view",
+          input.reference,
+          "--json",
+          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner,body,comments",
+        ],
+      }).pipe(
+        Effect.map((r) => r.stdout.trim()),
+        Effect.flatMap((raw) =>
+          Effect.sync(() => GitHubPullRequests.decodeGitHubPullRequestDetailJson(raw)).pipe(
+            Effect.flatMap((decoded) => {
+              if (!Result.isSuccess(decoded)) {
+                return Effect.fail(
+                  new GitHubCliError({
+                    operation: "getPullRequestDetail",
+                    detail: `GitHub CLI returned invalid pull request JSON: ${GitHubPullRequests.formatGitHubJsonDecodeError(decoded.failure)}`,
+                    cause: decoded.failure,
+                  }),
+                );
+              }
+              const { updatedAt: _updatedAt, ...rest } = decoded.success;
+              return Effect.succeed(rest);
+            }),
+          ),
+        ),
+      ),
   });
 });
 
