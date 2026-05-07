@@ -201,6 +201,12 @@ function normalizeChangeRequestId(reference: string): string {
   return urlMatch?.[1] ?? trimmed;
 }
 
+function normalizeIssueId(reference: string): string {
+  const trimmed = reference.trim().replace(/^#/, "");
+  const urlMatch = /(?:issues?)\/(\d+)(?:\D.*)?$/i.exec(trimmed);
+  return urlMatch?.[1] ?? trimmed;
+}
+
 function sourceWorkspace(input: {
   readonly headSelector: string;
   readonly source?: SourceControlProvider.SourceControlRefSelector;
@@ -802,9 +808,9 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
         Effect.flatMap((repo) => {
           const stateQuery =
             input.state === "open"
-              ? "&state=new&state=open"
+              ? "&state=new&state=open&state=submitted"
               : input.state === "closed"
-                ? "&state=resolved&state=closed&state=on%20hold"
+                ? "&state=resolved&state=closed&state=on%20hold&state=invalid&state=duplicate&state=wontfix"
                 : "";
           const path = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues?pagelen=${input.limit ?? 50}&sort=-updated_on${stateQuery}`;
           return executeJson(
@@ -822,15 +828,14 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
         }),
       ),
     getIssue: (input) => {
-      const referenceId =
-        input.reference.trim().replace(/^#/, "").split("/").pop() ?? input.reference;
+      const referenceId = normalizeIssueId(input.reference);
       return resolveRepository({
         cwd: input.cwd,
         ...(input.context ? { context: input.context } : {}),
       }).pipe(
         Effect.flatMap((repo) => {
           const issuePath = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/issues/${encodeURIComponent(referenceId)}`;
-          const commentsPath = `${issuePath}/comments?pagelen=10&sort=-created_on`;
+          const commentsPath = `${issuePath}/comments?pagelen=6&sort=-created_on`;
           const issue = executeJson(
             "getIssue",
             HttpClientRequest.get(apiUrl(issuePath)),
@@ -841,7 +846,7 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
             HttpClientRequest.get(apiUrl(commentsPath)),
             BitbucketIssues.BitbucketCommentListSchema,
           ).pipe(
-            Effect.map(BitbucketIssues.normalizeBitbucketCommentList),
+            Effect.map((list) => [...BitbucketIssues.normalizeBitbucketCommentList(list)].reverse()),
             Effect.catch((err) =>
               isBitbucketApiError(err) && err.status === 404
                 ? Effect.succeed([])
@@ -907,15 +912,14 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
         }),
       ),
     getPullRequestDetail: (input) => {
-      const referenceId =
-        input.reference.trim().replace(/^#/, "").split("/").pop() ?? input.reference;
+      const referenceId = normalizeChangeRequestId(input.reference);
       return resolveRepository({
         cwd: input.cwd,
         ...(input.context ? { context: input.context } : {}),
       }).pipe(
         Effect.flatMap((repo) => {
           const prPath = `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/pullrequests/${encodeURIComponent(referenceId)}`;
-          const commentsPath = `${prPath}/comments?pagelen=10&sort=-created_on`;
+          const commentsPath = `${prPath}/comments?pagelen=6&sort=-created_on`;
           const pr = executeJson(
             "getPullRequestDetail",
             HttpClientRequest.get(apiUrl(prPath)),
@@ -926,7 +930,7 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
             HttpClientRequest.get(apiUrl(commentsPath)),
             BitbucketIssues.BitbucketCommentListSchema,
           ).pipe(
-            Effect.map(BitbucketIssues.normalizeBitbucketCommentList),
+            Effect.map((list) => [...BitbucketIssues.normalizeBitbucketCommentList(list)].reverse()),
             Effect.catch((err) =>
               isBitbucketApiError(err) && err.status === 404
                 ? Effect.succeed([])

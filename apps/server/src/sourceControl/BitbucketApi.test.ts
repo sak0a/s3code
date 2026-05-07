@@ -788,3 +788,147 @@ it.effect("listIssues fetches open issues and returns normalized records", () =>
     assert.ok(url.includes("/repositories/pingdotgg/t3code/issues"), `URL was: ${url}`);
   }).pipe(Effect.provide(layer));
 });
+
+it.effect("getIssue parses issue ID from a trailing-slash URL", () => {
+  const { execute, layer } = makeLayer({
+    response: (request) => {
+      if (request.url.includes("/comments")) {
+        return Response.json({ values: [] });
+      }
+      return Response.json({
+        id: 42,
+        title: "Bug report",
+        state: "open",
+        content: { raw: "issue body" },
+        reporter: { username: "alice", display_name: "Alice" },
+        links: { html: { href: "https://bitbucket.org/pingdotgg/t3code/issues/42" } },
+      });
+    },
+  });
+
+  return Effect.gen(function* () {
+    const bitbucket = yield* BitbucketApi.BitbucketApi;
+    yield* bitbucket.getIssue({
+      cwd: "/repo",
+      reference: "https://bitbucket.org/w/r/issues/42/",
+    });
+    const issueCallUrl = execute.mock.calls.find(
+      (call) => !call[0].url.includes("/comments"),
+    )?.[0].url ?? "";
+    assert.ok(
+      issueCallUrl.includes("/issues/42"),
+      `Expected URL to include /issues/42, got: ${issueCallUrl}`,
+    );
+    assert.ok(
+      !issueCallUrl.endsWith("/issues/"),
+      `Expected URL not to end with /issues/, got: ${issueCallUrl}`,
+    );
+  }).pipe(Effect.provide(layer));
+});
+
+it.effect("getPullRequestDetail parses PR ID from a trailing-slash URL", () => {
+  const { execute, layer } = makeLayer({
+    response: (request) => {
+      if (request.url.includes("/comments")) {
+        return Response.json({ values: [] });
+      }
+      return Response.json({
+        id: 42,
+        title: "Add feature",
+        state: "OPEN",
+        summary: { raw: "PR body" },
+        links: {
+          html: { href: "https://bitbucket.org/pingdotgg/t3code/pull-requests/42" },
+        },
+        source: {
+          branch: { name: "feature/add" },
+          repository: { full_name: "pingdotgg/t3code" },
+        },
+        destination: {
+          branch: { name: "main" },
+          repository: { full_name: "pingdotgg/t3code" },
+        },
+      });
+    },
+  });
+
+  return Effect.gen(function* () {
+    const bitbucket = yield* BitbucketApi.BitbucketApi;
+    yield* bitbucket.getPullRequestDetail({
+      cwd: "/repo",
+      reference: "https://bitbucket.org/w/r/pull-requests/42/",
+    });
+    const prCallUrl = execute.mock.calls.find(
+      (call) => !call[0].url.includes("/comments"),
+    )?.[0].url ?? "";
+    assert.ok(
+      prCallUrl.includes("/pullrequests/42"),
+      `Expected URL to include /pullrequests/42, got: ${prCallUrl}`,
+    );
+    assert.ok(
+      !prCallUrl.endsWith("/pullrequests/"),
+      `Expected URL not to end with /pullrequests/, got: ${prCallUrl}`,
+    );
+  }).pipe(Effect.provide(layer));
+});
+
+it.effect("getIssue resolves with body and empty comments when comments endpoint returns 404", () => {
+  const { layer } = makeLayer({
+    response: (request) => {
+      if (request.url.includes("/comments")) {
+        return Response.json({ error: { message: "Not found" } }, { status: 404 });
+      }
+      return Response.json({
+        id: 7,
+        title: "Flaky test",
+        state: "open",
+        content: { raw: "issue body text" },
+        reporter: { username: "bob", display_name: "Bob" },
+        links: { html: { href: "https://bitbucket.org/pingdotgg/t3code/issues/7" } },
+      });
+    },
+  });
+
+  return Effect.gen(function* () {
+    const bitbucket = yield* BitbucketApi.BitbucketApi;
+    const detail = yield* bitbucket.getIssue({ cwd: "/repo", reference: "7" });
+    assert.strictEqual(detail.number, 7);
+    assert.strictEqual(detail.body, "issue body text");
+    assert.deepStrictEqual(detail.comments, []);
+  }).pipe(Effect.provide(layer));
+});
+
+it.effect("getPullRequestDetail resolves with body and empty comments when comments endpoint returns 404", () => {
+  const { layer } = makeLayer({
+    response: (request) => {
+      if (request.url.includes("/comments")) {
+        return Response.json({ error: { message: "Not found" } }, { status: 404 });
+      }
+      return Response.json({
+        id: 9,
+        title: "Fix crash",
+        state: "OPEN",
+        summary: { raw: "PR description" },
+        links: {
+          html: { href: "https://bitbucket.org/pingdotgg/t3code/pull-requests/9" },
+        },
+        source: {
+          branch: { name: "fix/crash" },
+          repository: { full_name: "pingdotgg/t3code" },
+        },
+        destination: {
+          branch: { name: "main" },
+          repository: { full_name: "pingdotgg/t3code" },
+        },
+      });
+    },
+  });
+
+  return Effect.gen(function* () {
+    const bitbucket = yield* BitbucketApi.BitbucketApi;
+    const detail = yield* bitbucket.getPullRequestDetail({ cwd: "/repo", reference: "9" });
+    assert.strictEqual(detail.number, 9);
+    assert.strictEqual(detail.body, "PR description");
+    assert.deepStrictEqual(detail.comments, []);
+  }).pipe(Effect.provide(layer));
+});
