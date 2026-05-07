@@ -1,7 +1,16 @@
-import { Effect, Layer } from "effect";
-import { SourceControlProviderError, type ChangeRequest } from "@t3tools/contracts";
+import { DateTime, Effect, Layer, Option } from "effect";
+import {
+  SourceControlProviderError,
+  truncateSourceControlDetailContent,
+  type ChangeRequest,
+  type SourceControlChangeRequestDetail,
+  type SourceControlIssueDetail,
+  type SourceControlIssueSummary,
+} from "@t3tools/contracts";
 
 import * as AzureDevOpsCli from "./AzureDevOpsCli.ts";
+import * as AzureDevOpsPullRequests from "./azureDevOpsPullRequests.ts";
+import * as AzureDevOpsWorkItems from "./azureDevOpsWorkItems.ts";
 import * as SourceControlProvider from "./SourceControlProvider.ts";
 import * as SourceControlProviderDiscovery from "./SourceControlProviderDiscovery.ts";
 
@@ -79,6 +88,59 @@ function toChangeRequest(summary: {
   };
 }
 
+function toIssueSummary(
+  raw: AzureDevOpsWorkItems.NormalizedAzureDevOpsWorkItemRecord,
+): SourceControlIssueSummary {
+  return {
+    provider: "azure-devops",
+    number: raw.number,
+    title: raw.title,
+    url: raw.url,
+    state: raw.state,
+    ...(raw.author ? { author: raw.author } : {}),
+    updatedAt: raw.updatedAt.pipe(Option.map((s) => DateTime.fromDateUnsafe(new Date(s)))),
+    labels: raw.labels,
+  };
+}
+
+function toIssueDetail(
+  raw: AzureDevOpsWorkItems.NormalizedAzureDevOpsWorkItemDetail,
+): SourceControlIssueDetail {
+  const truncated = truncateSourceControlDetailContent({
+    body: raw.body,
+    comments: raw.comments,
+  });
+  return {
+    ...toIssueSummary(raw),
+    body: truncated.body,
+    comments: truncated.comments.map((c) => ({
+      author: c.author,
+      body: c.body,
+      createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
+    })),
+    truncated: truncated.truncated,
+  };
+}
+
+function toChangeRequestDetail(
+  raw: AzureDevOpsPullRequests.NormalizedAzureDevOpsPullRequestDetail,
+): SourceControlChangeRequestDetail {
+  const truncated = truncateSourceControlDetailContent({
+    body: raw.body,
+    comments: raw.comments,
+  });
+  return {
+    ...toChangeRequest(raw),
+    body: truncated.body,
+    comments: truncated.comments.map((c) => ({
+      author: c.author,
+      body: c.body,
+      createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
+    })),
+    truncated: truncated.truncated,
+  };
+}
+
 export const make = Effect.fn("makeAzureDevOpsSourceControlProvider")(function* () {
   const azure = yield* AzureDevOpsCli.AzureDevOpsCli;
 
@@ -138,45 +200,48 @@ export const make = Effect.fn("makeAzureDevOpsSourceControlProvider")(function* 
           ...(input.context ? { remoteName: input.context.remoteName } : {}),
         })
         .pipe(Effect.mapError((error) => providerError("checkoutChangeRequest", error))),
-    listIssues: () =>
-      Effect.fail(
-        new SourceControlProviderError({
-          provider: "azure-devops",
-          operation: "listIssues",
-          detail: "Not implemented for azure-devops yet (Plan 2).",
-        }),
+    listIssues: (input) =>
+      azure
+        .listWorkItems({
+          cwd: input.cwd,
+          state: input.state,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toIssueSummary)),
+          Effect.mapError((error) => providerError("listIssues", error)),
+        ),
+    getIssue: (input) =>
+      azure.getWorkItem({ cwd: input.cwd, reference: input.reference }).pipe(
+        Effect.map(toIssueDetail),
+        Effect.mapError((error) => providerError("getIssue", error)),
       ),
-    getIssue: () =>
-      Effect.fail(
-        new SourceControlProviderError({
-          provider: "azure-devops",
-          operation: "getIssue",
-          detail: "Not implemented for azure-devops yet (Plan 2).",
-        }),
-      ),
-    searchIssues: () =>
-      Effect.fail(
-        new SourceControlProviderError({
-          provider: "azure-devops",
-          operation: "searchIssues",
-          detail: "Not implemented for azure-devops yet (Plan 2).",
-        }),
-      ),
-    searchChangeRequests: () =>
-      Effect.fail(
-        new SourceControlProviderError({
-          provider: "azure-devops",
-          operation: "searchChangeRequests",
-          detail: "Not implemented for azure-devops yet (Plan 2).",
-        }),
-      ),
-    getChangeRequestDetail: () =>
-      Effect.fail(
-        new SourceControlProviderError({
-          provider: "azure-devops",
-          operation: "getChangeRequestDetail",
-          detail: "Not implemented for azure-devops yet (Plan 2).",
-        }),
+    searchIssues: (input) =>
+      azure
+        .searchWorkItems({
+          cwd: input.cwd,
+          query: input.query,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toIssueSummary)),
+          Effect.mapError((error) => providerError("searchIssues", error)),
+        ),
+    searchChangeRequests: (input) =>
+      azure
+        .searchPullRequests({
+          cwd: input.cwd,
+          query: input.query,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toChangeRequest)),
+          Effect.mapError((error) => providerError("searchChangeRequests", error)),
+        ),
+    getChangeRequestDetail: (input) =>
+      azure.getPullRequestDetail({ cwd: input.cwd, reference: input.reference }).pipe(
+        Effect.map(toChangeRequestDetail),
+        Effect.mapError((error) => providerError("getChangeRequestDetail", error)),
       ),
   });
 });
