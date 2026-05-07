@@ -315,6 +315,51 @@ describe("AzureDevOpsCli.layer", () => {
     }).pipe(Effect.provide(layer)),
   );
 
+  it.effect("getPullRequestDetail decodes description and merges comments", () =>
+    Effect.gen(function* () {
+      mockRun
+        .mockReturnValueOnce(
+          Effect.succeed(
+            processOutput(
+              JSON.stringify({
+                pullRequestId: 99,
+                title: "Add",
+                description: "PR body",
+                status: "active",
+                sourceRefName: "refs/heads/feature/add",
+                targetRefName: "refs/heads/main",
+                repository: {
+                  webUrl: "https://dev.azure.com/org/proj/_git/repo",
+                  name: "repo",
+                },
+              }),
+            ),
+          ),
+        )
+        .mockReturnValueOnce(
+          Effect.succeed(
+            processOutput(
+              JSON.stringify([
+                {
+                  comments: [
+                    {
+                      author: { displayName: "Reviewer", uniqueName: "rev@example.com" },
+                      content: "looks good",
+                      publishedDate: "2026-03-01T10:00:00Z",
+                    },
+                  ],
+                },
+              ]),
+            ),
+          ),
+        );
+      const az = yield* AzureDevOpsCli.AzureDevOpsCli;
+      const detail = yield* az.getPullRequestDetail({ cwd: "/repo", reference: "99" });
+      expect(detail.body).toBe("PR body");
+      expect(detail.comments[0]?.author).toBe("rev@example.com");
+    }).pipe(Effect.provide(layer)),
+  );
+
   it.effect("searchPullRequests filters via JMESPath query", () =>
     Effect.gen(function* () {
       mockRun.mockReturnValueOnce(Effect.succeed(processOutput("[]")));

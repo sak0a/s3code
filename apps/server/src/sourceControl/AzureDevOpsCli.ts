@@ -611,10 +611,81 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
         ),
       );
     },
-    getPullRequestDetail: () =>
-      Effect.fail(
-        new AzureDevOpsCliError({ operation: "getPullRequestDetail", detail: "stub" }),
-      ),
+    getPullRequestDetail: (input) => {
+      const id = normalizeChangeRequestId(input.reference);
+      const showCmd = executeJson({
+        cwd: input.cwd,
+        args: ["repos", "pr", "show", "--detect", "true", "--id", id],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          Effect.sync(() => {
+            // Wrap raw with empty threads so the detail schema is satisfied
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            const parsed = JSON.parse(raw);
+            return AzureDevOpsPullRequests.decodeAzureDevOpsPullRequestDetailJson(
+              JSON.stringify({ ...parsed, threads: [] }),
+            );
+          }),
+        ),
+        Effect.flatMap((decoded) =>
+          Result.isSuccess(decoded)
+            ? Effect.succeed(decoded.success)
+            : Effect.fail(
+                new AzureDevOpsCliError({
+                  operation: "getPullRequestDetail",
+                  detail: `Azure DevOps CLI returned invalid pull request JSON: ${AzureDevOpsPullRequests.formatAzureDevOpsJsonDecodeError(decoded.failure)}`,
+                  cause: decoded.failure,
+                }),
+              ),
+        ),
+      );
+      // Fetch comment threads in parallel; silently fall back to [] on any error.
+      const commentsCmd = executeJson({
+        cwd: input.cwd,
+        args: ["repos", "pr", "list-comments", "--detect", "true", "--id", id],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.map<
+          string,
+          ReadonlyArray<{ author: string; body: string; createdAt: string }>
+        >((raw) => {
+          if (raw.length === 0) return [];
+          try {
+            const parsed = JSON.parse(raw) as Array<{
+              comments?: Array<{
+                author?: { uniqueName?: string; displayName?: string };
+                content?: string;
+                publishedDate?: string;
+              }>;
+              isDeleted?: boolean;
+            }>;
+            return parsed
+              .filter((t) => !t.isDeleted)
+              .flatMap((t) => t.comments ?? [])
+              .filter((c) => (c.content?.trim() ?? "").length > 0)
+              .map((c) => ({
+                author:
+                  c.author?.uniqueName?.trim() ??
+                  c.author?.displayName?.trim() ??
+                  "unknown",
+                body: c.content ?? "",
+                createdAt: c.publishedDate ?? "",
+              }));
+          } catch {
+            return [];
+          }
+        }),
+        Effect.catch(() =>
+          Effect.succeed(
+            [] as ReadonlyArray<{ author: string; body: string; createdAt: string }>,
+          ),
+        ),
+      );
+      return Effect.all([showCmd, commentsCmd], { concurrency: 2 }).pipe(
+        Effect.map(([detail, comments]) => ({ ...detail, comments })),
+      );
+    },
   });
 });
 
