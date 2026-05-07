@@ -1,6 +1,7 @@
 import { Cause, DateTime, Exit, Option, Result, Schema } from "effect";
 import { PositiveInt, TrimmedNonEmptyString } from "@t3tools/contracts";
 import { decodeJsonResult, formatSchemaError } from "@t3tools/shared/schemaJson";
+import { authorName } from "./gitLabIssues.ts";
 
 export interface NormalizedGitLabMergeRequestRecord {
   readonly number: number;
@@ -179,15 +180,6 @@ const GitLabMergeRequestDetailSchema = Schema.Struct({
 
 const decodeGitLabMergeRequestDetail = decodeJsonResult(GitLabMergeRequestDetailSchema);
 
-function authorNameFromMr(
-  author:
-    | { readonly username?: string | undefined; readonly name?: string | undefined }
-    | null
-    | undefined,
-): string | null {
-  return author?.username?.trim() || author?.name?.trim() || null;
-}
-
 export function decodeGitLabMergeRequestDetailJson(
   raw: string,
 ): Result.Result<NormalizedGitLabMergeRequestDetail, Cause.Cause<Schema.SchemaError>> {
@@ -198,7 +190,7 @@ export function decodeGitLabMergeRequestDetailJson(
     ...summary,
     body: result.success.description ?? "",
     comments: (result.success.notes ?? []).map((note) => ({
-      author: authorNameFromMr(note.author) ?? "unknown",
+      author: authorName(note.author) ?? "unknown",
       body: note.body,
       createdAt: note.created_at,
     })),

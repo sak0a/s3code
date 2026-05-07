@@ -127,6 +127,9 @@ it.effect("listIssues maps GitLab summaries to provider: gitlab", () =>
     assert.strictEqual(issues.length, 1);
     assert.strictEqual(issues[0]?.provider, "gitlab");
     assert.strictEqual(issues[0]?.number, 42);
+    assert.strictEqual(issues[0]?.title, "Bug");
+    assert.strictEqual(issues[0]?.state, "open");
+    assert.strictEqual(issues[0]?.author, "alice");
     assert.deepStrictEqual(
       issues[0]?.updatedAt,
       Option.some(DateTime.fromDateUnsafe(new Date("2026-01-02T00:00:00.000Z"))),
@@ -210,6 +213,7 @@ it.effect("getChangeRequestDetail returns body and comments", () =>
     assert.strictEqual(detail.body, "MR body text");
     assert.strictEqual(detail.comments.length, 1);
     assert.strictEqual(detail.comments[0]?.author, "reviewer");
+    assert.strictEqual(detail.comments[0]?.body, "looks good");
     assert.strictEqual(detail.truncated, false);
   }),
 );

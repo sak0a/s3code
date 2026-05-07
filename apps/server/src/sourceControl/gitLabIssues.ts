@@ -59,7 +59,7 @@ function normalizeIssueState(raw: string | null | undefined): "open" | "closed" 
   return raw?.trim().toLowerCase() === "closed" ? "closed" : "open";
 }
 
-function authorName(
+export function authorName(
   author:
     | { readonly username?: string | undefined; readonly name?: string | undefined }
     | null
