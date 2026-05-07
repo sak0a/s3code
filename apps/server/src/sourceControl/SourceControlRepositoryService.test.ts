@@ -35,6 +35,11 @@ function makeProvider(
     createRepository: () => Effect.succeed(CLONE_URLS),
     getDefaultBranch: () => Effect.succeed(null),
     checkoutChangeRequest: () => unsupported("checkoutChangeRequest"),
+    listIssues: () => unsupported("listIssues"),
+    getIssue: () => unsupported("getIssue"),
+    searchIssues: () => unsupported("searchIssues"),
+    searchChangeRequests: () => unsupported("searchChangeRequests"),
+    getChangeRequestDetail: () => unsupported("getChangeRequestDetail"),
     ...overrides,
   };
 }

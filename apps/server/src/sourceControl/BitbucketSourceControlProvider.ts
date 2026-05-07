@@ -107,6 +107,46 @@ export const make = Effect.fn("makeBitbucketSourceControlProvider")(function* ()
           ...(input.force !== undefined ? { force: input.force } : {}),
         })
         .pipe(Effect.mapError((error) => providerError("checkoutChangeRequest", error))),
+    listIssues: () =>
+      Effect.fail(
+        new SourceControlProviderError({
+          provider: "bitbucket",
+          operation: "listIssues",
+          detail: "Not implemented for Bitbucket yet (Plan 2).",
+        }),
+      ),
+    getIssue: () =>
+      Effect.fail(
+        new SourceControlProviderError({
+          provider: "bitbucket",
+          operation: "getIssue",
+          detail: "Not implemented for Bitbucket yet (Plan 2).",
+        }),
+      ),
+    searchIssues: () =>
+      Effect.fail(
+        new SourceControlProviderError({
+          provider: "bitbucket",
+          operation: "searchIssues",
+          detail: "Not implemented for Bitbucket yet (Plan 2).",
+        }),
+      ),
+    searchChangeRequests: () =>
+      Effect.fail(
+        new SourceControlProviderError({
+          provider: "bitbucket",
+          operation: "searchChangeRequests",
+          detail: "Not implemented for Bitbucket yet (Plan 2).",
+        }),
+      ),
+    getChangeRequestDetail: () =>
+      Effect.fail(
+        new SourceControlProviderError({
+          provider: "bitbucket",
+          operation: "getChangeRequestDetail",
+          detail: "Not implemented for Bitbucket yet (Plan 2).",
+        }),
+      ),
   });
 });
 

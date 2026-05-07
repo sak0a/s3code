@@ -69,6 +69,11 @@ function unsupportedProvider(
     createRepository: () => unsupported("createRepository"),
     getDefaultBranch: () => unsupported("getDefaultBranch"),
     checkoutChangeRequest: () => unsupported("checkoutChangeRequest"),
+    listIssues: () => unsupported("listIssues"),
+    getIssue: () => unsupported("getIssue"),
+    searchIssues: () => unsupported("searchIssues"),
+    searchChangeRequests: () => unsupported("searchChangeRequests"),
+    getChangeRequestDetail: () => unsupported("getChangeRequestDetail"),
   });
 }
 
@@ -146,6 +151,31 @@ function bindProviderContext(
       }),
     checkoutChangeRequest: (input) =>
       provider.checkoutChangeRequest({
+        ...input,
+        context: input.context ?? context,
+      }),
+    listIssues: (input) =>
+      provider.listIssues({
+        ...input,
+        context: input.context ?? context,
+      }),
+    getIssue: (input) =>
+      provider.getIssue({
+        ...input,
+        context: input.context ?? context,
+      }),
+    searchIssues: (input) =>
+      provider.searchIssues({
+        ...input,
+        context: input.context ?? context,
+      }),
+    searchChangeRequests: (input) =>
+      provider.searchChangeRequests({
+        ...input,
+        context: input.context ?? context,
+      }),
+    getChangeRequestDetail: (input) =>
+      provider.getChangeRequestDetail({
         ...input,
         context: input.context ?? context,
       }),

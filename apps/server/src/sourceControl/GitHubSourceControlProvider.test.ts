@@ -1,6 +1,7 @@
 import { assert, it } from "@effect/vitest";
 import { DateTime, Effect, Layer, Option } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
+import { SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES } from "@t3tools/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as GitHubCli from "./GitHubCli.ts";
@@ -152,5 +153,126 @@ it.effect("creates GitHub PRs through provider-neutral input names", () =>
       title: "Provider PR",
       bodyFile: "/tmp/body.md",
     });
+  }),
+);
+
+it.effect("listIssues returns summaries with provider: github", () =>
+  Effect.gen(function* () {
+    const provider = yield* makeProvider({
+      listIssues: () =>
+        Effect.succeed([
+          {
+            number: 42,
+            title: "Bug report",
+            url: "https://github.com/owner/repo/issues/42",
+            state: "open" as const,
+            author: "alice",
+            updatedAt: Option.some("2026-01-02T00:00:00.000Z"),
+            labels: ["bug"],
+          },
+        ]),
+    });
+
+    const issues = yield* provider.listIssues({ cwd: "/repo", state: "open" });
+
+    assert.strictEqual(issues.length, 1);
+    assert.strictEqual(issues[0]?.provider, "github");
+    assert.strictEqual(issues[0]?.number, 42);
+    assert.strictEqual(issues[0]?.title, "Bug report");
+    assert.strictEqual(issues[0]?.state, "open");
+    assert.strictEqual(issues[0]?.author, "alice");
+    assert.deepStrictEqual(
+      issues[0]?.updatedAt,
+      Option.some(DateTime.fromDateUnsafe(new Date("2026-01-02T00:00:00.000Z"))),
+    );
+  }),
+);
+
+it.effect("getIssue returns truncated details when body exceeds 8 KB", () =>
+  Effect.gen(function* () {
+    const bigBody = "x".repeat(SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES + 100);
+    const provider = yield* makeProvider({
+      getIssue: () =>
+        Effect.succeed({
+          number: 7,
+          title: "Large issue",
+          url: "https://github.com/owner/repo/issues/7",
+          state: "open" as const,
+          author: "bob",
+          updatedAt: Option.none(),
+          labels: [],
+          body: bigBody,
+          comments: [],
+        }),
+    });
+
+    const detail = yield* provider.getIssue({ cwd: "/repo", reference: "7" });
+
+    assert.strictEqual(detail.truncated, true);
+    assert.strictEqual(detail.provider, "github");
+    assert.ok(Buffer.byteLength(detail.body, "utf8") <= SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES);
+  }),
+);
+
+it.effect("searchIssues passes query through to cli.searchIssues", () =>
+  Effect.gen(function* () {
+    let capturedQuery: string | undefined;
+    const provider = yield* makeProvider({
+      searchIssues: (input) => {
+        capturedQuery = input.query;
+        return Effect.succeed([]);
+      },
+    });
+
+    yield* provider.searchIssues({ cwd: "/repo", query: "memory leak" });
+
+    assert.strictEqual(capturedQuery, "memory leak");
+  }),
+);
+
+it.effect("searchChangeRequests passes query through to cli.searchPullRequests", () =>
+  Effect.gen(function* () {
+    let capturedQuery: string | undefined;
+    const provider = yield* makeProvider({
+      searchPullRequests: (input) => {
+        capturedQuery = input.query;
+        return Effect.succeed([]);
+      },
+    });
+
+    yield* provider.searchChangeRequests({ cwd: "/repo", query: "fix memory" });
+
+    assert.strictEqual(capturedQuery, "fix memory");
+  }),
+);
+
+it.effect("getChangeRequestDetail returns body and comments", () =>
+  Effect.gen(function* () {
+    const provider = yield* makeProvider({
+      getPullRequestDetail: () =>
+        Effect.succeed({
+          number: 99,
+          title: "Add feature",
+          url: "https://github.com/owner/repo/pull/99",
+          baseRefName: "main",
+          headRefName: "feature/add",
+          state: "open" as const,
+          isCrossRepository: false,
+          body: "PR body text",
+          comments: [
+            { author: "reviewer", body: "Looks good!", createdAt: "2026-03-01T10:00:00Z" },
+          ],
+        }),
+    });
+
+    const detail = yield* provider.getChangeRequestDetail({ cwd: "/repo", reference: "99" });
+
+    assert.strictEqual(detail.provider, "github");
+    assert.strictEqual(detail.number, 99);
+    assert.strictEqual(detail.body, "PR body text");
+    assert.strictEqual(detail.comments.length, 1);
+    assert.strictEqual(detail.comments[0]?.author, "reviewer");
+    assert.strictEqual(detail.comments[0]?.body, "Looks good!");
+    assert.strictEqual(detail.truncated, false);
   }),
 );

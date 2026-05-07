@@ -138,6 +138,46 @@ export const make = Effect.fn("makeGitLabSourceControlProvider")(function* () {
       gitlab
         .checkoutMergeRequest(input)
         .pipe(Effect.mapError((error) => providerError("checkoutChangeRequest", error))),
+    listIssues: () =>
+      Effect.fail(
+        new SourceControlProviderError({
+          provider: "gitlab",
+          operation: "listIssues",
+          detail: "Not implemented for GitLab yet (Plan 2).",
+        }),
+      ),
+    getIssue: () =>
+      Effect.fail(
+        new SourceControlProviderError({
+          provider: "gitlab",
+          operation: "getIssue",
+          detail: "Not implemented for GitLab yet (Plan 2).",
+        }),
+      ),
+    searchIssues: () =>
+      Effect.fail(
+        new SourceControlProviderError({
+          provider: "gitlab",
+          operation: "searchIssues",
+          detail: "Not implemented for GitLab yet (Plan 2).",
+        }),
+      ),
+    searchChangeRequests: () =>
+      Effect.fail(
+        new SourceControlProviderError({
+          provider: "gitlab",
+          operation: "searchChangeRequests",
+          detail: "Not implemented for GitLab yet (Plan 2).",
+        }),
+      ),
+    getChangeRequestDetail: () =>
+      Effect.fail(
+        new SourceControlProviderError({
+          provider: "gitlab",
+          operation: "getChangeRequestDetail",
+          detail: "Not implemented for GitLab yet (Plan 2).",
+        }),
+      ),
   });
 });
 

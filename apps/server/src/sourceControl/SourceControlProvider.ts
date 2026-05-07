@@ -2,6 +2,9 @@ import { Context, Effect } from "effect";
 import type {
   ChangeRequest,
   ChangeRequestState,
+  SourceControlChangeRequestDetail,
+  SourceControlIssueDetail,
+  SourceControlIssueSummary,
   SourceControlProviderError,
   SourceControlProviderInfo,
   SourceControlProviderKind,
@@ -93,6 +96,34 @@ export interface SourceControlProviderShape {
     readonly reference: string;
     readonly force?: boolean;
   }) => Effect.Effect<void, SourceControlProviderError>;
+  readonly listIssues: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProviderContext;
+    readonly state: "open" | "closed" | "all";
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<SourceControlIssueSummary>, SourceControlProviderError>;
+  readonly getIssue: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProviderContext;
+    readonly reference: string;
+  }) => Effect.Effect<SourceControlIssueDetail, SourceControlProviderError>;
+  readonly searchIssues: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProviderContext;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<SourceControlIssueSummary>, SourceControlProviderError>;
+  readonly searchChangeRequests: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProviderContext;
+    readonly query: string;
+    readonly limit?: number;
+  }) => Effect.Effect<ReadonlyArray<ChangeRequest>, SourceControlProviderError>;
+  readonly getChangeRequestDetail: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProviderContext;
+    readonly reference: string;
+  }) => Effect.Effect<SourceControlChangeRequestDetail, SourceControlProviderError>;
 }
 
 export class SourceControlProvider extends Context.Service<
