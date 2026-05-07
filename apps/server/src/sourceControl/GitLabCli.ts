@@ -532,9 +532,38 @@ export const make = Effect.fn("makeGitLabCli")(function* () {
           ),
         ),
       ),
-    searchIssues: () =>
-      Effect.fail(
-        new GitLabCliError({ operation: "searchIssues", detail: "stub" }),
+    searchIssues: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: [
+          "issue",
+          "list",
+          "--search",
+          input.query,
+          "--per-page",
+          String(input.limit ?? 20),
+          "--output",
+          "json",
+        ],
+      }).pipe(
+        Effect.map((result) => result.stdout.trim()),
+        Effect.flatMap((raw) =>
+          raw.length === 0
+            ? Effect.succeed([])
+            : Effect.sync(() => GitLabIssues.decodeGitLabIssueListJson(raw)).pipe(
+                Effect.flatMap((decoded) =>
+                  Result.isSuccess(decoded)
+                    ? Effect.succeed(decoded.success)
+                    : Effect.fail(
+                        new GitLabCliError({
+                          operation: "searchIssues",
+                          detail: `GitLab CLI returned invalid issue list JSON: ${GitLabIssues.formatGitLabIssueDecodeError(decoded.failure)}`,
+                          cause: decoded.failure,
+                        }),
+                      ),
+                ),
+              ),
+        ),
       ),
     searchMergeRequests: () =>
       Effect.fail(

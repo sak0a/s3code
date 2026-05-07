@@ -324,6 +324,32 @@ layer("GitLabCli.layer", (it) => {
     }),
   );
 
+  it.effect("searchIssues forwards query and limit to glab issue list --search", () =>
+    Effect.gen(function* () {
+      mockedRun.mockReturnValueOnce(Effect.succeed(processOutput("[]")));
+      yield* Effect.gen(function* () {
+        const glab = yield* GitLabCli.GitLabCli;
+        return yield* glab.searchIssues({ cwd: "/repo", query: "memory leak", limit: 30 });
+      });
+      expect(mockedRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: "glab",
+          cwd: "/repo",
+          args: [
+            "issue",
+            "list",
+            "--search",
+            "memory leak",
+            "--per-page",
+            "30",
+            "--output",
+            "json",
+          ],
+        }),
+      );
+    }),
+  );
+
   it.effect("getIssue invokes glab issue view with --comments and decodes detail", () =>
     Effect.gen(function* () {
       mockedRun.mockReturnValueOnce(
