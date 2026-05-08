@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  groupHasRunningTerminal,
+  resolveTabLabel,
   resolveTerminalSelectionActionPosition,
   selectPendingTerminalEventEntries,
   selectTerminalEventEntriesAfterSnapshot,
@@ -133,5 +135,33 @@ describe("resolveTerminalSelectionActionPosition", () => {
         1,
       ).map((entry) => entry.id),
     ).toEqual([2]);
+  });
+});
+
+describe("resolveTabLabel", () => {
+  it("labels a single-terminal group as Terminal N", () => {
+    expect(resolveTabLabel({ id: "group-1", terminalIds: ["a"] }, 1)).toBe("Terminal 1");
+  });
+
+  it("labels a multi-terminal group as Split N", () => {
+    expect(resolveTabLabel({ id: "group-2", terminalIds: ["a", "b"] }, 2)).toBe("Split 2");
+  });
+
+  it("uses the supplied 1-based group index", () => {
+    expect(resolveTabLabel({ id: "group-3", terminalIds: ["a"] }, 7)).toBe("Terminal 7");
+  });
+});
+
+describe("groupHasRunningTerminal", () => {
+  it("returns false when no terminals are running", () => {
+    expect(groupHasRunningTerminal({ id: "g", terminalIds: ["a", "b"] }, [])).toBe(false);
+  });
+
+  it("returns true when any group member is running", () => {
+    expect(groupHasRunningTerminal({ id: "g", terminalIds: ["a", "b"] }, ["b"])).toBe(true);
+  });
+
+  it("returns false when running terminals are not in the group", () => {
+    expect(groupHasRunningTerminal({ id: "g", terminalIds: ["a"] }, ["b"])).toBe(false);
   });
 });

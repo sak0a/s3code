@@ -89,6 +89,19 @@ export function selectPendingTerminalEventEntries(
   return entries.filter((entry) => entry.id > lastAppliedTerminalEventId);
 }
 
+export function resolveTabLabel(group: ThreadTerminalGroup, groupIndex: number): string {
+  return group.terminalIds.length > 1 ? `Split ${groupIndex}` : `Terminal ${groupIndex}`;
+}
+
+export function groupHasRunningTerminal(
+  group: ThreadTerminalGroup,
+  runningTerminalIds: readonly string[],
+): boolean {
+  if (runningTerminalIds.length === 0) return false;
+  const runningSet = new Set(runningTerminalIds);
+  return group.terminalIds.some((id) => runningSet.has(id));
+}
+
 function normalizeComputedColor(value: string | null | undefined, fallback: string): string {
   const normalizedValue = value?.trim().toLowerCase();
   if (
