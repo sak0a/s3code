@@ -4,6 +4,11 @@ import { type MessageId } from "@t3tools/contracts";
 
 export const MAX_VISIBLE_WORK_LOG_ENTRIES = 6;
 
+export function isErroredWorkEntry(entry: WorkLogEntry): boolean {
+  if (entry.tone === "error") return true;
+  return entry.exitCode !== undefined && entry.exitCode !== 0;
+}
+
 export interface TimelineDurationMessage {
   id: string;
   role: "user" | "assistant" | "system";
