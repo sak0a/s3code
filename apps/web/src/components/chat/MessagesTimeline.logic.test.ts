@@ -1,11 +1,41 @@
 import { describe, expect, it } from "vitest";
+import { type WorkLogEntry } from "../../session-logic";
 import {
   computeStableMessagesTimelineRows,
   computeMessageDurationStart,
   deriveMessagesTimelineRows,
+  isErroredWorkEntry,
   normalizeCompactToolLabel,
   resolveAssistantMessageCopyState,
 } from "./MessagesTimeline.logic";
+
+function makeWorkEntry(overrides: Partial<WorkLogEntry> = {}): WorkLogEntry {
+  return {
+    id: "entry-1",
+    createdAt: "2026-01-01T00:00:00Z",
+    label: "Bash",
+    tone: "tool",
+    ...overrides,
+  };
+}
+
+describe("isErroredWorkEntry", () => {
+  it("returns true when tone is error", () => {
+    expect(isErroredWorkEntry(makeWorkEntry({ tone: "error" }))).toBe(true);
+  });
+
+  it("returns true when exitCode is non-zero", () => {
+    expect(isErroredWorkEntry(makeWorkEntry({ tone: "tool", exitCode: 1 }))).toBe(true);
+  });
+
+  it("returns false when tone is non-error and exitCode is zero", () => {
+    expect(isErroredWorkEntry(makeWorkEntry({ tone: "tool", exitCode: 0 }))).toBe(false);
+  });
+
+  it("returns false when tone is non-error and exitCode is undefined", () => {
+    expect(isErroredWorkEntry(makeWorkEntry({ tone: "tool" }))).toBe(false);
+  });
+});
 
 describe("computeMessageDurationStart", () => {
   it("returns message createdAt when there is no preceding user message", () => {

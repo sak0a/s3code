@@ -1264,6 +1264,221 @@ describe("deriveWorkLogEntries", () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]?.id).toBe("a-complete-same-timestamp");
   });
+
+  it("populates output from Codex aggregatedOutput for commandExecution items", () => {
+    const activities: OrchestrationThreadActivity[] = [
+      makeActivity({
+        id: "codex-command",
+        kind: "tool.completed",
+        summary: "Ran command",
+        payload: {
+          itemType: "command_execution",
+          data: {
+            item: {
+              type: "commandExecution",
+              command: "ls",
+              aggregatedOutput: "file1.txt\nfile2.txt\n",
+              exitCode: 0,
+            },
+          },
+        },
+      }),
+    ];
+
+    const [entry] = deriveWorkLogEntries(activities, undefined);
+    expect(entry?.output).toBe("file1.txt\nfile2.txt");
+    expect(entry?.exitCode).toBe(0);
+  });
+
+  it("populates output from ACP rawOutput.stdout when no Codex item is present", () => {
+    const activities: OrchestrationThreadActivity[] = [
+      makeActivity({
+        id: "acp-command",
+        kind: "tool.completed",
+        summary: "Ran command",
+        payload: {
+          itemType: "command_execution",
+          data: {
+            command: "ls",
+            rawOutput: {
+              stdout: "file1.txt\nfile2.txt\n",
+              exitCode: 0,
+            },
+          },
+        },
+      }),
+    ];
+
+    const [entry] = deriveWorkLogEntries(activities, undefined);
+    expect(entry?.output).toBe("file1.txt\nfile2.txt");
+    expect(entry?.exitCode).toBe(0);
+  });
+
+  it("falls back to rawOutput.content when stdout is missing", () => {
+    const activities: OrchestrationThreadActivity[] = [
+      makeActivity({
+        id: "acp-tool-content",
+        kind: "tool.completed",
+        summary: "Tool call",
+        payload: {
+          itemType: "dynamic_tool_call",
+          title: "Read",
+          data: {
+            rawOutput: {
+              content: "the full file body\nwith multiple lines",
+            },
+          },
+        },
+      }),
+    ];
+
+    const [entry] = deriveWorkLogEntries(activities, undefined);
+    expect(entry?.output).toBe("the full file body\nwith multiple lines");
+  });
+
+  it("extracts ACP typed text content when rawOutput is unavailable", () => {
+    const activities: OrchestrationThreadActivity[] = [
+      makeActivity({
+        id: "acp-content-text",
+        kind: "tool.completed",
+        summary: "Tool call",
+        payload: {
+          itemType: "dynamic_tool_call",
+          data: {
+            content: [
+              { type: "content", content: { type: "text", text: "first chunk" } },
+              { type: "content", content: { type: "text", text: "second chunk" } },
+              { type: "content", content: { type: "image", url: "x" } },
+            ],
+          },
+        },
+      }),
+    ];
+
+    const [entry] = deriveWorkLogEntries(activities, undefined);
+    expect(entry?.output).toBe("first chunk\nsecond chunk");
+  });
+
+  it("extracts Codex dynamicToolCall contentItems text", () => {
+    const activities: OrchestrationThreadActivity[] = [
+      makeActivity({
+        id: "codex-dynamic-tool",
+        kind: "tool.completed",
+        summary: "Tool call",
+        payload: {
+          itemType: "dynamic_tool_call",
+          data: {
+            item: {
+              type: "dynamicToolCall",
+              tool: "read_file",
+              arguments: { path: "/tmp/foo" },
+              contentItems: [
+                { type: "inputText", text: "first chunk" },
+                { type: "inputImage", imageUrl: "ignore-me" },
+                { type: "inputText", text: "second chunk" },
+              ],
+            },
+          },
+        },
+      }),
+    ];
+
+    const [entry] = deriveWorkLogEntries(activities, undefined);
+    expect(entry?.output).toBe("first chunk\nsecond chunk");
+  });
+
+  it("extracts Codex mcpToolCall result text content", () => {
+    const activities: OrchestrationThreadActivity[] = [
+      makeActivity({
+        id: "codex-mcp-tool",
+        kind: "tool.completed",
+        summary: "Tool call",
+        payload: {
+          itemType: "mcp_tool_call",
+          data: {
+            item: {
+              type: "mcpToolCall",
+              tool: "search",
+              server: "context7",
+              arguments: { query: "abc" },
+              result: {
+                content: [
+                  { type: "text", text: "result line 1" },
+                  { type: "text", text: "result line 2" },
+                ],
+              },
+            },
+          },
+        },
+      }),
+    ];
+
+    const [entry] = deriveWorkLogEntries(activities, undefined);
+    expect(entry?.output).toBe("result line 1\nresult line 2");
+  });
+
+  it("surfaces Codex mcpToolCall error message when the tool fails", () => {
+    const activities: OrchestrationThreadActivity[] = [
+      makeActivity({
+        id: "codex-mcp-tool-failed",
+        kind: "tool.completed",
+        summary: "Tool call",
+        payload: {
+          itemType: "mcp_tool_call",
+          data: {
+            item: {
+              type: "mcpToolCall",
+              tool: "search",
+              server: "context7",
+              arguments: {},
+              error: { message: "no results found" },
+            },
+          },
+        },
+      }),
+    ];
+
+    const [entry] = deriveWorkLogEntries(activities, undefined);
+    expect(entry?.output).toBe("no results found");
+  });
+
+  it("does not fall back to the truncated detail field for output", () => {
+    // detail is a 180-char-truncated heading-equivalent — never use it as output.
+    const activities: OrchestrationThreadActivity[] = [
+      makeActivity({
+        id: "tool-detail-only",
+        kind: "tool.completed",
+        summary: "Ran command",
+        payload: {
+          itemType: "command_execution",
+          data: { command: "noop" },
+          detail: "noop <exited with exit code 0>",
+        },
+      }),
+    ];
+
+    const [entry] = deriveWorkLogEntries(activities, undefined);
+    expect(entry?.output).toBeUndefined();
+    expect(entry?.exitCode).toBe(0);
+  });
+
+  it("leaves output and exitCode undefined when no output is available", () => {
+    const activities: OrchestrationThreadActivity[] = [
+      makeActivity({
+        id: "command-no-output",
+        kind: "tool.completed",
+        summary: "Ran command",
+        payload: {
+          itemType: "command_execution",
+          data: { item: { type: "commandExecution", command: "noop" } },
+        },
+      }),
+    ];
+
+    const [entry] = deriveWorkLogEntries(activities, undefined);
+    expect(entry?.output).toBeUndefined();
+    expect(entry?.exitCode).toBeUndefined();
+  });
 });
 
 describe("deriveTimelineEntries", () => {
