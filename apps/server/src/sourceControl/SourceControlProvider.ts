@@ -106,6 +106,7 @@ export interface SourceControlProviderShape {
     readonly cwd: string;
     readonly context?: SourceControlProviderContext;
     readonly reference: string;
+    readonly fullContent?: boolean;
   }) => Effect.Effect<SourceControlIssueDetail, SourceControlProviderError>;
   readonly searchIssues: (input: {
     readonly cwd: string;
@@ -123,6 +124,7 @@ export interface SourceControlProviderShape {
     readonly cwd: string;
     readonly context?: SourceControlProviderContext;
     readonly reference: string;
+    readonly fullContent?: boolean;
   }) => Effect.Effect<SourceControlChangeRequestDetail, SourceControlProviderError>;
 }
 

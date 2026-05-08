@@ -31,6 +31,11 @@ export interface GitHubPullRequestSummary {
   readonly headRefName: string;
   readonly state?: "open" | "closed" | "merged";
   readonly isCrossRepository?: boolean;
+  readonly isDraft?: boolean;
+  readonly author?: string | null;
+  readonly assignees?: ReadonlyArray<string>;
+  readonly labels?: ReadonlyArray<string>;
+  readonly commentsCount?: number | null;
   readonly headRepositoryNameWithOwner?: string | null;
   readonly headRepositoryOwnerLogin?: string | null;
 }
@@ -42,6 +47,7 @@ export interface GitHubPullRequestDetail extends GitHubPullRequestSummary {
     readonly body: string;
     readonly createdAt: string;
   }>;
+  readonly linkedIssueNumbers: ReadonlyArray<number>;
 }
 
 export interface GitHubRepositoryCloneUrls {
@@ -289,7 +295,7 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           "--limit",
           String(input.limit ?? 1),
           "--json",
-          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner",
+          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,isDraft,author,assignees,labels,comments,headRepository,headRepositoryOwner",
         ],
       }).pipe(
         Effect.map((result) => result.stdout.trim()),
@@ -323,7 +329,7 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           "view",
           input.reference,
           "--json",
-          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner",
+          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,isDraft,author,assignees,labels,comments,headRepository,headRepositoryOwner",
         ],
       }).pipe(
         Effect.map((result) => result.stdout.trim()),
@@ -414,7 +420,7 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           "--limit",
           String(input.limit ?? 50),
           "--json",
-          "number,title,url,state,updatedAt,author,labels",
+          "number,title,url,state,updatedAt,author,labels,assignees,comments",
         ],
       }).pipe(
         Effect.map((r) => r.stdout.trim()),
@@ -444,7 +450,7 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           "view",
           input.reference,
           "--json",
-          "number,title,url,state,updatedAt,author,labels,body,comments",
+          "number,title,url,state,updatedAt,author,labels,assignees,body,comments",
         ],
       }).pipe(
         Effect.map((r) => r.stdout.trim()),
@@ -475,7 +481,7 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           "--limit",
           String(input.limit ?? 20),
           "--json",
-          "number,title,url,state,updatedAt,author,labels",
+          "number,title,url,state,updatedAt,author,labels,assignees,comments",
         ],
       }).pipe(
         Effect.map((r) => r.stdout.trim()),
@@ -508,7 +514,7 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           "--limit",
           String(input.limit ?? 20),
           "--json",
-          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner",
+          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,isDraft,author,assignees,labels,comments,headRepository,headRepositoryOwner",
         ],
       }).pipe(
         Effect.map((result) => result.stdout.trim()),
@@ -541,7 +547,7 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           "view",
           input.reference,
           "--json",
-          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner,body,comments",
+          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,isDraft,author,assignees,labels,headRepository,headRepositoryOwner,body,comments",
         ],
       }).pipe(
         Effect.map((r) => r.stdout.trim()),

@@ -40,6 +40,13 @@ function toChangeRequest(summary: GitHubCli.GitHubPullRequestSummary): ChangeReq
     ...(summary.isCrossRepository !== undefined
       ? { isCrossRepository: summary.isCrossRepository }
       : {}),
+    ...(summary.isDraft !== undefined ? { isDraft: summary.isDraft } : {}),
+    ...(summary.author ? { author: summary.author } : {}),
+    ...(summary.assignees && summary.assignees.length > 0
+      ? { assignees: summary.assignees }
+      : {}),
+    ...(summary.labels && summary.labels.length > 0 ? { labels: summary.labels } : {}),
+    ...(typeof summary.commentsCount === "number" ? { commentsCount: summary.commentsCount } : {}),
     ...(summary.headRepositoryNameWithOwner !== undefined
       ? { headRepositoryNameWithOwner: summary.headRepositoryNameWithOwner }
       : {}),
@@ -59,42 +66,49 @@ function toIssueSummary(raw: GitHubIssues.NormalizedGitHubIssueRecord): SourceCo
     ...(raw.author ? { author: raw.author } : {}),
     updatedAt: raw.updatedAt.pipe(Option.map((s) => DateTime.fromDateUnsafe(new Date(s)))),
     labels: raw.labels,
+    ...(raw.assignees.length > 0 ? { assignees: raw.assignees } : {}),
+    ...(typeof raw.commentsCount === "number" ? { commentsCount: raw.commentsCount } : {}),
   };
 }
 
-function toIssueDetail(raw: GitHubIssues.NormalizedGitHubIssueDetail): SourceControlIssueDetail {
-  const truncated = truncateSourceControlDetailContent({
-    body: raw.body,
-    comments: raw.comments,
-  });
+function toIssueDetail(
+  raw: GitHubIssues.NormalizedGitHubIssueDetail,
+  options: { readonly fullContent: boolean },
+): SourceControlIssueDetail {
+  const content = options.fullContent
+    ? { body: raw.body, comments: raw.comments, truncated: false }
+    : truncateSourceControlDetailContent({ body: raw.body, comments: raw.comments });
   return {
     ...toIssueSummary(raw),
-    body: truncated.body,
-    comments: truncated.comments.map((c) => ({
+    body: content.body,
+    comments: content.comments.map((c) => ({
       author: c.author,
       body: c.body,
       createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
     })),
-    truncated: truncated.truncated,
+    truncated: content.truncated,
   };
 }
 
 function toChangeRequestDetail(
   raw: GitHubCli.GitHubPullRequestDetail,
+  options: { readonly fullContent: boolean },
 ): SourceControlChangeRequestDetail {
-  const truncated = truncateSourceControlDetailContent({
-    body: raw.body,
-    comments: raw.comments,
-  });
+  const content = options.fullContent
+    ? { body: raw.body, comments: raw.comments, truncated: false }
+    : truncateSourceControlDetailContent({ body: raw.body, comments: raw.comments });
   return {
     ...toChangeRequest(raw),
-    body: truncated.body,
-    comments: truncated.comments.map((c) => ({
+    body: content.body,
+    comments: content.comments.map((c) => ({
       author: c.author,
       body: c.body,
       createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
     })),
-    truncated: truncated.truncated,
+    truncated: content.truncated,
+    ...(raw.linkedIssueNumbers.length > 0
+      ? { linkedIssueNumbers: raw.linkedIssueNumbers }
+      : {}),
   };
 }
 
@@ -173,7 +187,7 @@ export const make = Effect.fn("makeGitHubSourceControlProvider")(function* () {
             "--limit",
             String(input.limit ?? 20),
             "--json",
-            "number,title,url,baseRefName,headRefName,state,mergedAt,updatedAt,isCrossRepository,headRepository,headRepositoryOwner",
+            "number,title,url,baseRefName,headRefName,state,mergedAt,updatedAt,isCrossRepository,isDraft,author,assignees,labels,comments,headRepository,headRepositoryOwner",
           ],
         })
         .pipe(
@@ -257,7 +271,7 @@ export const make = Effect.fn("makeGitHubSourceControlProvider")(function* () {
         ),
     getIssue: (input) =>
       github.getIssue({ cwd: input.cwd, reference: input.reference }).pipe(
-        Effect.map(toIssueDetail),
+        Effect.map((raw) => toIssueDetail(raw, { fullContent: input.fullContent ?? false })),
         Effect.mapError((error) => providerError("getIssue", error)),
       ),
     searchIssues: (input) =>
@@ -284,7 +298,9 @@ export const make = Effect.fn("makeGitHubSourceControlProvider")(function* () {
         ),
     getChangeRequestDetail: (input) =>
       github.getPullRequestDetail({ cwd: input.cwd, reference: input.reference }).pipe(
-        Effect.map(toChangeRequestDetail),
+        Effect.map((raw) =>
+          toChangeRequestDetail(raw, { fullContent: input.fullContent ?? false }),
+        ),
         Effect.mapError((error) => providerError("getChangeRequestDetail", error)),
       ),
   });

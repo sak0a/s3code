@@ -245,6 +245,7 @@ export const WsSourceControlGetIssueRpc = Rpc.make(WS_METHODS.sourceControlGetIs
   payload: Schema.Struct({
     cwd: Schema.String,
     reference: Schema.String,
+    fullContent: Schema.optional(Schema.Boolean),
   }),
   success: SourceControlIssueDetail,
   error: SourceControlProviderError,
@@ -279,6 +280,7 @@ export const WsSourceControlGetChangeRequestDetailRpc = Rpc.make(
     payload: Schema.Struct({
       cwd: Schema.String,
       reference: Schema.String,
+      fullContent: Schema.optional(Schema.Boolean),
     }),
     success: SourceControlChangeRequestDetail,
     error: SourceControlProviderError,

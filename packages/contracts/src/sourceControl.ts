@@ -31,6 +31,11 @@ export const ChangeRequest = Schema.Struct({
   state: ChangeRequestState,
   updatedAt: Schema.Option(Schema.DateTimeUtc),
   isCrossRepository: Schema.optional(Schema.Boolean),
+  isDraft: Schema.optional(Schema.Boolean),
+  author: Schema.optional(TrimmedNonEmptyString),
+  assignees: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
+  labels: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
+  commentsCount: Schema.optional(Schema.Number),
   headRepositoryNameWithOwner: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   headRepositoryOwnerLogin: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
 });
@@ -55,6 +60,8 @@ export const SourceControlIssueSummary = Schema.Struct({
   author: Schema.optional(TrimmedNonEmptyString),
   updatedAt: Schema.Option(Schema.DateTimeUtc),
   labels: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
+  assignees: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
+  commentsCount: Schema.optional(Schema.Number),
 });
 export type SourceControlIssueSummary = typeof SourceControlIssueSummary.Type;
 
@@ -70,6 +77,7 @@ export const SourceControlIssueDetail = Schema.Struct({
   body: Schema.String,
   comments: Schema.Array(SourceControlIssueComment),
   truncated: Schema.Boolean,
+  linkedChangeRequestNumbers: Schema.optional(Schema.Array(Schema.Number)),
 });
 export type SourceControlIssueDetail = typeof SourceControlIssueDetail.Type;
 
@@ -78,6 +86,7 @@ export const SourceControlChangeRequestDetail = Schema.Struct({
   body: Schema.String,
   comments: Schema.Array(SourceControlIssueComment),
   truncated: Schema.Boolean,
+  linkedIssueNumbers: Schema.optional(Schema.Array(Schema.Number)),
 });
 export type SourceControlChangeRequestDetail = typeof SourceControlChangeRequestDetail.Type;
 

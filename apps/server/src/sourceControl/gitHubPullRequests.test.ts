@@ -4,6 +4,7 @@ import {
   decodeGitHubPullRequestListJson,
   decodeGitHubPullRequestJson,
   decodeGitHubPullRequestDetailJson,
+  parseLinkedIssueNumbers,
 } from "./gitHubPullRequests.ts";
 
 describe("decodeGitHubPullRequestListJson", () => {
@@ -109,5 +110,58 @@ describe("decodeGitHubPullRequestDetailJson", () => {
     if (!Result.isSuccess(result)) return;
     expect(result.success.body).toBe("");
     expect(result.success.comments).toHaveLength(0);
+    expect(result.success.linkedIssueNumbers).toEqual([]);
+  });
+
+  it("parses linked issue numbers from PR body", () => {
+    const raw = JSON.stringify({
+      number: 5,
+      title: "Multi-link",
+      url: "https://x/5",
+      baseRefName: "main",
+      headRefName: "feature/linked",
+      state: "OPEN",
+      body: "Closes #12. Also fixes #34, resolves #56.",
+    });
+    const result = decodeGitHubPullRequestDetailJson(raw);
+    expect(Result.isSuccess(result)).toBe(true);
+    if (!Result.isSuccess(result)) return;
+    expect(result.success.linkedIssueNumbers).toEqual([12, 34, 56]);
+  });
+
+  it("decodes integer comments count from list output", () => {
+    const raw = JSON.stringify([
+      {
+        number: 9,
+        title: "Counted",
+        url: "https://x/9",
+        baseRefName: "main",
+        headRefName: "feature/c",
+        state: "OPEN",
+        comments: 7,
+      },
+    ]);
+    const result = decodeGitHubPullRequestListJson(raw);
+    expect(Result.isSuccess(result)).toBe(true);
+    if (!Result.isSuccess(result)) return;
+    expect(result.success[0]?.commentsCount).toBe(7);
+  });
+});
+
+describe("parseLinkedIssueNumbers", () => {
+  it("matches all close/fix/resolve verb forms", () => {
+    expect(parseLinkedIssueNumbers("Closes #1, fixed #2, resolve #3")).toEqual([1, 2, 3]);
+  });
+
+  it("dedupes repeated numbers", () => {
+    expect(parseLinkedIssueNumbers("Fixes #5 and closes #5")).toEqual([5]);
+  });
+
+  it("ignores unrelated # references", () => {
+    expect(parseLinkedIssueNumbers("See #7 for context. Closes #8.")).toEqual([8]);
+  });
+
+  it("returns empty for empty body", () => {
+    expect(parseLinkedIssueNumbers("")).toEqual([]);
   });
 });

@@ -864,12 +864,18 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               "rpc.aggregate": "source-control",
             },
           ),
-        [WS_METHODS.sourceControlGetIssue]: ({ cwd, reference }) =>
+        [WS_METHODS.sourceControlGetIssue]: ({ cwd, reference, fullContent }) =>
           observeRpcEffect(
             WS_METHODS.sourceControlGetIssue,
-            sourceControlRegistry
-              .resolve({ cwd })
-              .pipe(Effect.flatMap((provider) => provider.getIssue({ cwd, reference }))),
+            sourceControlRegistry.resolve({ cwd }).pipe(
+              Effect.flatMap((provider) =>
+                provider.getIssue({
+                  cwd,
+                  reference,
+                  ...(fullContent !== undefined ? { fullContent } : {}),
+                }),
+              ),
+            ),
             {
               "rpc.aggregate": "source-control",
             },
@@ -906,14 +912,18 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               "rpc.aggregate": "source-control",
             },
           ),
-        [WS_METHODS.sourceControlGetChangeRequestDetail]: ({ cwd, reference }) =>
+        [WS_METHODS.sourceControlGetChangeRequestDetail]: ({ cwd, reference, fullContent }) =>
           observeRpcEffect(
             WS_METHODS.sourceControlGetChangeRequestDetail,
-            sourceControlRegistry
-              .resolve({ cwd })
-              .pipe(
-                Effect.flatMap((provider) => provider.getChangeRequestDetail({ cwd, reference })),
+            sourceControlRegistry.resolve({ cwd }).pipe(
+              Effect.flatMap((provider) =>
+                provider.getChangeRequestDetail({
+                  cwd,
+                  reference,
+                  ...(fullContent !== undefined ? { fullContent } : {}),
+                }),
               ),
+            ),
             {
               "rpc.aggregate": "source-control",
             },

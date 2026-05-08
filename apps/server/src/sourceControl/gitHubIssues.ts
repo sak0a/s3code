@@ -10,6 +10,8 @@ export interface NormalizedGitHubIssueRecord {
   readonly author: string | null;
   readonly updatedAt: Option.Option<string>;
   readonly labels: ReadonlyArray<string>;
+  readonly assignees: ReadonlyArray<string>;
+  readonly commentsCount: number | null;
 }
 
 export interface NormalizedGitHubIssueDetail extends NormalizedGitHubIssueRecord {
@@ -29,15 +31,21 @@ const GitHubIssueSchema = Schema.Struct({
   updatedAt: Schema.optional(Schema.NullOr(Schema.String)),
   author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
   labels: Schema.optional(Schema.Array(Schema.Struct({ name: Schema.String }))),
+  assignees: Schema.optional(Schema.Array(Schema.Struct({ login: Schema.String }))),
   body: Schema.optional(Schema.NullOr(Schema.String)),
   comments: Schema.optional(
-    Schema.Array(
-      Schema.Struct({
-        author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
-        body: Schema.String,
-        createdAt: Schema.String,
-      }),
-    ),
+    Schema.Union([
+      // `gh issue view` returns full comment objects.
+      Schema.Array(
+        Schema.Struct({
+          author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
+          body: Schema.String,
+          createdAt: Schema.String,
+        }),
+      ),
+      // `gh issue list` returns just the count.
+      Schema.Number,
+    ]),
   ),
 });
 
@@ -48,6 +56,12 @@ function normalizeIssueState(raw: string | null | undefined): "open" | "closed" 
 function normalizeGitHubIssueRecord(
   raw: Schema.Schema.Type<typeof GitHubIssueSchema>,
 ): NormalizedGitHubIssueRecord {
+  const commentsCount =
+    typeof raw.comments === "number"
+      ? raw.comments
+      : Array.isArray(raw.comments)
+        ? raw.comments.length
+        : null;
   return {
     number: raw.number,
     title: raw.title,
@@ -56,6 +70,8 @@ function normalizeGitHubIssueRecord(
     author: raw.author?.login ?? null,
     updatedAt: raw.updatedAt ? Option.some(raw.updatedAt) : Option.none(),
     labels: (raw.labels ?? []).map((l) => l.name),
+    assignees: (raw.assignees ?? []).map((a) => a.login),
+    commentsCount,
   };
 }
 
@@ -85,10 +101,11 @@ export function decodeGitHubIssueDetailJson(
   const result = decodeIssueDetail(raw);
   if (!Result.isSuccess(result)) return Result.fail(result.failure);
   const summary = normalizeGitHubIssueRecord(result.success);
+  const rawComments = Array.isArray(result.success.comments) ? result.success.comments : [];
   const detail: NormalizedGitHubIssueDetail = {
     ...summary,
     body: result.success.body ?? "",
-    comments: (result.success.comments ?? []).map((c) => ({
+    comments: rawComments.map((c) => ({
       author: c.author?.login ?? "unknown",
       body: c.body,
       createdAt: c.createdAt,

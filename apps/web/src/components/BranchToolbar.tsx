@@ -6,6 +6,7 @@ import {
   FolderGit2Icon,
   FolderGitIcon,
   FolderIcon,
+  GithubIcon,
   MonitorIcon,
   TerminalSquareIcon,
 } from "lucide-react";
@@ -57,6 +58,8 @@ interface BranchToolbarProps {
   terminalOpen: boolean;
   terminalToggleShortcutLabel: string | null;
   onToggleTerminal: () => void;
+  onOpenProjectExplorer?: () => void;
+  projectExplorerShortcutLabel?: string | null;
 }
 
 interface MobileRunContextSelectorProps {
@@ -212,6 +215,8 @@ export const BranchToolbar = memo(function BranchToolbar({
   terminalOpen,
   terminalToggleShortcutLabel,
   onToggleTerminal,
+  onOpenProjectExplorer,
+  projectExplorerShortcutLabel,
 }: BranchToolbarProps) {
   const threadRef = useMemo(
     () => scopeThreadRef(environmentId, threadId),
@@ -287,7 +292,7 @@ export const BranchToolbar = memo(function BranchToolbar({
       )}
 
       {!isMobile && (
-        <div className="flex flex-1 justify-center">
+        <div className="flex flex-1 items-center justify-center gap-1">
           <Tooltip>
             <TooltipTrigger
               render={
@@ -313,6 +318,29 @@ export const BranchToolbar = memo(function BranchToolbar({
                   : "Toggle terminal drawer"}
             </TooltipPopup>
           </Tooltip>
+          {onOpenProjectExplorer ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className="font-medium text-muted-foreground/70 hover:text-foreground/80"
+                    onClick={onOpenProjectExplorer}
+                    aria-label="Open project explorer"
+                  >
+                    <GithubIcon className="size-3 shrink-0" />
+                    <span>Issues & PRs</span>
+                  </Button>
+                }
+              />
+              <TooltipPopup side="top">
+                {projectExplorerShortcutLabel
+                  ? `Browse repository issues and pull requests (${projectExplorerShortcutLabel})`
+                  : "Browse repository issues and pull requests"}
+              </TooltipPopup>
+            </Tooltip>
+          ) : null}
         </div>
       )}
 

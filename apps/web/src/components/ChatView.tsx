@@ -149,6 +149,7 @@ import {
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
 import { ChatComposer, type ChatComposerHandle } from "./chat/ChatComposer";
 import { ExpandedImageDialog } from "./chat/ExpandedImageDialog";
+import { ProjectExplorerDialog } from "./projectExplorer/ProjectExplorerDialog";
 import { PullRequestThreadDialog } from "./PullRequestThreadDialog";
 import { MessagesTimeline } from "./chat/MessagesTimeline";
 import { ChatHeader } from "./chat/ChatHeader";
@@ -721,6 +722,7 @@ export default function ChatView(props: ChatViewProps) {
   const [terminalFocusRequestId, setTerminalFocusRequestId] = useState(0);
   const [pullRequestDialogState, setPullRequestDialogState] =
     useState<PullRequestDialogState | null>(null);
+  const [projectExplorerOpen, setProjectExplorerOpen] = useState(false);
   const [terminalLaunchContext, setTerminalLaunchContext] = useState<TerminalLaunchContext | null>(
     null,
   );
@@ -2525,6 +2527,23 @@ export default function ChatView(props: ChatViewProps) {
 
   useEffect(() => {
     const handler = (event: globalThis.KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      const isToggleProjectExplorer =
+        event.key.toLowerCase() === "p" &&
+        event.shiftKey &&
+        (event.metaKey || event.ctrlKey) &&
+        !event.altKey;
+      if (!isToggleProjectExplorer) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setProjectExplorerOpen((value) => !value);
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, []);
+
+  useEffect(() => {
+    const handler = (event: globalThis.KeyboardEvent) => {
       if (!activeThreadId || useCommandPaletteStore.getState().open || event.defaultPrevented) {
         return;
       }
@@ -3809,6 +3828,8 @@ export default function ChatView(props: ChatViewProps) {
                 terminalOpen={terminalState.terminalOpen}
                 terminalToggleShortcutLabel={terminalToggleShortcutLabel}
                 onToggleTerminal={toggleTerminalVisibility}
+                onOpenProjectExplorer={() => setProjectExplorerOpen(true)}
+                projectExplorerShortcutLabel="⇧⌘P"
               />
             )}
           </div>
@@ -3829,6 +3850,16 @@ export default function ChatView(props: ChatViewProps) {
               onPrepared={handlePreparedPullRequestThread}
             />
           ) : null}
+          <ProjectExplorerDialog
+            open={projectExplorerOpen}
+            environmentId={activeThread.environmentId}
+            threadId={activeThread.id}
+            cwd={activeProject?.cwd ?? null}
+            onOpenChange={setProjectExplorerOpen}
+            {...(canCheckoutPullRequestIntoThread
+              ? { onPullRequestPrepared: handlePreparedPullRequestThread }
+              : {})}
+          />
         </div>
         {/* end chat column */}
 

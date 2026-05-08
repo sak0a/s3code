@@ -11,6 +11,11 @@ export interface NormalizedGitHubPullRequestRecord {
   readonly state: "open" | "closed" | "merged";
   readonly updatedAt: Option.Option<DateTime.Utc>;
   readonly isCrossRepository?: boolean;
+  readonly isDraft?: boolean;
+  readonly author: string | null;
+  readonly assignees: ReadonlyArray<string>;
+  readonly labels: ReadonlyArray<string>;
+  readonly commentsCount: number | null;
   readonly headRepositoryNameWithOwner?: string | null;
   readonly headRepositoryOwnerLogin?: string | null;
 }
@@ -25,6 +30,10 @@ const GitHubPullRequestSchema = Schema.Struct({
   mergedAt: Schema.optional(Schema.NullOr(Schema.String)),
   updatedAt: Schema.optional(Schema.OptionFromNullOr(Schema.DateTimeUtcFromString)),
   isCrossRepository: Schema.optional(Schema.Boolean),
+  isDraft: Schema.optional(Schema.Boolean),
+  author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
+  assignees: Schema.optional(Schema.Array(Schema.Struct({ login: Schema.String }))),
+  labels: Schema.optional(Schema.Array(Schema.Struct({ name: Schema.String }))),
   headRepository: Schema.optional(
     Schema.NullOr(
       Schema.Struct({
@@ -41,13 +50,16 @@ const GitHubPullRequestSchema = Schema.Struct({
   ),
   body: Schema.optional(Schema.NullOr(Schema.String)),
   comments: Schema.optional(
-    Schema.Array(
-      Schema.Struct({
-        author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
-        body: Schema.String,
-        createdAt: Schema.String,
-      }),
-    ),
+    Schema.Union([
+      Schema.Array(
+        Schema.Struct({
+          author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
+          body: Schema.String,
+          createdAt: Schema.String,
+        }),
+      ),
+      Schema.Number,
+    ]),
   ),
 });
 
@@ -82,6 +94,12 @@ function normalizeGitHubPullRequestRecord(
     (typeof headRepositoryNameWithOwner === "string" && headRepositoryNameWithOwner.includes("/")
       ? (headRepositoryNameWithOwner.split("/")[0] ?? null)
       : null);
+  const commentsCount =
+    typeof raw.comments === "number"
+      ? raw.comments
+      : Array.isArray(raw.comments)
+        ? raw.comments.length
+        : null;
 
   return {
     number: raw.number,
@@ -91,9 +109,14 @@ function normalizeGitHubPullRequestRecord(
     headRefName: raw.headRefName,
     state: normalizeGitHubPullRequestState(raw),
     updatedAt: raw.updatedAt ?? Option.none(),
+    author: raw.author?.login ?? null,
+    assignees: (raw.assignees ?? []).map((a) => a.login),
+    labels: (raw.labels ?? []).map((l) => l.name),
+    commentsCount,
     ...(typeof raw.isCrossRepository === "boolean"
       ? { isCrossRepository: raw.isCrossRepository }
       : {}),
+    ...(typeof raw.isDraft === "boolean" ? { isDraft: raw.isDraft } : {}),
     ...(headRepositoryNameWithOwner ? { headRepositoryNameWithOwner } : {}),
     ...(headRepositoryOwnerLogin ? { headRepositoryOwnerLogin } : {}),
   };
@@ -143,6 +166,24 @@ export interface NormalizedGitHubPullRequestDetail extends NormalizedGitHubPullR
     readonly body: string;
     readonly createdAt: string;
   }>;
+  readonly linkedIssueNumbers: ReadonlyArray<number>;
+}
+
+const LINKED_ISSUE_PATTERN = /\b(?:close[sd]?|fixe?[sd]?|resolve[sd]?)\s+#(\d+)/giu;
+
+export function parseLinkedIssueNumbers(body: string): ReadonlyArray<number> {
+  if (!body) return [];
+  const seen = new Set<number>();
+  const numbers: number[] = [];
+  for (const match of body.matchAll(LINKED_ISSUE_PATTERN)) {
+    const captured = match[1];
+    if (!captured) continue;
+    const parsed = Number.parseInt(captured, 10);
+    if (Number.isNaN(parsed) || seen.has(parsed)) continue;
+    seen.add(parsed);
+    numbers.push(parsed);
+  }
+  return numbers;
 }
 
 export function decodeGitHubPullRequestDetailJson(
@@ -151,14 +192,17 @@ export function decodeGitHubPullRequestDetailJson(
   const result = decodeGitHubPullRequest(raw);
   if (!Result.isSuccess(result)) return Result.fail(result.failure);
   const summary = normalizeGitHubPullRequestRecord(result.success);
+  const body = result.success.body ?? "";
+  const rawComments = Array.isArray(result.success.comments) ? result.success.comments : [];
   const detail: NormalizedGitHubPullRequestDetail = {
     ...summary,
-    body: result.success.body ?? "",
-    comments: (result.success.comments ?? []).map((c) => ({
+    body,
+    comments: rawComments.map((c) => ({
       author: c.author?.login ?? "unknown",
       body: c.body,
       createdAt: c.createdAt,
     })),
+    linkedIssueNumbers: parseLinkedIssueNumbers(body),
   };
   return Result.succeed(detail);
 }
