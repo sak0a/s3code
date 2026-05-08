@@ -27,7 +27,7 @@ components.
 In scope:
 
 - New Zustand store `settingsDialogStore.ts` exposing `{ open, section,
-  openSettings(section?), closeSettings(), setSection() }`.
+openSettings(section?), closeSettings(), setSection() }`.
 - New component `SettingsDialog.tsx` that renders the dialog popup (header
   with title + Restore Defaults + close, two-pane body, no footer). Mounted
   once at the root layout via `AppSidebarLayout`.
@@ -78,8 +78,7 @@ interface SettingsDialogStore {
 export const useSettingsDialogStore = create<SettingsDialogStore>((set) => ({
   open: false,
   section: "general",
-  openSettings: (section) =>
-    set((state) => ({ open: true, section: section ?? state.section })),
+  openSettings: (section) => set((state) => ({ open: true, section: section ?? state.section })),
   closeSettings: () => set({ open: false }),
   setSection: (section) => set({ section }),
 }));
@@ -111,14 +110,14 @@ selected (or "general" on first open). Passing a section overrides it.
 - Section switching: `setSection` from the store. Active panel resolved via
   a switch over the section id:
 
-  | Section id | Component | Imported from |
-  |------------|-----------|---------------|
-  | `general` | `GeneralSettingsPanel` | `components/settings/SettingsPanels` |
-  | `providers` | `ProvidersSettingsPanel` | `components/settings/ProvidersSettingsPanel` |
-  | `appearance` | `AppearanceSettingsPanel` | `components/settings/AppearanceSettings` |
-  | `source-control` | `SourceControlSettingsPanel` | `components/settings/SourceControlSettings` |
-  | `connections` | `ConnectionsSettings` | `components/settings/ConnectionsSettings` |
-  | `archived` | `ArchivedThreadsPanel` | `components/settings/SettingsPanels` |
+  | Section id       | Component                    | Imported from                                |
+  | ---------------- | ---------------------------- | -------------------------------------------- |
+  | `general`        | `GeneralSettingsPanel`       | `components/settings/SettingsPanels`         |
+  | `providers`      | `ProvidersSettingsPanel`     | `components/settings/ProvidersSettingsPanel` |
+  | `appearance`     | `AppearanceSettingsPanel`    | `components/settings/AppearanceSettings`     |
+  | `source-control` | `SourceControlSettingsPanel` | `components/settings/SourceControlSettings`  |
+  | `connections`    | `ConnectionsSettings`        | `components/settings/ConnectionsSettings`    |
+  | `archived`       | `ArchivedThreadsPanel`       | `components/settings/SettingsPanels`         |
 
 - Nav items constant: the `SETTINGS_NAV_ITEMS` array currently exported by
   `SettingsSidebarNav.tsx` (label, section id, lucide icon) moves into
@@ -144,15 +143,15 @@ in the tree doesn't affect overlay z-index or positioning.
 
 ### Call-site migration
 
-| File | Current | New |
-|------|---------|-----|
-| `Sidebar.tsx` (`SidebarChromeFooter` Settings button, around line 2449) | `navigate({ to: "/settings" })` | `openSettings()` |
-| `AppSidebarLayout.tsx:47` (Electron menu) | `navigate({ to: "/settings" })` | `openSettings()` |
-| `CommandPalette.tsx:787` | `navigate({ to: "/settings/source-control" })` | `openSettings("source-control")` |
-| `CommandPalette.tsx:1065` | `navigate({ to: "/settings" })` | `openSettings()` |
-| `ChatView.tsx:1233` | `navigate({ to: "/settings/connections" })` | `openSettings("connections")` |
-| `GitActionsControl.tsx:522` | `navigate({ to: "/settings/source-control" })` | `openSettings("source-control")` |
-| `routes/_chat.index.tsx:55` | `<Button render={<a href="/settings/connections" />}>` | `<Button onClick={() => openSettings("connections")}>` |
+| File                                                                    | Current                                                | New                                                    |
+| ----------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------ |
+| `Sidebar.tsx` (`SidebarChromeFooter` Settings button, around line 2449) | `navigate({ to: "/settings" })`                        | `openSettings()`                                       |
+| `AppSidebarLayout.tsx:47` (Electron menu)                               | `navigate({ to: "/settings" })`                        | `openSettings()`                                       |
+| `CommandPalette.tsx:787`                                                | `navigate({ to: "/settings/source-control" })`         | `openSettings("source-control")`                       |
+| `CommandPalette.tsx:1065`                                               | `navigate({ to: "/settings" })`                        | `openSettings()`                                       |
+| `ChatView.tsx:1233`                                                     | `navigate({ to: "/settings/connections" })`            | `openSettings("connections")`                          |
+| `GitActionsControl.tsx:522`                                             | `navigate({ to: "/settings/source-control" })`         | `openSettings("source-control")`                       |
+| `routes/_chat.index.tsx:55`                                             | `<Button render={<a href="/settings/connections" />}>` | `<Button onClick={() => openSettings("connections")}>` |
 
 ### Sidebar settings-route cleanup
 

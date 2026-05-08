@@ -10,26 +10,15 @@ import {
   Settings2Icon,
 } from "lucide-react";
 
-import {
-  type SettingsSectionId,
-  useSettingsDialogStore,
-} from "../../settingsDialogStore";
+import { type SettingsSectionId, useSettingsDialogStore } from "../../settingsDialogStore";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
-import {
-  Dialog,
-  DialogPopup,
-  DialogTitle,
-} from "../ui/dialog";
+import { Dialog, DialogPopup, DialogTitle } from "../ui/dialog";
 import { ScrollArea } from "../ui/scroll-area";
 import { AppearanceSettingsPanel } from "./AppearanceSettings";
 import { ConnectionsSettings } from "./ConnectionsSettings";
 import { ProvidersSettingsPanel } from "./ProvidersSettingsPanel";
-import {
-  ArchivedThreadsPanel,
-  GeneralSettingsPanel,
-  useSettingsRestore,
-} from "./SettingsPanels";
+import { ArchivedThreadsPanel, GeneralSettingsPanel, useSettingsRestore } from "./SettingsPanels";
 import { SourceControlSettingsPanel } from "./SourceControlSettings";
 
 interface NavItem {

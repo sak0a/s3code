@@ -19,8 +19,7 @@ interface SettingsDialogStore {
 export const useSettingsDialogStore = create<SettingsDialogStore>((set) => ({
   open: false,
   section: "general",
-  openSettings: (section) =>
-    set((state) => ({ open: true, section: section ?? state.section })),
+  openSettings: (section) => set((state) => ({ open: true, section: section ?? state.section })),
   closeSettings: () => set({ open: false }),
   setSection: (section) => set({ section }),
 }));

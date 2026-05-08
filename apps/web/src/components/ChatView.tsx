@@ -1229,11 +1229,7 @@ export default function ChatView(props: ChatViewProps) {
                 ? "Reconnecting..."
                 : "Reconnect"}
             </Button>
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={() => openSettings("connections")}
-            >
+            <Button size="xs" variant="outline" onClick={() => openSettings("connections")}>
               Connections
             </Button>
           </>

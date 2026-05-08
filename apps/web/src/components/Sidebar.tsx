@@ -1,6 +1,5 @@
 import {
   ArchiveIcon,
-  ArrowLeftIcon,
   ArrowUpDownIcon,
   ChevronRightIcon,
   CloudIcon,
@@ -2400,50 +2399,19 @@ function SortableProjectItem({
 
 const SidebarChromeHeader = memo(function SidebarChromeHeader({
   isElectron,
-  isOnSettings,
-  lastNonSettingsPathRef,
 }: {
   isElectron: boolean;
-  isOnSettings: boolean;
-  lastNonSettingsPathRef: React.RefObject<string>;
 }) {
-  const navigate = useNavigate();
-  const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
+  const openSettings = useSettingsDialogStore((s) => s.openSettings);
   const handleSettingsClick = useCallback(() => {
     if (isMobile) {
       setOpenMobile(false);
     }
-    void navigate({ to: "/settings" });
-  }, [isMobile, navigate, setOpenMobile]);
-  const handleBackClick = useCallback(() => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-    const target = lastNonSettingsPathRef.current || "/";
-    router.history.push(target);
-  }, [isMobile, lastNonSettingsPathRef, router, setOpenMobile]);
+    openSettings();
+  }, [isMobile, openSettings, setOpenMobile]);
 
-  const actionButton = isOnSettings ? (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <button
-            type="button"
-            aria-label="Back"
-            onClick={handleBackClick}
-            className="ml-auto inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-muted-foreground/70 outline-hidden ring-ring transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2"
-          >
-            <ArrowLeftIcon className="size-3.5" />
-            <span className="hidden text-xs @[12rem]/sidebar-header:inline">Back</span>
-          </button>
-        }
-      />
-      <TooltipPopup side="bottom" sideOffset={2}>
-        Back
-      </TooltipPopup>
-    </Tooltip>
-  ) : (
+  const actionButton = (
     <Tooltip>
       <TooltipTrigger
         render={
@@ -2503,18 +2471,6 @@ const SidebarChromeHeader = memo(function SidebarChromeHeader({
 });
 
 const SidebarChromeFooter = memo(function SidebarChromeFooter() {
-<<<<<<< HEAD
-  const { isMobile, setOpenMobile } = useSidebar();
-  const openSettings = useSettingsDialogStore((s) => s.openSettings);
-  const handleSettingsClick = useCallback(() => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-    openSettings();
-  }, [isMobile, openSettings, setOpenMobile]);
-
-=======
->>>>>>> origin/main
   return (
     <SidebarFooter className="p-2">
       <SidebarUpdatePill />
@@ -2789,18 +2745,6 @@ export default function Sidebar() {
   const projectOrder = useUiStateStore((store) => store.projectOrder);
   const reorderProjects = useUiStateStore((store) => store.reorderProjects);
   const navigate = useNavigate();
-<<<<<<< HEAD
-=======
-  const location = useLocation();
-  const pathname = location.pathname;
-  const isOnSettings = pathname.startsWith("/settings");
-  const lastNonSettingsPathRef = useRef<string>("/");
-  useEffect(() => {
-    if (!isOnSettings) {
-      lastNonSettingsPathRef.current = location.href;
-    }
-  }, [isOnSettings, location.href]);
->>>>>>> origin/main
   const sidebarThreadSortOrder = useSettings((s) => s.sidebarThreadSortOrder);
   const sidebarProjectSortOrder = useSettings((s) => s.sidebarProjectSortOrder);
   const sidebarProjectGroupingMode = useSettings((s) => s.sidebarProjectGroupingMode);
@@ -3422,11 +3366,7 @@ export default function Sidebar() {
 
   return (
     <>
-      <SidebarChromeHeader
-        isElectron={isElectron}
-        isOnSettings={isOnSettings}
-        lastNonSettingsPathRef={lastNonSettingsPathRef}
-      />
+      <SidebarChromeHeader isElectron={isElectron} />
 
       <SidebarProjectsContent
         showArm64IntelBuildWarning={showArm64IntelBuildWarning}

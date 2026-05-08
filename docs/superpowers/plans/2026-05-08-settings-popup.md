@@ -15,10 +15,12 @@
 ## File Structure
 
 **Created:**
+
 - `apps/web/src/settingsDialogStore.ts` — Zustand store: `useSettingsDialogStore`, `SettingsSectionId` type.
 - `apps/web/src/components/settings/SettingsDialog.tsx` — the popup. Bound to the store. Renders rail + active panel.
 
 **Modified:**
+
 - `apps/web/src/components/AppSidebarLayout.tsx` — mount `<SettingsDialog />`; repoint Electron `open-settings` menu action.
 - `apps/web/src/components/Sidebar.tsx` — repoint `SidebarChromeFooter` Settings button; remove `isOnSettings` branch and the `<SettingsSidebarNav />` swap; drop unused imports.
 - `apps/web/src/components/CommandPalette.tsx` — two call sites (`openSourceControlSettings`, root "Open settings" action).
@@ -27,6 +29,7 @@
 - `apps/web/src/routes/_chat.index.tsx` — replace `<a href="/settings/connections" />` with a button.
 
 **Deleted:**
+
 - `apps/web/src/routes/settings.tsx`
 - `apps/web/src/routes/settings.general.tsx`
 - `apps/web/src/routes/settings.providers.tsx`
@@ -54,6 +57,7 @@ A passing typecheck after every task is mandatory. Manual smoke checks are liste
 ### Task 1: Add the settings dialog store
 
 **Files:**
+
 - Create: `apps/web/src/settingsDialogStore.ts`
 
 - [ ] **Step 1: Create the store file**
@@ -81,8 +85,7 @@ interface SettingsDialogStore {
 export const useSettingsDialogStore = create<SettingsDialogStore>((set) => ({
   open: false,
   section: "general",
-  openSettings: (section) =>
-    set((state) => ({ open: true, section: section ?? state.section })),
+  openSettings: (section) => set((state) => ({ open: true, section: section ?? state.section })),
   closeSettings: () => set({ open: false }),
   setSection: (section) => set({ section }),
 }));
@@ -108,6 +111,7 @@ git commit -m "feat(web): add settings dialog Zustand store"
 ### Task 2: Create the SettingsDialog component
 
 **Files:**
+
 - Create: `apps/web/src/components/settings/SettingsDialog.tsx`
 
 - [ ] **Step 1: Create the file with the full component**
@@ -125,26 +129,15 @@ import {
   Settings2Icon,
 } from "lucide-react";
 
-import {
-  type SettingsSectionId,
-  useSettingsDialogStore,
-} from "../../settingsDialogStore";
+import { type SettingsSectionId, useSettingsDialogStore } from "../../settingsDialogStore";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/button";
-import {
-  Dialog,
-  DialogPopup,
-  DialogTitle,
-} from "../ui/dialog";
+import { Dialog, DialogPopup, DialogTitle } from "../ui/dialog";
 import { ScrollArea } from "../ui/scroll-area";
 import { AppearanceSettingsPanel } from "./AppearanceSettings";
 import { ConnectionsSettings } from "./ConnectionsSettings";
 import { ProvidersSettingsPanel } from "./ProvidersSettingsPanel";
-import {
-  ArchivedThreadsPanel,
-  GeneralSettingsPanel,
-  useSettingsRestore,
-} from "./SettingsPanels";
+import { ArchivedThreadsPanel, GeneralSettingsPanel, useSettingsRestore } from "./SettingsPanels";
 import { SourceControlSettingsPanel } from "./SourceControlSettings";
 
 interface NavItem {
@@ -295,6 +288,7 @@ git commit -m "feat(web): add SettingsDialog popup component"
 ### Task 3: Mount the dialog and migrate the Electron menu handler
 
 **Files:**
+
 - Modify: `apps/web/src/components/AppSidebarLayout.tsx`
 
 - [ ] **Step 1: Add the import for the store**
@@ -311,47 +305,47 @@ import { useSettingsDialogStore } from "../settingsDialogStore";
 Replace the existing `useEffect` that listens for `open-settings` (currently around line 39–54). Find:
 
 ```tsx
-  const navigate = useNavigate();
+const navigate = useNavigate();
 
-  useEffect(() => {
-    const onMenuAction = window.desktopBridge?.onMenuAction;
-    if (typeof onMenuAction !== "function") {
-      return;
+useEffect(() => {
+  const onMenuAction = window.desktopBridge?.onMenuAction;
+  if (typeof onMenuAction !== "function") {
+    return;
+  }
+
+  const unsubscribe = onMenuAction((action) => {
+    if (action === "open-settings") {
+      void navigate({ to: "/settings" });
     }
+  });
 
-    const unsubscribe = onMenuAction((action) => {
-      if (action === "open-settings") {
-        void navigate({ to: "/settings" });
-      }
-    });
-
-    return () => {
-      unsubscribe?.();
-    };
-  }, [navigate]);
+  return () => {
+    unsubscribe?.();
+  };
+}, [navigate]);
 ```
 
 Replace with:
 
 ```tsx
-  const openSettings = useSettingsDialogStore((s) => s.openSettings);
+const openSettings = useSettingsDialogStore((s) => s.openSettings);
 
-  useEffect(() => {
-    const onMenuAction = window.desktopBridge?.onMenuAction;
-    if (typeof onMenuAction !== "function") {
-      return;
+useEffect(() => {
+  const onMenuAction = window.desktopBridge?.onMenuAction;
+  if (typeof onMenuAction !== "function") {
+    return;
+  }
+
+  const unsubscribe = onMenuAction((action) => {
+    if (action === "open-settings") {
+      openSettings();
     }
+  });
 
-    const unsubscribe = onMenuAction((action) => {
-      if (action === "open-settings") {
-        openSettings();
-      }
-    });
-
-    return () => {
-      unsubscribe?.();
-    };
-  }, [openSettings]);
+  return () => {
+    unsubscribe?.();
+  };
+}, [openSettings]);
 ```
 
 Also remove the now-unused `useNavigate` import line at the top of the file:
@@ -365,26 +359,26 @@ import { useNavigate } from "@tanstack/react-router";
 Inside the `return` of `AppSidebarLayout`, add `<SettingsDialog />` as the last child of `<SidebarProvider>` (after `{children}`):
 
 ```tsx
-  return (
-    <SidebarProvider className="h-dvh! min-h-0!" defaultOpen>
-      <Sidebar
-        side="left"
-        collapsible="offcanvas"
-        className="border-r border-border bg-card text-foreground"
-        resizable={{
-          minWidth: THREAD_SIDEBAR_MIN_WIDTH,
-          shouldAcceptWidth: ({ nextWidth, wrapper }) =>
-            wrapper.clientWidth - nextWidth >= THREAD_MAIN_CONTENT_MIN_WIDTH,
-          storageKey: THREAD_SIDEBAR_WIDTH_STORAGE_KEY,
-        }}
-      >
-        <ThreadSidebar />
-        <SidebarRail />
-      </Sidebar>
-      {children}
-      <SettingsDialog />
-    </SidebarProvider>
-  );
+return (
+  <SidebarProvider className="h-dvh! min-h-0!" defaultOpen>
+    <Sidebar
+      side="left"
+      collapsible="offcanvas"
+      className="border-r border-border bg-card text-foreground"
+      resizable={{
+        minWidth: THREAD_SIDEBAR_MIN_WIDTH,
+        shouldAcceptWidth: ({ nextWidth, wrapper }) =>
+          wrapper.clientWidth - nextWidth >= THREAD_MAIN_CONTENT_MIN_WIDTH,
+        storageKey: THREAD_SIDEBAR_WIDTH_STORAGE_KEY,
+      }}
+    >
+      <ThreadSidebar />
+      <SidebarRail />
+    </Sidebar>
+    {children}
+    <SettingsDialog />
+  </SidebarProvider>
+);
 ```
 
 - [ ] **Step 4: Run typecheck**
@@ -409,6 +403,7 @@ At this point, opening settings via the Electron menu (or any other entry once m
 ### Task 4: Migrate sidebar Settings button and remove SettingsSidebarNav usage
 
 **Files:**
+
 - Modify: `apps/web/src/components/Sidebar.tsx`
 
 - [ ] **Step 1: Add the store import**
@@ -528,8 +523,8 @@ Replace with:
 Inside the parent component (the default-exported `Sidebar`), find and delete these two lines (currently around 2738–2739):
 
 ```tsx
-  const pathname = useLocation({ select: (loc) => loc.pathname });
-  const isOnSettings = pathname.startsWith("/settings");
+const pathname = useLocation({ select: (loc) => loc.pathname });
+const isOnSettings = pathname.startsWith("/settings");
 ```
 
 If `useLocation` has no other usage in this file (verify with a search), also remove it from the import line near the top of the file. Currently:
@@ -580,6 +575,7 @@ git commit -m "feat(web): repoint sidebar Settings button to dialog and drop set
 ### Task 5: Migrate CommandPalette call sites
 
 **Files:**
+
 - Modify: `apps/web/src/components/CommandPalette.tsx`
 
 - [ ] **Step 1: Add the store import**
@@ -595,20 +591,20 @@ import { useSettingsDialogStore } from "../settingsDialogStore";
 Find (around line 785–788):
 
 ```tsx
-  const openSourceControlSettings = useCallback(() => {
-    setOpen(false);
-    void navigate({ to: "/settings/source-control" });
-  }, [navigate, setOpen]);
+const openSourceControlSettings = useCallback(() => {
+  setOpen(false);
+  void navigate({ to: "/settings/source-control" });
+}, [navigate, setOpen]);
 ```
 
 Replace with:
 
 ```tsx
-  const openSettings = useSettingsDialogStore((s) => s.openSettings);
-  const openSourceControlSettings = useCallback(() => {
-    setOpen(false);
-    openSettings("source-control");
-  }, [openSettings, setOpen]);
+const openSettings = useSettingsDialogStore((s) => s.openSettings);
+const openSourceControlSettings = useCallback(() => {
+  setOpen(false);
+  openSettings("source-control");
+}, [openSettings, setOpen]);
 ```
 
 (`openSettings` is then reused by Step 3, so declare it once near `openSourceControlSettings`.)
@@ -618,32 +614,32 @@ Replace with:
 Find (around line 1058–1067):
 
 ```tsx
-  actionItems.push({
-    kind: "action",
-    value: "action:settings",
-    searchTerms: ["settings", "preferences", "configuration", "keybindings"],
-    title: "Open settings",
-    icon: <SettingsIcon className={ITEM_ICON_CLASS} />,
-    run: async () => {
-      await navigate({ to: "/settings" });
-    },
-  });
+actionItems.push({
+  kind: "action",
+  value: "action:settings",
+  searchTerms: ["settings", "preferences", "configuration", "keybindings"],
+  title: "Open settings",
+  icon: <SettingsIcon className={ITEM_ICON_CLASS} />,
+  run: async () => {
+    await navigate({ to: "/settings" });
+  },
+});
 ```
 
 Replace with:
 
 ```tsx
-  actionItems.push({
-    kind: "action",
-    value: "action:settings",
-    searchTerms: ["settings", "preferences", "configuration", "keybindings"],
-    title: "Open settings",
-    icon: <SettingsIcon className={ITEM_ICON_CLASS} />,
-    run: () => {
-      setOpen(false);
-      openSettings();
-    },
-  });
+actionItems.push({
+  kind: "action",
+  value: "action:settings",
+  searchTerms: ["settings", "preferences", "configuration", "keybindings"],
+  title: "Open settings",
+  icon: <SettingsIcon className={ITEM_ICON_CLASS} />,
+  run: () => {
+    setOpen(false);
+    openSettings();
+  },
+});
 ```
 
 Note the change from `async`/`await navigate(...)` to a synchronous handler — `openSettings()` is synchronous and there is no async work to await. Closing the palette before opening settings keeps the focus order consistent with the source-control variant.
@@ -678,6 +674,7 @@ git commit -m "feat(web): migrate command palette to settings dialog store"
 ### Task 6: Migrate ChatView Connections button
 
 **Files:**
+
 - Modify: `apps/web/src/components/ChatView.tsx`
 
 - [ ] **Step 1: Add the store import**
@@ -693,31 +690,23 @@ import { useSettingsDialogStore } from "../settingsDialogStore";
 Find the button (currently around line 1230–1236):
 
 ```tsx
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={() => void navigate({ to: "/settings/connections" })}
-            >
-              Connections
-            </Button>
+<Button size="xs" variant="outline" onClick={() => void navigate({ to: "/settings/connections" })}>
+  Connections
+</Button>
 ```
 
 Add a hook call near where other hooks are declared in the same component (look for `const navigate = useNavigate();`):
 
 ```tsx
-  const openSettings = useSettingsDialogStore((s) => s.openSettings);
+const openSettings = useSettingsDialogStore((s) => s.openSettings);
 ```
 
 Then update the button:
 
 ```tsx
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={() => openSettings("connections")}
-            >
-              Connections
-            </Button>
+<Button size="xs" variant="outline" onClick={() => openSettings("connections")}>
+  Connections
+</Button>
 ```
 
 - [ ] **Step 3: Run typecheck**
@@ -740,6 +729,7 @@ git commit -m "feat(web): migrate ChatView Connections button to settings dialog
 ### Task 7: Migrate GitActionsControl
 
 **Files:**
+
 - Modify: `apps/web/src/components/GitActionsControl.tsx`
 
 - [ ] **Step 1: Add the store import**
@@ -753,20 +743,20 @@ import { useSettingsDialogStore } from "../settingsDialogStore";
 Find (around line 520–523):
 
 ```tsx
-  const openSourceControlSettings = useCallback(() => {
-    handleOpenChange(false);
-    void navigate({ to: "/settings/source-control" });
-  }, [handleOpenChange, navigate]);
+const openSourceControlSettings = useCallback(() => {
+  handleOpenChange(false);
+  void navigate({ to: "/settings/source-control" });
+}, [handleOpenChange, navigate]);
 ```
 
 Replace with:
 
 ```tsx
-  const openSettings = useSettingsDialogStore((s) => s.openSettings);
-  const openSourceControlSettings = useCallback(() => {
-    handleOpenChange(false);
-    openSettings("source-control");
-  }, [handleOpenChange, openSettings]);
+const openSettings = useSettingsDialogStore((s) => s.openSettings);
+const openSourceControlSettings = useCallback(() => {
+  handleOpenChange(false);
+  openSettings("source-control");
+}, [handleOpenChange, openSettings]);
 ```
 
 - [ ] **Step 3: If `navigate` becomes unused, drop it**
@@ -797,6 +787,7 @@ git commit -m "feat(web): migrate GitActionsControl source-control button to set
 ### Task 8: Migrate `_chat.index.tsx` Connections link
 
 **Files:**
+
 - Modify: `apps/web/src/routes/_chat.index.tsx`
 
 - [ ] **Step 1: Add the store import**
@@ -810,32 +801,29 @@ import { useSettingsDialogStore } from "../settingsDialogStore";
 Find (around line 50–60):
 
 ```tsx
-              <div className="mt-6 flex justify-center">
-                <Button render={<a href="/settings/connections" />} size="sm">
-                  <PlusIcon className="size-4" />
-                  Add environment
-                </Button>
-              </div>
+<div className="mt-6 flex justify-center">
+  <Button render={<a href="/settings/connections" />} size="sm">
+    <PlusIcon className="size-4" />
+    Add environment
+  </Button>
+</div>
 ```
 
 Replace with:
 
 ```tsx
-              <div className="mt-6 flex justify-center">
-                <Button
-                  size="sm"
-                  onClick={() => openSettings("connections")}
-                >
-                  <PlusIcon className="size-4" />
-                  Add environment
-                </Button>
-              </div>
+<div className="mt-6 flex justify-center">
+  <Button size="sm" onClick={() => openSettings("connections")}>
+    <PlusIcon className="size-4" />
+    Add environment
+  </Button>
+</div>
 ```
 
 Then add the hook call inside the component (look for the function body, near the top of the function that owns this JSX):
 
 ```tsx
-  const openSettings = useSettingsDialogStore((s) => s.openSettings);
+const openSettings = useSettingsDialogStore((s) => s.openSettings);
 ```
 
 - [ ] **Step 3: Run typecheck**
@@ -858,6 +846,7 @@ git commit -m "feat(web): replace settings/connections anchor with dialog button
 ### Task 9: Delete settings routes and `SettingsSidebarNav.tsx`, regenerate route tree
 
 **Files:**
+
 - Delete: seven settings route files + `SettingsSidebarNav.tsx`
 - Modify (auto): `apps/web/src/routeTree.gen.ts`
 
