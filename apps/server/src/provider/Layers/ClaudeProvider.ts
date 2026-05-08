@@ -49,6 +49,7 @@ const BUILT_IN_MODELS: ReadonlyArray<ServerProviderModel> = [
   {
     slug: "claude-opus-4-7",
     name: "Claude Opus 4.7",
+    shortName: "Opus 4.7",
     isCustom: false,
     capabilities: createModelCapabilities({
       optionDescriptors: [
@@ -79,6 +80,7 @@ const BUILT_IN_MODELS: ReadonlyArray<ServerProviderModel> = [
   {
     slug: "claude-opus-4-6",
     name: "Claude Opus 4.6",
+    shortName: "Opus 4.6",
     isCustom: false,
     capabilities: createModelCapabilities({
       optionDescriptors: [
@@ -112,6 +114,7 @@ const BUILT_IN_MODELS: ReadonlyArray<ServerProviderModel> = [
   {
     slug: "claude-opus-4-5",
     name: "Claude Opus 4.5",
+    shortName: "Opus 4.5",
     isCustom: false,
     capabilities: createModelCapabilities({
       optionDescriptors: [
@@ -135,6 +138,7 @@ const BUILT_IN_MODELS: ReadonlyArray<ServerProviderModel> = [
   {
     slug: "claude-sonnet-4-6",
     name: "Claude Sonnet 4.6",
+    shortName: "Sonnet 4.6",
     isCustom: false,
     capabilities: createModelCapabilities({
       optionDescriptors: [
@@ -163,6 +167,7 @@ const BUILT_IN_MODELS: ReadonlyArray<ServerProviderModel> = [
   {
     slug: "claude-haiku-4-5",
     name: "Claude Haiku 4.5",
+    shortName: "Haiku 4.5",
     isCustom: false,
     capabilities: createModelCapabilities({
       optionDescriptors: [
