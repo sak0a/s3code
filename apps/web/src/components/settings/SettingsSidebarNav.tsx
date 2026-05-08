@@ -2,6 +2,7 @@ import { useCallback, type ComponentType } from "react";
 import {
   ArchiveIcon,
   ArrowLeftIcon,
+  BlocksIcon,
   GitBranchIcon,
   Link2Icon,
   PaletteIcon,
@@ -22,6 +23,7 @@ import {
 
 export type SettingsSectionPath =
   | "/settings/general"
+  | "/settings/providers"
   | "/settings/appearance"
   | "/settings/source-control"
   | "/settings/connections"
@@ -33,6 +35,7 @@ export const SETTINGS_NAV_ITEMS: ReadonlyArray<{
   icon: ComponentType<{ className?: string }>;
 }> = [
   { label: "General", to: "/settings/general", icon: Settings2Icon },
+  { label: "Providers", to: "/settings/providers", icon: BlocksIcon },
   { label: "Appearance", to: "/settings/appearance", icon: PaletteIcon },
   { label: "Source Control", to: "/settings/source-control", icon: GitBranchIcon },
   { label: "Connections", to: "/settings/connections", icon: Link2Icon },
