@@ -24,6 +24,7 @@ import { resetServerStateForTests, setServerConfigSnapshot } from "../../rpc/ser
 import { useUiStateStore } from "../../uiStateStore";
 import { DEFAULT_CLIENT_SETTINGS } from "@t3tools/contracts/settings";
 import { ConnectionsSettings } from "./ConnectionsSettings";
+import { ProvidersSettingsPanel } from "./ProvidersSettingsPanel";
 import { GeneralSettingsPanel } from "./SettingsPanels";
 import { SourceControlSettingsPanel } from "./SourceControlSettings";
 
@@ -1179,7 +1180,7 @@ describe("GeneralSettingsPanel observability", () => {
 
     mounted = await render(
       <AppAtomRegistryProvider>
-        <GeneralSettingsPanel />
+        <ProvidersSettingsPanel />
       </AppAtomRegistryProvider>,
     );
 
