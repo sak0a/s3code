@@ -15,6 +15,7 @@
 ### Task 1: Add pure helpers `resolveTabLabel` and `groupHasRunningTerminal`
 
 **Files:**
+
 - Modify: `apps/web/src/components/ThreadTerminalDrawer.tsx` (add two exported functions)
 - Test: `apps/web/src/components/ThreadTerminalDrawer.test.ts` (add three `describe` blocks)
 
@@ -79,10 +80,7 @@ Expected: FAIL — both new helpers are undefined imports.
 Add to `apps/web/src/components/ThreadTerminalDrawer.tsx` near the other exported pure helpers (e.g. immediately after `selectPendingTerminalEventEntries`, around line 90 — anywhere in module scope is fine, but keep them grouped with the existing helpers for discoverability):
 
 ```ts
-export function resolveTabLabel(
-  group: ThreadTerminalGroup,
-  groupIndex: number,
-): string {
+export function resolveTabLabel(group: ThreadTerminalGroup, groupIndex: number): string {
   return group.terminalIds.length > 1 ? `Split ${groupIndex}` : `Terminal ${groupIndex}`;
 }
 
@@ -116,6 +114,7 @@ git commit -m "Add tab-label and running-terminal helpers for terminal tabs"
 ### Task 2: Add `terminalCount` prop and badge to `BranchToolbar`
 
 **Files:**
+
 - Modify: `apps/web/src/components/BranchToolbar.tsx` (add prop, render badge inside button)
 - Modify: `apps/web/src/components/ChatView.tsx` (pass count to BranchToolbar)
 
@@ -218,14 +217,14 @@ In `apps/web/src/components/ChatView.tsx`, find the `<BranchToolbar />` JSX (cur
 So the block becomes:
 
 ```tsx
-              <BranchToolbar
-                // ...existing props unchanged...
-                terminalAvailable={activeProject !== undefined}
-                terminalOpen={terminalState.terminalOpen}
-                terminalToggleShortcutLabel={terminalToggleShortcutLabel}
-                onToggleTerminal={toggleTerminalVisibility}
-                terminalCount={terminalState.terminalIds.length}
-              />
+<BranchToolbar
+  // ...existing props unchanged...
+  terminalAvailable={activeProject !== undefined}
+  terminalOpen={terminalState.terminalOpen}
+  terminalToggleShortcutLabel={terminalToggleShortcutLabel}
+  onToggleTerminal={toggleTerminalVisibility}
+  terminalCount={terminalState.terminalIds.length}
+/>
 ```
 
 `terminalState` is already in scope from the existing `selectThreadTerminalState` selector (this is the same scope that produces `terminalState.terminalOpen` already used on the line above).
@@ -254,6 +253,7 @@ git commit -m "Show open-terminal count beside the top-bar toggle"
 ### Task 3: Add `runningTerminalIds` prop to `ThreadTerminalDrawer` and forward it from `ChatView`
 
 **Files:**
+
 - Modify: `apps/web/src/components/ThreadTerminalDrawer.tsx` (add prop, destructure it, normalize)
 - Modify: `apps/web/src/components/ChatView.tsx` (pass `runningTerminalIds`)
 
@@ -300,11 +300,11 @@ Replace with:
 Right after the existing `normalizedTerminalIds` `useMemo` (currently lines 891-894), add:
 
 ```tsx
-  const normalizedRunningTerminalIds = useMemo(() => {
-    if (runningTerminalIds.length === 0) return [];
-    const validIdSet = new Set(normalizedTerminalIds);
-    return runningTerminalIds.filter((id) => validIdSet.has(id));
-  }, [normalizedTerminalIds, runningTerminalIds]);
+const normalizedRunningTerminalIds = useMemo(() => {
+  if (runningTerminalIds.length === 0) return [];
+  const validIdSet = new Set(normalizedTerminalIds);
+  return runningTerminalIds.filter((id) => validIdSet.has(id));
+}, [normalizedTerminalIds, runningTerminalIds]);
 ```
 
 This ensures stale running IDs (e.g. for terminals that were just closed) don't drive the running indicator.
@@ -339,6 +339,7 @@ git commit -m "Plumb runningTerminalIds into ThreadTerminalDrawer"
 ### Task 4: Replace the right sidebar and floating overlay with a horizontal tab strip
 
 **Files:**
+
 - Modify: `apps/web/src/components/ThreadTerminalDrawer.tsx` (remove sidebar + overlay; add tab strip)
 
 This is the main UI change. Treat it as one coherent rewrite of the drawer's render tree.
@@ -386,109 +387,109 @@ Keep the existing `isSplitView` branch logic and its inner `{visibleTerminalIds.
 In the same file, immediately before the `<div className="min-h-0 w-full flex-1">` block from Step 2, insert this tab strip JSX:
 
 ```tsx
-      <div
-        role="tablist"
-        aria-label="Terminals"
-        className="flex h-7 shrink-0 items-stretch border-b border-border/70 bg-muted/10"
-      >
-        <div className="flex min-w-0 flex-1 items-stretch overflow-x-auto">
-          {resolvedTerminalGroups.map((group, groupIndex) => {
-            const isActive = groupIndex === resolvedActiveGroupIndex;
-            const isRunning = groupHasRunningTerminal(group, normalizedRunningTerminalIds);
-            const label = resolveTabLabel(group, groupIndex + 1);
-            const groupActiveTerminalId = group.terminalIds.includes(resolvedActiveTerminalId)
-              ? resolvedActiveTerminalId
-              : (group.terminalIds[0] ?? resolvedActiveTerminalId);
-            const canCloseTab = resolvedTerminalGroups.length > 1;
-            const closeTabLabel = `Close ${label}`;
-            return (
-              <div
-                key={group.id}
-                role="tab"
-                aria-selected={isActive}
-                className={`group flex shrink-0 items-center gap-1.5 border-r border-border/70 px-2 text-xs transition-colors ${
-                  isActive
-                    ? "bg-background text-foreground"
-                    : "text-muted-foreground hover:bg-accent/40 hover:text-foreground"
-                }`}
-              >
-                <button
-                  type="button"
-                  className="flex min-w-0 items-center gap-1.5"
-                  onClick={() => onActiveTerminalChange(groupActiveTerminalId)}
-                >
-                  <TerminalSquare className="size-3 shrink-0" />
-                  <span className="truncate">{label}</span>
-                  {isRunning && (
-                    <span
-                      className="size-1.5 shrink-0 rounded-full bg-emerald-500"
-                      aria-label="Running"
-                    />
-                  )}
-                </button>
-                {canCloseTab && (
-                  <Popover>
-                    <PopoverTrigger
-                      openOnHover
-                      render={
-                        <button
-                          type="button"
-                          className="inline-flex size-3.5 items-center justify-center rounded text-muted-foreground opacity-0 transition hover:bg-accent hover:text-foreground group-hover:opacity-100"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            for (const terminalId of group.terminalIds) {
-                              onCloseTerminal(terminalId);
-                            }
-                          }}
-                          aria-label={closeTabLabel}
-                        />
+<div
+  role="tablist"
+  aria-label="Terminals"
+  className="flex h-7 shrink-0 items-stretch border-b border-border/70 bg-muted/10"
+>
+  <div className="flex min-w-0 flex-1 items-stretch overflow-x-auto">
+    {resolvedTerminalGroups.map((group, groupIndex) => {
+      const isActive = groupIndex === resolvedActiveGroupIndex;
+      const isRunning = groupHasRunningTerminal(group, normalizedRunningTerminalIds);
+      const label = resolveTabLabel(group, groupIndex + 1);
+      const groupActiveTerminalId = group.terminalIds.includes(resolvedActiveTerminalId)
+        ? resolvedActiveTerminalId
+        : (group.terminalIds[0] ?? resolvedActiveTerminalId);
+      const canCloseTab = resolvedTerminalGroups.length > 1;
+      const closeTabLabel = `Close ${label}`;
+      return (
+        <div
+          key={group.id}
+          role="tab"
+          aria-selected={isActive}
+          className={`group flex shrink-0 items-center gap-1.5 border-r border-border/70 px-2 text-xs transition-colors ${
+            isActive
+              ? "bg-background text-foreground"
+              : "text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+          }`}
+        >
+          <button
+            type="button"
+            className="flex min-w-0 items-center gap-1.5"
+            onClick={() => onActiveTerminalChange(groupActiveTerminalId)}
+          >
+            <TerminalSquare className="size-3 shrink-0" />
+            <span className="truncate">{label}</span>
+            {isRunning && (
+              <span
+                className="size-1.5 shrink-0 rounded-full bg-emerald-500"
+                aria-label="Running"
+              />
+            )}
+          </button>
+          {canCloseTab && (
+            <Popover>
+              <PopoverTrigger
+                openOnHover
+                render={
+                  <button
+                    type="button"
+                    className="inline-flex size-3.5 items-center justify-center rounded text-muted-foreground opacity-0 transition hover:bg-accent hover:text-foreground group-hover:opacity-100"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      for (const terminalId of group.terminalIds) {
+                        onCloseTerminal(terminalId);
                       }
-                    >
-                      <XIcon className="size-2.5" />
-                    </PopoverTrigger>
-                    <PopoverPopup
-                      tooltipStyle
-                      side="bottom"
-                      sideOffset={6}
-                      align="center"
-                      className="pointer-events-none select-none"
-                    >
-                      {closeTabLabel}
-                    </PopoverPopup>
-                  </Popover>
-                )}
-              </div>
-            );
-          })}
+                    }}
+                    aria-label={closeTabLabel}
+                  />
+                }
+              >
+                <XIcon className="size-2.5" />
+              </PopoverTrigger>
+              <PopoverPopup
+                tooltipStyle
+                side="bottom"
+                sideOffset={6}
+                align="center"
+                className="pointer-events-none select-none"
+              >
+                {closeTabLabel}
+              </PopoverPopup>
+            </Popover>
+          )}
         </div>
-        <div className="flex shrink-0 items-stretch border-l border-border/70">
-          <TerminalActionButton
-            className={`inline-flex items-center px-2 text-foreground/90 transition-colors ${
-              hasReachedSplitLimit
-                ? "cursor-not-allowed opacity-45 hover:bg-transparent"
-                : "hover:bg-accent/70"
-            }`}
-            onClick={onSplitTerminalAction}
-            label={splitTerminalActionLabel}
-          >
-            <SquareSplitHorizontal className="size-3.25" />
-          </TerminalActionButton>
-          <TerminalActionButton
-            className="inline-flex items-center border-l border-border/70 px-2 text-foreground/90 transition-colors hover:bg-accent/70"
-            onClick={onNewTerminalAction}
-            label={newTerminalActionLabel}
-          >
-            <Plus className="size-3.25" />
-          </TerminalActionButton>
-          <TerminalActionButton
-            className="inline-flex items-center border-l border-border/70 px-2 text-foreground/90 transition-colors hover:bg-accent/70"
-            onClick={() => onCloseTerminal(resolvedActiveTerminalId)}
-            label={closeTerminalActionLabel}
-          >
-            <Trash2 className="size-3.25" />
-          </TerminalActionButton>
-        </div>
-      </div>
+      );
+    })}
+  </div>
+  <div className="flex shrink-0 items-stretch border-l border-border/70">
+    <TerminalActionButton
+      className={`inline-flex items-center px-2 text-foreground/90 transition-colors ${
+        hasReachedSplitLimit
+          ? "cursor-not-allowed opacity-45 hover:bg-transparent"
+          : "hover:bg-accent/70"
+      }`}
+      onClick={onSplitTerminalAction}
+      label={splitTerminalActionLabel}
+    >
+      <SquareSplitHorizontal className="size-3.25" />
+    </TerminalActionButton>
+    <TerminalActionButton
+      className="inline-flex items-center border-l border-border/70 px-2 text-foreground/90 transition-colors hover:bg-accent/70"
+      onClick={onNewTerminalAction}
+      label={newTerminalActionLabel}
+    >
+      <Plus className="size-3.25" />
+    </TerminalActionButton>
+    <TerminalActionButton
+      className="inline-flex items-center border-l border-border/70 px-2 text-foreground/90 transition-colors hover:bg-accent/70"
+      onClick={() => onCloseTerminal(resolvedActiveTerminalId)}
+      label={closeTerminalActionLabel}
+    >
+      <Trash2 className="size-3.25" />
+    </TerminalActionButton>
+  </div>
+</div>
 ```
 
 - [ ] **Step 4: Remove now-unused values**
@@ -496,15 +497,15 @@ In the same file, immediately before the `<div className="min-h-0 w-full flex-1"
 `hasTerminalSidebar` is no longer referenced. Delete its declaration (currently around line 978):
 
 ```tsx
-  const hasTerminalSidebar = normalizedTerminalIds.length > 1;
+const hasTerminalSidebar = normalizedTerminalIds.length > 1;
 ```
 
 `showGroupHeaders` was only used inside the deleted sidebar. Delete its declaration (currently around lines 980-982):
 
 ```tsx
-  const showGroupHeaders =
-    resolvedTerminalGroups.length > 1 ||
-    resolvedTerminalGroups.some((terminalGroup) => terminalGroup.terminalIds.length > 1);
+const showGroupHeaders =
+  resolvedTerminalGroups.length > 1 ||
+  resolvedTerminalGroups.some((terminalGroup) => terminalGroup.terminalIds.length > 1);
 ```
 
 Keep `terminalLabelById`, `splitTerminalActionLabel`, `newTerminalActionLabel`, `closeTerminalActionLabel`, `onSplitTerminalAction`, `onNewTerminalAction`, `hasReachedSplitLimit`, `resolvedActiveGroupIndex`, `visibleTerminalIds`, `isSplitView` — these are still used.
