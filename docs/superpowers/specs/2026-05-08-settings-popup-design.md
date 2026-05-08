@@ -146,7 +146,7 @@ in the tree doesn't affect overlay z-index or positioning.
 
 | File | Current | New |
 |------|---------|-----|
-| `Sidebar.tsx` (header Settings button) | `navigate({ to: "/settings" })` | `openSettings()` |
+| `Sidebar.tsx` (`SidebarChromeFooter` Settings button, around line 2449) | `navigate({ to: "/settings" })` | `openSettings()` |
 | `AppSidebarLayout.tsx:47` (Electron menu) | `navigate({ to: "/settings" })` | `openSettings()` |
 | `CommandPalette.tsx:787` | `navigate({ to: "/settings/source-control" })` | `openSettings("source-control")` |
 | `CommandPalette.tsx:1065` | `navigate({ to: "/settings" })` | `openSettings()` |
@@ -154,21 +154,18 @@ in the tree doesn't affect overlay z-index or positioning.
 | `GitActionsControl.tsx:522` | `navigate({ to: "/settings/source-control" })` | `openSettings("source-control")` |
 | `routes/_chat.index.tsx:55` | `<Button render={<a href="/settings/connections" />}>` | `<Button onClick={() => openSettings("connections")}>` |
 
-### Sidebar back-button revert
+### Sidebar settings-route cleanup
 
-The recent in-sidebar back-button work assumes a settings route exists.
-With routes gone, all of it goes too:
+The current `Sidebar.tsx` has an `isOnSettings`-conditional that swaps the
+projects panel for `<SettingsSidebarNav />` when the user is on a settings
+route. With routes gone, this branch goes too:
 
-- `Sidebar.tsx`: drop `lastNonSettingsPathRef`, its `useEffect`, and the
-  unused `useLocation` import (or just the `location.href` read — confirm
-  during implementation).
 - `Sidebar.tsx`: drop the `isOnSettings`-conditional rendering of
-  `<SettingsSidebarNav />`. Sidebar always renders
+  `<SettingsSidebarNav />`. The sidebar always renders
   `<SidebarProjectsContent />` plus the chrome footer.
-- `SidebarChromeHeader`: drop the `isOnSettings` prop and the back-button
-  branch. Always render the Settings action button.
-- Drop unused imports (`ArrowLeftIcon`, `useRouter` if no other usage, the
-  `lastNonSettingsPathRef` prop type).
+- Drop the `pathname` and `isOnSettings` derivations and the
+  `useLocation` import if they're not used elsewhere in the file.
+- Drop the `import { SettingsSidebarNav }` line.
 
 ### Route deletions
 
@@ -255,5 +252,3 @@ After this change ships:
 - Any external bookmarks to `/settings/*` will land on the app's not-found
   page. Acceptable — see Non-goals.
 - `routeTree.gen.ts` will be regenerated; do not hand-edit.
-- The `lastNonSettingsPathRef` tracking and the `Back` button branch added
-  in the previous task are reverted as part of this work.
