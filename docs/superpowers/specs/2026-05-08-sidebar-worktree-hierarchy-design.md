@@ -263,7 +263,7 @@ Best-effort auto-group at the data layer — no migration UI, runs once on first
 
 ### Schema migration
 
-`apps/server/src/persistence/Migrations/006_Worktrees.ts` (current latest is `005_Projections`):
+`apps/server/src/persistence/Migrations/030_Worktrees.ts` (current latest is `029_ProjectionThreadDetailOrderingIndexes`):
 
 - Creates the `projection_worktrees` table with indices.
 - Adds `worktree_id`, `manual_status_bucket`, `manual_position` to `projection_threads`.
@@ -342,7 +342,7 @@ The existing `apps/web/src/components/projectExplorer/` directory is renamed and
 ### Server-side
 
 ```
-apps/server/src/persistence/Migrations/006_Worktrees.ts          ← schema + data migration
+apps/server/src/persistence/Migrations/030_Worktrees.ts          ← schema + data migration
 apps/server/src/persistence/Layers/ProjectionWorktrees.ts        ← new repository
 apps/server/src/persistence/Layers/ProjectionThreads.ts          ← extended with worktree_id read/write
 apps/server/src/orchestration/projectors/WorktreeProjector.ts    ← new projector
