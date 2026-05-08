@@ -58,7 +58,7 @@ import {
   scopeProjectRef,
   scopeThreadRef,
 } from "@t3tools/client-runtime";
-import { Link, useLocation, useNavigate, useParams, useRouter } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useRouter } from "@tanstack/react-router";
 import {
   type SidebarProjectSortOrder,
   type SidebarThreadSortOrder,
@@ -102,7 +102,7 @@ import {
 } from "../threadRoutes";
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { formatRelativeTimeLabel } from "../timestampFormat";
-import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
+import { useSettingsDialogStore } from "../settingsDialogStore";
 import { Kbd } from "./ui/kbd";
 import {
   getArm64IntelBuildWarningDescription,
@@ -2503,6 +2503,18 @@ const SidebarChromeHeader = memo(function SidebarChromeHeader({
 });
 
 const SidebarChromeFooter = memo(function SidebarChromeFooter() {
+<<<<<<< HEAD
+  const { isMobile, setOpenMobile } = useSidebar();
+  const openSettings = useSettingsDialogStore((s) => s.openSettings);
+  const handleSettingsClick = useCallback(() => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+    openSettings();
+  }, [isMobile, openSettings, setOpenMobile]);
+
+=======
+>>>>>>> origin/main
   return (
     <SidebarFooter className="p-2">
       <SidebarUpdatePill />
@@ -2777,6 +2789,8 @@ export default function Sidebar() {
   const projectOrder = useUiStateStore((store) => store.projectOrder);
   const reorderProjects = useUiStateStore((store) => store.reorderProjects);
   const navigate = useNavigate();
+<<<<<<< HEAD
+=======
   const location = useLocation();
   const pathname = location.pathname;
   const isOnSettings = pathname.startsWith("/settings");
@@ -2786,6 +2800,7 @@ export default function Sidebar() {
       lastNonSettingsPathRef.current = location.href;
     }
   }, [isOnSettings, location.href]);
+>>>>>>> origin/main
   const sidebarThreadSortOrder = useSettings((s) => s.sidebarThreadSortOrder);
   const sidebarProjectSortOrder = useSettings((s) => s.sidebarProjectSortOrder);
   const sidebarProjectGroupingMode = useSettings((s) => s.sidebarProjectGroupingMode);
@@ -3413,51 +3428,45 @@ export default function Sidebar() {
         lastNonSettingsPathRef={lastNonSettingsPathRef}
       />
 
-      {isOnSettings ? (
-        <SettingsSidebarNav pathname={pathname} />
-      ) : (
-        <>
-          <SidebarProjectsContent
-            showArm64IntelBuildWarning={showArm64IntelBuildWarning}
-            arm64IntelBuildWarningDescription={arm64IntelBuildWarningDescription}
-            desktopUpdateButtonAction={desktopUpdateButtonAction}
-            desktopUpdateButtonDisabled={desktopUpdateButtonDisabled}
-            handleDesktopUpdateButtonClick={handleDesktopUpdateButtonClick}
-            projectSortOrder={sidebarProjectSortOrder}
-            threadSortOrder={sidebarThreadSortOrder}
-            projectGroupingMode={sidebarProjectGroupingMode}
-            updateSettings={updateSettings}
-            openAddProject={openAddProjectCommandPalette}
-            isManualProjectSorting={isManualProjectSorting}
-            projectDnDSensors={projectDnDSensors}
-            projectCollisionDetection={projectCollisionDetection}
-            handleProjectDragStart={handleProjectDragStart}
-            handleProjectDragEnd={handleProjectDragEnd}
-            handleProjectDragCancel={handleProjectDragCancel}
-            handleNewThread={handleNewThread}
-            archiveThread={archiveThread}
-            deleteThread={deleteThread}
-            sortedProjects={sortedProjects}
-            expandedThreadListsByProject={expandedThreadListsByProject}
-            activeRouteProjectKey={activeRouteProjectKey}
-            routeThreadKey={routeThreadKey}
-            newThreadShortcutLabel={newThreadShortcutLabel}
-            commandPaletteShortcutLabel={commandPaletteShortcutLabel}
-            threadJumpLabelByKey={visibleThreadJumpLabelByKey}
-            attachThreadListAutoAnimateRef={attachThreadListAutoAnimateRef}
-            expandThreadListForProject={expandThreadListForProject}
-            collapseThreadListForProject={collapseThreadListForProject}
-            dragInProgressRef={dragInProgressRef}
-            suppressProjectClickAfterDragRef={suppressProjectClickAfterDragRef}
-            suppressProjectClickForContextMenuRef={suppressProjectClickForContextMenuRef}
-            attachProjectListAutoAnimateRef={attachProjectListAutoAnimateRef}
-            projectsLength={projects.length}
-          />
+      <SidebarProjectsContent
+        showArm64IntelBuildWarning={showArm64IntelBuildWarning}
+        arm64IntelBuildWarningDescription={arm64IntelBuildWarningDescription}
+        desktopUpdateButtonAction={desktopUpdateButtonAction}
+        desktopUpdateButtonDisabled={desktopUpdateButtonDisabled}
+        handleDesktopUpdateButtonClick={handleDesktopUpdateButtonClick}
+        projectSortOrder={sidebarProjectSortOrder}
+        threadSortOrder={sidebarThreadSortOrder}
+        projectGroupingMode={sidebarProjectGroupingMode}
+        updateSettings={updateSettings}
+        openAddProject={openAddProjectCommandPalette}
+        isManualProjectSorting={isManualProjectSorting}
+        projectDnDSensors={projectDnDSensors}
+        projectCollisionDetection={projectCollisionDetection}
+        handleProjectDragStart={handleProjectDragStart}
+        handleProjectDragEnd={handleProjectDragEnd}
+        handleProjectDragCancel={handleProjectDragCancel}
+        handleNewThread={handleNewThread}
+        archiveThread={archiveThread}
+        deleteThread={deleteThread}
+        sortedProjects={sortedProjects}
+        expandedThreadListsByProject={expandedThreadListsByProject}
+        activeRouteProjectKey={activeRouteProjectKey}
+        routeThreadKey={routeThreadKey}
+        newThreadShortcutLabel={newThreadShortcutLabel}
+        commandPaletteShortcutLabel={commandPaletteShortcutLabel}
+        threadJumpLabelByKey={visibleThreadJumpLabelByKey}
+        attachThreadListAutoAnimateRef={attachThreadListAutoAnimateRef}
+        expandThreadListForProject={expandThreadListForProject}
+        collapseThreadListForProject={collapseThreadListForProject}
+        dragInProgressRef={dragInProgressRef}
+        suppressProjectClickAfterDragRef={suppressProjectClickAfterDragRef}
+        suppressProjectClickForContextMenuRef={suppressProjectClickForContextMenuRef}
+        attachProjectListAutoAnimateRef={attachProjectListAutoAnimateRef}
+        projectsLength={projects.length}
+      />
 
-          <SidebarSeparator />
-          <SidebarChromeFooter />
-        </>
-      )}
+      <SidebarSeparator />
+      <SidebarChromeFooter />
     </>
   );
 }

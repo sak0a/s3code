@@ -87,6 +87,7 @@ import {
 } from "../store";
 import { createProjectSelectorByRef, createThreadSelectorByRef } from "../storeSelectors";
 import { useUiStateStore } from "../uiStateStore";
+import { useSettingsDialogStore } from "../settingsDialogStore";
 import {
   buildPlanImplementationThreadTitle,
   buildPlanImplementationPrompt,
@@ -646,6 +647,7 @@ export default function ChatView(props: ChatViewProps) {
   const timestampFormat = settings.timestampFormat;
   const autoOpenPlanSidebar = settings.autoOpenPlanSidebar;
   const navigate = useNavigate();
+  const openSettings = useSettingsDialogStore((s) => s.openSettings);
   const rawSearch = useSearch({
     strict: false,
     select: (params) => parseRightPanelRouteSearch(params),
@@ -1230,7 +1232,7 @@ export default function ChatView(props: ChatViewProps) {
             <Button
               size="xs"
               variant="outline"
-              onClick={() => void navigate({ to: "/settings/connections" })}
+              onClick={() => openSettings("connections")}
             >
               Connections
             </Button>

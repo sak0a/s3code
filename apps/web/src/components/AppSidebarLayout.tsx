@@ -1,5 +1,4 @@
 import { useEffect, type ReactNode } from "react";
-import { useNavigate } from "@tanstack/react-router";
 
 import ThreadSidebar from "./Sidebar";
 import { Sidebar, SidebarProvider, SidebarRail } from "./ui/sidebar";
@@ -7,12 +6,14 @@ import {
   clearShortcutModifierState,
   syncShortcutModifierStateFromKeyboardEvent,
 } from "../shortcutModifierState";
+import { SettingsDialog } from "./settings/SettingsDialog";
+import { useSettingsDialogStore } from "../settingsDialogStore";
 
 const THREAD_SIDEBAR_WIDTH_STORAGE_KEY = "chat_thread_sidebar_width";
 const THREAD_SIDEBAR_MIN_WIDTH = 13 * 16;
 const THREAD_MAIN_CONTENT_MIN_WIDTH = 40 * 16;
 export function AppSidebarLayout({ children }: { children: ReactNode }) {
-  const navigate = useNavigate();
+  const openSettings = useSettingsDialogStore((s) => s.openSettings);
 
   useEffect(() => {
     const onWindowKeyDown = (event: KeyboardEvent) => {
@@ -44,14 +45,14 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
 
     const unsubscribe = onMenuAction((action) => {
       if (action === "open-settings") {
-        void navigate({ to: "/settings" });
+        openSettings();
       }
     });
 
     return () => {
       unsubscribe?.();
     };
-  }, [navigate]);
+  }, [openSettings]);
 
   return (
     <SidebarProvider className="h-dvh! min-h-0!" defaultOpen>
@@ -70,6 +71,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
         <SidebarRail />
       </Sidebar>
       {children}
+      <SettingsDialog />
     </SidebarProvider>
   );
 }
