@@ -820,6 +820,7 @@ interface ThreadTerminalDrawerProps {
   visible?: boolean;
   height: number;
   terminalIds: string[];
+  runningTerminalIds: string[];
   activeTerminalId: string;
   terminalGroups: ThreadTerminalGroup[];
   activeTerminalGroupId: string;
@@ -874,6 +875,7 @@ export default function ThreadTerminalDrawer({
   visible = true,
   height,
   terminalIds,
+  runningTerminalIds,
   activeTerminalId,
   terminalGroups,
   activeTerminalGroupId,
@@ -905,6 +907,12 @@ export default function ThreadTerminalDrawer({
     const cleaned = [...new Set(terminalIds.map((id) => id.trim()).filter((id) => id.length > 0))];
     return cleaned.length > 0 ? cleaned : [DEFAULT_THREAD_TERMINAL_ID];
   }, [terminalIds]);
+
+  const normalizedRunningTerminalIds = useMemo(() => {
+    if (runningTerminalIds.length === 0) return [];
+    const validIdSet = new Set(normalizedTerminalIds);
+    return runningTerminalIds.filter((id) => validIdSet.has(id));
+  }, [normalizedTerminalIds, runningTerminalIds]);
 
   const resolvedActiveTerminalId = normalizedTerminalIds.includes(activeTerminalId)
     ? activeTerminalId

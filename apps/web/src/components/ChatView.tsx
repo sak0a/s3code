@@ -593,6 +593,7 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
         visible={visible}
         height={terminalState.terminalHeight}
         terminalIds={terminalState.terminalIds}
+        runningTerminalIds={terminalState.runningTerminalIds}
         activeTerminalId={terminalState.activeTerminalId}
         terminalGroups={terminalState.terminalGroups}
         activeTerminalGroupId={terminalState.activeTerminalGroupId}
