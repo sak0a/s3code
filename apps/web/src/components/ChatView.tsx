@@ -593,6 +593,7 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
         visible={visible}
         height={terminalState.terminalHeight}
         terminalIds={terminalState.terminalIds}
+        runningTerminalIds={terminalState.runningTerminalIds}
         activeTerminalId={terminalState.activeTerminalId}
         terminalGroups={terminalState.terminalGroups}
         activeTerminalGroupId={terminalState.activeTerminalGroupId}
@@ -3807,6 +3808,7 @@ export default function ChatView(props: ChatViewProps) {
                 terminalOpen={terminalState.terminalOpen}
                 terminalToggleShortcutLabel={terminalToggleShortcutLabel}
                 onToggleTerminal={toggleTerminalVisibility}
+                terminalCount={terminalState.terminalIds.length}
               />
             )}
           </div>
