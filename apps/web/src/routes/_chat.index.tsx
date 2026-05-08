@@ -3,6 +3,7 @@ import { LinkIcon, PlusIcon } from "lucide-react";
 
 import { NoActiveThreadState } from "../components/NoActiveThreadState";
 import { Button } from "../components/ui/button";
+import { useSettingsDialogStore } from "../settingsDialogStore";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
 import { SidebarInset, SidebarTrigger } from "../components/ui/sidebar";
 import { useSavedEnvironmentRegistryStore } from "../environments/runtime";
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/_chat/")({
 });
 
 function HostedStaticOnboardingState() {
+  const openSettings = useSettingsDialogStore((s) => s.openSettings);
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background">
@@ -52,7 +54,10 @@ function HostedStaticOnboardingState() {
                 manually. Your saved environments stay in this browser.
               </EmptyDescription>
               <div className="mt-6 flex justify-center">
-                <Button render={<a href="/settings/connections" />} size="sm">
+                <Button
+                  size="sm"
+                  onClick={() => openSettings("connections")}
+                >
                   <PlusIcon className="size-4" />
                   Add environment
                 </Button>
