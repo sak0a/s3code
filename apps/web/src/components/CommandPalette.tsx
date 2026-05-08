@@ -119,6 +119,7 @@ import { stackedThreadToast, toastManager } from "./ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import { ComposerHandleContext, useComposerHandleContext } from "../composerHandleContext";
 import type { ChatComposerHandle } from "./chat/ChatComposer";
+import { useSettingsDialogStore } from "../settingsDialogStore";
 
 const EMPTY_BROWSE_ENTRIES: FilesystemBrowseResult["entries"] = [];
 const BROWSE_STALE_TIME_MS = 30_000;
@@ -782,10 +783,11 @@ function OpenCommandPaletteDialog() {
     [],
   );
 
+  const openSettings = useSettingsDialogStore((s) => s.openSettings);
   const openSourceControlSettings = useCallback(() => {
     setOpen(false);
-    void navigate({ to: "/settings/source-control" });
-  }, [navigate, setOpen]);
+    openSettings("source-control");
+  }, [openSettings, setOpen]);
 
   const buildAddProjectSourceGroups = useCallback(
     (
@@ -1062,7 +1064,8 @@ function OpenCommandPaletteDialog() {
     title: "Open settings",
     icon: <SettingsIcon className={ITEM_ICON_CLASS} />,
     run: async () => {
-      await navigate({ to: "/settings" });
+      setOpen(false);
+      openSettings();
     },
   });
 
