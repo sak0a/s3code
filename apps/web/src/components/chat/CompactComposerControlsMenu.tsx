@@ -35,7 +35,7 @@ export const CompactComposerControlsMenu = memo(function CompactComposerControls
             className={cn(
               "shrink-0 px-2",
               props.runtimeMode === "full-access"
-                ? "text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200"
+                ? "text-orange-700 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
                 : "text-muted-foreground/70 hover:text-foreground/80",
             )}
             aria-label="More composer controls"

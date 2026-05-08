@@ -245,7 +245,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
           className={cn(
             "font-medium",
             props.runtimeMode === "full-access" &&
-              "text-amber-600 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200",
+              "text-orange-700 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300",
           )}
           aria-label="Runtime mode"
           title={runtimeModeOption.description}
