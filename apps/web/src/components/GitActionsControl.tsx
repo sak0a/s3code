@@ -11,7 +11,6 @@ import type {
   VcsStatusResult,
 } from "@t3tools/contracts";
 import { useIsMutating, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import { Option } from "effect";
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -81,6 +80,7 @@ import { readLocalApi } from "~/localApi";
 import { getSourceControlPresentation } from "~/sourceControlPresentation";
 import { useStore } from "~/store";
 import { createThreadSelectorByRef } from "~/storeSelectors";
+import { useSettingsDialogStore } from "../settingsDialogStore";
 
 interface GitActionsControlProps {
   gitCwd: string | null;
@@ -347,7 +347,6 @@ interface PublishRepositoryDialogProps {
 
 function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const sourceControlDiscovery = useSourceControlDiscovery();
   const [publishProvider, setPublishProvider] = useState<PublishProviderKind>("github");
   const [publishRepository, setPublishRepository] = useState("");
@@ -517,10 +516,11 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
     [props, resetState],
   );
 
+  const openSettings = useSettingsDialogStore((s) => s.openSettings);
   const openSourceControlSettings = useCallback(() => {
     handleOpenChange(false);
-    void navigate({ to: "/settings/source-control" });
-  }, [handleOpenChange, navigate]);
+    openSettings("source-control");
+  }, [handleOpenChange, openSettings]);
 
   return (
     <Dialog open={props.open} onOpenChange={handleOpenChange}>
