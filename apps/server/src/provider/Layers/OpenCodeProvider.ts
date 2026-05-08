@@ -231,10 +231,12 @@ function flattenOpenCodeModels(input: OpenCodeInventory): ReadonlyArray<ServerPr
       }
 
       const subProvider = nonEmptyTrimmed(provider.name);
+      const shortName = subProvider ? deriveShortNameByStrippingPrefix(name, subProvider) : undefined;
       models.push({
         slug: `${provider.id}/${model.id}`,
         name,
         ...(subProvider ? { subProvider } : {}),
+        ...(shortName ? { shortName } : {}),
         isCustom: false,
         capabilities: openCodeCapabilitiesForModel({
           providerID: provider.id,
@@ -246,6 +248,21 @@ function flattenOpenCodeModels(input: OpenCodeInventory): ReadonlyArray<ServerPr
   }
 
   return models.toSorted((left, right) => left.name.localeCompare(right.name));
+}
+
+/**
+ * Strip a leading provider prefix from `name` so the chat-box trigger doesn't
+ * render it twice next to the same word in the subProvider slot. Returns
+ * `undefined` when the prefix doesn't apply or the remainder is empty.
+ */
+function deriveShortNameByStrippingPrefix(name: string, prefix: string): string | undefined {
+  const lowerName = name.toLowerCase();
+  const lowerPrefix = prefix.toLowerCase();
+  if (!lowerName.startsWith(lowerPrefix)) {
+    return undefined;
+  }
+  const rest = name.slice(prefix.length).trimStart();
+  return rest.length > 0 ? rest : undefined;
 }
 
 export const makePendingOpenCodeProvider = (
