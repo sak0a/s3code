@@ -1,5 +1,6 @@
 import {
   ArchiveIcon,
+  ArrowLeftIcon,
   ArrowUpDownIcon,
   ChevronRightIcon,
   CloudIcon,
@@ -2399,18 +2400,79 @@ function SortableProjectItem({
 
 const SidebarChromeHeader = memo(function SidebarChromeHeader({
   isElectron,
+  isOnSettings,
+  lastNonSettingsPathRef,
 }: {
   isElectron: boolean;
+  isOnSettings: boolean;
+  lastNonSettingsPathRef: React.RefObject<string>;
 }) {
+  const navigate = useNavigate();
+  const router = useRouter();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const handleSettingsClick = useCallback(() => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+    void navigate({ to: "/settings" });
+  }, [isMobile, navigate, setOpenMobile]);
+  const handleBackClick = useCallback(() => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+    const target = lastNonSettingsPathRef.current || "/";
+    router.history.push(target);
+  }, [isMobile, lastNonSettingsPathRef, router, setOpenMobile]);
+
+  const actionButton = isOnSettings ? (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            aria-label="Back"
+            onClick={handleBackClick}
+            className="ml-auto inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-muted-foreground/70 outline-hidden ring-ring transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2"
+          >
+            <ArrowLeftIcon className="size-3.5" />
+            <span className="hidden text-xs @[12rem]/sidebar-header:inline">Back</span>
+          </button>
+        }
+      />
+      <TooltipPopup side="bottom" sideOffset={2}>
+        Back
+      </TooltipPopup>
+    </Tooltip>
+  ) : (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            aria-label="Settings"
+            onClick={handleSettingsClick}
+            className="ml-auto inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-muted-foreground/70 outline-hidden ring-ring transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2"
+          >
+            <SettingsIcon className="size-3.5" />
+            <span className="hidden text-xs @[12rem]/sidebar-header:inline">Settings</span>
+          </button>
+        }
+      />
+      <TooltipPopup side="bottom" sideOffset={2}>
+        Settings
+      </TooltipPopup>
+    </Tooltip>
+  );
+
   const wordmark = (
-    <div className="flex items-center gap-2">
+    <div className="@container/sidebar-header flex w-full min-w-0 items-center gap-2">
       <SidebarTrigger className="shrink-0 md:hidden" />
       <Tooltip>
         <TooltipTrigger
           render={
             <Link
               aria-label="Go to threads"
-              className="ml-1 flex min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-md outline-hidden ring-ring transition-colors hover:text-foreground focus-visible:ring-2"
+              className="ml-1 flex min-w-0 cursor-pointer items-center gap-1 rounded-md outline-hidden ring-ring transition-colors hover:text-foreground focus-visible:ring-2"
               to="/"
             >
               <S3Wordmark />
@@ -2427,6 +2489,7 @@ const SidebarChromeHeader = memo(function SidebarChromeHeader({
           Version {APP_VERSION}
         </TooltipPopup>
       </Tooltip>
+      {actionButton}
     </div>
   );
 
@@ -2440,6 +2503,7 @@ const SidebarChromeHeader = memo(function SidebarChromeHeader({
 });
 
 const SidebarChromeFooter = memo(function SidebarChromeFooter() {
+<<<<<<< HEAD
   const { isMobile, setOpenMobile } = useSidebar();
   const openSettings = useSettingsDialogStore((s) => s.openSettings);
   const handleSettingsClick = useCallback(() => {
@@ -2449,21 +2513,11 @@ const SidebarChromeFooter = memo(function SidebarChromeFooter() {
     openSettings();
   }, [isMobile, openSettings, setOpenMobile]);
 
+=======
+>>>>>>> origin/main
   return (
     <SidebarFooter className="p-2">
       <SidebarUpdatePill />
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <SidebarMenuButton
-            size="sm"
-            className="gap-2 px-2 py-1.5 text-muted-foreground/70 hover:bg-accent hover:text-foreground"
-            onClick={handleSettingsClick}
-          >
-            <SettingsIcon className="size-3.5" />
-            <span className="text-xs">Settings</span>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      </SidebarMenu>
     </SidebarFooter>
   );
 });
@@ -2735,6 +2789,18 @@ export default function Sidebar() {
   const projectOrder = useUiStateStore((store) => store.projectOrder);
   const reorderProjects = useUiStateStore((store) => store.reorderProjects);
   const navigate = useNavigate();
+<<<<<<< HEAD
+=======
+  const location = useLocation();
+  const pathname = location.pathname;
+  const isOnSettings = pathname.startsWith("/settings");
+  const lastNonSettingsPathRef = useRef<string>("/");
+  useEffect(() => {
+    if (!isOnSettings) {
+      lastNonSettingsPathRef.current = location.href;
+    }
+  }, [isOnSettings, location.href]);
+>>>>>>> origin/main
   const sidebarThreadSortOrder = useSettings((s) => s.sidebarThreadSortOrder);
   const sidebarProjectSortOrder = useSettings((s) => s.sidebarProjectSortOrder);
   const sidebarProjectGroupingMode = useSettings((s) => s.sidebarProjectGroupingMode);
@@ -3356,7 +3422,11 @@ export default function Sidebar() {
 
   return (
     <>
-      <SidebarChromeHeader isElectron={isElectron} />
+      <SidebarChromeHeader
+        isElectron={isElectron}
+        isOnSettings={isOnSettings}
+        lastNonSettingsPathRef={lastNonSettingsPathRef}
+      />
 
       <SidebarProjectsContent
         showArm64IntelBuildWarning={showArm64IntelBuildWarning}
