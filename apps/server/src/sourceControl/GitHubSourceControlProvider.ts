@@ -42,9 +42,7 @@ function toChangeRequest(summary: GitHubCli.GitHubPullRequestSummary): ChangeReq
       : {}),
     ...(summary.isDraft !== undefined ? { isDraft: summary.isDraft } : {}),
     ...(summary.author ? { author: summary.author } : {}),
-    ...(summary.assignees && summary.assignees.length > 0
-      ? { assignees: summary.assignees }
-      : {}),
+    ...(summary.assignees && summary.assignees.length > 0 ? { assignees: summary.assignees } : {}),
     ...(summary.labels && summary.labels.length > 0 ? { labels: summary.labels } : {}),
     ...(typeof summary.commentsCount === "number" ? { commentsCount: summary.commentsCount } : {}),
     ...(summary.headRepositoryNameWithOwner !== undefined
@@ -85,6 +83,7 @@ function toIssueDetail(
       author: c.author,
       body: c.body,
       createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
+      ...(c.authorAssociation ? { authorAssociation: c.authorAssociation } : {}),
     })),
     truncated: content.truncated,
   };
@@ -104,11 +103,10 @@ function toChangeRequestDetail(
       author: c.author,
       body: c.body,
       createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
+      ...(c.authorAssociation ? { authorAssociation: c.authorAssociation } : {}),
     })),
     truncated: content.truncated,
-    ...(raw.linkedIssueNumbers.length > 0
-      ? { linkedIssueNumbers: raw.linkedIssueNumbers }
-      : {}),
+    ...(raw.linkedIssueNumbers.length > 0 ? { linkedIssueNumbers: raw.linkedIssueNumbers } : {}),
   };
 }
 

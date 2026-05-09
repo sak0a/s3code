@@ -1,6 +1,7 @@
 "use client";
 
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
+import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";
 import { ChevronRightIcon } from "lucide-react";
 import type * as React from "react";
 
@@ -12,11 +13,23 @@ const Menu = MenuPrimitive.Root;
 
 const MenuPortal = MenuPrimitive.Portal;
 
+const ContextMenu = ContextMenuPrimitive.Root;
+
+const ContextMenuPortal = ContextMenuPrimitive.Portal;
+
 function MenuTrigger({ className, children, ...props }: MenuPrimitive.Trigger.Props) {
   return (
     <MenuPrimitive.Trigger className={className} data-slot="menu-trigger" {...props}>
       {children}
     </MenuPrimitive.Trigger>
+  );
+}
+
+function ContextMenuTrigger({ className, children, ...props }: ContextMenuPrimitive.Trigger.Props) {
+  return (
+    <ContextMenuPrimitive.Trigger className={className} data-slot="context-menu-trigger" {...props}>
+      {children}
+    </ContextMenuPrimitive.Trigger>
   );
 }
 
@@ -59,6 +72,48 @@ function MenuPopup({
         </MenuPrimitive.Popup>
       </MenuPrimitive.Positioner>
     </MenuPrimitive.Portal>
+  );
+}
+
+function ContextMenuPopup({
+  children,
+  className,
+  sideOffset = 4,
+  align = "center",
+  alignOffset,
+  side = "bottom",
+  anchor,
+  ...props
+}: ContextMenuPrimitive.Popup.Props & {
+  align?: ContextMenuPrimitive.Positioner.Props["align"];
+  sideOffset?: ContextMenuPrimitive.Positioner.Props["sideOffset"];
+  alignOffset?: ContextMenuPrimitive.Positioner.Props["alignOffset"];
+  side?: ContextMenuPrimitive.Positioner.Props["side"];
+  anchor?: ContextMenuPrimitive.Positioner.Props["anchor"];
+}) {
+  return (
+    <ContextMenuPrimitive.Portal>
+      <ContextMenuPrimitive.Positioner
+        align={align}
+        alignOffset={alignOffset}
+        anchor={anchor}
+        className="z-50"
+        data-slot="context-menu-positioner"
+        side={side}
+        sideOffset={sideOffset}
+      >
+        <ContextMenuPrimitive.Popup
+          className={cn(
+            "relative flex not-[class*='w-']:min-w-32 origin-(--transform-origin) rounded-lg border bg-popover not-dark:bg-clip-padding shadow-lg/5 outline-none before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] focus:outline-none dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
+            className,
+          )}
+          data-slot="context-menu-popup"
+          {...props}
+        >
+          <div className="max-h-(--available-height) w-full overflow-y-auto p-1">{children}</div>
+        </ContextMenuPrimitive.Popup>
+      </ContextMenuPrimitive.Positioner>
+    </ContextMenuPrimitive.Portal>
   );
 }
 
@@ -281,10 +336,18 @@ export {
   Menu as DropdownMenu,
   MenuPortal,
   MenuPortal as DropdownMenuPortal,
+  ContextMenu,
+  ContextMenu as DropdownContextMenu,
+  ContextMenuPortal,
+  ContextMenuPortal as DropdownContextMenuPortal,
   MenuTrigger,
   MenuTrigger as DropdownMenuTrigger,
+  ContextMenuTrigger,
+  ContextMenuTrigger as DropdownContextMenuTrigger,
   MenuPopup,
   MenuPopup as DropdownMenuContent,
+  ContextMenuPopup,
+  ContextMenuPopup as DropdownContextMenuContent,
   MenuGroup,
   MenuGroup as DropdownMenuGroup,
   MenuItem,

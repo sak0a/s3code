@@ -38,6 +38,77 @@ export interface ThreadStatusPill {
   pulse: boolean;
 }
 
+export type SidebarStatusBucket = "idle" | "in_progress" | "review" | "done";
+
+export interface DeriveStatusBucketInput {
+  manualBucket: SidebarStatusBucket | null;
+  statusPill: ThreadStatusPill | null;
+}
+
+export function deriveStatusBucket(input: DeriveStatusBucketInput): SidebarStatusBucket {
+  if (input.manualBucket !== null) {
+    return input.manualBucket;
+  }
+
+  switch (input.statusPill?.label) {
+    case "Working":
+    case "Connecting":
+      return "in_progress";
+    case "Plan Ready":
+    case "Pending Approval":
+    case "Awaiting Input":
+      return "review";
+    case "Completed":
+      return "done";
+    default:
+      return "idle";
+  }
+}
+
+export function aggregateWorktreeStatus(
+  buckets: ReadonlyArray<SidebarStatusBucket>,
+): SidebarStatusBucket {
+  if (buckets.includes("in_progress")) {
+    return "in_progress";
+  }
+  if (buckets.includes("review")) {
+    return "review";
+  }
+  if (buckets.length > 0 && buckets.every((bucket) => bucket === "done")) {
+    return "done";
+  }
+  return "idle";
+}
+
+const ARCHIVE_SUGGESTION_MIN_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+export interface ShouldSuggestArchiveInput {
+  buckets: ReadonlyArray<SidebarStatusBucket>;
+  latestUpdatedAt: string | undefined;
+  nowMs: number;
+}
+
+export function shouldSuggestArchive(input: ShouldSuggestArchiveInput): boolean {
+  if (input.buckets.length === 0) {
+    return false;
+  }
+  if (!input.buckets.every((bucket) => bucket === "done")) {
+    return false;
+  }
+  if (!input.latestUpdatedAt) {
+    return false;
+  }
+
+  const updatedMs = Date.parse(input.latestUpdatedAt);
+  return !Number.isNaN(updatedMs) && input.nowMs - updatedMs >= ARCHIVE_SUGGESTION_MIN_AGE_MS;
+}
+
+export function canArchiveSidebarThread(
+  thread: Pick<SidebarThreadSummary, "latestUserMessageAt">,
+): boolean {
+  return thread.latestUserMessageAt !== null;
+}
+
 const THREAD_STATUS_PRIORITY: Record<ThreadStatusPill["label"], number> = {
   "Pending Approval": 5,
   "Awaiting Input": 4,

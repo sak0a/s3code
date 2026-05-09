@@ -8,12 +8,15 @@ import { Effect } from "effect";
 import { OrchestrationCommandInvariantError } from "./Errors.ts";
 import {
   listThreadsByProjectId,
+  listThreadsByWorktree,
   requireProject,
   requireProjectAbsent,
   requireThread,
+  requireThreadHasUserMessage,
   requireThreadArchived,
   requireThreadAbsent,
   requireThreadNotArchived,
+  requireWorktree,
 } from "./commandInvariants.ts";
 import { projectEvent } from "./projector.ts";
 
@@ -257,6 +260,11 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
 
     case "thread.archive": {
       yield* requireThreadNotArchived({
+        readModel,
+        command,
+        threadId: command.threadId,
+      });
+      yield* requireThreadHasUserMessage({
         readModel,
         command,
         threadId: command.threadId,
@@ -562,6 +570,210 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
         payload: {
           threadId: command.threadId,
           createdAt: command.createdAt,
+        },
+      };
+    }
+
+    case "worktree.create": {
+      yield* requireProject({
+        readModel,
+        command,
+        projectId: command.projectId,
+      });
+      return {
+        ...withEventBase({
+          aggregateKind: "worktree",
+          aggregateId: command.worktreeId,
+          occurredAt: command.createdAt,
+          commandId: command.commandId,
+        }),
+        type: "worktree.created",
+        payload: {
+          worktreeId: command.worktreeId,
+          projectId: command.projectId,
+          branch: command.branch,
+          worktreePath: command.worktreePath,
+          origin: command.origin,
+          prNumber: command.prNumber,
+          issueNumber: command.issueNumber,
+          prTitle: command.prTitle,
+          issueTitle: command.issueTitle,
+          createdAt: command.createdAt,
+          updatedAt: command.createdAt,
+        },
+      };
+    }
+
+    case "worktree.archive": {
+      return {
+        ...withEventBase({
+          aggregateKind: "worktree",
+          aggregateId: command.worktreeId,
+          occurredAt: command.archivedAt,
+          commandId: command.commandId,
+        }),
+        type: "worktree.archived",
+        payload: {
+          worktreeId: command.worktreeId,
+          archivedAt: command.archivedAt,
+          deletedBranch: command.deletedBranch,
+        },
+      };
+    }
+
+    case "worktree.meta.update": {
+      return {
+        ...withEventBase({
+          aggregateKind: "worktree",
+          aggregateId: command.worktreeId,
+          occurredAt: command.changedAt,
+          commandId: command.commandId,
+        }),
+        type: "worktree.metaUpdated",
+        payload: {
+          worktreeId: command.worktreeId,
+          ...(command.title !== undefined ? { title: command.title } : {}),
+          changedAt: command.changedAt,
+        },
+      };
+    }
+
+    case "worktree.restore": {
+      return {
+        ...withEventBase({
+          aggregateKind: "worktree",
+          aggregateId: command.worktreeId,
+          occurredAt: command.restoredAt,
+          commandId: command.commandId,
+        }),
+        type: "worktree.restored",
+        payload: {
+          worktreeId: command.worktreeId,
+          ...(command.worktreePath !== undefined ? { worktreePath: command.worktreePath } : {}),
+          restoredAt: command.restoredAt,
+        },
+      };
+    }
+
+    case "worktree.delete": {
+      const worktree = yield* requireWorktree({
+        readModel,
+        command,
+        worktreeId: command.worktreeId,
+      });
+      const activeThreads = listThreadsByWorktree(readModel, worktree).filter(
+        (thread) => thread.deletedAt === null,
+      );
+      if (activeThreads.length > 0) {
+        return yield* decideCommandSequence({
+          readModel,
+          commands: [
+            ...activeThreads.map(
+              (thread): Extract<OrchestrationCommand, { type: "thread.delete" }> => ({
+                type: "thread.delete",
+                commandId: command.commandId,
+                threadId: thread.id,
+              }),
+            ),
+            command,
+          ],
+        });
+      }
+      return {
+        ...withEventBase({
+          aggregateKind: "worktree",
+          aggregateId: command.worktreeId,
+          occurredAt: command.deletedAt,
+          commandId: command.commandId,
+        }),
+        type: "worktree.deleted",
+        payload: {
+          worktreeId: command.worktreeId,
+          deletedAt: command.deletedAt,
+          deletedBranch: command.deletedBranch,
+        },
+      };
+    }
+
+    case "thread.attach-to-worktree": {
+      yield* requireThread({
+        readModel,
+        command,
+        threadId: command.threadId,
+      });
+      return {
+        ...withEventBase({
+          aggregateKind: "thread",
+          aggregateId: command.threadId,
+          occurredAt: command.attachedAt,
+          commandId: command.commandId,
+        }),
+        type: "thread.attachedToWorktree",
+        payload: {
+          threadId: command.threadId,
+          worktreeId: command.worktreeId,
+          attachedAt: command.attachedAt,
+        },
+      };
+    }
+
+    case "thread.status-bucket.override": {
+      yield* requireThread({
+        readModel,
+        command,
+        threadId: command.threadId,
+      });
+      return {
+        ...withEventBase({
+          aggregateKind: "thread",
+          aggregateId: command.threadId,
+          occurredAt: command.changedAt,
+          commandId: command.commandId,
+        }),
+        type: "thread.statusBucketOverridden",
+        payload: {
+          threadId: command.threadId,
+          bucket: command.bucket,
+          changedAt: command.changedAt,
+        },
+      };
+    }
+
+    case "thread.manual-position.set": {
+      yield* requireThread({
+        readModel,
+        command,
+        threadId: command.threadId,
+      });
+      return {
+        ...withEventBase({
+          aggregateKind: "thread",
+          aggregateId: command.threadId,
+          occurredAt: command.changedAt,
+          commandId: command.commandId,
+        }),
+        type: "thread.manualPositionSet",
+        payload: {
+          threadId: command.threadId,
+          position: command.position,
+          changedAt: command.changedAt,
+        },
+      };
+    }
+
+    case "worktree.manual-position.set": {
+      return {
+        ...withEventBase({
+          aggregateKind: "worktree",
+          aggregateId: command.worktreeId,
+          occurredAt: command.changedAt,
+          commandId: command.commandId,
+        }),
+        type: "worktree.manualPositionSet",
+        payload: {
+          worktreeId: command.worktreeId,
+          position: command.position,
+          changedAt: command.changedAt,
         },
       };
     }

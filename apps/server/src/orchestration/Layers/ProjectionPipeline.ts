@@ -28,6 +28,7 @@ import {
   ProjectionTurnRepository,
 } from "../../persistence/Services/ProjectionTurns.ts";
 import { ProjectionThreadRepository } from "../../persistence/Services/ProjectionThreads.ts";
+import { ProjectionWorktreeRepository } from "../../persistence/Services/ProjectionWorktrees.ts";
 import { ProjectionPendingApprovalRepositoryLive } from "../../persistence/Layers/ProjectionPendingApprovals.ts";
 import { ProjectionProjectRepositoryLive } from "../../persistence/Layers/ProjectionProjects.ts";
 import { ProjectionStateRepositoryLive } from "../../persistence/Layers/ProjectionState.ts";
@@ -37,6 +38,7 @@ import { ProjectionThreadProposedPlanRepositoryLive } from "../../persistence/La
 import { ProjectionThreadSessionRepositoryLive } from "../../persistence/Layers/ProjectionThreadSessions.ts";
 import { ProjectionTurnRepositoryLive } from "../../persistence/Layers/ProjectionTurns.ts";
 import { ProjectionThreadRepositoryLive } from "../../persistence/Layers/ProjectionThreads.ts";
+import { ProjectionWorktreeRepositoryLive } from "../../persistence/Layers/ProjectionWorktrees.ts";
 import { ServerConfig } from "../../config.ts";
 import {
   OrchestrationProjectionPipeline,
@@ -59,6 +61,7 @@ export const ORCHESTRATION_PROJECTOR_NAMES = {
   threadTurns: "projection.thread-turns",
   checkpoints: "projection.checkpoints",
   pendingApprovals: "projection.pending-approvals",
+  worktrees: "projection.worktrees",
 } as const;
 
 type ProjectorName =
@@ -451,6 +454,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
     const projectionThreadSessionRepository = yield* ProjectionThreadSessionRepository;
     const projectionTurnRepository = yield* ProjectionTurnRepository;
     const projectionPendingApprovalRepository = yield* ProjectionPendingApprovalRepository;
+    const projectionWorktreeRepository = yield* ProjectionWorktreeRepository;
 
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
@@ -571,6 +575,9 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
             interactionMode: event.payload.interactionMode,
             branch: event.payload.branch,
             worktreePath: event.payload.worktreePath,
+            worktreeId: null,
+            manualStatusBucket: null,
+            manualPosition: 0,
             latestTurnId: null,
             createdAt: event.payload.createdAt,
             updatedAt: event.payload.updatedAt,
@@ -769,6 +776,103 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
           yield* refreshThreadShellSummary(event.payload.threadId);
           return;
         }
+
+        default:
+          return;
+      }
+    });
+
+    const applyWorktreesProjection: ProjectorDefinition["apply"] = Effect.fn(
+      "applyWorktreesProjection",
+    )(function* (event, _attachmentSideEffects) {
+      switch (event.type) {
+        case "worktree.created":
+          yield* projectionWorktreeRepository.upsert({
+            worktreeId: event.payload.worktreeId,
+            projectId: event.payload.projectId,
+            title: null,
+            branch: event.payload.branch,
+            worktreePath: event.payload.worktreePath,
+            origin: event.payload.origin,
+            prNumber: event.payload.prNumber,
+            issueNumber: event.payload.issueNumber,
+            prTitle: event.payload.prTitle,
+            issueTitle: event.payload.issueTitle,
+            createdAt: event.payload.createdAt,
+            updatedAt: event.payload.updatedAt,
+            archivedAt: null,
+            manualPosition: 0,
+          });
+          return;
+
+        case "worktree.archived":
+          yield* projectionWorktreeRepository.markArchived({
+            worktreeId: event.payload.worktreeId,
+            archivedAt: event.payload.archivedAt,
+          });
+          return;
+
+        case "worktree.metaUpdated":
+          yield* projectionWorktreeRepository.updateMeta({
+            worktreeId: event.payload.worktreeId,
+            title: event.payload.title ?? null,
+            updatedAt: event.payload.changedAt,
+          });
+          return;
+
+        case "worktree.restored":
+          yield* projectionWorktreeRepository.markRestored({
+            worktreeId: event.payload.worktreeId,
+            restoredAt: event.payload.restoredAt,
+          });
+          if (event.payload.worktreePath !== undefined) {
+            const existing = yield* projectionWorktreeRepository.getById({
+              worktreeId: event.payload.worktreeId,
+            });
+            if (Option.isSome(existing)) {
+              yield* projectionWorktreeRepository.upsert({
+                ...existing.value,
+                worktreePath: event.payload.worktreePath,
+                archivedAt: null,
+                updatedAt: event.payload.restoredAt,
+              });
+            }
+          }
+          return;
+
+        case "worktree.deleted":
+          yield* projectionWorktreeRepository.deleteById({
+            worktreeId: event.payload.worktreeId,
+          });
+          return;
+
+        case "thread.attachedToWorktree":
+          yield* projectionThreadRepository.attachToWorktree({
+            threadId: event.payload.threadId,
+            worktreeId: event.payload.worktreeId,
+          });
+          return;
+
+        case "thread.statusBucketOverridden":
+          yield* projectionThreadRepository.setManualBucket({
+            threadId: event.payload.threadId,
+            bucket: event.payload.bucket,
+          });
+          return;
+
+        case "thread.manualPositionSet":
+          yield* projectionThreadRepository.setManualPosition({
+            threadId: event.payload.threadId,
+            position: event.payload.position,
+          });
+          return;
+
+        case "worktree.manualPositionSet":
+          yield* projectionWorktreeRepository.setManualPosition({
+            worktreeId: event.payload.worktreeId,
+            position: event.payload.position,
+          });
+          return;
 
         default:
           return;
@@ -1394,6 +1498,10 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
         name: ORCHESTRATION_PROJECTOR_NAMES.threads,
         apply: applyThreadsProjection,
       },
+      {
+        name: ORCHESTRATION_PROJECTOR_NAMES.worktrees,
+        apply: applyWorktreesProjection,
+      },
     ];
 
     const runProjectorForEvent = Effect.fn("runProjectorForEvent")(function* (
@@ -1496,5 +1604,6 @@ export const OrchestrationProjectionPipelineLive = Layer.effect(
   Layer.provideMerge(ProjectionThreadSessionRepositoryLive),
   Layer.provideMerge(ProjectionTurnRepositoryLive),
   Layer.provideMerge(ProjectionPendingApprovalRepositoryLive),
+  Layer.provideMerge(ProjectionWorktreeRepositoryLive),
   Layer.provideMerge(ProjectionStateRepositoryLive),
 );

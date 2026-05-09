@@ -46,6 +46,7 @@ export interface GitHubPullRequestDetail extends GitHubPullRequestSummary {
     readonly author: string;
     readonly body: string;
     readonly createdAt: string;
+    readonly authorAssociation?: string;
   }>;
   readonly linkedIssueNumbers: ReadonlyArray<number>;
 }

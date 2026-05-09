@@ -3,10 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { SearchIcon, RotateCwIcon } from "lucide-react";
 import { useMemo, type RefObject } from "react";
-import {
-  issueListQueryOptions,
-  searchIssuesQueryOptions,
-} from "~/lib/sourceControlContextRpc";
+import { issueListQueryOptions, searchIssuesQueryOptions } from "~/lib/sourceControlContextRpc";
 import { searchSourceControlSummaries } from "../chat/composerSourceControlContextSearch";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -56,8 +53,7 @@ export function IssuesTab(props: IssuesTabProps) {
   const items: ReadonlyArray<SourceControlIssueSummary> = needsServerSearch
     ? (serverSearchQuery.data ?? [])
     : filteredItems;
-  const isLoading =
-    listQuery.isLoading || (needsServerSearch && serverSearchQuery.isLoading);
+  const isLoading = listQuery.isLoading || (needsServerSearch && serverSearchQuery.isLoading);
   const error = listQuery.error ?? (needsServerSearch ? serverSearchQuery.error : null);
 
   return (
@@ -96,9 +92,7 @@ export function IssuesTab(props: IssuesTabProps) {
             items={items}
             isLoading={isLoading}
             emptyText={
-              props.query.trim().length > 0
-                ? "No issues match this search."
-                : "No issues to show."
+              props.query.trim().length > 0 ? "No issues match this search." : "No issues to show."
             }
             onSelect={props.onSelect}
           />

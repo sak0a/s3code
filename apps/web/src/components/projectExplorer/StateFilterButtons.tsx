@@ -48,18 +48,26 @@ export const StateFilterButtons = memo(function StateFilterButtons(props: {
   value: IssueStateFilter;
   onChange: (value: IssueStateFilter) => void;
 }) {
-  return <FilterPills<IssueStateFilter> value={props.value} options={issueOptions} onChange={props.onChange} />;
-});
-
-export const ChangeRequestStateFilterButtons = memo(function ChangeRequestStateFilterButtons(props: {
-  value: ChangeRequestStateFilter;
-  onChange: (value: ChangeRequestStateFilter) => void;
-}) {
   return (
-    <FilterPills<ChangeRequestStateFilter>
+    <FilterPills<IssueStateFilter>
       value={props.value}
-      options={changeRequestOptions}
+      options={issueOptions}
       onChange={props.onChange}
     />
   );
 });
+
+export const ChangeRequestStateFilterButtons = memo(
+  function ChangeRequestStateFilterButtons(props: {
+    value: ChangeRequestStateFilter;
+    onChange: (value: ChangeRequestStateFilter) => void;
+  }) {
+    return (
+      <FilterPills<ChangeRequestStateFilter>
+        value={props.value}
+        options={changeRequestOptions}
+        onChange={props.onChange}
+      />
+    );
+  },
+);

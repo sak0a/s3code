@@ -38,4 +38,24 @@ describe("truncateSourceControlDetailContent", () => {
       `c${comments.length - SOURCE_CONTROL_DETAIL_MAX_COMMENTS}`,
     );
   });
+
+  it("preserves extra fields on each comment", () => {
+    const comments = [
+      {
+        author: "a",
+        body: "first",
+        createdAt: "2026-03-14T10:00:00Z",
+        authorAssociation: "OWNER",
+      },
+      {
+        author: "b",
+        body: "second",
+        createdAt: "2026-03-14T11:00:00Z",
+        authorAssociation: "MEMBER",
+      },
+    ];
+    const result = truncateSourceControlDetailContent({ body: "body", comments });
+    expect(result.comments[0]?.authorAssociation).toBe("OWNER");
+    expect(result.comments[1]?.authorAssociation).toBe("MEMBER");
+  });
 });

@@ -1,9 +1,16 @@
-import type { OrchestrationEvent, OrchestrationReadModel, ThreadId } from "@t3tools/contracts";
+import type {
+  OrchestrationEvent,
+  OrchestrationReadModel,
+  OrchestrationWorktreeShell,
+  ThreadId,
+  WorktreeId,
+} from "@t3tools/contracts";
 import {
   OrchestrationCheckpointSummary,
   OrchestrationMessage,
   OrchestrationSession,
   OrchestrationThread,
+  OrchestrationWorktreeShell as OrchestrationWorktreeShellSchema,
 } from "@t3tools/contracts";
 import { Effect, Schema } from "effect";
 
@@ -25,9 +32,18 @@ import {
   ThreadRevertedPayload,
   ThreadSessionSetPayload,
   ThreadTurnDiffCompletedPayload,
+  ThreadAttachedToWorktreePayload,
+  ThreadStatusBucketOverriddenPayload,
+  WorktreeArchivedPayload,
+  WorktreeCreatedPayload,
+  WorktreeDeletedPayload,
+  WorktreeManualPositionSetPayload,
+  WorktreeMetaUpdatedPayload,
+  WorktreeRestoredPayload,
 } from "./Schemas.ts";
 
 type ThreadPatch = Partial<Omit<OrchestrationThread, "id" | "projectId">>;
+type WorktreePatch = Partial<Omit<OrchestrationWorktreeShell, "worktreeId" | "projectId">>;
 const MAX_THREAD_MESSAGES = 2_000;
 const MAX_THREAD_CHECKPOINTS = 500;
 
@@ -43,6 +59,16 @@ function updateThread(
   patch: ThreadPatch,
 ): OrchestrationThread[] {
   return threads.map((thread) => (thread.id === threadId ? { ...thread, ...patch } : thread));
+}
+
+function updateWorktree(
+  worktrees: ReadonlyArray<OrchestrationWorktreeShell> | undefined,
+  worktreeId: WorktreeId,
+  patch: WorktreePatch,
+): OrchestrationWorktreeShell[] {
+  return (worktrees ?? []).map((worktree) =>
+    worktree.worktreeId === worktreeId ? Object.assign({}, worktree, patch) : worktree,
+  );
 }
 
 function decodeForEvent<A>(
@@ -159,6 +185,7 @@ export function createEmptyReadModel(nowIso: string): OrchestrationReadModel {
   return {
     snapshotSequence: 0,
     projects: [],
+    worktrees: [],
     threads: [],
     updatedAt: nowIso,
   };
@@ -259,6 +286,9 @@ export function projectEvent(
             interactionMode: payload.interactionMode,
             branch: payload.branch,
             worktreePath: payload.worktreePath,
+            worktreeId: null,
+            manualStatusBucket: null,
+            manualPosition: 0,
             latestTurn: null,
             createdAt: payload.createdAt,
             updatedAt: payload.updatedAt,
@@ -280,6 +310,92 @@ export function projectEvent(
             : [...nextBase.threads, thread],
         };
       });
+
+    case "worktree.created":
+      return Effect.gen(function* () {
+        const payload = yield* decodeForEvent(
+          WorktreeCreatedPayload,
+          event.payload,
+          event.type,
+          "payload",
+        );
+        const worktree = yield* decodeForEvent(
+          OrchestrationWorktreeShellSchema,
+          {
+            worktreeId: payload.worktreeId,
+            projectId: payload.projectId,
+            title: null,
+            branch: payload.branch,
+            worktreePath: payload.worktreePath,
+            origin: payload.origin,
+            prNumber: payload.prNumber,
+            issueNumber: payload.issueNumber,
+            prTitle: payload.prTitle,
+            issueTitle: payload.issueTitle,
+            createdAt: payload.createdAt,
+            updatedAt: payload.updatedAt,
+            archivedAt: null,
+            manualPosition: 0,
+          },
+          event.type,
+          "worktree",
+        );
+        const existing = nextBase.worktrees?.find(
+          (entry) => entry.worktreeId === worktree.worktreeId,
+        );
+        return {
+          ...nextBase,
+          worktrees: existing
+            ? (nextBase.worktrees ?? []).map((entry) =>
+                entry.worktreeId === worktree.worktreeId ? worktree : entry,
+              )
+            : [...(nextBase.worktrees ?? []), worktree],
+        };
+      });
+
+    case "worktree.archived":
+      return decodeForEvent(WorktreeArchivedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          worktrees: updateWorktree(nextBase.worktrees, payload.worktreeId, {
+            archivedAt: payload.archivedAt,
+            updatedAt: payload.archivedAt,
+          }),
+        })),
+      );
+
+    case "worktree.metaUpdated":
+      return decodeForEvent(WorktreeMetaUpdatedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          worktrees: updateWorktree(nextBase.worktrees, payload.worktreeId, {
+            ...(payload.title !== undefined ? { title: payload.title } : {}),
+            updatedAt: payload.changedAt,
+          }),
+        })),
+      );
+
+    case "worktree.restored":
+      return decodeForEvent(WorktreeRestoredPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          worktrees: updateWorktree(nextBase.worktrees, payload.worktreeId, {
+            ...(payload.worktreePath !== undefined ? { worktreePath: payload.worktreePath } : {}),
+            archivedAt: null,
+            updatedAt: payload.restoredAt,
+          }),
+        })),
+      );
+
+    case "worktree.deleted":
+      return decodeForEvent(WorktreeDeletedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          worktrees: (nextBase.worktrees ?? []).filter(
+            (worktree) => worktree.worktreeId !== payload.worktreeId,
+          ),
+        })),
+      );
 
     case "thread.deleted":
       return decodeForEvent(ThreadDeletedPayload, event.payload, event.type, "payload").pipe(
@@ -646,6 +762,54 @@ export function projectEvent(
             }),
           };
         }),
+      );
+
+    case "thread.attachedToWorktree":
+      return decodeForEvent(
+        ThreadAttachedToWorktreePayload,
+        event.payload,
+        event.type,
+        "payload",
+      ).pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          threads: updateThread(nextBase.threads, payload.threadId, {
+            worktreeId: payload.worktreeId,
+            updatedAt: payload.attachedAt,
+          }),
+        })),
+      );
+
+    case "thread.statusBucketOverridden":
+      return decodeForEvent(
+        ThreadStatusBucketOverriddenPayload,
+        event.payload,
+        event.type,
+        "payload",
+      ).pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          threads: updateThread(nextBase.threads, payload.threadId, {
+            manualStatusBucket: payload.bucket,
+            updatedAt: payload.changedAt,
+          }),
+        })),
+      );
+
+    case "worktree.manualPositionSet":
+      return decodeForEvent(
+        WorktreeManualPositionSetPayload,
+        event.payload,
+        event.type,
+        "payload",
+      ).pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          worktrees: updateWorktree(nextBase.worktrees, payload.worktreeId, {
+            manualPosition: payload.position,
+            updatedAt: payload.changedAt,
+          }),
+        })),
       );
 
     default:

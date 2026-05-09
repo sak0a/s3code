@@ -17,6 +17,7 @@ import {
   requireNonNegativeInteger,
   requireThread,
   requireThreadAbsent,
+  requireThreadHasUserMessage,
 } from "./commandInvariants.ts";
 
 const now = new Date().toISOString();
@@ -145,6 +146,57 @@ describe("commandInvariants", () => {
         }),
       ),
     ).rejects.toThrow("does not exist");
+  });
+
+  it("requires a user message before archiving a thread", async () => {
+    await expect(
+      Effect.runPromise(
+        requireThreadHasUserMessage({
+          readModel,
+          command: {
+            type: "thread.archive",
+            commandId: CommandId.make("cmd-archive-empty"),
+            threadId: ThreadId.make("thread-1"),
+          },
+          threadId: ThreadId.make("thread-1"),
+        }),
+      ),
+    ).rejects.toThrow("before a message has been sent");
+
+    const thread = await Effect.runPromise(
+      requireThreadHasUserMessage({
+        readModel: {
+          ...readModel,
+          threads: readModel.threads.map((entry) =>
+            entry.id === ThreadId.make("thread-1")
+              ? {
+                  ...entry,
+                  messages: [
+                    {
+                      id: MessageId.make("message-1"),
+                      role: "user",
+                      text: "hello",
+                      attachments: [],
+                      turnId: null,
+                      streaming: false,
+                      createdAt: now,
+                      updatedAt: now,
+                    },
+                  ],
+                }
+              : entry,
+          ),
+        },
+        command: {
+          type: "thread.archive",
+          commandId: CommandId.make("cmd-archive-with-message"),
+          threadId: ThreadId.make("thread-1"),
+        },
+        threadId: ThreadId.make("thread-1"),
+      }),
+    );
+
+    expect(thread.id).toBe(ThreadId.make("thread-1"));
   });
 
   it("requires missing thread for create flows", async () => {

@@ -54,6 +54,7 @@ const GitHubPullRequestSchema = Schema.Struct({
       Schema.Array(
         Schema.Struct({
           author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
+          authorAssociation: Schema.optional(Schema.NullOr(Schema.String)),
           body: Schema.String,
           createdAt: Schema.String,
         }),
@@ -165,8 +166,26 @@ export interface NormalizedGitHubPullRequestDetail extends NormalizedGitHubPullR
     readonly author: string;
     readonly body: string;
     readonly createdAt: string;
+    readonly authorAssociation?: string;
   }>;
   readonly linkedIssueNumbers: ReadonlyArray<number>;
+}
+
+function normalizePullRequestComment(raw: {
+  readonly author?: { readonly login: string } | null;
+  readonly authorAssociation?: string | null;
+  readonly body: string;
+  readonly createdAt: string;
+}): NormalizedGitHubPullRequestDetail["comments"][number] {
+  const base = {
+    author: raw.author?.login ?? "unknown",
+    body: raw.body,
+    createdAt: raw.createdAt,
+  };
+  if (raw.authorAssociation) {
+    return { ...base, authorAssociation: raw.authorAssociation };
+  }
+  return base;
 }
 
 const LINKED_ISSUE_PATTERN = /\b(?:close[sd]?|fixe?[sd]?|resolve[sd]?)\s+#(\d+)/giu;
@@ -197,11 +216,7 @@ export function decodeGitHubPullRequestDetailJson(
   const detail: NormalizedGitHubPullRequestDetail = {
     ...summary,
     body,
-    comments: rawComments.map((c) => ({
-      author: c.author?.login ?? "unknown",
-      body: c.body,
-      createdAt: c.createdAt,
-    })),
+    comments: rawComments.map((c) => normalizePullRequestComment(c)),
     linkedIssueNumbers: parseLinkedIssueNumbers(body),
   };
   return Result.succeed(detail);

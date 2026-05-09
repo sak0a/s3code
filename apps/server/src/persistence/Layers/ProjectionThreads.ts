@@ -9,6 +9,9 @@ import {
   ListProjectionThreadsByProjectInput,
   ProjectionThread,
   ProjectionThreadRepository,
+  AttachProjectionThreadToWorktreeInput,
+  SetProjectionThreadManualBucketInput,
+  SetProjectionThreadManualPositionInput,
   type ProjectionThreadRepositoryShape,
 } from "../Services/ProjectionThreads.ts";
 import { ModelSelection } from "@t3tools/contracts";
@@ -36,6 +39,9 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           interaction_mode,
           branch,
           worktree_path,
+          worktree_id,
+          manual_status_bucket,
+          manual_position,
           latest_turn_id,
           created_at,
           updated_at,
@@ -55,6 +61,9 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           ${row.interactionMode},
           ${row.branch},
           ${row.worktreePath},
+          ${row.worktreeId ?? null},
+          ${row.manualStatusBucket ?? null},
+          ${row.manualPosition ?? 0},
           ${row.latestTurnId},
           ${row.createdAt},
           ${row.updatedAt},
@@ -74,6 +83,9 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           interaction_mode = excluded.interaction_mode,
           branch = excluded.branch,
           worktree_path = excluded.worktree_path,
+          worktree_id = excluded.worktree_id,
+          manual_status_bucket = excluded.manual_status_bucket,
+          manual_position = excluded.manual_position,
           latest_turn_id = excluded.latest_turn_id,
           created_at = excluded.created_at,
           updated_at = excluded.updated_at,
@@ -100,6 +112,9 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           interaction_mode AS "interactionMode",
           branch,
           worktree_path AS "worktreePath",
+          worktree_id AS "worktreeId",
+          manual_status_bucket AS "manualStatusBucket",
+          manual_position AS "manualPosition",
           latest_turn_id AS "latestTurnId",
           created_at AS "createdAt",
           updated_at AS "updatedAt",
@@ -128,6 +143,9 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           interaction_mode AS "interactionMode",
           branch,
           worktree_path AS "worktreePath",
+          worktree_id AS "worktreeId",
+          manual_status_bucket AS "manualStatusBucket",
+          manual_position AS "manualPosition",
           latest_turn_id AS "latestTurnId",
           created_at AS "createdAt",
           updated_at AS "updatedAt",
@@ -152,6 +170,36 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
       `,
   });
 
+  const attachProjectionThreadToWorktree = SqlSchema.void({
+    Request: AttachProjectionThreadToWorktreeInput,
+    execute: ({ threadId, worktreeId }) =>
+      sql`
+        UPDATE projection_threads
+        SET worktree_id = ${worktreeId}
+        WHERE thread_id = ${threadId}
+      `,
+  });
+
+  const setProjectionThreadManualBucket = SqlSchema.void({
+    Request: SetProjectionThreadManualBucketInput,
+    execute: ({ threadId, bucket }) =>
+      sql`
+        UPDATE projection_threads
+        SET manual_status_bucket = ${bucket}
+        WHERE thread_id = ${threadId}
+      `,
+  });
+
+  const setProjectionThreadManualPosition = SqlSchema.void({
+    Request: SetProjectionThreadManualPositionInput,
+    execute: ({ threadId, position }) =>
+      sql`
+        UPDATE projection_threads
+        SET manual_position = ${position}
+        WHERE thread_id = ${threadId}
+      `,
+  });
+
   const upsert: ProjectionThreadRepositoryShape["upsert"] = (row) =>
     upsertProjectionThreadRow(row).pipe(
       Effect.mapError(toPersistenceSqlError("ProjectionThreadRepository.upsert:query")),
@@ -172,11 +220,29 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
       Effect.mapError(toPersistenceSqlError("ProjectionThreadRepository.deleteById:query")),
     );
 
+  const attachToWorktree: ProjectionThreadRepositoryShape["attachToWorktree"] = (input) =>
+    attachProjectionThreadToWorktree(input).pipe(
+      Effect.mapError(toPersistenceSqlError("ProjectionThreadRepository.attachToWorktree:query")),
+    );
+
+  const setManualBucket: ProjectionThreadRepositoryShape["setManualBucket"] = (input) =>
+    setProjectionThreadManualBucket(input).pipe(
+      Effect.mapError(toPersistenceSqlError("ProjectionThreadRepository.setManualBucket:query")),
+    );
+
+  const setManualPosition: ProjectionThreadRepositoryShape["setManualPosition"] = (input) =>
+    setProjectionThreadManualPosition(input).pipe(
+      Effect.mapError(toPersistenceSqlError("ProjectionThreadRepository.setManualPosition:query")),
+    );
+
   return {
     upsert,
     getById,
     listByProjectId,
     deleteById,
+    attachToWorktree,
+    setManualBucket,
+    setManualPosition,
   } satisfies ProjectionThreadRepositoryShape;
 });
 

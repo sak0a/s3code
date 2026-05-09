@@ -20,6 +20,7 @@ export interface NormalizedGitHubIssueDetail extends NormalizedGitHubIssueRecord
     readonly author: string;
     readonly body: string;
     readonly createdAt: string;
+    readonly authorAssociation?: string;
   }>;
 }
 
@@ -39,6 +40,7 @@ const GitHubIssueSchema = Schema.Struct({
       Schema.Array(
         Schema.Struct({
           author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
+          authorAssociation: Schema.optional(Schema.NullOr(Schema.String)),
           body: Schema.String,
           createdAt: Schema.String,
         }),
@@ -51,6 +53,23 @@ const GitHubIssueSchema = Schema.Struct({
 
 function normalizeIssueState(raw: string | null | undefined): "open" | "closed" {
   return raw?.trim().toUpperCase() === "CLOSED" ? "closed" : "open";
+}
+
+function normalizeIssueComment(raw: {
+  readonly author?: { readonly login: string } | null;
+  readonly authorAssociation?: string | null;
+  readonly body: string;
+  readonly createdAt: string;
+}): NormalizedGitHubIssueDetail["comments"][number] {
+  const base = {
+    author: raw.author?.login ?? "unknown",
+    body: raw.body,
+    createdAt: raw.createdAt,
+  };
+  if (raw.authorAssociation) {
+    return { ...base, authorAssociation: raw.authorAssociation };
+  }
+  return base;
 }
 
 function normalizeGitHubIssueRecord(
@@ -105,11 +124,7 @@ export function decodeGitHubIssueDetailJson(
   const detail: NormalizedGitHubIssueDetail = {
     ...summary,
     body: result.success.body ?? "",
-    comments: rawComments.map((c) => ({
-      author: c.author?.login ?? "unknown",
-      body: c.body,
-      createdAt: c.createdAt,
-    })),
+    comments: rawComments.map((c) => normalizeIssueComment(c)),
   };
   return Result.succeed(detail);
 }

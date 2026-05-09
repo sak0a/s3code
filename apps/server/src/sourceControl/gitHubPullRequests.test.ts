@@ -129,6 +129,37 @@ describe("decodeGitHubPullRequestDetailJson", () => {
     expect(result.success.linkedIssueNumbers).toEqual([12, 34, 56]);
   });
 
+  it("preserves authorAssociation when present", () => {
+    const raw = JSON.stringify({
+      number: 42,
+      title: "My PR",
+      url: "https://github.com/owner/repo/pull/42",
+      baseRefName: "main",
+      headRefName: "feature/my-pr",
+      state: "OPEN",
+      mergedAt: null,
+      body: "PR body",
+      comments: [
+        {
+          author: { login: "alice" },
+          authorAssociation: "OWNER",
+          body: "looks good",
+          createdAt: "2026-03-14T10:00:00Z",
+        },
+        {
+          author: { login: "bob" },
+          body: "no association",
+          createdAt: "2026-03-14T11:00:00Z",
+        },
+      ],
+    });
+    const result = decodeGitHubPullRequestDetailJson(raw);
+    expect(Result.isSuccess(result)).toBe(true);
+    if (!Result.isSuccess(result)) return;
+    expect(result.success.comments[0]?.authorAssociation).toBe("OWNER");
+    expect(result.success.comments[1]?.authorAssociation).toBeUndefined();
+  });
+
   it("decodes integer comments count from list output", () => {
     const raw = JSON.stringify([
       {

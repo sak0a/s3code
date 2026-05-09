@@ -3,8 +3,10 @@ import type {
   OrchestrationProject,
   OrchestrationReadModel,
   OrchestrationThread,
+  OrchestrationWorktreeShell,
   ProjectId,
   ThreadId,
+  WorktreeId,
 } from "@t3tools/contracts";
 import { Effect } from "effect";
 
@@ -31,11 +33,37 @@ export function findProjectById(
   return readModel.projects.find((project) => project.id === projectId);
 }
 
+export function findWorktreeById(
+  readModel: OrchestrationReadModel,
+  worktreeId: WorktreeId,
+): OrchestrationWorktreeShell | undefined {
+  return readModel.worktrees?.find((worktree) => worktree.worktreeId === worktreeId);
+}
+
 export function listThreadsByProjectId(
   readModel: OrchestrationReadModel,
   projectId: ProjectId,
 ): ReadonlyArray<OrchestrationThread> {
   return readModel.threads.filter((thread) => thread.projectId === projectId);
+}
+
+export function listThreadsByWorktree(
+  readModel: OrchestrationReadModel,
+  worktree: OrchestrationWorktreeShell,
+): ReadonlyArray<OrchestrationThread> {
+  return readModel.threads.filter((thread) => {
+    if (thread.projectId !== worktree.projectId) {
+      return false;
+    }
+    if (thread.worktreeId === worktree.worktreeId) {
+      return true;
+    }
+    return (
+      thread.worktreeId == null &&
+      worktree.worktreePath !== null &&
+      thread.worktreePath === worktree.worktreePath
+    );
+  });
 }
 
 export function requireProject(input: {
@@ -51,6 +79,23 @@ export function requireProject(input: {
     invariantError(
       input.command.type,
       `Project '${input.projectId}' does not exist for command '${input.command.type}'.`,
+    ),
+  );
+}
+
+export function requireWorktree(input: {
+  readonly readModel: OrchestrationReadModel;
+  readonly command: OrchestrationCommand;
+  readonly worktreeId: WorktreeId;
+}): Effect.Effect<OrchestrationWorktreeShell, OrchestrationCommandInvariantError> {
+  const worktree = findWorktreeById(input.readModel, input.worktreeId);
+  if (worktree) {
+    return Effect.succeed(worktree);
+  }
+  return Effect.fail(
+    invariantError(
+      input.command.type,
+      `Worktree '${input.worktreeId}' does not exist for command '${input.command.type}'.`,
     ),
   );
 }
@@ -120,6 +165,25 @@ export function requireThreadNotArchived(input: {
             invariantError(
               input.command.type,
               `Thread '${input.threadId}' is already archived and cannot handle command '${input.command.type}'.`,
+            ),
+          ),
+    ),
+  );
+}
+
+export function requireThreadHasUserMessage(input: {
+  readonly readModel: OrchestrationReadModel;
+  readonly command: OrchestrationCommand;
+  readonly threadId: ThreadId;
+}): Effect.Effect<OrchestrationThread, OrchestrationCommandInvariantError> {
+  return requireThread(input).pipe(
+    Effect.flatMap((thread) =>
+      thread.messages.some((message) => message.role === "user")
+        ? Effect.succeed(thread)
+        : Effect.fail(
+            invariantError(
+              input.command.type,
+              `Thread '${input.threadId}' cannot be archived before a message has been sent.`,
             ),
           ),
     ),

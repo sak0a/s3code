@@ -26,6 +26,7 @@ bun run test                # NEVER `bun test` — that's Bun's runner, not Vite
 ### Task 1: Add `Worktree` and `WorktreeId` to contracts
 
 **Files:**
+
 - Create: `packages/contracts/src/worktree.ts`
 - Modify: `packages/contracts/src/index.ts` (add export)
 
@@ -159,6 +160,7 @@ git commit -m "Add Worktree contract types"
 ### Task 2: Add WS method names + RPC payload schemas
 
 **Files:**
+
 - Modify: `packages/contracts/src/rpc.ts` (add new method literals)
 - Modify: `packages/contracts/src/orchestration.ts` (add new event payload schemas)
 
@@ -295,6 +297,7 @@ git commit -m "Add WS method names and worktree event payloads"
 ### Task 3: Schema migration `030_Worktrees.ts`
 
 **Files:**
+
 - Create: `apps/server/src/persistence/Migrations/030_Worktrees.ts`
 - Modify: `apps/server/src/persistence/Migrations.ts` (register migration)
 - Test: `apps/server/src/persistence/Migrations/030_Worktrees.test.ts`
@@ -469,6 +472,7 @@ git commit -m "Add migration 030: projection_worktrees table and thread columns"
 ### Task 4: ProjectionWorktrees repository
 
 **Files:**
+
 - Create: `apps/server/src/persistence/Layers/ProjectionWorktrees.ts`
 - Test: `apps/server/src/persistence/Layers/ProjectionWorktrees.test.ts`
 
@@ -632,7 +636,7 @@ const rowToWorktree = (row: typeof WorktreeRow.Type): Worktree =>
     updatedAt: row.updated_at,
     archivedAt: row.archived_at,
     manualPosition: row.manual_position,
-  } as Worktree);
+  }) as Worktree;
 
 export interface ProjectionWorktreeRepositoryShape {
   readonly upsert: (worktree: Worktree) => Effect.Effect<void, never>;
@@ -796,12 +800,14 @@ git commit -m "Add ProjectionWorktreeRepository"
 ### Task 5: Extend ProjectionThreads with worktree_id and bucket override
 
 **Files:**
+
 - Modify: `apps/server/src/persistence/Layers/ProjectionThreads.ts`
 - Modify: `apps/server/src/persistence/Layers/ProjectionThreads.test.ts` (add new test cases)
 
 - [ ] **Step 1: Read the existing repository**
 
 Read `apps/server/src/persistence/Layers/ProjectionThreads.ts` end-to-end. Identify:
+
 - The `ProjectionThread` schema definition (the row shape used at the API surface).
 - The `upsertProjectionThreadRow` insert/update logic.
 - The select-by-id and list-by-project queries.
@@ -827,8 +833,7 @@ Add two new repository methods:
 ```typescript
 setManualBucket: (input: { threadId: ThreadId; bucket: StatusBucket | null }) =>
   Effect.Effect<void, never>;
-setManualPosition: (input: { threadId: ThreadId; position: number }) =>
-  Effect.Effect<void, never>;
+setManualPosition: (input: { threadId: ThreadId; position: number }) => Effect.Effect<void, never>;
 attachToWorktree: (input: { threadId: ThreadId; worktreeId: WorktreeId | null }) =>
   Effect.Effect<void, never>;
 ```
@@ -890,12 +895,13 @@ git commit -m "Extend ProjectionThreads with worktree_id and bucket override"
 ### Task 6: Worktree projector (event → repository writes)
 
 **Files:**
+
 - Modify: `apps/server/src/orchestration/Layers/ProjectionPipeline.ts` (add new projector definition)
 - Test: `apps/server/src/orchestration/Layers/ProjectionPipeline.worktrees.test.ts`
 
 - [ ] **Step 1: Read the existing pipeline**
 
-Read `apps/server/src/orchestration/Layers/ProjectionPipeline.ts` lines 560-650 to understand the `applyThreadsProjection` pattern. Note where projectors are *registered* (likely a `projectors: ReadonlyArray<ProjectorDefinition>` constant).
+Read `apps/server/src/orchestration/Layers/ProjectionPipeline.ts` lines 560-650 to understand the `applyThreadsProjection` pattern. Note where projectors are _registered_ (likely a `projectors: ReadonlyArray<ProjectorDefinition>` constant).
 
 - [ ] **Step 2: Write a failing projector test**
 
@@ -1071,6 +1077,7 @@ git commit -m "Add worktree projector"
 ### Task 7: Default-branch detection helper
 
 **Files:**
+
 - Create: `apps/server/src/git/detectDefaultBranch.ts`
 - Test: `apps/server/src/git/detectDefaultBranch.test.ts`
 
@@ -1141,7 +1148,11 @@ export type GitExec = (
 export async function detectDefaultBranch(cwd: string, exec: GitExec): Promise<string> {
   const tries: ReadonlyArray<() => Promise<string | null>> = [
     async () => {
-      const { stdout, exitCode } = await exec(["symbolic-ref", "--short", "refs/remotes/origin/HEAD"]);
+      const { stdout, exitCode } = await exec([
+        "symbolic-ref",
+        "--short",
+        "refs/remotes/origin/HEAD",
+      ]);
       if (exitCode !== 0) return null;
       const trimmed = stdout.trim();
       if (!trimmed) return null;
@@ -1198,12 +1209,14 @@ git commit -m "Add detectDefaultBranch helper with fallback chain"
 ### Task 8: IssueThreadBundler (mirror of PR thread bundler)
 
 **Files:**
+
 - Create: `apps/server/src/sourceControl/IssueThreadBundler.ts`
 - Test: `apps/server/src/sourceControl/IssueThreadBundler.test.ts`
 
 - [ ] **Step 1: Read the PR bundler**
 
 Read `apps/server/src/git/GitManager.ts` lines 1393-1553 (the `preparePullRequestThread` function) to understand:
+
 - Input shape (`GitPreparePullRequestThreadInput`).
 - How it serialises the PR body + comments into the seed prompt.
 - The size caps (8KB body / 5 comments / 2KB per comment from `SOURCE_CONTROL_DETAIL_*` constants in `packages/contracts/src/sourceControl.ts`).
@@ -1331,12 +1344,14 @@ git commit -m "Add IssueThreadBundler mirroring PR bundler"
 ### Task 9: GitWorkflowService.createWorktreeForProject
 
 **Files:**
+
 - Modify: `apps/server/src/git/GitWorkflowService.ts`
 - Test: `apps/server/src/git/GitWorkflowService.createWorktreeForProject.test.ts`
 
 - [ ] **Step 1: Read existing service shape**
 
 Read `apps/server/src/git/GitWorkflowService.ts` end-to-end to understand:
+
 - The service interface definition (Context.Tag or Effect.Service).
 - How `preparePullRequestThread` delegates to `gitManager.preparePullRequestThread`.
 - How the project info (workspace_root) is looked up.
@@ -1344,6 +1359,7 @@ Read `apps/server/src/git/GitWorkflowService.ts` end-to-end to understand:
 - [ ] **Step 2: Failing test**
 
 Create `GitWorkflowService.createWorktreeForProject.test.ts` exercising the four intent kinds. Mock the underlying `GitManager` and `ProjectionWorktreeRepository`. Assert:
+
 - `kind: "branch"` calls `gitManager.createWorktree` with the supplied branch.
 - `kind: "pr"` resolves the head ref then creates the worktree, then bundles the PR thread into a draft session.
 - `kind: "issue"` invents `issue/<n>-<slug>`, creates the worktree, bundles the issue thread.
@@ -1360,10 +1376,8 @@ Run: expect FAIL.
 In `GitWorkflowService.ts`, add a new method:
 
 ```typescript
-createWorktreeForProject: (input: {
-  projectId: ProjectId;
-  intent: CreateWorktreeIntent;
-}) => Effect.Effect<{ worktreeId: WorktreeId; sessionId: ThreadId }, GitWorkflowServiceError>;
+createWorktreeForProject: (input: { projectId: ProjectId; intent: CreateWorktreeIntent }) =>
+  Effect.Effect<{ worktreeId: WorktreeId; sessionId: ThreadId }, GitWorkflowServiceError>;
 ```
 
 Implementation flow:
@@ -1449,11 +1463,13 @@ const createWorktreeForProject: GitWorkflowServiceShape["createWorktreeForProjec
     // 5. Seed a draft session
     let seedPrompt: string | null = null;
     if (intent.kind === "pr") {
-      seedPrompt = yield* gitManager.preparePullRequestThread({
-        cwd,
-        reference: String(intent.number),
-        mode: "worktree",
-      }).pipe(Effect.map((r) => r.threadSeedPrompt));
+      seedPrompt = yield* gitManager
+        .preparePullRequestThread({
+          cwd,
+          reference: String(intent.number),
+          mode: "worktree",
+        })
+        .pipe(Effect.map((r) => r.threadSeedPrompt));
     } else if (intent.kind === "issue") {
       const issue = yield* gitManager.fetchIssueDetail({ cwd, number: intent.number });
       seedPrompt = bundleIssueThread(issue);
@@ -1474,10 +1490,17 @@ const createWorktreeForProject: GitWorkflowServiceShape["createWorktreeForProjec
   });
 
 const randomShortId = (length = 6): string =>
-  Array.from({ length }, () => "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)]).join("");
+  Array.from(
+    { length },
+    () => "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)],
+  ).join("");
 
 const slugify = (s: string): string =>
-  s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
 ```
 
 Wire `createDraftSession`, `findLatestSessionForWorktree`, `eventBus`, `gitManager.fetchIssue`, `gitManager.fetchIssueDetail` from the existing GitWorkflowService context — if any are missing, add the minimal helpers needed (they may already exist as `fetchPullRequestSummary` analogues).
@@ -1503,6 +1526,7 @@ git commit -m "Add GitWorkflowService.createWorktreeForProject"
 ### Task 10: Worktree archive / restore / delete in GitWorkflowService
 
 **Files:**
+
 - Modify: `apps/server/src/git/GitWorkflowService.ts`
 - Test: `apps/server/src/git/GitWorkflowService.lifecycle.test.ts`
 
@@ -1543,11 +1567,13 @@ const archiveWorktree: GitWorkflowServiceShape["archiveWorktree"] = ({
       yield* gitManager.removeWorktree({ path: w.worktreePath });
     }
     if (deleteBranch) {
-      yield* gitManager.deleteBranch({ branch: w.branch }).pipe(
-        Effect.catchAll((cause) =>
-          Effect.logWarning(`Could not delete branch ${w.branch}: ${cause}`),
-        ),
-      );
+      yield* gitManager
+        .deleteBranch({ branch: w.branch })
+        .pipe(
+          Effect.catchAll((cause) =>
+            Effect.logWarning(`Could not delete branch ${w.branch}: ${cause}`),
+          ),
+        );
     }
 
     const archivedAt = new Date().toISOString();
@@ -1575,7 +1601,10 @@ const restoreWorktree: GitWorkflowServiceShape["restoreWorktree"] = (worktreeId)
         }),
       );
 
-    const newPath = yield* gitManager.createWorktree({ cwd: getProjectCwd(w.projectId), branch: w.branch });
+    const newPath = yield* gitManager.createWorktree({
+      cwd: getProjectCwd(w.projectId),
+      branch: w.branch,
+    });
     yield* eventBus.emit({
       type: "worktree.restored",
       payload: { worktreeId, restoredAt: new Date().toISOString() },
@@ -1601,11 +1630,13 @@ const deleteWorktree: GitWorkflowServiceShape["deleteWorktree"] = ({ worktreeId,
       yield* gitManager.removeWorktree({ path: w.worktreePath, force: true });
     }
     if (deleteBranch) {
-      yield* gitManager.deleteBranch({ branch: w.branch }).pipe(
-        Effect.catchAll((cause) =>
-          Effect.logWarning(`Could not delete branch ${w.branch}: ${cause}`),
-        ),
-      );
+      yield* gitManager
+        .deleteBranch({ branch: w.branch })
+        .pipe(
+          Effect.catchAll((cause) =>
+            Effect.logWarning(`Could not delete branch ${w.branch}: ${cause}`),
+          ),
+        );
     }
 
     yield* eventBus.emit({
@@ -1650,6 +1681,7 @@ git commit -m "Add worktree archive/restore/delete to GitWorkflowService"
 ### Task 11: Wire new WS RPCs in `ws.ts`
 
 **Files:**
+
 - Modify: `apps/server/src/ws.ts`
 
 - [ ] **Step 1: Read existing route pattern**
@@ -1751,10 +1783,12 @@ Append to `apps/server/src/server.test.ts` (or the closest existing routes test)
 it.effect("gitArchiveWorktree route exists and rejects unknown worktreeId", () =>
   Effect.gen(function* () {
     const server = yield* makeTestServer();
-    const result = yield* server.callRpc(WS_METHODS.gitArchiveWorktree, {
-      worktreeId: WorktreeId.make("nonexistent"),
-      deleteBranch: false,
-    }).pipe(Effect.either);
+    const result = yield* server
+      .callRpc(WS_METHODS.gitArchiveWorktree, {
+        worktreeId: WorktreeId.make("nonexistent"),
+        deleteBranch: false,
+      })
+      .pipe(Effect.either);
     assert.isTrue(Either.isLeft(result));
   }),
 );
@@ -1783,6 +1817,7 @@ git commit -m "Wire new worktree WS RPC routes"
 ### Task 12: One-time data migration on server startup
 
 **Files:**
+
 - Create: `apps/server/src/persistence/Migrations/030_Worktrees_backfill.ts` (or a startup hook — see step 1)
 - Modify: `apps/server/src/serverRuntimeStartup.ts` (call backfill after migrations)
 - Test: `apps/server/src/persistence/worktreeBackfill.test.ts`
@@ -1803,7 +1838,10 @@ import * as SqlClient from "effect/unstable/sql/SqlClient";
 import { runMigrations } from "./Migrations.ts";
 import * as NodeSqliteClient from "./NodeSqliteClient.ts";
 import { runWorktreeBackfill } from "./worktreeBackfill.ts";
-import { ProjectionWorktreeRepository, ProjectionWorktreeRepositoryLive } from "./Layers/ProjectionWorktrees.ts";
+import {
+  ProjectionWorktreeRepository,
+  ProjectionWorktreeRepositoryLive,
+} from "./Layers/ProjectionWorktrees.ts";
 import { ProjectId } from "@t3tools/contracts";
 
 const layer = it.layer(
@@ -1963,7 +2001,9 @@ export const runWorktreeBackfill = (opts: BackfillOptions) =>
 
       const existingMain = (yield* repo.listByProject(projectId)).find((w) => w.origin === "main");
       if (!existingMain) {
-        const defaultBranch = yield* Effect.promise(() => opts.detectDefaultBranch(p.workspace_root));
+        const defaultBranch = yield* Effect.promise(() =>
+          opts.detectDefaultBranch(p.workspace_root),
+        );
         const now = new Date().toISOString();
         const mainId = WorktreeId.make(`worktree-${p.project_id}-main`);
         yield* repo.upsert({
@@ -2065,6 +2105,7 @@ git commit -m "Backfill worktrees from existing threads on startup"
 ### Task 13: GitWorkflowService.initializeGitForProject
 
 **Files:**
+
 - Modify: `apps/server/src/git/GitWorkflowService.ts`
 - Test: `apps/server/src/git/GitWorkflowService.initializeGit.test.ts`
 
@@ -2144,6 +2185,7 @@ git commit -m "Add initializeGitForProject"
 ### Task 14: Bucket derivation + aggregate worktree status logic
 
 **Files:**
+
 - Modify: `apps/web/src/components/Sidebar.logic.ts` (add new pure functions)
 - Modify: `apps/web/src/components/Sidebar.logic.test.ts` (add tests)
 
@@ -2337,6 +2379,7 @@ git commit -m "Add bucket derivation and aggregate worktree status helpers"
 ### Task 15: useSidebarTree composition hook
 
 **Files:**
+
 - Create: `apps/web/src/components/sidebar/hooks/useSidebarTree.ts`
 - Test: `apps/web/src/components/sidebar/hooks/useSidebarTree.test.ts`
 
@@ -2419,7 +2462,11 @@ Run: expect FAIL.
 ```typescript
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { aggregateWorktreeStatus, deriveStatusBucket, shouldSuggestArchive } from "../../Sidebar.logic.ts";
+import {
+  aggregateWorktreeStatus,
+  deriveStatusBucket,
+  shouldSuggestArchive,
+} from "../../Sidebar.logic.ts";
 import type { SidebarStatusBucket } from "../../Sidebar.logic.ts";
 
 // Pure composition function (testable separately)
@@ -2484,7 +2531,10 @@ export function composeSidebarTree(input: ComposeInput) {
           }),
         );
         const latestUpdatedAt = inWorktree.length
-          ? inWorktree.map((t) => t.updatedAt).sort().at(-1)!
+          ? inWorktree
+              .map((t) => t.updatedAt)
+              .sort()
+              .at(-1)!
           : w.updatedAt;
         return {
           worktree: w,
@@ -2511,10 +2561,16 @@ export function composeSidebarTree(input: ComposeInput) {
 }
 
 export function useSidebarTree() {
-  const projectsQ = useQuery({ queryKey: ["projects"], queryFn: /* existing */ () => fetchProjects() });
+  const projectsQ = useQuery({
+    queryKey: ["projects"],
+    queryFn: /* existing */ () => fetchProjects(),
+  });
   const worktreesQ = useQuery({ queryKey: ["worktrees"], queryFn: () => fetchWorktrees() });
   const threadsQ = useQuery({ queryKey: ["threads"], queryFn: () => fetchThreads() });
-  const diffStatsQ = useQuery({ queryKey: ["worktree-diff-stats"], queryFn: () => fetchDiffStats() });
+  const diffStatsQ = useQuery({
+    queryKey: ["worktree-diff-stats"],
+    queryFn: () => fetchDiffStats(),
+  });
 
   return useMemo(
     () =>
@@ -2545,11 +2601,12 @@ git commit -m "Add useSidebarTree composition hook"
 
 ## Phase 6 — Sidebar component refactor
 
-> **Note:** Phase 6 is a series of mechanical refactors. The "test" for each task is *the existing tests still pass* — there's no new behavior. Each task should be a single commit with the file extracted, all imports updated, and `bun run test apps/web` green.
+> **Note:** Phase 6 is a series of mechanical refactors. The "test" for each task is _the existing tests still pass_ — there's no new behavior. Each task should be a single commit with the file extracted, all imports updated, and `bun run test apps/web` green.
 
 ### Task 16: Extract `SidebarShell.tsx`
 
 **Files:**
+
 - Create: `apps/web/src/components/sidebar/SidebarShell.tsx`
 - Modify: `apps/web/src/components/Sidebar.tsx` (replace top-level layout with `<SidebarShell>`)
 - Modify: `apps/web/src/components/AppSidebarLayout.tsx` (point at the new file if needed)
@@ -2595,6 +2652,7 @@ git commit -m "Extract SidebarShell"
 ### Task 17: Extract `SidebarProjectList` + `SidebarProjectRow`
 
 **Files:**
+
 - Create: `apps/web/src/components/sidebar/SidebarProjectList.tsx`
 - Create: `apps/web/src/components/sidebar/SidebarProjectRow.tsx`
 - Modify: `apps/web/src/components/Sidebar.tsx`
@@ -2627,6 +2685,7 @@ git commit -m "Extract SidebarProjectList and SidebarProjectRow"
 ### Task 18: Add `SidebarWorktreeRow.tsx`
 
 **Files:**
+
 - Create: `apps/web/src/components/sidebar/SidebarWorktreeRow.tsx`
 - Test: `apps/web/src/components/sidebar/SidebarWorktreeRow.test.tsx`
 
@@ -2862,6 +2921,7 @@ git commit -m "Add SidebarWorktreeRow component"
 ### Task 19: Add `SidebarStatusBucket.tsx`
 
 **Files:**
+
 - Create: `apps/web/src/components/sidebar/SidebarStatusBucket.tsx`
 - Test: `apps/web/src/components/sidebar/SidebarStatusBucket.test.tsx`
 
@@ -2957,6 +3017,7 @@ git commit -m "Add SidebarStatusBucket component"
 ### Task 20: Extract `SidebarSessionRow.tsx` (rename from current SidebarThreadRow)
 
 **Files:**
+
 - Create: `apps/web/src/components/sidebar/SidebarSessionRow.tsx`
 - Modify: `apps/web/src/components/Sidebar.tsx` (remove `SidebarThreadRow` definition; import the new one)
 
@@ -2997,6 +3058,7 @@ git commit -m "Extract SidebarSessionRow with bucket reset action"
 ### Task 21: Add `SidebarArchivedGroup` + `SidebarEmptyStates`
 
 **Files:**
+
 - Create: `apps/web/src/components/sidebar/SidebarArchivedGroup.tsx`
 - Create: `apps/web/src/components/sidebar/SidebarEmptyStates.tsx`
 
@@ -3091,12 +3153,14 @@ git commit -m "Add SidebarArchivedGroup and SidebarEmptyStates"
 ### Task 22: `useSidebarDragDrop` hook + three sortable contexts
 
 **Files:**
+
 - Create: `apps/web/src/components/sidebar/hooks/useSidebarDragDrop.ts`
 - Test: `apps/web/src/components/sidebar/hooks/useSidebarDragDrop.test.ts`
 
 - [ ] **Step 1: Plan the contexts**
 
 Three independent `@dnd-kit` `SortableContext` scopes:
+
 1. **Projects** (already wired in current code — preserve as-is).
 2. **Worktrees within a project** — IDs prefixed `worktree:{worktreeId}`. `main` is filtered out from the sortable list (rendered as a static row above).
 3. **Sessions within a worktree** — IDs prefixed `session:{sessionId}`. The drop zone allows movement across status buckets within the same worktree.
@@ -3252,6 +3316,7 @@ git commit -m "Wire drag-and-drop for session buckets and worktree reorder"
 ### Task 23: Click semantics — worktree opens latest session
 
 **Files:**
+
 - Modify: `apps/web/src/components/sidebar/SidebarWorktreeRow.tsx` (already calls onClick — wire it at the parent)
 - Modify: `apps/web/src/components/Sidebar.tsx` (or SidebarProjectList — wire the onClick)
 - Test: extend `apps/web/src/components/Sidebar.logic.test.ts`
@@ -3325,6 +3390,7 @@ git commit -m "Worktree click opens latest session or seeds draft"
 ### Task 24: Hover + and keyboard shortcuts (⌘N, ⌘+Shift+N)
 
 **Files:**
+
 - Modify: `apps/web/src/components/Sidebar.tsx` (or SidebarShell — wire shortcuts)
 - Modify: `apps/server/src/keybindings.ts` (add new keybindings if needed)
 - Modify: `packages/contracts/src/keybindings.ts` (declare new key IDs)
@@ -3376,6 +3442,7 @@ git commit -m "Add chat.newSessionInWorktree and chat.newWorktree keybindings"
 ### Task 25: `useComposerDraftStore` — add `worktreeId`
 
 **Files:**
+
 - Modify: `apps/web/src/composerDraftStore.ts`
 - Modify: any caller setting drafts (`apps/web/src/hooks/useHandleNewThread.ts` etc.)
 - Test: extend the existing draft store test if present
@@ -3414,6 +3481,7 @@ git commit -m "Thread draft and creation carry worktreeId"
 ### Task 26: Dialog shell + tabs
 
 **Files:**
+
 - Create: `apps/web/src/components/newWorktreeDialog/NewWorktreeDialog.tsx`
 - Test: `apps/web/src/components/newWorktreeDialog/NewWorktreeDialog.test.tsx`
 
@@ -3545,6 +3613,7 @@ git commit -m "Add NewWorktreeDialog shell with four tabs"
 ### Task 27: BranchesTab
 
 **Files:**
+
 - Create: `apps/web/src/components/newWorktreeDialog/BranchesTab.tsx`
 - Test: `apps/web/src/components/newWorktreeDialog/BranchesTab.test.tsx`
 
@@ -3657,6 +3726,7 @@ git commit -m "Add BranchesTab and createWorktreeForProject mutation"
 ### Task 28: PullRequestsTab and IssuesTab refactor
 
 **Files:**
+
 - Move: `apps/web/src/components/projectExplorer/PullRequestsTab.tsx` → `apps/web/src/components/newWorktreeDialog/PullRequestsTab.tsx`
 - Move: `apps/web/src/components/projectExplorer/IssuesTab.tsx` → `apps/web/src/components/newWorktreeDialog/IssuesTab.tsx`
 - Move: `apps/web/src/components/projectExplorer/PullRequestList.tsx`, `IssueList.tsx`, `LabelChip.tsx`, `StateBadge.tsx`, `StateFilterButtons.tsx` → `apps/web/src/components/newWorktreeDialog/`
@@ -3709,6 +3779,7 @@ git commit -m "Move PR/Issue list components into newWorktreeDialog and drop det
 ### Task 29: NewBranchTab with auto-gen slug
 
 **Files:**
+
 - Create: `apps/web/src/components/newWorktreeDialog/NewBranchTab.tsx`
 - Test: `apps/web/src/components/newWorktreeDialog/NewBranchTab.test.tsx`
 
@@ -3822,6 +3893,7 @@ git commit -m "Add NewBranchTab"
 ### Task 30: Re-attach detection + delete legacy ProjectExplorerDialog
 
 **Files:**
+
 - Modify: `apps/web/src/components/newWorktreeDialog/PullRequestsTab.tsx` (re-attach query)
 - Modify: `apps/web/src/components/newWorktreeDialog/IssuesTab.tsx` (re-attach query)
 - Delete: `apps/web/src/components/projectExplorer/ProjectExplorerDialog.tsx`
@@ -3839,14 +3911,15 @@ export function useFindWorktreeForOriginQuery(input: {
 }) {
   return useQuery({
     queryKey: ["worktree-for-origin", input.projectId, input.kind, input.number],
-    queryFn: input.number === null
-      ? () => null
-      : () =>
-          rpcClient.call(WS_METHODS.gitFindWorktreeForOrigin, {
-            projectId: input.projectId,
-            kind: input.kind,
-            number: input.number,
-          }),
+    queryFn:
+      input.number === null
+        ? () => null
+        : () =>
+            rpcClient.call(WS_METHODS.gitFindWorktreeForOrigin, {
+              projectId: input.projectId,
+              kind: input.kind,
+              number: input.number,
+            }),
     enabled: input.number !== null,
   });
 }
@@ -3855,6 +3928,7 @@ export function useFindWorktreeForOriginQuery(input: {
 - [ ] **Step 2: Wire in PR/Issues tabs**
 
 In `PullRequestsTab.tsx`, when a PR is selected, call `useFindWorktreeForOriginQuery`. If it returns a worktreeId:
+
 - Change the action button label to "Open existing worktree".
 - On click, navigate to that worktree's latest session and call `props.onCreated()`.
 
@@ -3887,6 +3961,7 @@ git commit -m "Add re-attach detection, delete legacy ProjectExplorerDialog, ret
 ### Task 31: Archive flow with confirm dialog
 
 **Files:**
+
 - Create: `apps/web/src/components/sidebar/ArchiveWorktreeDialog.tsx`
 - Test: `apps/web/src/components/sidebar/ArchiveWorktreeDialog.test.tsx`
 
@@ -4042,6 +4117,7 @@ git commit -m "Add archive worktree confirm dialog"
 ### Task 32: Delete flow with type-branch-name confirmation
 
 **Files:**
+
 - Create: `apps/web/src/components/sidebar/DeleteWorktreeDialog.tsx`
 - Test: `apps/web/src/components/sidebar/DeleteWorktreeDialog.test.tsx`
 
@@ -4090,6 +4166,7 @@ describe("DeleteWorktreeDialog", () => {
 - [ ] **Step 2: Implement**
 
 Same shape as `ArchiveWorktreeDialog` but:
+
 - Title "Delete worktree?".
 - Add red "This is irreversible" banner.
 - Show type-branch-name input when `hasInProgress || isDirty`. Submit disabled until typed value matches.
@@ -4108,6 +4185,7 @@ git commit -m "Add delete worktree confirm dialog with type-branch-name"
 ### Task 33: Auto-suggest dismiss state (client-side)
 
 **Files:**
+
 - Create: `apps/web/src/components/sidebar/archiveSuggestStore.ts`
 - Test: `apps/web/src/components/sidebar/archiveSuggestStore.test.ts`
 
@@ -4173,6 +4251,7 @@ export const archiveSuggestStore = create<State>()(
 - [ ] **Step 3: Wire into SidebarWorktreeRow**
 
 The hover button "Archive?" should:
+
 - Render only when `shouldSuggestArchive && !archiveSuggestStore.getState().isDismissed(worktreeId, Date.now())`.
 - Right-click / X dismisses (calls `archiveSuggestStore.getState().dismiss`).
 - Left-click opens `ArchiveWorktreeDialog`.
@@ -4192,12 +4271,14 @@ git commit -m "Add archive auto-suggest dismiss store"
 ### Task 34: Non-git project rendering + "Local · no git" pill
 
 **Files:**
+
 - Modify: `apps/web/src/components/sidebar/SidebarProjectRow.tsx`
 - Modify: `apps/web/src/components/Sidebar.tsx` (use `flatSessions` rather than worktrees when `isGitRepo === false`)
 
 - [ ] **Step 1: Update SidebarProjectRow**
 
 Read `useSidebarTree` output's per-project `isGitRepo` flag. When false:
+
 - Replace issue/PR badges with `<NonGitProjectPill />` (from Task 21).
 - Render `flatSessions` directly under the project row (no worktree row, no buckets).
 - Show `<InitGitAffordance onInit={...} />` next to the project name.
@@ -4205,6 +4286,7 @@ Read `useSidebarTree` output's per-project `isGitRepo` flag. When false:
 - [ ] **Step 2: Hide worktree-related buttons**
 
 For non-git projects:
+
 - Hide the project header `+` button (no New Worktree dialog — there's no worktree level).
 - Replace `+` with the existing `+ new thread` button shape (existing flat behavior).
 
@@ -4228,6 +4310,7 @@ git commit -m "Render non-git projects flat with Local · no git pill"
 ### Task 35: Initialize git action
 
 **Files:**
+
 - Modify: `apps/web/src/components/sidebar/SidebarEmptyStates.tsx` (wire `onInit`)
 - Create: `apps/web/src/components/sidebar/InitGitConfirmDialog.tsx`
 - Test: `apps/web/src/components/sidebar/InitGitConfirmDialog.test.tsx`
@@ -4304,6 +4387,7 @@ git commit -m "Add Initialize git action"
 ### Task 36: Migrate URL-paste dialog to new flow
 
 **Files:**
+
 - Modify: `apps/web/src/components/PullRequestThreadDialog.tsx` (the URL-paste dialog mentioned in the prior summary)
 
 - [ ] **Step 1: Read the existing dialog**
@@ -4372,38 +4456,39 @@ If the smoke walk reveals a missed wiring, add a small targeted commit. Otherwis
 
 **Spec coverage check** — each spec section maps to tasks:
 
-| Spec section | Implemented in |
-| --- | --- |
-| 1 Data model — projection_worktrees | Task 3 (schema), Task 4 (repo) |
-| 1 Data model — thread columns | Task 3 (migration), Task 5 (repo) |
-| 1 Auto-bucket rule | Task 14 |
-| 1 Aggregate worktree status | Task 14 |
-| 2 Sidebar tree rendering | Tasks 16-21 |
-| 2 Click & keyboard behavior | Tasks 23, 24 |
-| 2 Drag & drop | Task 22 |
-| 2 Non-git projects | Task 34 |
-| 3 New Worktree dialog | Tasks 26-30 |
-| 3 createWorktreeForProject RPC | Task 9, 11 |
-| 3 Re-attach detection | Tasks 9, 30 |
-| 3 New branch slug | Task 9 (server), Task 29 (UI) |
-| 3 Add Project preserved | Task 12 (synth main on project add) |
-| 4 Archive | Task 10 (server), Task 31 (UI) |
-| 4 Delete | Task 10 (server), Task 32 (UI) |
-| 4 Auto-suggest | Task 14 (logic), Task 33 (dismiss store) |
-| 4 main is special | Task 10 (server check), Task 18 (UI menu hides) |
-| 4 Orphaned worktrees | Mentioned for cleanup; folded into Task 12 backfill loop. **Gap** — see note below. |
-| 5 Migration | Task 12 |
-| 6 Component refactor | Tasks 16-21 |
-| 6 Server side files | Tasks 3-13 |
-| 6 New domain events | Tasks 2, 6 |
-| 7 Test plan | distributed throughout |
-| 8 Out of scope | n/a — explicit |
+| Spec section                        | Implemented in                                                                      |
+| ----------------------------------- | ----------------------------------------------------------------------------------- |
+| 1 Data model — projection_worktrees | Task 3 (schema), Task 4 (repo)                                                      |
+| 1 Data model — thread columns       | Task 3 (migration), Task 5 (repo)                                                   |
+| 1 Auto-bucket rule                  | Task 14                                                                             |
+| 1 Aggregate worktree status         | Task 14                                                                             |
+| 2 Sidebar tree rendering            | Tasks 16-21                                                                         |
+| 2 Click & keyboard behavior         | Tasks 23, 24                                                                        |
+| 2 Drag & drop                       | Task 22                                                                             |
+| 2 Non-git projects                  | Task 34                                                                             |
+| 3 New Worktree dialog               | Tasks 26-30                                                                         |
+| 3 createWorktreeForProject RPC      | Task 9, 11                                                                          |
+| 3 Re-attach detection               | Tasks 9, 30                                                                         |
+| 3 New branch slug                   | Task 9 (server), Task 29 (UI)                                                       |
+| 3 Add Project preserved             | Task 12 (synth main on project add)                                                 |
+| 4 Archive                           | Task 10 (server), Task 31 (UI)                                                      |
+| 4 Delete                            | Task 10 (server), Task 32 (UI)                                                      |
+| 4 Auto-suggest                      | Task 14 (logic), Task 33 (dismiss store)                                            |
+| 4 main is special                   | Task 10 (server check), Task 18 (UI menu hides)                                     |
+| 4 Orphaned worktrees                | Mentioned for cleanup; folded into Task 12 backfill loop. **Gap** — see note below. |
+| 5 Migration                         | Task 12                                                                             |
+| 6 Component refactor                | Tasks 16-21                                                                         |
+| 6 Server side files                 | Tasks 3-13                                                                          |
+| 6 New domain events                 | Tasks 2, 6                                                                          |
+| 7 Test plan                         | distributed throughout                                                              |
+| 8 Out of scope                      | n/a — explicit                                                                      |
 
 **Gap identified:** orphaned worktree auto-archive on server start (Section 4 of spec) — folded into Task 12's backfill but not actually written there. Adding here:
 
 ### Task 12.5: Orphaned worktree auto-archive
 
 **Files:**
+
 - Modify: `apps/server/src/persistence/worktreeBackfill.ts`
 
 - [ ] **Step 1: Append a check**
@@ -4411,18 +4496,28 @@ If the smoke walk reveals a missed wiring, add a small targeted commit. Otherwis
 After the per-project loop in `runWorktreeBackfill`, add:
 
 ```typescript
-const liveWorktrees = yield* sql<{ worktree_id: string; worktree_path: string | null }>`
+const liveWorktrees =
+  yield *
+  sql<{ worktree_id: string; worktree_path: string | null }>`
   SELECT worktree_id, worktree_path FROM projection_worktrees
   WHERE archived_at IS NULL AND worktree_path IS NOT NULL
 `;
 for (const w of liveWorktrees) {
   if (w.worktree_path === null) continue;
-  const exists = yield* Effect.promise(() => fs.promises.access(w.worktree_path!).then(() => true).catch(() => false));
+  const exists =
+    yield *
+    Effect.promise(() =>
+      fs.promises
+        .access(w.worktree_path!)
+        .then(() => true)
+        .catch(() => false),
+    );
   if (!exists) {
-    yield* repo.markArchived({
-      worktreeId: WorktreeId.make(w.worktree_id),
-      archivedAt: new Date().toISOString(),
-    });
+    yield *
+      repo.markArchived({
+        worktreeId: WorktreeId.make(w.worktree_id),
+        archivedAt: new Date().toISOString(),
+      });
   }
 }
 ```
@@ -4455,4 +4550,3 @@ git commit -m "Auto-archive worktrees with missing on-disk paths"
 **Single-task self-containment:**
 
 Each task has its own files list, test code, and commit message. Tasks reference earlier tasks for context but each one stands alone. The implementor can work tasks in order.
-

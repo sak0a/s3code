@@ -1,4 +1,18 @@
 import type {
+  GitArchiveWorktreeInput,
+  GitCreateWorktreeForProjectInput,
+  GitCreateWorktreeForProjectOutput,
+  GitDeleteWorktreeInput,
+  GitFindWorktreeForOriginInput,
+  GitFindWorktreeForOriginOutput,
+  GitRestoreWorktreeInput,
+  ProjectsInitializeGitInput,
+  ThreadsSetManualBucketInput,
+  ThreadsSetManualPositionInput,
+  WorktreesSetManualPositionInput,
+  EmptyRpcResult,
+} from "./rpc.ts";
+import type {
   VcsSwitchRefInput,
   VcsSwitchRefResult,
   VcsCreateRefInput,
@@ -331,6 +345,7 @@ export interface EnvironmentApi {
     readFile: (input: ProjectReadFileInput) => Promise<ProjectReadFileResult>;
     searchEntries: (input: ProjectSearchEntriesInput) => Promise<ProjectSearchEntriesResult>;
     writeFile: (input: ProjectWriteFileInput) => Promise<ProjectWriteFileResult>;
+    initializeGit?: (input: ProjectsInitializeGitInput) => Promise<EmptyRpcResult>;
   };
   filesystem: {
     browse: (input: FilesystemBrowseInput) => Promise<FilesystemBrowseResult>;
@@ -368,6 +383,22 @@ export interface EnvironmentApi {
     preparePullRequestThread: (
       input: GitPreparePullRequestThreadInput,
     ) => Promise<GitPreparePullRequestThreadResult>;
+    createWorktreeForProject?: (
+      input: GitCreateWorktreeForProjectInput,
+    ) => Promise<GitCreateWorktreeForProjectOutput>;
+    findWorktreeForOrigin?: (
+      input: GitFindWorktreeForOriginInput,
+    ) => Promise<GitFindWorktreeForOriginOutput>;
+    archiveWorktree?: (input: GitArchiveWorktreeInput) => Promise<EmptyRpcResult>;
+    restoreWorktree?: (input: GitRestoreWorktreeInput) => Promise<EmptyRpcResult>;
+    deleteWorktree?: (input: GitDeleteWorktreeInput) => Promise<EmptyRpcResult>;
+  };
+  worktrees?: {
+    setManualPosition: (input: WorktreesSetManualPositionInput) => Promise<EmptyRpcResult>;
+  };
+  threads?: {
+    setManualBucket: (input: ThreadsSetManualBucketInput) => Promise<EmptyRpcResult>;
+    setManualPosition: (input: ThreadsSetManualPositionInput) => Promise<EmptyRpcResult>;
   };
   orchestration: {
     dispatchCommand: (command: ClientOrchestrationCommand) => Promise<{ sequence: number }>;

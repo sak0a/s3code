@@ -30,17 +30,17 @@ Project (s3code)
 
 ### New table: `projection_worktrees`
 
-| column | type | notes |
-| --- | --- | --- |
-| `worktree_id` | TEXT PK | new opaque id |
-| `project_id` | TEXT FK | scoped to project |
-| `branch` | TEXT | branch name (e.g. `main`, `feature/foo`) |
-| `worktree_path` | TEXT NULL | absolute path; **NULL** for the synthetic "main" row that points at `workspace_root` |
-| `origin` | TEXT | `main` \| `branch` \| `pr` \| `issue` \| `manual` |
-| `pr_number` / `issue_number` | INT NULL | populated when origin is `pr` / `issue` |
-| `pr_title` / `issue_title` | TEXT NULL | snapshot for display when GitHub data is unavailable |
-| `created_at` / `updated_at` / `archived_at` | TEXT | standard timestamps; `archived_at IS NOT NULL` ⇒ archived |
-| `manual_position` | INTEGER | drag-reorder ordinal within the project |
+| column                                      | type      | notes                                                                                |
+| ------------------------------------------- | --------- | ------------------------------------------------------------------------------------ |
+| `worktree_id`                               | TEXT PK   | new opaque id                                                                        |
+| `project_id`                                | TEXT FK   | scoped to project                                                                    |
+| `branch`                                    | TEXT      | branch name (e.g. `main`, `feature/foo`)                                             |
+| `worktree_path`                             | TEXT NULL | absolute path; **NULL** for the synthetic "main" row that points at `workspace_root` |
+| `origin`                                    | TEXT      | `main` \| `branch` \| `pr` \| `issue` \| `manual`                                    |
+| `pr_number` / `issue_number`                | INT NULL  | populated when origin is `pr` / `issue`                                              |
+| `pr_title` / `issue_title`                  | TEXT NULL | snapshot for display when GitHub data is unavailable                                 |
+| `created_at` / `updated_at` / `archived_at` | TEXT      | standard timestamps; `archived_at IS NOT NULL` ⇒ archived                            |
+| `manual_position`                           | INTEGER   | drag-reorder ordinal within the project                                              |
 
 Indices: `(project_id, archived_at)`, `(project_id, origin, pr_number) WHERE pr_number IS NOT NULL`, `(project_id, origin, issue_number) WHERE issue_number IS NOT NULL`.
 
@@ -58,12 +58,12 @@ Existing `branch` and `worktree_path` columns are **kept** as denormalized read 
 
 The bucket is derived from the existing thread runtime state already computed by `resolveThreadStatusPill` in `Sidebar.logic.ts`:
 
-| runtime state | bucket |
-| --- | --- |
-| `Working` | `IN PROGRESS` |
-| `Plan Ready` / `Pending Approval` / `Awaiting Input` | `REVIEW` |
-| `Completed` | `DONE` |
-| anything else (idle / no active turn) | `IDLE` |
+| runtime state                                        | bucket        |
+| ---------------------------------------------------- | ------------- |
+| `Working`                                            | `IN PROGRESS` |
+| `Plan Ready` / `Pending Approval` / `Awaiting Input` | `REVIEW`      |
+| `Completed`                                          | `DONE`        |
+| anything else (idle / no active turn)                | `IDLE`        |
 
 When `manual_status_bucket IS NOT NULL` it overrides the derivation. The override sticks until the user drags the session again or hits "Reset bucket" — runtime state changes do **not** clear it (per Q9 → option B).
 
@@ -105,14 +105,14 @@ Computed from the worktree's sessions — worst wins:
 
 ### Click & keyboard behavior
 
-| action | result |
-| --- | --- |
-| click session row | open that session's chat |
-| click worktree row | open the session with the highest `updated_at` in that worktree; if zero sessions, seed a draft session anchored to the worktree (becomes real on first message — keeps today's draft mechanism) |
-| click project row | expand / collapse the project's worktrees (no chat opens) |
-| hover `+` on worktree row · `⌘N` while worktree focused | new draft session in that worktree |
-| `+` on project header · `⌘+Shift+N` | open `NewWorktreeDialog` |
-| `⌘+Shift+P` (existing) | open `NewWorktreeDialog` with PR tab pre-selected |
+| action                                                  | result                                                                                                                                                                                           |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| click session row                                       | open that session's chat                                                                                                                                                                         |
+| click worktree row                                      | open the session with the highest `updated_at` in that worktree; if zero sessions, seed a draft session anchored to the worktree (becomes real on first message — keeps today's draft mechanism) |
+| click project row                                       | expand / collapse the project's worktrees (no chat opens)                                                                                                                                        |
+| hover `+` on worktree row · `⌘N` while worktree focused | new draft session in that worktree                                                                                                                                                               |
+| `+` on project header · `⌘+Shift+N`                     | open `NewWorktreeDialog`                                                                                                                                                                         |
+| `⌘+Shift+P` (existing)                                  | open `NewWorktreeDialog` with PR tab pre-selected                                                                                                                                                |
 
 ### Drag and drop
 
@@ -288,12 +288,12 @@ For each existing project, in a `SAVEPOINT`:
 
 ### Edge cases
 
-| case | handling |
-| --- | --- |
-| thread with `worktree_path` but missing on disk | row created normally; orphaned-worktree cleanup auto-archives on first sidebar load |
-| thread on a non-main branch but no `worktree_path` | goes to `main` (best-effort); thread's `branch` value is left untouched |
-| project with neither git nor threads | no worktree rows; renders empty + "Initialize git here" pill |
-| orphan thread (`project_id` not in projects) | skipped, `worktree_id` left NULL, surfaced via existing orphan-thread tooling |
+| case                                               | handling                                                                            |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| thread with `worktree_path` but missing on disk    | row created normally; orphaned-worktree cleanup auto-archives on first sidebar load |
+| thread on a non-main branch but no `worktree_path` | goes to `main` (best-effort); thread's `branch` value is left untouched             |
+| project with neither git nor threads               | no worktree rows; renders empty + "Initialize git here" pill                        |
+| orphan thread (`project_id` not in projects)       | skipped, `worktree_id` left NULL, surfaced via existing orphan-thread tooling       |
 
 ### Forward-only, non-destructive
 
@@ -392,17 +392,17 @@ The thread projector continues to write `branch` + `worktree_path` denormalized 
 
 ## Appendix A — RPC additions
 
-| RPC | shape | notes |
-| --- | --- | --- |
-| `gitWorkflow.createWorktreeForProject` | `(projectId, intent) → { worktreeId, sessionId }` | unified create |
-| `gitWorkflow.findWorktreeForOrigin` | `(projectId, { kind, number }) → worktreeId \| null` | re-attach detection |
-| `gitWorkflow.archiveWorktree` | `(worktreeId, { deleteBranch }) → void` | |
-| `gitWorkflow.restoreWorktree` | `(worktreeId) → void` | |
-| `gitWorkflow.deleteWorktree` | `(worktreeId, { deleteBranch }) → void` | |
-| `threads.setManualBucket` | `(threadId, bucket \| null) → void` | drag-drop override / reset |
-| `threads.setManualPosition` | `(threadId, position) → void` | sibling reorder |
-| `worktrees.setManualPosition` | `(worktreeId, position) → void` | worktree reorder within project |
-| `projects.initializeGit` | `(projectId) → void` | non-git → git upgrade |
+| RPC                                    | shape                                                | notes                           |
+| -------------------------------------- | ---------------------------------------------------- | ------------------------------- |
+| `gitWorkflow.createWorktreeForProject` | `(projectId, intent) → { worktreeId, sessionId }`    | unified create                  |
+| `gitWorkflow.findWorktreeForOrigin`    | `(projectId, { kind, number }) → worktreeId \| null` | re-attach detection             |
+| `gitWorkflow.archiveWorktree`          | `(worktreeId, { deleteBranch }) → void`              |                                 |
+| `gitWorkflow.restoreWorktree`          | `(worktreeId) → void`                                |                                 |
+| `gitWorkflow.deleteWorktree`           | `(worktreeId, { deleteBranch }) → void`              |                                 |
+| `threads.setManualBucket`              | `(threadId, bucket \| null) → void`                  | drag-drop override / reset      |
+| `threads.setManualPosition`            | `(threadId, position) → void`                        | sibling reorder                 |
+| `worktrees.setManualPosition`          | `(worktreeId, position) → void`                      | worktree reorder within project |
+| `projects.initializeGit`               | `(projectId) → void`                                 | non-git → git upgrade           |
 
 Existing `gitPreparePullRequestThread` is wrapped by `createWorktreeForProject({ kind: "pr", number })` — its current call sites (URL-paste dialog, project explorer Attach button) are migrated.
 

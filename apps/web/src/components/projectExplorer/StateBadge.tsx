@@ -10,12 +10,15 @@ import {
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 
-export type StateBadgeKind = "issue-open" | "issue-closed" | "pr-open" | "pr-closed" | "pr-merged" | "pr-draft";
+export type StateBadgeKind =
+  | "issue-open"
+  | "issue-closed"
+  | "pr-open"
+  | "pr-closed"
+  | "pr-merged"
+  | "pr-draft";
 
-const variants: Record<
-  StateBadgeKind,
-  { label: string; className: string; Icon: LucideIcon }
-> = {
+const variants: Record<StateBadgeKind, { label: string; className: string; Icon: LucideIcon }> = {
   "issue-open": {
     label: "Open",
     className: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
@@ -68,7 +71,10 @@ export const StateBadge = memo(function StateBadge(props: {
   );
 });
 
-export function changeRequestStateKind(state: "open" | "closed" | "merged", isDraft?: boolean): StateBadgeKind {
+export function changeRequestStateKind(
+  state: "open" | "closed" | "merged",
+  isDraft?: boolean,
+): StateBadgeKind {
   if (state === "merged") return "pr-merged";
   if (state === "closed") return "pr-closed";
   return isDraft ? "pr-draft" : "pr-open";

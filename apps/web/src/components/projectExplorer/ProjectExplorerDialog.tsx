@@ -8,11 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { gitPreparePullRequestThreadMutationOptions } from "~/lib/gitReactQuery";
 import { ContextPickerTabs } from "../chat/ContextPickerTabs";
-import {
-  Dialog,
-  DialogPopup,
-  DialogTitle,
-} from "../ui/dialog";
+import { Dialog, DialogPopup, DialogTitle } from "../ui/dialog";
 import { IssueDetail } from "./IssueDetail";
 import { IssuesTab } from "./IssuesTab";
 import { PullRequestDetail } from "./PullRequestDetail";
@@ -21,10 +17,7 @@ import type { ChangeRequestStateFilter, IssueStateFilter } from "./StateFilterBu
 
 type TabId = "issues" | "prs";
 
-type Selection =
-  | { kind: "issue"; number: number }
-  | { kind: "pr"; number: number }
-  | null;
+type Selection = { kind: "issue"; number: number } | { kind: "pr"; number: number } | null;
 
 interface ProjectExplorerDialogProps {
   open: boolean;
@@ -117,25 +110,28 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
 
   const handleBack = useCallback(() => setSelection(null), []);
 
-  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
-    if ((event.metaKey || event.ctrlKey) && event.key === "1") {
-      event.preventDefault();
-      setActiveTab("issues");
-      setSelection(null);
-      return;
-    }
-    if ((event.metaKey || event.ctrlKey) && event.key === "2") {
-      event.preventDefault();
-      setActiveTab("prs");
-      setSelection(null);
-      return;
-    }
-    if (event.key === "/" && !(event.target instanceof HTMLInputElement)) {
-      event.preventDefault();
-      const target = activeTab === "issues" ? issueInputRef.current : prInputRef.current;
-      target?.focus();
-    }
-  }, [activeTab]);
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "1") {
+        event.preventDefault();
+        setActiveTab("issues");
+        setSelection(null);
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key === "2") {
+        event.preventDefault();
+        setActiveTab("prs");
+        setSelection(null);
+        return;
+      }
+      if (event.key === "/" && !(event.target instanceof HTMLInputElement)) {
+        event.preventDefault();
+        const target = activeTab === "issues" ? issueInputRef.current : prInputRef.current;
+        target?.focus();
+      }
+    },
+    [activeTab],
+  );
 
   const tabs = useMemo(
     () => [

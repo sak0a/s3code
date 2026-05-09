@@ -4,6 +4,7 @@ import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
 
 import { OpenError, OpenInEditorInput } from "./editor.ts";
 import { AuthAccessStreamEvent } from "./auth.ts";
+import { ProjectId, ThreadId } from "./baseSchemas.ts";
 import {
   FilesystemBrowseInput,
   FilesystemBrowseResult,
@@ -99,6 +100,7 @@ import {
   SourceControlProviderError,
 } from "./sourceControl.ts";
 import { VcsError } from "./vcs.ts";
+import { CreateWorktreeIntent, StatusBucket, WorktreeId } from "./worktree.ts";
 
 export const WS_METHODS = {
   // Project registry methods
@@ -130,6 +132,17 @@ export const WS_METHODS = {
   gitRunStackedAction: "git.runStackedAction",
   gitResolvePullRequest: "git.resolvePullRequest",
   gitPreparePullRequestThread: "git.preparePullRequestThread",
+  gitCreateWorktreeForProject: "git.createWorktreeForProject",
+  gitFindWorktreeForOrigin: "git.findWorktreeForOrigin",
+  gitArchiveWorktree: "git.archiveWorktree",
+  gitRestoreWorktree: "git.restoreWorktree",
+  gitDeleteWorktree: "git.deleteWorktree",
+
+  // Sidebar hierarchy methods
+  threadsSetManualBucket: "threads.setManualBucket",
+  threadsSetManualPosition: "threads.setManualPosition",
+  worktreesSetManualPosition: "worktrees.setManualPosition",
+  projectsInitializeGit: "projects.initializeGit",
 
   // Terminal methods
   terminalOpen: "terminal.open",
@@ -164,6 +177,68 @@ export const WS_METHODS = {
   subscribeServerLifecycle: "subscribeServerLifecycle",
   subscribeAuthAccess: "subscribeAuthAccess",
 } as const;
+
+export const GitCreateWorktreeForProjectInput = Schema.Struct({
+  projectId: ProjectId,
+  intent: CreateWorktreeIntent,
+});
+export type GitCreateWorktreeForProjectInput = typeof GitCreateWorktreeForProjectInput.Type;
+
+export const GitCreateWorktreeForProjectOutput = Schema.Struct({
+  worktreeId: WorktreeId,
+  sessionId: ThreadId,
+});
+export type GitCreateWorktreeForProjectOutput = typeof GitCreateWorktreeForProjectOutput.Type;
+
+export const GitFindWorktreeForOriginInput = Schema.Struct({
+  projectId: ProjectId,
+  kind: Schema.Literals(["pr", "issue"]),
+  number: Schema.Number,
+});
+export type GitFindWorktreeForOriginInput = typeof GitFindWorktreeForOriginInput.Type;
+
+export const GitFindWorktreeForOriginOutput = Schema.NullOr(WorktreeId);
+export type GitFindWorktreeForOriginOutput = typeof GitFindWorktreeForOriginOutput.Type;
+
+export const GitArchiveWorktreeInput = Schema.Struct({
+  worktreeId: WorktreeId,
+  deleteBranch: Schema.Boolean,
+});
+export type GitArchiveWorktreeInput = typeof GitArchiveWorktreeInput.Type;
+
+export const GitRestoreWorktreeInput = Schema.Struct({
+  worktreeId: WorktreeId,
+});
+export type GitRestoreWorktreeInput = typeof GitRestoreWorktreeInput.Type;
+
+export const GitDeleteWorktreeInput = GitArchiveWorktreeInput;
+export type GitDeleteWorktreeInput = typeof GitDeleteWorktreeInput.Type;
+
+export const ThreadsSetManualBucketInput = Schema.Struct({
+  threadId: ThreadId,
+  bucket: Schema.NullOr(StatusBucket),
+});
+export type ThreadsSetManualBucketInput = typeof ThreadsSetManualBucketInput.Type;
+
+export const ThreadsSetManualPositionInput = Schema.Struct({
+  threadId: ThreadId,
+  position: Schema.Number,
+});
+export type ThreadsSetManualPositionInput = typeof ThreadsSetManualPositionInput.Type;
+
+export const WorktreesSetManualPositionInput = Schema.Struct({
+  worktreeId: WorktreeId,
+  position: Schema.Number,
+});
+export type WorktreesSetManualPositionInput = typeof WorktreesSetManualPositionInput.Type;
+
+export const ProjectsInitializeGitInput = Schema.Struct({
+  projectId: ProjectId,
+});
+export type ProjectsInitializeGitInput = typeof ProjectsInitializeGitInput.Type;
+
+export const EmptyRpcResult = Schema.Struct({});
+export type EmptyRpcResult = typeof EmptyRpcResult.Type;
 
 export const WsServerUpsertKeybindingRpc = Rpc.make(WS_METHODS.serverUpsertKeybinding, {
   payload: ServerUpsertKeybindingInput,
@@ -360,6 +435,60 @@ export const WsGitPreparePullRequestThreadRpc = Rpc.make(WS_METHODS.gitPreparePu
   error: GitManagerServiceError,
 });
 
+export const WsGitCreateWorktreeForProjectRpc = Rpc.make(WS_METHODS.gitCreateWorktreeForProject, {
+  payload: GitCreateWorktreeForProjectInput,
+  success: GitCreateWorktreeForProjectOutput,
+  error: GitManagerServiceError,
+});
+
+export const WsGitFindWorktreeForOriginRpc = Rpc.make(WS_METHODS.gitFindWorktreeForOrigin, {
+  payload: GitFindWorktreeForOriginInput,
+  success: GitFindWorktreeForOriginOutput,
+  error: GitManagerServiceError,
+});
+
+export const WsGitArchiveWorktreeRpc = Rpc.make(WS_METHODS.gitArchiveWorktree, {
+  payload: GitArchiveWorktreeInput,
+  success: EmptyRpcResult,
+  error: GitManagerServiceError,
+});
+
+export const WsGitRestoreWorktreeRpc = Rpc.make(WS_METHODS.gitRestoreWorktree, {
+  payload: GitRestoreWorktreeInput,
+  success: EmptyRpcResult,
+  error: GitManagerServiceError,
+});
+
+export const WsGitDeleteWorktreeRpc = Rpc.make(WS_METHODS.gitDeleteWorktree, {
+  payload: GitDeleteWorktreeInput,
+  success: EmptyRpcResult,
+  error: GitManagerServiceError,
+});
+
+export const WsThreadsSetManualBucketRpc = Rpc.make(WS_METHODS.threadsSetManualBucket, {
+  payload: ThreadsSetManualBucketInput,
+  success: EmptyRpcResult,
+  error: GitManagerServiceError,
+});
+
+export const WsThreadsSetManualPositionRpc = Rpc.make(WS_METHODS.threadsSetManualPosition, {
+  payload: ThreadsSetManualPositionInput,
+  success: EmptyRpcResult,
+  error: GitManagerServiceError,
+});
+
+export const WsWorktreesSetManualPositionRpc = Rpc.make(WS_METHODS.worktreesSetManualPosition, {
+  payload: WorktreesSetManualPositionInput,
+  success: EmptyRpcResult,
+  error: GitManagerServiceError,
+});
+
+export const WsProjectsInitializeGitRpc = Rpc.make(WS_METHODS.projectsInitializeGit, {
+  payload: ProjectsInitializeGitInput,
+  success: EmptyRpcResult,
+  error: GitManagerServiceError,
+});
+
 export const WsVcsListRefsRpc = Rpc.make(WS_METHODS.vcsListRefs, {
   payload: VcsListRefsInput,
   success: VcsListRefsResult,
@@ -525,6 +654,15 @@ export const WsRpcGroup = RpcGroup.make(
   WsGitRunStackedActionRpc,
   WsGitResolvePullRequestRpc,
   WsGitPreparePullRequestThreadRpc,
+  WsGitCreateWorktreeForProjectRpc,
+  WsGitFindWorktreeForOriginRpc,
+  WsGitArchiveWorktreeRpc,
+  WsGitRestoreWorktreeRpc,
+  WsGitDeleteWorktreeRpc,
+  WsThreadsSetManualBucketRpc,
+  WsThreadsSetManualPositionRpc,
+  WsWorktreesSetManualPositionRpc,
+  WsProjectsInitializeGitRpc,
   WsVcsListRefsRpc,
   WsVcsCreateWorktreeRpc,
   WsVcsRemoveWorktreeRpc,

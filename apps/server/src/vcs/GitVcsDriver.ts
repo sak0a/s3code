@@ -115,6 +115,12 @@ export interface GitRenameBranchResult {
   branch: string;
 }
 
+export interface GitDeleteBranchInput {
+  cwd: string;
+  refName: string;
+  force?: boolean;
+}
+
 export interface GitFetchPullRequestBranchInput {
   cwd: string;
   prNumber: number;
@@ -201,6 +207,7 @@ export interface GitVcsDriverShape {
   readonly createRef: (
     input: VcsCreateRefInput,
   ) => Effect.Effect<VcsCreateRefResult, GitCommandError>;
+  readonly deleteBranch: (input: GitDeleteBranchInput) => Effect.Effect<void, GitCommandError>;
   readonly switchRef: (
     input: VcsSwitchRefInput,
   ) => Effect.Effect<VcsSwitchRefResult, GitCommandError>;

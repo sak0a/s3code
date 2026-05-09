@@ -1,6 +1,9 @@
 import { assert, describe, it, vi } from "@effect/vitest";
 import { Effect, Layer } from "effect";
+import os from "node:os";
+import path from "node:path";
 
+import { GitCommandError, GitManagerError } from "@t3tools/contracts";
 import * as GitManager from "./GitManager.ts";
 import * as GitWorkflowService from "./GitWorkflowService.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
@@ -106,6 +109,89 @@ describe("GitWorkflowService", () => {
       assert.equal(localStatus.mock.calls.length, 0);
       assert.equal(remoteStatus.mock.calls.length, 0);
       assert.equal(status.mock.calls.length, 0);
+    }).pipe(Effect.provide(testLayer));
+  });
+
+  it.effect("treats deleted status paths as non-repositories after stale VCS detection", () => {
+    const detect = vi.fn(() =>
+      Effect.succeed({
+        kind: "git",
+        repository: {
+          kind: "git",
+          rootPath: missingCwd,
+          metadataPath: null,
+          freshness: {
+            source: "live-local",
+            observedAt: new Date(),
+            expiresAt: null,
+          },
+        },
+        driver: {},
+      } as unknown as VcsDriverRegistry.VcsDriverHandle),
+    );
+    const missingCwd = path.join(
+      os.tmpdir(),
+      `t3-missing-status-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    const status = vi.fn(() =>
+      Effect.fail(
+        new GitManagerError({
+          operation: "GitWorkflowService.status",
+          detail: "cwd disappeared",
+        }),
+      ),
+    );
+    const remoteStatus = vi.fn(() =>
+      Effect.fail(
+        new GitManagerError({
+          operation: "GitWorkflowService.remoteStatus",
+          detail: "cwd disappeared",
+        }),
+      ),
+    );
+    const listRefs = vi.fn(() =>
+      Effect.fail(
+        new GitCommandError({
+          operation: "GitWorkflowService.listRefs",
+          command: "git branch",
+          cwd: missingCwd,
+          detail: "cwd disappeared",
+        }),
+      ),
+    );
+
+    const testLayer = GitWorkflowService.layer.pipe(
+      Layer.provide(
+        Layer.mock(VcsDriverRegistry.VcsDriverRegistry)({
+          detect,
+        }),
+      ),
+      Layer.provide(
+        Layer.mock(GitVcsDriver.GitVcsDriver)({
+          listRefs,
+        }),
+      ),
+      Layer.provide(
+        Layer.mock(GitManager.GitManager)({
+          remoteStatus,
+          status,
+        }),
+      ),
+    );
+
+    return Effect.gen(function* () {
+      const workflow = yield* GitWorkflowService.GitWorkflowService;
+      const fullStatus = yield* workflow.status({ cwd: missingCwd });
+      const remote = yield* workflow.remoteStatus({ cwd: missingCwd });
+      const refs = yield* workflow.listRefs({ cwd: missingCwd });
+
+      assert.equal(fullStatus.isRepo, false);
+      assert.equal(remote, null);
+      assert.deepStrictEqual(refs.refs, []);
+      assert.equal(detect.mock.calls.length, 3);
+      assert.equal(remoteStatus.mock.calls.length, 1);
+      assert.equal(status.mock.calls.length, 1);
+      assert.equal(listRefs.mock.calls.length, 1);
     }).pipe(Effect.provide(testLayer));
   });
 

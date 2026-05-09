@@ -69,6 +69,7 @@ export const SourceControlIssueComment = Schema.Struct({
   author: Schema.String,
   body: Schema.String,
   createdAt: Schema.DateTimeUtc,
+  authorAssociation: Schema.optional(Schema.String),
 });
 export type SourceControlIssueComment = typeof SourceControlIssueComment.Type;
 
@@ -246,22 +247,24 @@ export class SourceControlRepositoryError extends Schema.TaggedErrorClass<Source
   }
 }
 
-export interface SourceControlDetailContentInput {
+export interface SourceControlDetailContentCommentLike {
+  readonly author: string;
   readonly body: string;
-  readonly comments: ReadonlyArray<{
-    readonly author: string;
-    readonly body: string;
-    readonly createdAt: string;
-  }>;
+  readonly createdAt: string;
 }
 
-export interface SourceControlDetailContentOutput {
+export interface SourceControlDetailContentInput<
+  C extends SourceControlDetailContentCommentLike = SourceControlDetailContentCommentLike,
+> {
   readonly body: string;
-  readonly comments: ReadonlyArray<{
-    readonly author: string;
-    readonly body: string;
-    readonly createdAt: string;
-  }>;
+  readonly comments: ReadonlyArray<C>;
+}
+
+export interface SourceControlDetailContentOutput<
+  C extends SourceControlDetailContentCommentLike = SourceControlDetailContentCommentLike,
+> {
+  readonly body: string;
+  readonly comments: ReadonlyArray<C>;
   readonly truncated: boolean;
 }
 
@@ -272,9 +275,9 @@ function truncateUtf8(value: string, maxBytes: number): { value: string; truncat
   return { value: buf.toString("utf8"), truncated: true };
 }
 
-export function truncateSourceControlDetailContent(
-  input: SourceControlDetailContentInput,
-): SourceControlDetailContentOutput {
+export function truncateSourceControlDetailContent<C extends SourceControlDetailContentCommentLike>(
+  input: SourceControlDetailContentInput<C>,
+): SourceControlDetailContentOutput<C> {
   let truncated = false;
   const { value: body, truncated: bodyCut } = truncateUtf8(
     input.body,
@@ -288,14 +291,15 @@ export function truncateSourceControlDetailContent(
     truncated = true;
   }
 
-  const cappedComments = comments.map((c) => {
+  const cappedComments: C[] = [];
+  for (const c of comments) {
     const { value, truncated: cBodyCut } = truncateUtf8(
       c.body,
       SOURCE_CONTROL_DETAIL_COMMENT_BODY_MAX_BYTES,
     );
     if (cBodyCut) truncated = true;
-    return { author: c.author, body: value, createdAt: c.createdAt };
-  });
+    cappedComments.push(c.body === value ? c : ({ ...c, body: value } as C));
+  }
 
   return { body, comments: cappedComments, truncated };
 }

@@ -149,8 +149,8 @@ import {
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
 import { ChatComposer, type ChatComposerHandle } from "./chat/ChatComposer";
 import { ExpandedImageDialog } from "./chat/ExpandedImageDialog";
-import { ProjectExplorerDialog } from "./projectExplorer/ProjectExplorerDialog";
 import { PullRequestThreadDialog } from "./PullRequestThreadDialog";
+import { NewWorktreeDialog, type NewWorktreeDialogTab } from "./worktrees/NewWorktreeDialog";
 import { MessagesTimeline } from "./chat/MessagesTimeline";
 import { ChatHeader } from "./chat/ChatHeader";
 import { type ExpandedImagePreview } from "./chat/ExpandedImagePreview";
@@ -723,6 +723,8 @@ export default function ChatView(props: ChatViewProps) {
   const [pullRequestDialogState, setPullRequestDialogState] =
     useState<PullRequestDialogState | null>(null);
   const [projectExplorerOpen, setProjectExplorerOpen] = useState(false);
+  const [projectExplorerInitialTab, setProjectExplorerInitialTab] =
+    useState<NewWorktreeDialogTab>("prs");
   const [terminalLaunchContext, setTerminalLaunchContext] = useState<TerminalLaunchContext | null>(
     null,
   );
@@ -2536,6 +2538,7 @@ export default function ChatView(props: ChatViewProps) {
       if (!isToggleProjectExplorer) return;
       event.preventDefault();
       event.stopPropagation();
+      setProjectExplorerInitialTab("prs");
       setProjectExplorerOpen((value) => !value);
     };
     window.addEventListener("keydown", handler, true);
@@ -3828,7 +3831,10 @@ export default function ChatView(props: ChatViewProps) {
                 terminalOpen={terminalState.terminalOpen}
                 terminalToggleShortcutLabel={terminalToggleShortcutLabel}
                 onToggleTerminal={toggleTerminalVisibility}
-                onOpenProjectExplorer={() => setProjectExplorerOpen(true)}
+                onOpenProjectExplorer={() => {
+                  setProjectExplorerInitialTab("prs");
+                  setProjectExplorerOpen(true);
+                }}
                 projectExplorerShortcutLabel="⇧⌘P"
               />
             )}
@@ -3850,15 +3856,22 @@ export default function ChatView(props: ChatViewProps) {
               onPrepared={handlePreparedPullRequestThread}
             />
           ) : null}
-          <ProjectExplorerDialog
+          <NewWorktreeDialog
             open={projectExplorerOpen}
             environmentId={activeThread.environmentId}
-            threadId={activeThread.id}
+            projectId={activeProject?.id ?? null}
             cwd={activeProject?.cwd ?? null}
+            initialTab={projectExplorerInitialTab}
+            onCreated={(result) => {
+              void navigate({
+                to: "/$environmentId/$threadId",
+                params: {
+                  environmentId: activeThread.environmentId,
+                  threadId: result.sessionId,
+                },
+              });
+            }}
             onOpenChange={setProjectExplorerOpen}
-            {...(canCheckoutPullRequestIntoThread
-              ? { onPullRequestPrepared: handlePreparedPullRequestThread }
-              : {})}
           />
         </div>
         {/* end chat column */}

@@ -21,6 +21,7 @@ export function createEnvironmentApi(rpcClient: WsRpcClient): EnvironmentApi {
       readFile: rpcClient.projects.readFile,
       searchEntries: rpcClient.projects.searchEntries,
       writeFile: rpcClient.projects.writeFile,
+      initializeGit: rpcClient.projects.initializeGit,
     },
     filesystem: {
       browse: rpcClient.filesystem.browse,
@@ -44,7 +45,27 @@ export function createEnvironmentApi(rpcClient: WsRpcClient): EnvironmentApi {
     git: {
       resolvePullRequest: rpcClient.git.resolvePullRequest,
       preparePullRequestThread: rpcClient.git.preparePullRequestThread,
+      createWorktreeForProject: rpcClient.git.createWorktreeForProject,
+      findWorktreeForOrigin: rpcClient.git.findWorktreeForOrigin,
+      archiveWorktree: rpcClient.git.archiveWorktree,
+      restoreWorktree: rpcClient.git.restoreWorktree,
+      deleteWorktree: rpcClient.git.deleteWorktree,
     },
+    ...(rpcClient.worktrees
+      ? {
+          worktrees: {
+            setManualPosition: rpcClient.worktrees.setManualPosition,
+          },
+        }
+      : {}),
+    ...(rpcClient.threads
+      ? {
+          threads: {
+            setManualBucket: rpcClient.threads.setManualBucket,
+            setManualPosition: rpcClient.threads.setManualPosition,
+          },
+        }
+      : {}),
     orchestration: {
       dispatchCommand: rpcClient.orchestration.dispatchCommand,
       getTurnDiff: rpcClient.orchestration.getTurnDiff,

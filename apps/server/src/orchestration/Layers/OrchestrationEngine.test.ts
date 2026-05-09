@@ -6,9 +6,9 @@ import {
   ProjectId,
   ThreadId,
   TurnId,
+  WorktreeId,
   type OrchestrationEvent,
   ProviderInstanceId,
-  type OrchestrationReadModel,
 } from "@t3tools/contracts";
 import { Effect, Layer, ManagedRuntime, Metric, Option, Queue, Stream } from "effect";
 import { describe, expect, it } from "vitest";
@@ -218,6 +218,66 @@ describe("OrchestrationEngine", () => {
     await runtime.dispose();
   });
 
+  it("dispatches worktree title metadata updates", async () => {
+    const createdAt = now();
+    const changedAt = now();
+    const system = await createOrchestrationSystem();
+    const { engine } = system;
+    const projectId = asProjectId("project-worktree-title");
+    const worktreeId = WorktreeId.make("worktree-title");
+
+    try {
+      await system.run(
+        engine.dispatch({
+          type: "project.create",
+          commandId: CommandId.make("cmd-worktree-title-project-create"),
+          projectId,
+          title: "Worktree Title Project",
+          workspaceRoot: "/tmp/project-worktree-title",
+          defaultModelSelection: {
+            instanceId: ProviderInstanceId.make("codex"),
+            model: "gpt-5-codex",
+          },
+          createdAt,
+        }),
+      );
+
+      await system.run(
+        engine.dispatch({
+          type: "worktree.create",
+          commandId: CommandId.make("cmd-worktree-title-create"),
+          worktreeId,
+          projectId,
+          branch: "feature/title",
+          worktreePath: "/tmp/project-worktree-title-feature",
+          origin: "branch",
+          prNumber: null,
+          issueNumber: null,
+          prTitle: null,
+          issueTitle: null,
+          createdAt,
+        }),
+      );
+
+      await system.run(
+        engine.dispatch({
+          type: "worktree.meta.update",
+          commandId: CommandId.make("cmd-worktree-title-update"),
+          worktreeId,
+          title: "Renamed Worktree",
+          changedAt,
+        }),
+      );
+
+      const readModel = await system.readModel();
+      expect(
+        readModel.worktrees?.find((worktree) => worktree.worktreeId === worktreeId)?.title,
+      ).toBe("Renamed Worktree");
+    } finally {
+      await system.dispose();
+    }
+  });
+
   it("persists deterministic read models for repeated snapshot reads", async () => {
     const createdAt = now();
     const system = await createOrchestrationSystem();
@@ -312,6 +372,22 @@ describe("OrchestrationEngine", () => {
         runtimeMode: "full-access",
         branch: null,
         worktreePath: null,
+        createdAt,
+      }),
+    );
+    await system.run(
+      engine.dispatch({
+        type: "thread.turn.start",
+        commandId: CommandId.make("cmd-thread-archive-message"),
+        threadId: ThreadId.make("thread-archive"),
+        message: {
+          messageId: MessageId.make("message-thread-archive"),
+          role: "user",
+          text: "archive-ready",
+          attachments: [],
+        },
+        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+        runtimeMode: "full-access",
         createdAt,
       }),
     );
@@ -949,6 +1025,22 @@ describe("OrchestrationEngine", () => {
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
+        createdAt,
+      }),
+    );
+    await runtime.runPromise(
+      engine.dispatch({
+        type: "thread.turn.start",
+        commandId: CommandId.make("cmd-thread-sync-message"),
+        threadId: ThreadId.make("thread-sync"),
+        message: {
+          messageId: MessageId.make("message-thread-sync"),
+          role: "user",
+          text: "sync-ready",
+          attachments: [],
+        },
+        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+        runtimeMode: "approval-required",
         createdAt,
       }),
     );

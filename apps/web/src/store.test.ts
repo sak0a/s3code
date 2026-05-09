@@ -9,6 +9,7 @@ import {
   ProviderInstanceId,
   ThreadId,
   TurnId,
+  WorktreeId,
   type OrchestrationEvent,
 } from "@t3tools/contracts";
 import { describe, expect, it } from "vitest";
@@ -21,6 +22,7 @@ import {
   selectProjectsAcrossEnvironments,
   selectThreadByRef,
   selectThreadExistsByRef,
+  setSidebarWorktreeTitle,
   setThreadBranch,
   selectThreadsAcrossEnvironments,
   type AppState,
@@ -277,6 +279,66 @@ describe("environment state removal", () => {
     const next = removeEnvironmentState(state, remoteEnvironmentId);
 
     expect(next).toBe(state);
+  });
+});
+
+describe("worktree sidebar state", () => {
+  it("updates a worktree title optimistically after a successful rename command", () => {
+    const worktreeId = WorktreeId.make("worktree-main");
+    const projectId = ProjectId.make("project-1");
+    const state = makeEmptyState({
+      projectIds: [projectId],
+      projectById: {
+        [projectId]: {
+          id: projectId,
+          environmentId: localEnvironmentId,
+          name: "Project",
+          cwd: "/tmp/project",
+          defaultModelSelection: {
+            instanceId: ProviderInstanceId.make("codex"),
+            model: "gpt-5-codex",
+          },
+          createdAt: "2026-02-13T00:00:00.000Z",
+          updatedAt: "2026-02-13T00:00:00.000Z",
+          scripts: [],
+        },
+      },
+      worktreeIds: [worktreeId],
+      worktreeIdsByProjectId: {
+        [projectId]: [worktreeId],
+      },
+      worktreeById: {
+        [worktreeId]: {
+          id: worktreeId,
+          environmentId: localEnvironmentId,
+          projectId,
+          title: null,
+          branch: "main",
+          worktreePath: null,
+          origin: "main",
+          prNumber: null,
+          issueNumber: null,
+          prTitle: null,
+          issueTitle: null,
+          createdAt: "2026-02-13T00:00:00.000Z",
+          updatedAt: "2026-02-13T00:00:00.000Z",
+          archivedAt: null,
+          manualPosition: 0,
+        },
+      },
+    });
+
+    const next = setSidebarWorktreeTitle(
+      state,
+      localEnvironmentId,
+      worktreeId,
+      "Renamed Worktree",
+      "2026-02-13T00:01:00.000Z",
+    );
+
+    expect(localEnvironmentStateOf(next).worktreeById?.[worktreeId]?.title).toBe(
+      "Renamed Worktree",
+    );
   });
 });
 

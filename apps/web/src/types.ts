@@ -16,6 +16,9 @@ import type {
   CheckpointRef,
   ProviderInteractionMode,
   RuntimeMode,
+  StatusBucket,
+  WorktreeId,
+  WorktreeOrigin,
 } from "@t3tools/contracts";
 
 export type SessionPhase = "disconnected" | "connecting" | "ready" | "running";
@@ -113,6 +116,9 @@ export interface Thread {
   pendingSourceProposedPlan?: OrchestrationLatestTurn["sourceProposedPlan"];
   branch: string | null;
   worktreePath: string | null;
+  worktreeId?: string | null | undefined;
+  manualStatusBucket?: StatusBucket | null | undefined;
+  manualPosition?: number | undefined;
   turnDiffSummaries: TurnDiffSummary[];
   activities: OrchestrationThreadActivity[];
 }
@@ -132,6 +138,9 @@ export interface ThreadShell {
   updatedAt?: string | undefined;
   branch: string | null;
   worktreePath: string | null;
+  worktreeId?: string | null | undefined;
+  manualStatusBucket?: StatusBucket | null | undefined;
+  manualPosition?: number | undefined;
 }
 
 export interface ThreadTurnState {
@@ -152,10 +161,31 @@ export interface SidebarThreadSummary {
   latestTurn: OrchestrationLatestTurn | null;
   branch: string | null;
   worktreePath: string | null;
+  worktreeId?: string | null | undefined;
+  manualStatusBucket?: StatusBucket | null | undefined;
+  manualPosition?: number | undefined;
   latestUserMessageAt: string | null;
   hasPendingApprovals: boolean;
   hasPendingUserInput: boolean;
   hasActionableProposedPlan: boolean;
+}
+
+export interface SidebarWorktreeSummary {
+  id: WorktreeId;
+  environmentId: EnvironmentId;
+  projectId: ProjectId;
+  title?: string | null | undefined;
+  branch: string;
+  worktreePath: string | null;
+  origin: WorktreeOrigin;
+  prNumber: number | null;
+  issueNumber: number | null;
+  prTitle: string | null;
+  issueTitle: string | null;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+  manualPosition: number;
 }
 
 export interface ThreadSession {

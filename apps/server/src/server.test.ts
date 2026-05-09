@@ -77,6 +77,10 @@ import {
 import { SqlitePersistenceMemory } from "./persistence/Layers/Sqlite.ts";
 import { PersistenceSqlError } from "./persistence/Errors.ts";
 import {
+  ProjectionWorktreeRepository,
+  type ProjectionWorktreeRepositoryShape,
+} from "./persistence/Services/ProjectionWorktrees.ts";
+import {
   ProviderRegistry,
   type ProviderRegistryShape,
 } from "./provider/Services/ProviderRegistry.ts";
@@ -329,6 +333,7 @@ const buildAppUnderTest = (options?: {
     terminalManager?: Partial<TerminalManagerShape>;
     orchestrationEngine?: Partial<OrchestrationEngineShape>;
     projectionSnapshotQuery?: Partial<ProjectionSnapshotQueryShape>;
+    projectionWorktreeRepository?: Partial<ProjectionWorktreeRepositoryShape>;
     checkpointDiffQuery?: Partial<CheckpointDiffQueryShape>;
     browserTraceCollector?: Partial<BrowserTraceCollectorShape>;
     serverLifecycleEvents?: Partial<ServerLifecycleEventsShape>;
@@ -594,6 +599,19 @@ const buildAppUnderTest = (options?: {
           getFirstActiveThreadIdByProjectId: () => Effect.succeed(Option.none()),
           getThreadCheckpointContext: () => Effect.succeed(Option.none()),
           ...options?.layers?.projectionSnapshotQuery,
+        }),
+      ),
+      Layer.provide(
+        Layer.mock(ProjectionWorktreeRepository)({
+          upsert: () => Effect.void,
+          getById: () => Effect.succeed(Option.none()),
+          listByProjectId: () => Effect.succeed([]),
+          findByOrigin: () => Effect.succeed(null),
+          markArchived: () => Effect.void,
+          markRestored: () => Effect.void,
+          deleteById: () => Effect.void,
+          setManualPosition: () => Effect.void,
+          ...options?.layers?.projectionWorktreeRepository,
         }),
       ),
       Layer.provide(

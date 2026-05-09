@@ -1,10 +1,7 @@
 import { memo } from "react";
 import { cn } from "~/lib/utils";
 
-export const LabelChip = memo(function LabelChip(props: {
-  label: string;
-  className?: string;
-}) {
+export const LabelChip = memo(function LabelChip(props: { label: string; className?: string }) {
   return (
     <span
       className={cn(
