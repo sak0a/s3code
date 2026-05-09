@@ -30,13 +30,13 @@ export const CompactComposerControlsMenu = memo(function CompactComposerControls
       <MenuTrigger
         render={
           <Button
-            size="sm"
+            size="icon-xs"
             variant="ghost"
             className={cn(
-              "shrink-0 px-2",
+              "shrink-0 text-muted-foreground/70 hover:text-foreground/80",
               props.runtimeMode === "full-access"
                 ? "text-orange-700 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
-                : "text-muted-foreground/70 hover:text-foreground/80",
+                : undefined,
             )}
             aria-label="More composer controls"
           />

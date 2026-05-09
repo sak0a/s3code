@@ -231,7 +231,9 @@ function flattenOpenCodeModels(input: OpenCodeInventory): ReadonlyArray<ServerPr
       }
 
       const subProvider = nonEmptyTrimmed(provider.name);
-      const shortName = subProvider ? deriveShortNameByStrippingPrefix(name, subProvider) : undefined;
+      const shortName = subProvider
+        ? deriveShortNameByStrippingPrefix(name, subProvider)
+        : undefined;
       models.push({
         slug: `${provider.id}/${model.id}`,
         name,
