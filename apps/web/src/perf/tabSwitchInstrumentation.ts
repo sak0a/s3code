@@ -33,7 +33,6 @@ export function useRenderCounter(label: string): void {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     count.current += 1;
-    // eslint-disable-next-line no-console
     console.debug(`[render] ${label} #${count.current}`);
   });
 }

@@ -14,17 +14,17 @@ export interface TabPrefetchController {
   dispose: () => void;
 }
 
+function clearPendingRelease(entry: Entry): void {
+  if (entry.pendingReleaseTimer !== null) {
+    clearTimeout(entry.pendingReleaseTimer);
+    entry.pendingReleaseTimer = null;
+  }
+}
+
 export function createTabPrefetchController(
   input: TabPrefetchControllerInput,
 ): TabPrefetchController {
   const entries = new Map<string, Entry>();
-
-  function clearPendingRelease(entry: Entry): void {
-    if (entry.pendingReleaseTimer !== null) {
-      clearTimeout(entry.pendingReleaseTimer);
-      entry.pendingReleaseTimer = null;
-    }
-  }
 
   return {
     enter: (key) => {
