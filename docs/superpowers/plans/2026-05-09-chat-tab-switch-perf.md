@@ -9,6 +9,7 @@
 **Tech Stack:** React 19, zustand 5 with `useShallow`, TanStack Router v1, TanStack Query v5, Vitest. The existing `retainThreadDetailSubscription(env, threadId)` primitive in `apps/web/src/environments/runtime/service.ts` is the actual prefetch tool — `router.preloadRoute(...)` is belt-and-braces because the `_chat.$environmentId.$threadId` route has no loader; data flows through the WebSocket store.
 
 **Out of scope:**
+
 - Full ChatView decomposition (4052 lines, multi-PR effort)
 - Sidebar changes (reference only)
 - PR/Issue dialog work in `apps/web/src/components/projectExplorer`
@@ -21,6 +22,7 @@
 ## File Structure
 
 **New files:**
+
 - `apps/web/src/perf/tabSwitchInstrumentation.ts` — `Performance.mark`/`measure` helpers for tab-click → first-paint timing, plus a dev-only render-counter hook.
 - `apps/web/src/perf/tabSwitchInstrumentation.test.ts` — unit tests for the timing helper (pure logic, no DOM).
 - `apps/web/src/sessionTabs.selectors.ts` — targeted selector that returns `ChatSessionTabsItem[]` with reference-stable item caching.
@@ -29,6 +31,7 @@
 - `apps/web/src/components/chat/ChatSessionTabsPrefetch.test.ts` — controller tests with fake timers.
 
 **Modified files:**
+
 - `apps/web/src/components/chat/ChatSessionTabs.tsx` — wire `onPointerEnter`/`onFocus`/`onPointerLeave`/`onBlur` to a new `onPrefetch?: (key: string) => () => void` prop.
 - `apps/web/src/components/ChatView.tsx` — switch from broad selector to `selectActiveWorktreeSessionTabs(...)`; add prefetch handler that returns disposers; instrument tab-click + first-paint marks.
 - `apps/web/src/components/chat/ChatHeader.tsx` — optional render counter wiring (gated by `import.meta.env.DEV`).
@@ -38,6 +41,7 @@
 ## Task 1: Add measurement helpers
 
 **Files:**
+
 - Create: `apps/web/src/perf/tabSwitchInstrumentation.ts`
 - Test: `apps/web/src/perf/tabSwitchInstrumentation.test.ts`
 
@@ -136,6 +140,7 @@ git commit -m "Add Performance.mark helpers for tab-switch timing"
 ## Task 2: Pure prefetch controller
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/ChatSessionTabsPrefetch.ts`
 - Test: `apps/web/src/components/chat/ChatSessionTabsPrefetch.test.ts`
 
@@ -303,6 +308,7 @@ git commit -m "Add tab-prefetch controller with debounced retain/release"
 ## Task 3: Wire prefetch into ChatSessionTabs
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/ChatSessionTabs.tsx`
 
 - [ ] **Step 1: Extend props**
@@ -310,6 +316,7 @@ git commit -m "Add tab-prefetch controller with debounced retain/release"
 Edit `apps/web/src/components/chat/ChatSessionTabs.tsx`:
 
 Old:
+
 ```tsx
 export interface ChatSessionTabsProps {
   items: ReadonlyArray<ChatSessionTabsItem>;
@@ -320,6 +327,7 @@ export interface ChatSessionTabsProps {
 ```
 
 New:
+
 ```tsx
 export interface ChatSessionTabsProps {
   items: ReadonlyArray<ChatSessionTabsItem>;
@@ -385,6 +393,7 @@ git commit -m "Add prefetch enter/leave hooks to ChatSessionTabs"
 ## Task 4: Targeted selector for session tab items
 
 **Files:**
+
 - Create: `apps/web/src/sessionTabs.selectors.ts`
 - Test: `apps/web/src/sessionTabs.selectors.test.ts`
 
@@ -596,6 +605,7 @@ git commit -m "Add reference-stable session tabs selector"
 ## Task 5: Wire targeted selector + prefetch into ChatView
 
 **Files:**
+
 - Modify: `apps/web/src/components/ChatView.tsx`
 
 - [ ] **Step 1: Replace activeWorktreeSessionTabs derivation**
@@ -611,6 +621,7 @@ import { createSessionTabsSelector } from "../sessionTabs.selectors";
 Replace the `projectSidebarThreads` + `activeWorktreeSessionTabs` block:
 
 Old (lines ~883-940):
+
 ```tsx
 const projectSidebarThreads = useStore(
   useShallow((state) =>
@@ -626,6 +637,7 @@ const activeWorktreeSessionTabs = useMemo<ChatSessionTabsItem[]>(() => {
 ```
 
 New:
+
 ```tsx
 const sessionTabsSelector = useMemo(() => createSessionTabsSelector(), []);
 const tabsWorktreeId = activeThread?.worktreeId;
@@ -670,6 +682,7 @@ const handleSelectSessionTab = useCallback(
 If a `parseScopedThreadKey` helper does not already exist in `@t3tools/client-runtime`, keep using `projectSidebarThreadsRef.current.find(...)` — that ref is fed by the existing untargeted selector and is still cheap.
 
 Add at the top of the file (next to other `EMPTY_*` constants):
+
 ```tsx
 const EMPTY_SESSION_TABS: ReadonlyArray<ChatSessionTabsItem> = Object.freeze([]);
 ```
@@ -718,30 +731,35 @@ const handleTabPrefetchLeave = useCallback(
 - [ ] **Step 3: Pass new handlers + first-paint mark**
 
 In the `<ChatHeader>` JSX block (around line 3770), pass:
+
 ```tsx
-onSelectSessionTab={handleSelectSessionTab}
-onPrefetchTabEnter={handleTabPrefetchEnter}
-onPrefetchTabLeave={handleTabPrefetchLeave}
+onSelectSessionTab = { handleSelectSessionTab };
+onPrefetchTabEnter = { handleTabPrefetchEnter };
+onPrefetchTabLeave = { handleTabPrefetchLeave };
 ```
 
 Add the new optional props to `ChatHeader.tsx` (`apps/web/src/components/chat/ChatHeader.tsx`):
+
 ```tsx
 onPrefetchTabEnter?: (key: string) => void;
 onPrefetchTabLeave?: (key: string) => void;
 ```
 
 In ChatHeader's JSX, forward them to `<ChatSessionTabs>`:
+
 ```tsx
-{showTabs && props.onSelectSessionTab ? (
-  <ChatSessionTabs
-    items={tabs}
-    activeKey={props.activeSessionTabKey ?? null}
-    onSelect={props.onSelectSessionTab}
-    {...(props.onPrefetchTabEnter ? { onPrefetchEnter: props.onPrefetchTabEnter } : {})}
-    {...(props.onPrefetchTabLeave ? { onPrefetchLeave: props.onPrefetchTabLeave } : {})}
-    {...(props.onNewSessionInWorktree ? { onNew: props.onNewSessionInWorktree } : {})}
-  />
-) : null}
+{
+  showTabs && props.onSelectSessionTab ? (
+    <ChatSessionTabs
+      items={tabs}
+      activeKey={props.activeSessionTabKey ?? null}
+      onSelect={props.onSelectSessionTab}
+      {...(props.onPrefetchTabEnter ? { onPrefetchEnter: props.onPrefetchTabEnter } : {})}
+      {...(props.onPrefetchTabLeave ? { onPrefetchLeave: props.onPrefetchTabLeave } : {})}
+      {...(props.onNewSessionInWorktree ? { onNew: props.onNewSessionInWorktree } : {})}
+    />
+  ) : null;
+}
 ```
 
 Add the first-paint mark in ChatView. The ChatView body renders `<MessagesTimeline>` — wrap that with an effect that fires on the first render for a given threadKey:
@@ -779,6 +797,7 @@ git commit -m "Wire targeted selector and hover prefetch into ChatView session t
 ## Task 6: ChatHeader render audit (verify, fix if needed)
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/ChatHeader.tsx` (temporary instrumentation)
 - Modify: `apps/web/src/components/ChatView.tsx` (memo equality on activeWorktreeSummary if it leaks)
 
@@ -787,6 +806,7 @@ This task is conditional on what the user observes. The expected result is "Chat
 - [ ] **Step 1: Add render counter (temporary)**
 
 In `apps/web/src/components/chat/ChatHeader.tsx`, near the top of the `ChatHeader` body:
+
 ```tsx
 import { useRenderCounter } from "../../perf/tabSwitchInstrumentation";
 // ...
@@ -799,6 +819,7 @@ Also instrument `MessagesTimeline` to verify it's the one re-rendering during st
 
 Run dev server: `bun dev` (apps/web).
 User instructions:
+
 1. Open DevTools console.
 2. Filter for `[render]`.
 3. Click a tab → expect ChatHeader to render once. Note the count.
@@ -806,28 +827,33 @@ User instructions:
 5. Report counts.
 
 If ChatHeader re-renders during streaming, check:
+
 - `activeWorktreeSummary` selector — it returns a fresh ref on every state change because the inline closure isn't memoized properly. Look at `apps/web/src/components/ChatView.tsx:888-908`. Switch the inline factory to `useShallow` over the fields actually consumed (branch, title, origin), or split into three flat selectors.
 - `sessionTabs` array — should be stable from the new selector. Verify with `Object.is(prevTabs, currTabs)` log in ChatHeader if needed.
 
 Likely fix for `activeWorktreeSummary` (apply only if needed):
+
 ```tsx
 const activeWorktreeBranch = useStore((state) => {
   if (!activeThread?.environmentId || !activeThread.worktreeId) return null;
-  return state.environmentStateById[activeThread.environmentId]?.worktreeById?.[
-    activeThread.worktreeId
-  ]?.branch ?? null;
+  return (
+    state.environmentStateById[activeThread.environmentId]?.worktreeById?.[activeThread.worktreeId]
+      ?.branch ?? null
+  );
 });
 const activeWorktreeTitle = useStore((state) => {
   if (!activeThread?.environmentId || !activeThread.worktreeId) return null;
-  return state.environmentStateById[activeThread.environmentId]?.worktreeById?.[
-    activeThread.worktreeId
-  ]?.title ?? null;
+  return (
+    state.environmentStateById[activeThread.environmentId]?.worktreeById?.[activeThread.worktreeId]
+      ?.title ?? null
+  );
 });
 const activeWorktreeOrigin = useStore((state) => {
   if (!activeThread?.environmentId || !activeThread.worktreeId) return null;
-  return state.environmentStateById[activeThread.environmentId]?.worktreeById?.[
-    activeThread.worktreeId
-  ]?.origin ?? null;
+  return (
+    state.environmentStateById[activeThread.environmentId]?.worktreeById?.[activeThread.worktreeId]
+      ?.origin ?? null
+  );
 });
 ```
 
@@ -863,11 +889,12 @@ Expected: All tests pass except the pre-existing failing test `ProjectionSnapsho
 - [ ] **Step 2: Manual smoke test**
 
 User actions in dev:
+
 1. Open chat with active worktree containing 2+ sessions.
 2. Hover a non-active tab — within ~250ms, the WS subscription warms (no visible UI change; verify in DevTools Network or via console.debug if instrumentation is added).
 3. Click the tab. Note the time displayed by `performance.measure` entries:
    ```js
-   performance.getEntriesByType("measure").filter((m) => m.name.startsWith("t3:tab-switch:"))
+   performance.getEntriesByType("measure").filter((m) => m.name.startsWith("t3:tab-switch:"));
    ```
 4. Verify: active tab highlight moves, ⌘1-⌘9 hints update, archived sessions still hidden, status dot color is correct, the active tab scrolls into view.
 
