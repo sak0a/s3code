@@ -35,7 +35,11 @@ import {
 import { projectScriptCwd, projectScriptRuntimeEnv } from "@t3tools/shared/projectScripts";
 import { truncate } from "@t3tools/shared/String";
 import { Debouncer } from "@tanstack/react-pacer";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  changeRequestListQueryOptions,
+  issueListQueryOptions,
+} from "~/lib/sourceControlContextRpc";
 import { DateTime } from "effect";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -82,6 +86,7 @@ import {
 } from "../pendingUserInput";
 import {
   selectProjectsAcrossEnvironments,
+  selectSidebarThreadsForProjectRef,
   selectThreadsAcrossEnvironments,
   useStore,
 } from "../store";
@@ -153,6 +158,10 @@ import { PullRequestThreadDialog } from "./PullRequestThreadDialog";
 import { NewWorktreeDialog, type NewWorktreeDialogTab } from "./worktrees/NewWorktreeDialog";
 import { MessagesTimeline } from "./chat/MessagesTimeline";
 import { ChatHeader } from "./chat/ChatHeader";
+import { type ChatSessionTabsItem } from "./chat/ChatSessionTabs";
+import { createTabPrefetchController } from "./chat/ChatSessionTabsPrefetch";
+import { createSessionTabsSelector } from "../sessionTabs.selectors";
+import { markTabSwitchClick, markTabSwitchFirstPaint } from "../perf/tabSwitchInstrumentation";
 import { type ExpandedImagePreview } from "./chat/ExpandedImagePreview";
 import { NoActiveThreadState } from "./NoActiveThreadState";
 import { resolveEffectiveEnvMode, resolveEnvironmentOptionLabel } from "./BranchToolbar.logic";
@@ -206,6 +215,7 @@ const EMPTY_ACTIVITIES: OrchestrationThreadActivity[] = [];
 const EMPTY_PROPOSED_PLANS: Thread["proposedPlans"] = [];
 const EMPTY_PROVIDERS: ServerProvider[] = [];
 const EMPTY_PENDING_USER_INPUT_ANSWERS: Record<string, PendingUserInputDraftAnswer> = {};
+const EMPTY_SESSION_TABS: ReadonlyArray<ChatSessionTabsItem> = Object.freeze([]);
 type EnvironmentUnavailableState = {
   readonly environmentId: EnvironmentId;
   readonly label: string;
@@ -872,6 +882,113 @@ export default function ChatView(props: ChatViewProps) {
   const activeProject = useStore(
     useMemo(() => createProjectSelectorByRef(activeProjectRef), [activeProjectRef]),
   );
+
+  const activeWorktreeSummary = useStore(
+    useMemo(
+      () => (state: Parameters<typeof selectSidebarThreadsForProjectRef>[0]) => {
+        if (!activeThread || !activeThread.environmentId) return null;
+        const wid = activeThread.worktreeId;
+        if (!wid) return null;
+        const env = state.environmentStateById[activeThread.environmentId];
+        if (!env?.worktreeById) return null;
+        return (
+          (
+            env.worktreeById as Record<
+              string,
+              (typeof env.worktreeById)[keyof typeof env.worktreeById]
+            >
+          )[wid] ?? null
+        );
+      },
+      // Re-create the selector only when the identity inputs change.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [activeThread?.environmentId, activeThread?.worktreeId],
+    ),
+  );
+  const sessionTabsSelector = useMemo(() => createSessionTabsSelector(), []);
+  const tabsWorktreeId = activeThread?.worktreeId;
+  const tabsWorktreePath = activeThread?.worktreePath;
+  const activeWorktreeSessionTabs = useStore((state) => {
+    if (!activeProjectRef) return EMPTY_SESSION_TABS;
+    if (tabsWorktreeId === undefined && tabsWorktreePath === undefined) {
+      return EMPTY_SESSION_TABS;
+    }
+    const threads = selectSidebarThreadsForProjectRef(state, activeProjectRef);
+    return sessionTabsSelector(threads, {
+      worktreeId: tabsWorktreeId ?? null,
+      worktreePath: tabsWorktreePath ?? null,
+    });
+  });
+  const activeSessionTabKey = activeThread
+    ? scopedThreadKey(scopeThreadRef(activeThread.environmentId, activeThread.id))
+    : null;
+  const activeProjectIssuesQuery = useQuery(
+    issueListQueryOptions({
+      environmentId: activeProject?.environmentId ?? null,
+      cwd: activeProject?.cwd ?? null,
+      state: "open",
+      limit: 100,
+      enabled: activeProject !== undefined,
+    }),
+  );
+  const activeProjectPullRequestsQuery = useQuery(
+    changeRequestListQueryOptions({
+      environmentId: activeProject?.environmentId ?? null,
+      cwd: activeProject?.cwd ?? null,
+      state: "open",
+      limit: 100,
+      enabled: activeProject !== undefined,
+    }),
+  );
+  const activeProjectIssueCount = activeProjectIssuesQuery.data?.length ?? 0;
+  const activeProjectPullRequestCount = activeProjectPullRequestsQuery.data?.length ?? 0;
+
+  const handleSelectSessionTab = useCallback(
+    (key: string) => {
+      const target = parseScopedThreadKey(key);
+      if (!target) return;
+      markTabSwitchClick(key);
+      void navigate({
+        to: "/$environmentId/$threadId",
+        params: {
+          environmentId: target.environmentId,
+          threadId: target.threadId,
+        },
+      });
+    },
+    [navigate],
+  );
+
+  const prefetchControllerRef = useRef<ReturnType<typeof createTabPrefetchController> | null>(null);
+  useEffect(() => {
+    const controller = createTabPrefetchController({
+      retain: (key) => {
+        const ref = parseScopedThreadKey(key);
+        if (!ref) return () => {};
+        return retainThreadDetailSubscription(ref.environmentId, ref.threadId);
+      },
+      releaseDelayMs: 250,
+    });
+    prefetchControllerRef.current = controller;
+    return () => {
+      controller.dispose();
+      prefetchControllerRef.current = null;
+    };
+  }, []);
+  const handleTabPrefetchEnter = useCallback(
+    (key: string) => prefetchControllerRef.current?.enter(key),
+    [],
+  );
+  const handleTabPrefetchLeave = useCallback(
+    (key: string) => prefetchControllerRef.current?.leave(key),
+    [],
+  );
+
+  useEffect(() => {
+    if (!activeSessionTabKey) return;
+    const key = activeSessionTabKey;
+    queueMicrotask(() => markTabSwitchFirstPaint(key));
+  }, [activeSessionTabKey]);
 
   useEffect(() => {
     if (routeKind !== "server") {
@@ -3631,14 +3748,14 @@ export default function ChatView(props: ChatViewProps) {
       {/* Top bar */}
       <header
         className={cn(
-          "border-b border-border",
+          "border-b border-border bg-muted/24",
           isElectron
             ? cn(
-                "drag-region flex h-[52px] items-center px-3 sm:px-5 wco:h-[env(titlebar-area-height)]",
+                "drag-region flex min-h-[52px] items-stretch px-3 sm:px-5 wco:min-h-[env(titlebar-area-height)]",
                 reserveTitleBarControlInset &&
                   "wco:pr-[calc(100vw-env(titlebar-area-width)-env(titlebar-area-x)+1em)]",
               )
-            : "pb-2 pl-[calc(env(safe-area-inset-left)+0.75rem)] pr-[calc(env(safe-area-inset-right)+0.75rem)] pt-2 sm:pb-3 sm:pl-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)] sm:pt-3",
+            : "pl-[calc(env(safe-area-inset-left)+0.75rem)] pr-[calc(env(safe-area-inset-right)+0.75rem)] sm:pl-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)]",
         )}
       >
         <ChatHeader
@@ -3660,6 +3777,16 @@ export default function ChatView(props: ChatViewProps) {
           previewAvailable={activeProject !== undefined}
           diffOpen={diffOpen}
           previewOpen={previewOpen}
+          worktreeBranch={activeWorktreeSummary?.branch ?? activeThread.branch ?? null}
+          worktreeTitle={activeWorktreeSummary?.title ?? null}
+          worktreeOrigin={activeWorktreeSummary?.origin ?? null}
+          sessionTabs={activeWorktreeSessionTabs}
+          activeSessionTabKey={activeSessionTabKey}
+          issueCount={activeProjectIssueCount}
+          pullRequestCount={activeProjectPullRequestCount}
+          onSelectSessionTab={handleSelectSessionTab}
+          onPrefetchTabEnter={handleTabPrefetchEnter}
+          onPrefetchTabLeave={handleTabPrefetchLeave}
           onRunProjectScript={runProjectScript}
           onAddProjectScript={saveProjectScript}
           onUpdateProjectScript={updateProjectScript}
