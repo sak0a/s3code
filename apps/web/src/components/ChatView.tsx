@@ -41,7 +41,7 @@ import {
   issueListQueryOptions,
 } from "~/lib/sourceControlContextRpc";
 import { DateTime } from "effect";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useShallow } from "zustand/react/shallow";
 import { useGitStatus } from "~/lib/gitStatusState";
@@ -948,12 +948,14 @@ export default function ChatView(props: ChatViewProps) {
       const target = parseScopedThreadKey(key);
       if (!target) return;
       markTabSwitchClick(key);
-      void navigate({
-        to: "/$environmentId/$threadId",
-        params: {
-          environmentId: target.environmentId,
-          threadId: target.threadId,
-        },
+      startTransition(() => {
+        void navigate({
+          to: "/$environmentId/$threadId",
+          params: {
+            environmentId: target.environmentId,
+            threadId: target.threadId,
+          },
+        });
       });
     },
     [navigate],

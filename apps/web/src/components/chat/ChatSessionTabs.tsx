@@ -1,8 +1,10 @@
 import { PlusIcon } from "lucide-react";
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { cn } from "~/lib/utils";
 import type { SidebarStatusBucket } from "../Sidebar.logic";
 import { tabKeyboardHint } from "./ChatSessionTabs.logic";
+
+const PENDING_TAB_TIMEOUT_MS = 500;
 
 const BUCKET_DOT: Record<SidebarStatusBucket, string> = {
   done: "bg-muted-foreground/45",
@@ -28,16 +30,28 @@ export interface ChatSessionTabsProps {
 
 export const ChatSessionTabs = memo(function ChatSessionTabs(props: ChatSessionTabsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const displayedActiveKey = pendingKey ?? props.activeKey;
 
   useEffect(() => {
-    if (!containerRef.current || props.activeKey === null) return;
+    if (pendingKey === null) return;
+    if (props.activeKey === pendingKey) {
+      setPendingKey(null);
+      return;
+    }
+    const timeout = setTimeout(() => setPendingKey(null), PENDING_TAB_TIMEOUT_MS);
+    return () => clearTimeout(timeout);
+  }, [pendingKey, props.activeKey]);
+
+  useEffect(() => {
+    if (!containerRef.current || displayedActiveKey === null) return;
     const active = containerRef.current.querySelector<HTMLElement>(
-      `[data-session-tab-key="${CSS.escape(props.activeKey)}"]`,
+      `[data-session-tab-key="${CSS.escape(displayedActiveKey)}"]`,
     );
     if (active) {
       active.scrollIntoView({ block: "nearest", inline: "nearest" });
     }
-  }, [props.activeKey]);
+  }, [displayedActiveKey]);
 
   if (props.items.length === 0) return null;
 
@@ -49,7 +63,7 @@ export const ChatSessionTabs = memo(function ChatSessionTabs(props: ChatSessionT
       className="-mb-px flex min-h-7 shrink-0 items-end gap-0.5 overflow-x-auto"
     >
       {props.items.map((item, index) => {
-        const isActive = item.key === props.activeKey;
+        const isActive = item.key === displayedActiveKey;
         const hint = tabKeyboardHint(index);
         const prefetchEnter =
           !isActive && props.onPrefetchEnter ? () => props.onPrefetchEnter?.(item.key) : undefined;
@@ -62,7 +76,10 @@ export const ChatSessionTabs = memo(function ChatSessionTabs(props: ChatSessionT
             role="tab"
             aria-selected={isActive}
             data-session-tab-key={item.key}
-            onClick={() => props.onSelect(item.key)}
+            onClick={() => {
+              if (item.key !== props.activeKey) setPendingKey(item.key);
+              props.onSelect(item.key);
+            }}
             onPointerEnter={prefetchEnter}
             onFocus={prefetchEnter}
             onPointerLeave={prefetchLeave}
