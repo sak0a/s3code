@@ -87,6 +87,9 @@ export interface WsRpcClient {
     readonly getChangeRequestDetail: RpcUnaryMethod<
       typeof WS_METHODS.sourceControlGetChangeRequestDetail
     >;
+    readonly getChangeRequestDiff: RpcUnaryMethod<
+      typeof WS_METHODS.sourceControlGetChangeRequestDiff
+    >;
   };
   readonly shell: {
     readonly openInEditor: (input: {
@@ -220,6 +223,8 @@ export function createWsRpcClient(transport: WsTransport): WsRpcClient {
         transport.request((client) =>
           client[WS_METHODS.sourceControlGetChangeRequestDetail](input),
         ),
+      getChangeRequestDiff: (input) =>
+        transport.request((client) => client[WS_METHODS.sourceControlGetChangeRequestDiff](input)),
     },
     shell: {
       openInEditor: (input) =>

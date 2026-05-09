@@ -343,7 +343,7 @@ describe("GitHubCli.layer", () => {
             "view",
             "42",
             "--json",
-            "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,isDraft,author,assignees,labels,headRepository,headRepositoryOwner,body,comments",
+            "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,isDraft,author,assignees,labels,headRepository,headRepositoryOwner,body,comments,reviewRequests,reviews,commits,additions,deletions,changedFiles,files",
           ],
           cwd: "/tmp",
           timeoutMs: 30_000,

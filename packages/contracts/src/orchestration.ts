@@ -193,12 +193,19 @@ export const ProjectScript = Schema.Struct({
 });
 export type ProjectScript = typeof ProjectScript.Type;
 
+export const PROJECT_CUSTOM_SYSTEM_PROMPT_MAX_CHARS = 20_000;
+export const ProjectCustomSystemPrompt = TrimmedNonEmptyString.check(
+  Schema.isMaxLength(PROJECT_CUSTOM_SYSTEM_PROMPT_MAX_CHARS),
+);
+export type ProjectCustomSystemPrompt = typeof ProjectCustomSystemPrompt.Type;
+
 export const OrchestrationProject = Schema.Struct({
   id: ProjectId,
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),
   defaultModelSelection: Schema.NullOr(ModelSelection),
+  customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
   scripts: Schema.Array(ProjectScript),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -373,6 +380,7 @@ export const OrchestrationProjectShell = Schema.Struct({
   workspaceRoot: TrimmedNonEmptyString,
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),
   defaultModelSelection: Schema.NullOr(ModelSelection),
+  customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
   scripts: Schema.Array(ProjectScript),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -476,6 +484,7 @@ export const ProjectCreateCommand = Schema.Struct({
   workspaceRoot: TrimmedNonEmptyString,
   createWorkspaceRootIfMissing: Schema.optional(Schema.Boolean),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
+  customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
   createdAt: IsoDateTime,
 });
 
@@ -486,6 +495,7 @@ const ProjectMetaUpdateCommand = Schema.Struct({
   title: Schema.optional(TrimmedNonEmptyString),
   workspaceRoot: Schema.optional(TrimmedNonEmptyString),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
+  customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
   scripts: Schema.optional(Schema.Array(ProjectScript)),
 });
 
@@ -929,6 +939,7 @@ export const ProjectCreatedPayload = Schema.Struct({
   workspaceRoot: TrimmedNonEmptyString,
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),
   defaultModelSelection: Schema.NullOr(ModelSelection),
+  customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
   scripts: Schema.Array(ProjectScript),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -940,6 +951,7 @@ export const ProjectMetaUpdatedPayload = Schema.Struct({
   workspaceRoot: Schema.optional(TrimmedNonEmptyString),
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
+  customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
   scripts: Schema.optional(Schema.Array(ProjectScript)),
   updatedAt: IsoDateTime,
 });

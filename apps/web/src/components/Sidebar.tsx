@@ -6,6 +6,7 @@ import {
   CircleDotIcon,
   CopyIcon,
   Edit3Icon,
+  ExternalLinkIcon,
   FolderPlusIcon,
   FolderOpenIcon,
   GitPullRequestIcon,
@@ -28,6 +29,14 @@ import {
   ThreadStatusLabel,
 } from "./ThreadStatusIndicators";
 import { ProjectFavicon } from "./ProjectFavicon";
+import {
+  AzureDevOpsIcon,
+  BitbucketIcon,
+  GitHubIcon,
+  GitIcon,
+  GitLabIcon,
+  type Icon,
+} from "./Icons";
 import { autoAnimate } from "@formkit/auto-animate";
 import React, { useCallback, useEffect, memo, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -54,7 +63,9 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   type ContextMenuItem,
   type DesktopUpdateState,
+  PROJECT_CUSTOM_SYSTEM_PROMPT_MAX_CHARS,
   ProjectId,
+  type RepositoryIdentity,
   type ScopedThreadRef,
   type SidebarProjectGroupingMode,
   type ThreadEnvMode,
@@ -138,6 +149,7 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
 import {
   Menu,
   MenuGroup,
@@ -179,6 +191,7 @@ import {
   resolveThreadStatusPill,
   orderItemsByPreferredIds,
   shouldClearThreadSelectionOnMouseDown,
+  shouldConfirmCloseSidebarThread,
   sortProjectsForSidebar,
   useThreadJumpHintVisibility,
   ThreadStatusPill,
@@ -1021,7 +1034,7 @@ function ProjectSourceControlBadges(props: { issueCount: number; pullRequestCoun
           count={props.issueCount}
           label="Open issues"
           tone="issues"
-          icon={<CircleDotIcon className="size-3.5" />}
+          icon={<CircleDotIcon className="size-2.5" />}
         />
       ) : null}
       {props.pullRequestCount > 0 ? (
@@ -1029,7 +1042,7 @@ function ProjectSourceControlBadges(props: { issueCount: number; pullRequestCoun
           count={props.pullRequestCount}
           label="Open pull requests"
           tone="pullRequests"
-          icon={<GitPullRequestIcon className="size-3.5" />}
+          icon={<GitPullRequestIcon className="size-2.5" />}
         />
       ) : null}
     </span>
@@ -1044,13 +1057,13 @@ function ProjectSourceControlBadge(props: {
 }) {
   const className =
     props.tone === "issues"
-      ? "border-emerald-500/18 bg-emerald-500/12 text-emerald-500 dark:text-emerald-400"
-      : "border-blue-500/18 bg-blue-500/12 text-blue-500 dark:text-blue-400";
+      ? "border-emerald-500/16 bg-emerald-500/10 text-emerald-500 dark:text-emerald-400"
+      : "border-blue-500/16 bg-blue-500/10 text-blue-500 dark:text-blue-400";
 
   return (
     <span
       className={cn(
-        "inline-flex h-5 min-w-8 shrink-0 items-center justify-center gap-1 rounded-md border px-1.5 text-[11px] font-semibold tabular-nums leading-none",
+        "inline-flex h-4 shrink-0 items-center justify-center gap-0.5 rounded-sm border px-1 text-[9px] font-semibold tabular-nums leading-none",
         className,
       )}
       title={`${props.label}: ${props.count}`}
@@ -1072,44 +1085,163 @@ function sumSourceControlQueryCounts(
   return queries.reduce((total, query) => total + (query.data?.length ?? 0), 0);
 }
 
+interface ProjectRemoteLink {
+  readonly label: string;
+  readonly provider: string | undefined;
+  readonly providerLabel: string;
+  readonly url: string;
+}
+
+function formatRepositoryProviderLabel(provider: string | undefined): string {
+  switch (provider) {
+    case "github":
+      return "GitHub";
+    case "gitlab":
+      return "GitLab";
+    case "azure-devops":
+      return "Azure DevOps";
+    case "bitbucket":
+      return "Bitbucket";
+    default:
+      return "Remote";
+  }
+}
+
+function resolveRepositoryProviderIcon(provider: string | undefined): Icon {
+  switch (provider) {
+    case "github":
+      return GitHubIcon;
+    case "gitlab":
+      return GitLabIcon;
+    case "azure-devops":
+      return AzureDevOpsIcon;
+    case "bitbucket":
+      return BitbucketIcon;
+    default:
+      return GitIcon;
+  }
+}
+
+function ProjectRemoteProviderMark(props: { readonly provider: string | undefined }) {
+  const ProviderIcon = resolveRepositoryProviderIcon(props.provider);
+  return (
+    <span className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-background text-foreground shadow-xs">
+      <ProviderIcon className="size-5" aria-hidden />
+    </span>
+  );
+}
+
+function stripGitSuffix(path: string): string {
+  return path.replace(/\/+$/g, "").replace(/\.git$/i, "");
+}
+
+function resolveRemoteUrlToBrowserUrl(remoteUrl: string): string | null {
+  const trimmed = remoteUrl.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const url = new URL(trimmed);
+      url.pathname = stripGitSuffix(url.pathname);
+      url.search = "";
+      url.hash = "";
+      return url.toString();
+    } catch {
+      return null;
+    }
+  }
+
+  if (/^(?:ssh|git):\/\//i.test(trimmed)) {
+    try {
+      const url = new URL(trimmed);
+      const repositoryPath = stripGitSuffix(url.pathname)
+        .split("/")
+        .filter((segment) => segment.length > 0)
+        .join("/");
+      return url.hostname && repositoryPath ? `https://${url.hostname}/${repositoryPath}` : null;
+    } catch {
+      return null;
+    }
+  }
+
+  const scpStyleRemote = /^git@([^:/\s]+)[:/]([^#?\s]+)$/i.exec(trimmed);
+  if (scpStyleRemote?.[1] && scpStyleRemote[2]) {
+    return `https://${scpStyleRemote[1]}/${stripGitSuffix(scpStyleRemote[2])}`;
+  }
+
+  return null;
+}
+
+function resolveProjectRemoteLink(
+  repositoryIdentity: RepositoryIdentity | null | undefined,
+): ProjectRemoteLink | null {
+  const remoteUrl = repositoryIdentity?.locator.remoteUrl;
+  if (!remoteUrl) {
+    return null;
+  }
+  const url = resolveRemoteUrlToBrowserUrl(remoteUrl);
+  if (!url) {
+    return null;
+  }
+  return {
+    url,
+    label: repositoryIdentity.displayName ?? repositoryIdentity.canonicalKey,
+    provider: repositoryIdentity.provider,
+    providerLabel: formatRepositoryProviderLabel(repositoryIdentity.provider),
+  };
+}
+
 function ProjectSettingsMenu(props: {
   project: SidebarProjectSnapshot;
   onCopyPath: (member: SidebarProjectGroupMember) => void;
   onGrouping: (member: SidebarProjectGroupMember) => void;
+  onOpenRemote: (member: SidebarProjectGroupMember) => void;
   onRemove: (member: SidebarProjectGroupMember) => void;
   onRename: (member: SidebarProjectGroupMember) => void;
   onSettings: (member: SidebarProjectGroupMember) => void;
 }) {
-  const renderActions = (member: SidebarProjectGroupMember) => (
-    <>
-      <MenuItem onClick={() => props.onSettings(member)} className="min-h-7 py-1 sm:text-xs">
-        <SettingsIcon className="size-3.5" />
-        Project settings
-      </MenuItem>
-      <MenuSeparator />
-      <MenuItem onClick={() => props.onRename(member)} className="min-h-7 py-1 sm:text-xs">
-        <Edit3Icon className="size-3.5" />
-        Rename project
-      </MenuItem>
-      <MenuItem onClick={() => props.onGrouping(member)} className="min-h-7 py-1 sm:text-xs">
-        <SettingsIcon className="size-3.5" />
-        Project grouping...
-      </MenuItem>
-      <MenuItem onClick={() => props.onCopyPath(member)} className="min-h-7 py-1 sm:text-xs">
-        <CopyIcon className="size-3.5" />
-        Copy Project Path
-      </MenuItem>
-      <MenuSeparator />
-      <MenuItem
-        onClick={() => props.onRemove(member)}
-        variant="destructive"
-        className="min-h-7 py-1 sm:text-xs"
-      >
-        <Trash2Icon className="size-3.5" />
-        Remove project
-      </MenuItem>
-    </>
-  );
+  const renderActions = (member: SidebarProjectGroupMember) => {
+    const remoteLink = resolveProjectRemoteLink(member.repositoryIdentity);
+    const RemoteIcon = resolveRepositoryProviderIcon(remoteLink?.provider);
+    return (
+      <>
+        <MenuItem onClick={() => props.onSettings(member)} className="min-h-7 py-1 sm:text-xs">
+          <SettingsIcon className="size-3.5" />
+          Project settings
+        </MenuItem>
+        {remoteLink ? (
+          <MenuItem onClick={() => props.onOpenRemote(member)} className="min-h-7 py-1 sm:text-xs">
+            <RemoteIcon className="size-3.5" />
+            Open remote
+          </MenuItem>
+        ) : null}
+        <MenuSeparator />
+        <MenuItem onClick={() => props.onRename(member)} className="min-h-7 py-1 sm:text-xs">
+          <Edit3Icon className="size-3.5" />
+          Rename project
+        </MenuItem>
+        <MenuItem onClick={() => props.onGrouping(member)} className="min-h-7 py-1 sm:text-xs">
+          <SettingsIcon className="size-3.5" />
+          Project grouping...
+        </MenuItem>
+        <MenuItem onClick={() => props.onCopyPath(member)} className="min-h-7 py-1 sm:text-xs">
+          <CopyIcon className="size-3.5" />
+          Copy Project Path
+        </MenuItem>
+        <MenuSeparator />
+        <MenuItem
+          onClick={() => props.onRemove(member)}
+          variant="destructive"
+          className="min-h-7 py-1 sm:text-xs"
+        >
+          <Trash2Icon className="size-3.5" />
+          Remove project
+        </MenuItem>
+      </>
+    );
+  };
 
   if (props.project.memberProjects.length === 1) {
     return <MenuGroup>{renderActions(props.project.memberProjects[0]!)}</MenuGroup>;
@@ -1134,13 +1266,16 @@ function ProjectSettingsDialog(props: {
   onClose: () => void;
   onCopyPath: (path: string) => void;
   onPickWorkspaceRoot: () => void;
+  onOpenRemote: (member: SidebarProjectGroupMember) => void;
   onSave: () => void;
   open: boolean;
   saving: boolean;
   target: SidebarProjectGroupMember | null;
   title: string;
+  customSystemPrompt: string;
   workspaceRoot: string;
   worktrees: readonly SidebarWorktreeSummary[];
+  onCustomSystemPromptChange: (value: string) => void;
   onTitleChange: (value: string) => void;
   onWorkspaceRootChange: (value: string) => void;
 }) {
@@ -1148,6 +1283,7 @@ function ProjectSettingsDialog(props: {
   const visibleWorktrees = props.worktrees.slice(0, 5);
   const archivedWorktreeCount = props.worktrees.filter((worktree) => worktree.archivedAt).length;
   const activeWorktreeCount = props.worktrees.length - archivedWorktreeCount;
+  const remoteLink = resolveProjectRemoteLink(target?.repositoryIdentity);
 
   return (
     <Dialog
@@ -1158,7 +1294,7 @@ function ProjectSettingsDialog(props: {
         }
       }}
     >
-      <DialogPopup className="max-w-3xl">
+      <DialogPopup className="max-w-5xl">
         <DialogHeader className="border-border/70 border-b px-6 py-5">
           <div className="flex min-w-0 items-start gap-4">
             <div className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-secondary text-muted-foreground shadow-xs">
@@ -1174,8 +1310,8 @@ function ProjectSettingsDialog(props: {
             </div>
           </div>
         </DialogHeader>
-        <DialogPanel className="space-y-5 px-6 py-5">
-          <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_16rem]">
+        <DialogPanel className="px-6 py-5">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
             <section className="space-y-4">
               <div className="grid gap-1.5">
                 <span className="text-xs font-medium text-foreground">Display name</span>
@@ -1211,6 +1347,58 @@ function ProjectSettingsDialog(props: {
                   </Button>
                 </div>
               </div>
+              <div className="grid gap-1.5">
+                <span className="text-xs font-medium text-foreground">Custom system prompt</span>
+                <Textarea
+                  aria-label="Custom system prompt"
+                  value={props.customSystemPrompt}
+                  maxLength={PROJECT_CUSTOM_SYSTEM_PROMPT_MAX_CHARS}
+                  placeholder="Always use TypeScript."
+                  className="min-h-28 resize-y"
+                  onChange={(event) => props.onCustomSystemPromptChange(event.target.value)}
+                />
+              </div>
+            </section>
+            <aside className="space-y-4">
+              <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex size-14 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-background text-muted-foreground">
+                    <ImageIcon className="size-6" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium text-foreground">Project image</div>
+                    <div className="mt-1 truncate text-[11px] text-muted-foreground">
+                      Default project image
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {target && remoteLink ? (
+                <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <ProjectRemoteProviderMark provider={remoteLink.provider} />
+                      <div className="min-w-0">
+                        <div className="flex min-w-0 items-center gap-2 text-xs font-medium text-foreground">
+                          <span className="truncate">{remoteLink.providerLabel} repository</span>
+                        </div>
+                        <div className="mt-1 truncate text-[11px] text-muted-foreground">
+                          {remoteLink.label}
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      className="shrink-0"
+                      onClick={() => props.onOpenRemote(target)}
+                    >
+                      <ExternalLinkIcon className="size-3.5" />
+                      Open
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               <div className="rounded-lg border border-border/70 bg-muted/20">
                 <div className="flex items-center justify-between gap-3 border-border/70 border-b px-3 py-2">
                   <div className="flex min-w-0 items-center gap-2">
@@ -1244,15 +1432,6 @@ function ProjectSettingsDialog(props: {
                     </div>
                   ) : null}
                 </div>
-              </div>
-            </section>
-            <aside className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-3">
-              <div className="text-xs font-medium text-foreground">Project image</div>
-              <div className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-border bg-background text-muted-foreground">
-                <ImageIcon className="size-8" />
-              </div>
-              <div className="rounded-md bg-background px-3 py-2 text-[11px] text-muted-foreground">
-                Default project image
               </div>
             </aside>
           </div>
@@ -1320,9 +1499,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   const appSettingsConfirmThreadDelete = useSettings<boolean>(
     (settings) => settings.confirmThreadDelete,
   );
-  const appSettingsConfirmThreadArchive = useSettings<boolean>(
-    (settings) => settings.confirmThreadArchive,
-  );
+  const appSettingsConfirmThreadArchive = false;
   const defaultThreadEnvMode = useSettings<ThreadEnvMode>(
     (settings) => settings.defaultThreadEnvMode,
   );
@@ -1492,6 +1669,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     useState<SidebarProjectGroupMember | null>(null);
   const [projectSettingsTitle, setProjectSettingsTitle] = useState("");
   const [projectSettingsWorkspaceRoot, setProjectSettingsWorkspaceRoot] = useState("");
+  const [projectSettingsCustomSystemPrompt, setProjectSettingsCustomSystemPrompt] = useState("");
   const [projectSettingsSaving, setProjectSettingsSaving] = useState(false);
   const renamingCommittedRef = useRef(false);
   const renamingInputRef = useRef<HTMLInputElement | null>(null);
@@ -1766,7 +1944,38 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     setProjectSettingsTarget(member);
     setProjectSettingsTitle(member.name);
     setProjectSettingsWorkspaceRoot(member.cwd);
+    setProjectSettingsCustomSystemPrompt(member.customSystemPrompt ?? "");
     setProjectSettingsSaving(false);
+  }, []);
+
+  const openProjectRemoteLink = useCallback((member: SidebarProjectGroupMember) => {
+    const remoteLink = resolveProjectRemoteLink(member.repositoryIdentity);
+    if (!remoteLink) {
+      toastManager.add({
+        type: "warning",
+        title: "No remote link available",
+      });
+      return;
+    }
+
+    const api = readLocalApi();
+    if (!api) {
+      toastManager.add({
+        type: "error",
+        title: "Link opening is unavailable.",
+      });
+      return;
+    }
+
+    void api.shell.openExternal(remoteLink.url).catch((error) => {
+      toastManager.add(
+        stackedThreadToast({
+          type: "error",
+          title: "Unable to open remote repository",
+          description: error instanceof Error ? error.message : "An error occurred.",
+        }),
+      );
+    });
   }, []);
 
   const removeProject = useCallback(
@@ -1916,7 +2125,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
 
         const actionHandlers = new Map<string, () => Promise<void> | void>();
         const makeLeaf = (
-          action: "settings" | "rename" | "grouping" | "copy-path" | "delete",
+          action: "settings" | "open-remote" | "rename" | "grouping" | "copy-path" | "delete",
           member: SidebarProjectGroupMember,
           options?: {
             destructive?: boolean;
@@ -1928,6 +2137,9 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
             switch (action) {
               case "settings":
                 openProjectSettingsDialog(member);
+                return;
+              case "open-remote":
+                openProjectRemoteLink(member);
                 return;
               case "rename":
                 openProjectRenameDialog(member);
@@ -1952,7 +2164,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         };
 
         const buildTargetedItem = (
-          action: "settings" | "rename" | "grouping" | "copy-path" | "delete",
+          action: "settings" | "open-remote" | "rename" | "grouping" | "copy-path" | "delete",
           label: string,
           options?: {
             destructive?: boolean;
@@ -1982,21 +2194,31 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
           };
         };
 
-        const clicked = await api.contextMenu.show(
-          [
-            buildTargetedItem("settings", "Project settings"),
-            buildTargetedItem("rename", "Rename project"),
-            buildTargetedItem("grouping", "Project grouping…"),
-            buildTargetedItem("copy-path", "Copy Project Path"),
-            buildTargetedItem("delete", "Remove project", {
-              destructive: true,
-            }),
-          ],
-          {
-            x: event.clientX,
-            y: event.clientY,
-          },
+        const hasAnyRemoteLink = project.memberProjects.some(
+          (member) => resolveProjectRemoteLink(member.repositoryIdentity) !== null,
         );
+        const menuItems: ContextMenuItem<string>[] = [
+          buildTargetedItem("settings", "Project settings"),
+          ...(hasAnyRemoteLink
+            ? [
+                buildTargetedItem("open-remote", "Open remote", {
+                  isDisabled: (member) =>
+                    resolveProjectRemoteLink(member.repositoryIdentity) === null,
+                }),
+              ]
+            : []),
+          buildTargetedItem("rename", "Rename project"),
+          buildTargetedItem("grouping", "Project grouping…"),
+          buildTargetedItem("copy-path", "Copy Project Path"),
+          buildTargetedItem("delete", "Remove project", {
+            destructive: true,
+          }),
+        ];
+
+        const clicked = await api.contextMenu.show(menuItems, {
+          x: event.clientX,
+          y: event.clientY,
+        });
 
         if (!clicked) {
           return;
@@ -2009,6 +2231,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       copyPathToClipboard,
       handleRemoveProject,
       openProjectGroupingDialog,
+      openProjectRemoteLink,
       openProjectRenameDialog,
       openProjectSettingsDialog,
       project.groupedProjectCount,
@@ -2067,7 +2290,25 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         }
         return;
       }
-      await deleteThread(scopeThreadRef(thread.environmentId, thread.id), opts);
+      const threadRef = scopeThreadRef(thread.environmentId, thread.id);
+      const shouldConfirmClose = shouldConfirmCloseSidebarThread(thread);
+      if (shouldConfirmClose) {
+        const message = [
+          `Close session "${thread.title}"?`,
+          "This permanently clears conversation history for this thread.",
+        ].join("\n");
+        const localApi = readLocalApi();
+        const confirmed = localApi
+          ? await localApi.dialogs.confirm(message)
+          : window.confirm(message);
+        if (!confirmed) {
+          return;
+        }
+      }
+      await deleteThread(threadRef, {
+        ...opts,
+        optimistic: !shouldConfirmClose,
+      });
     },
     [deleteThread, router],
   );
@@ -2567,6 +2808,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     setProjectSettingsTarget(null);
     setProjectSettingsTitle("");
     setProjectSettingsWorkspaceRoot("");
+    setProjectSettingsCustomSystemPrompt("");
     setProjectSettingsSaving(false);
   }, []);
 
@@ -2595,6 +2837,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
 
     const title = projectSettingsTitle.trim();
     const workspaceRoot = projectSettingsWorkspaceRoot.trim();
+    const customSystemPrompt = projectSettingsCustomSystemPrompt.trim();
     if (title.length === 0) {
       toastManager.add({
         type: "warning",
@@ -2612,7 +2855,9 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
 
     const titleChanged = title !== projectSettingsTarget.name;
     const workspaceRootChanged = workspaceRoot !== projectSettingsTarget.cwd;
-    if (!titleChanged && !workspaceRootChanged) {
+    const currentCustomSystemPrompt = projectSettingsTarget.customSystemPrompt?.trim() ?? "";
+    const customSystemPromptChanged = customSystemPrompt !== currentCustomSystemPrompt;
+    if (!titleChanged && !workspaceRootChanged && !customSystemPromptChanged) {
       closeProjectSettingsDialog();
       return;
     }
@@ -2637,6 +2882,9 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         projectId: projectSettingsTarget.id,
         ...(titleChanged ? { title } : {}),
         ...(workspaceRootChanged ? { workspaceRoot } : {}),
+        ...(customSystemPromptChanged
+          ? { customSystemPrompt: customSystemPrompt.length > 0 ? customSystemPrompt : null }
+          : {}),
       });
       closeProjectSettingsDialog();
     } catch (error) {
@@ -2652,6 +2900,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   }, [
     closeProjectSettingsDialog,
     projectSettingsSaving,
+    projectSettingsCustomSystemPrompt,
     projectSettingsTarget,
     projectSettingsTitle,
     projectSettingsWorkspaceRoot,
@@ -2814,21 +3063,9 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         return;
       }
       if (clicked !== "close") return;
-      if (appSettingsConfirmThreadDelete) {
-        const confirmed = await api.dialogs.confirm(
-          [
-            `${thread.worktreeId || thread.worktreePath ? "Close session" : "Delete thread"} "${thread.title}"?`,
-            "This permanently clears conversation history for this thread.",
-          ].join("\n"),
-        );
-        if (!confirmed) {
-          return;
-        }
-      }
       await closeThread(thread);
     },
     [
-      appSettingsConfirmThreadDelete,
       attemptArchiveThread,
       clearSelection,
       closeThread,
@@ -2958,6 +3195,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
                 copyPathToClipboard(member.cwd, { path: member.cwd });
               }}
               onGrouping={openProjectGroupingDialog}
+              onOpenRemote={openProjectRemoteLink}
               onRemove={(member) => {
                 void handleRemoveProject(member);
               }}
@@ -3073,9 +3311,12 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         open={projectSettingsTarget !== null}
         target={projectSettingsTarget}
         title={projectSettingsTitle}
+        customSystemPrompt={projectSettingsCustomSystemPrompt}
         workspaceRoot={projectSettingsWorkspaceRoot}
         worktrees={projectSettingsWorktrees}
         saving={projectSettingsSaving}
+        onCustomSystemPromptChange={setProjectSettingsCustomSystemPrompt}
+        onOpenRemote={openProjectRemoteLink}
         onTitleChange={setProjectSettingsTitle}
         onWorkspaceRootChange={setProjectSettingsWorkspaceRoot}
         onPickWorkspaceRoot={() => void pickProjectSettingsWorkspaceRoot()}

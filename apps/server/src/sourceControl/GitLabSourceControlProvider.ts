@@ -57,7 +57,7 @@ function toIssueSummary(raw: GitLabIssues.NormalizedGitLabIssueRecord): SourceCo
     state: raw.state,
     ...(raw.author ? { author: raw.author } : {}),
     updatedAt: raw.updatedAt.pipe(Option.map((s) => DateTime.fromDateUnsafe(new Date(s)))),
-    labels: raw.labels,
+    labels: raw.labels.map((name) => ({ name })),
   };
 }
 
@@ -243,6 +243,7 @@ export const make = Effect.fn("makeGitLabSourceControlProvider")(function* () {
         ),
         Effect.mapError((error) => providerError("getChangeRequestDetail", error)),
       ),
+    getChangeRequestDiff: (_input) => Effect.succeed(""),
   });
 });
 

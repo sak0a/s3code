@@ -61,7 +61,7 @@ function toIssueSummary(
     state: raw.state,
     ...(raw.author ? { author: raw.author } : {}),
     updatedAt: raw.updatedAt.pipe(Option.map((s) => DateTime.fromDateUnsafe(new Date(s)))),
-    labels: raw.labels,
+    labels: raw.labels.map((name) => ({ name })),
   };
 }
 
@@ -228,6 +228,7 @@ export const make = Effect.fn("makeBitbucketSourceControlProvider")(function* ()
           ),
           Effect.mapError((error) => providerError("getChangeRequestDetail", error)),
         ),
+    getChangeRequestDiff: (_input) => Effect.succeed(""),
   });
 });
 

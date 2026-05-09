@@ -70,6 +70,7 @@ import {
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import { ServerConfig } from "../../config.ts";
 import { makeClaudeEnvironment } from "../Drivers/ClaudeHome.ts";
+import { formatProjectCustomSystemPrompt } from "../ProjectCustomSystemPrompt.ts";
 import {
   getClaudeModelCapabilities,
   normalizeClaudeCliEffort,
@@ -2875,11 +2876,15 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         ...(typeof thinking === "boolean" ? { alwaysThinkingEnabled: thinking } : {}),
         ...(fastMode ? { fastMode: true } : {}),
       };
+      const customSystemPrompt = formatProjectCustomSystemPrompt(input.customSystemPrompt);
       const queryOptions: ClaudeQueryOptions = {
         ...(input.cwd ? { cwd: input.cwd } : {}),
         ...(apiModelId ? { model: apiModelId } : {}),
         pathToClaudeCodeExecutable: claudeBinaryPath,
         systemPrompt: { type: "preset", preset: "claude_code" },
+        ...(customSystemPrompt
+          ? ({ appendSystemPrompt: customSystemPrompt } as Partial<ClaudeQueryOptions>)
+          : {}),
         settingSources: [...CLAUDE_SETTING_SOURCES],
         // The SDK type lags the CLI here: Opus 4.7 accepts `xhigh` even though
         // the published `Options["effort"]` union currently stops at `max`.

@@ -11,6 +11,7 @@ import {
 import {
   ChatAttachment,
   ModelSelection,
+  ProjectCustomSystemPrompt,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
   ProviderApprovalDecision,
@@ -64,6 +65,7 @@ export const ProviderSessionStartInput = Schema.Struct({
   approvalPolicy: Schema.optional(ProviderApprovalPolicy),
   sandboxMode: Schema.optional(ProviderSandboxMode),
   runtimeMode: RuntimeMode,
+  customSystemPrompt: Schema.optional(ProjectCustomSystemPrompt),
 });
 export type ProviderSessionStartInput = typeof ProviderSessionStartInput.Type;
 
@@ -82,6 +84,7 @@ export const ProviderSendTurnInput = Schema.Struct({
   ),
   modelSelection: Schema.optional(ModelSelection),
   interactionMode: Schema.optional(ProviderInteractionMode),
+  customSystemPrompt: Schema.optional(ProjectCustomSystemPrompt),
 });
 export type ProviderSendTurnInput = typeof ProviderSendTurnInput.Type;
 

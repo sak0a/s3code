@@ -22,7 +22,7 @@ describe("decodeGitHubIssueListJson", () => {
     expect(result.success[0]?.number).toBe(42);
     expect(result.success[0]?.state).toBe("open");
     expect(result.success[0]?.author).toBe("alice");
-    expect(result.success[0]?.labels).toEqual(["bug", "good-first-issue"]);
+    expect(result.success[0]?.labels).toEqual([{ name: "bug" }, { name: "good-first-issue" }]);
   });
 
   it("skips invalid entries silently", () => {

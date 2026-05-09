@@ -40,6 +40,7 @@ function makeProvider(
     searchIssues: () => unsupported("searchIssues"),
     searchChangeRequests: () => unsupported("searchChangeRequests"),
     getChangeRequestDetail: () => unsupported("getChangeRequestDetail"),
+    getChangeRequestDiff: () => unsupported("getChangeRequestDiff"),
     ...overrides,
   };
 }

@@ -2,6 +2,12 @@ import { Cause, Exit, Option, Result, Schema } from "effect";
 import { PositiveInt, TrimmedNonEmptyString } from "@t3tools/contracts";
 import { decodeJsonResult, formatSchemaError } from "@t3tools/shared/schemaJson";
 
+export interface NormalizedGitHubLabel {
+  readonly name: string;
+  readonly color?: string;
+  readonly description?: string;
+}
+
 export interface NormalizedGitHubIssueRecord {
   readonly number: number;
   readonly title: string;
@@ -9,9 +15,30 @@ export interface NormalizedGitHubIssueRecord {
   readonly state: "open" | "closed";
   readonly author: string | null;
   readonly updatedAt: Option.Option<string>;
-  readonly labels: ReadonlyArray<string>;
+  readonly labels: ReadonlyArray<NormalizedGitHubLabel>;
   readonly assignees: ReadonlyArray<string>;
   readonly commentsCount: number | null;
+}
+
+function normalizeLabels(
+  raw:
+    | ReadonlyArray<{
+        name: string;
+        color?: string | null | undefined;
+        description?: string | null | undefined;
+      }>
+    | undefined,
+): ReadonlyArray<NormalizedGitHubLabel> {
+  if (!raw) return [];
+  return raw.map((l) => {
+    const color = l.color?.trim() ?? "";
+    const description = l.description?.trim() ?? "";
+    return {
+      name: l.name,
+      ...(color.length > 0 ? { color } : {}),
+      ...(description.length > 0 ? { description } : {}),
+    };
+  });
 }
 
 export interface NormalizedGitHubIssueDetail extends NormalizedGitHubIssueRecord {
@@ -31,7 +58,15 @@ const GitHubIssueSchema = Schema.Struct({
   state: Schema.optional(Schema.NullOr(Schema.String)),
   updatedAt: Schema.optional(Schema.NullOr(Schema.String)),
   author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
-  labels: Schema.optional(Schema.Array(Schema.Struct({ name: Schema.String }))),
+  labels: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        name: Schema.String,
+        color: Schema.optional(Schema.NullOr(Schema.String)),
+        description: Schema.optional(Schema.NullOr(Schema.String)),
+      }),
+    ),
+  ),
   assignees: Schema.optional(Schema.Array(Schema.Struct({ login: Schema.String }))),
   body: Schema.optional(Schema.NullOr(Schema.String)),
   comments: Schema.optional(
@@ -88,7 +123,7 @@ function normalizeGitHubIssueRecord(
     state: normalizeIssueState(raw.state),
     author: raw.author?.login ?? null,
     updatedAt: raw.updatedAt ? Option.some(raw.updatedAt) : Option.none(),
-    labels: (raw.labels ?? []).map((l) => l.name),
+    labels: normalizeLabels(raw.labels),
     assignees: (raw.assignees ?? []).map((a) => a.login),
     commentsCount,
   };

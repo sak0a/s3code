@@ -21,6 +21,13 @@ export type SourceControlProviderInfo = typeof SourceControlProviderInfo.Type;
 export const ChangeRequestState = Schema.Literals(["open", "closed", "merged"]);
 export type ChangeRequestState = typeof ChangeRequestState.Type;
 
+export const SourceControlLabel = Schema.Struct({
+  name: TrimmedNonEmptyString,
+  color: Schema.optional(TrimmedNonEmptyString),
+  description: Schema.optional(TrimmedNonEmptyString),
+});
+export type SourceControlLabel = typeof SourceControlLabel.Type;
+
 export const ChangeRequest = Schema.Struct({
   provider: SourceControlProviderKind,
   number: PositiveInt,
@@ -34,7 +41,7 @@ export const ChangeRequest = Schema.Struct({
   isDraft: Schema.optional(Schema.Boolean),
   author: Schema.optional(TrimmedNonEmptyString),
   assignees: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
-  labels: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
+  labels: Schema.optional(Schema.Array(SourceControlLabel)),
   commentsCount: Schema.optional(Schema.Number),
   headRepositoryNameWithOwner: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   headRepositoryOwnerLogin: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
@@ -59,17 +66,27 @@ export const SourceControlIssueSummary = Schema.Struct({
   state: SourceControlIssueState,
   author: Schema.optional(TrimmedNonEmptyString),
   updatedAt: Schema.Option(Schema.DateTimeUtc),
-  labels: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
+  labels: Schema.optional(Schema.Array(SourceControlLabel)),
   assignees: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
   commentsCount: Schema.optional(Schema.Number),
 });
 export type SourceControlIssueSummary = typeof SourceControlIssueSummary.Type;
+
+export const SourceControlReviewState = Schema.Literals([
+  "approved",
+  "changes_requested",
+  "commented",
+  "dismissed",
+  "pending",
+]);
+export type SourceControlReviewState = typeof SourceControlReviewState.Type;
 
 export const SourceControlIssueComment = Schema.Struct({
   author: Schema.String,
   body: Schema.String,
   createdAt: Schema.DateTimeUtc,
   authorAssociation: Schema.optional(Schema.String),
+  reviewState: Schema.optional(SourceControlReviewState),
 });
 export type SourceControlIssueComment = typeof SourceControlIssueComment.Type;
 
@@ -82,12 +99,34 @@ export const SourceControlIssueDetail = Schema.Struct({
 });
 export type SourceControlIssueDetail = typeof SourceControlIssueDetail.Type;
 
+export const SourceControlChangeRequestCommit = Schema.Struct({
+  oid: TrimmedNonEmptyString,
+  shortOid: TrimmedNonEmptyString,
+  messageHeadline: Schema.String,
+  committedDate: Schema.optional(Schema.String),
+  author: Schema.optional(TrimmedNonEmptyString),
+});
+export type SourceControlChangeRequestCommit = typeof SourceControlChangeRequestCommit.Type;
+
+export const SourceControlChangeRequestFile = Schema.Struct({
+  path: TrimmedNonEmptyString,
+  additions: Schema.Number,
+  deletions: Schema.Number,
+});
+export type SourceControlChangeRequestFile = typeof SourceControlChangeRequestFile.Type;
+
 export const SourceControlChangeRequestDetail = Schema.Struct({
   ...ChangeRequest.fields,
   body: Schema.String,
   comments: Schema.Array(SourceControlIssueComment),
   truncated: Schema.Boolean,
   linkedIssueNumbers: Schema.optional(Schema.Array(Schema.Number)),
+  reviewers: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
+  commits: Schema.optional(Schema.Array(SourceControlChangeRequestCommit)),
+  additions: Schema.optional(Schema.Number),
+  deletions: Schema.optional(Schema.Number),
+  changedFiles: Schema.optional(Schema.Number),
+  files: Schema.optional(Schema.Array(SourceControlChangeRequestFile)),
 });
 export type SourceControlChangeRequestDetail = typeof SourceControlChangeRequestDetail.Type;
 

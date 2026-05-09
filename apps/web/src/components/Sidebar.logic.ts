@@ -109,6 +109,12 @@ export function canArchiveSidebarThread(
   return thread.latestUserMessageAt !== null;
 }
 
+export function shouldConfirmCloseSidebarThread(
+  thread: Pick<SidebarThreadSummary, "latestUserMessageAt">,
+): boolean {
+  return thread.latestUserMessageAt !== null;
+}
+
 const THREAD_STATUS_PRIORITY: Record<ThreadStatusPill["label"], number> = {
   "Pending Approval": 5,
   "Awaiting Input": 4,

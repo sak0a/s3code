@@ -1350,6 +1350,18 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               "rpc.aggregate": "source-control",
             },
           ),
+        [WS_METHODS.sourceControlGetChangeRequestDiff]: ({ cwd, reference }) =>
+          observeRpcEffect(
+            WS_METHODS.sourceControlGetChangeRequestDiff,
+            sourceControlRegistry
+              .resolve({ cwd })
+              .pipe(
+                Effect.flatMap((provider) => provider.getChangeRequestDiff({ cwd, reference })),
+              ),
+            {
+              "rpc.aggregate": "source-control",
+            },
+          ),
         [WS_METHODS.projectsSearchEntries]: (input) =>
           observeRpcEffect(
             WS_METHODS.projectsSearchEntries,

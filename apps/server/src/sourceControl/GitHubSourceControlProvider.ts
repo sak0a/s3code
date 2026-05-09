@@ -104,9 +104,16 @@ function toChangeRequestDetail(
       body: c.body,
       createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
       ...(c.authorAssociation ? { authorAssociation: c.authorAssociation } : {}),
+      ...(c.reviewState ? { reviewState: c.reviewState } : {}),
     })),
     truncated: content.truncated,
     ...(raw.linkedIssueNumbers.length > 0 ? { linkedIssueNumbers: raw.linkedIssueNumbers } : {}),
+    ...(raw.reviewers && raw.reviewers.length > 0 ? { reviewers: raw.reviewers } : {}),
+    ...(raw.commits && raw.commits.length > 0 ? { commits: raw.commits } : {}),
+    ...(typeof raw.additions === "number" ? { additions: raw.additions } : {}),
+    ...(typeof raw.deletions === "number" ? { deletions: raw.deletions } : {}),
+    ...(typeof raw.changedFiles === "number" ? { changedFiles: raw.changedFiles } : {}),
+    ...(raw.files && raw.files.length > 0 ? { files: raw.files } : {}),
   };
 }
 
@@ -301,6 +308,10 @@ export const make = Effect.fn("makeGitHubSourceControlProvider")(function* () {
         ),
         Effect.mapError((error) => providerError("getChangeRequestDetail", error)),
       ),
+    getChangeRequestDiff: (input) =>
+      github
+        .getPullRequestDiff({ cwd: input.cwd, reference: input.reference })
+        .pipe(Effect.mapError((error) => providerError("getChangeRequestDiff", error))),
   });
 });
 

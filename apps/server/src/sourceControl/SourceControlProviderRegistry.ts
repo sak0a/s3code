@@ -74,6 +74,7 @@ function unsupportedProvider(
     searchIssues: () => unsupported("searchIssues"),
     searchChangeRequests: () => unsupported("searchChangeRequests"),
     getChangeRequestDetail: () => unsupported("getChangeRequestDetail"),
+    getChangeRequestDiff: () => unsupported("getChangeRequestDiff"),
   });
 }
 
@@ -176,6 +177,11 @@ function bindProviderContext(
       }),
     getChangeRequestDetail: (input) =>
       provider.getChangeRequestDetail({
+        ...input,
+        context: input.context ?? context,
+      }),
+    getChangeRequestDiff: (input) =>
+      provider.getChangeRequestDiff({
         ...input,
         context: input.context ?? context,
       }),

@@ -31,6 +31,7 @@ import {
   CODEX_DEFAULT_MODE_DEVELOPER_INSTRUCTIONS,
   CODEX_PLAN_MODE_DEVELOPER_INSTRUCTIONS,
 } from "../CodexDeveloperInstructions.ts";
+import { appendProjectCustomSystemPrompt } from "../ProjectCustomSystemPrompt.ts";
 
 const PROVIDER = ProviderDriverKind.make("codex");
 
@@ -97,6 +98,7 @@ export interface CodexSessionRuntimeSendTurnInput {
   readonly serviceTier?: EffectCodexSchema.V2TurnStartParams__ServiceTier | undefined;
   readonly effort?: EffectCodexSchema.V2TurnStartParams__ReasoningEffort | undefined;
   readonly interactionMode?: ProviderInteractionMode;
+  readonly customSystemPrompt?: string;
 }
 
 export interface CodexThreadTurnSnapshot {
@@ -304,20 +306,24 @@ function buildCodexCollaborationMode(input: {
   readonly interactionMode?: ProviderInteractionMode;
   readonly model?: string;
   readonly effort?: EffectCodexSchema.V2TurnStartParams__ReasoningEffort;
+  readonly customSystemPrompt?: string;
 }): EffectCodexSchema.V2TurnStartParams__CollaborationMode | undefined {
   if (input.interactionMode === undefined) {
     return undefined;
   }
   const model = normalizeCodexModelSlug(input.model) ?? DEFAULT_MODEL;
+  const developerInstructions = appendProjectCustomSystemPrompt(
+    input.interactionMode === "plan"
+      ? CODEX_PLAN_MODE_DEVELOPER_INSTRUCTIONS
+      : CODEX_DEFAULT_MODE_DEVELOPER_INSTRUCTIONS,
+    input.customSystemPrompt,
+  );
   return {
     mode: input.interactionMode,
     settings: {
       model,
       reasoning_effort: input.effort ?? "medium",
-      developer_instructions:
-        input.interactionMode === "plan"
-          ? CODEX_PLAN_MODE_DEVELOPER_INSTRUCTIONS
-          : CODEX_DEFAULT_MODE_DEVELOPER_INSTRUCTIONS,
+      developer_instructions: developerInstructions,
     },
   };
 }
@@ -334,6 +340,7 @@ export function buildTurnStartParams(input: {
   readonly serviceTier?: EffectCodexSchema.V2TurnStartParams__ServiceTier;
   readonly effort?: EffectCodexSchema.V2TurnStartParams__ReasoningEffort;
   readonly interactionMode?: ProviderInteractionMode;
+  readonly customSystemPrompt?: string;
 }): Effect.Effect<
   CodexTurnStartParamsWithCollaborationMode,
   CodexErrors.CodexAppServerProtocolParseError
@@ -354,6 +361,7 @@ export function buildTurnStartParams(input: {
     ...(input.interactionMode ? { interactionMode: input.interactionMode } : {}),
     ...(input.model ? { model: input.model } : {}),
     ...(input.effort ? { effort: input.effort } : {}),
+    ...(input.customSystemPrompt ? { customSystemPrompt: input.customSystemPrompt } : {}),
   });
 
   return Schema.decodeUnknownEffect(CodexTurnStartParamsWithCollaborationMode)({
@@ -1228,6 +1236,7 @@ export const makeCodexSessionRuntime = (
             ...(input.serviceTier ? { serviceTier: input.serviceTier } : {}),
             ...(input.effort ? { effort: input.effort } : {}),
             ...(input.interactionMode ? { interactionMode: input.interactionMode } : {}),
+            ...(input.customSystemPrompt ? { customSystemPrompt: input.customSystemPrompt } : {}),
           });
           const rawResponse = yield* client.raw.request("turn/start", params);
           const response = yield* Schema.decodeUnknownEffect(EffectCodexSchema.V2TurnStartResponse)(

@@ -233,6 +233,7 @@ function mapProject(
     defaultModelSelection: project.defaultModelSelection
       ? normalizeModelSelection(project.defaultModelSelection)
       : null,
+    customSystemPrompt: project.customSystemPrompt ?? null,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     scripts: mapProjectScripts(project.scripts),
@@ -899,6 +900,18 @@ function removeThreadState(state: EnvironmentState, threadId: ThreadId): Environ
     turnDiffSummaryByThreadId,
     sidebarThreadSummaryById,
   };
+}
+
+export function removeThreadByRef(state: AppState, threadRef: ScopedThreadRef): AppState {
+  const environmentState = state.environmentStateById[threadRef.environmentId];
+  if (!environmentState) {
+    return state;
+  }
+  return commitEnvironmentState(
+    state,
+    threadRef.environmentId,
+    removeThreadState(environmentState, threadRef.threadId),
+  );
 }
 
 function upsertWorktreeState(
@@ -2284,6 +2297,7 @@ interface AppStore extends AppState {
     environmentId: EnvironmentId,
   ) => void;
   applyShellEvent: (event: OrchestrationShellStreamEvent, environmentId: EnvironmentId) => void;
+  removeThread: (threadRef: ScopedThreadRef) => void;
   setError: (threadId: ThreadId, error: string | null) => void;
   setThreadBranch: (
     threadRef: ScopedThreadRef,
@@ -2314,6 +2328,7 @@ export const useStore = create<AppStore>((set) => ({
     set((state) => applyOrchestrationEvents(state, events, environmentId)),
   applyShellEvent: (event, environmentId) =>
     set((state) => applyShellEvent(state, event, environmentId)),
+  removeThread: (threadRef) => set((state) => removeThreadByRef(state, threadRef)),
   setError: (threadId, error) => set((state) => setError(state, threadId, error)),
   setThreadBranch: (threadRef, branch, worktreePath) =>
     set((state) => setThreadBranch(state, threadRef, branch, worktreePath)),

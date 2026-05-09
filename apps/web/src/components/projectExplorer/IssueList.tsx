@@ -59,7 +59,7 @@ export const IssueList = memo(function IssueList(props: {
                 <div className="mt-1 flex flex-wrap items-center gap-1.5 text-muted-foreground text-xs">
                   {issue.author ? <span>by {issue.author}</span> : null}
                   {visibleLabels.map((label) => (
-                    <LabelChip key={label} label={label} />
+                    <LabelChip key={label.name} label={label} />
                   ))}
                   {moreLabelCount > 0 ? (
                     <span className="text-[10px]">+{moreLabelCount}</span>

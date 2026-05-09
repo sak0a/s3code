@@ -14,15 +14,17 @@ export interface LinkedWorktreeItemDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+type Pivot = { kind: "issue"; number: number } | { kind: "pr"; number: number } | null;
+
 export function LinkedWorktreeItemDialog(props: LinkedWorktreeItemDialogProps) {
-  const [pivotIssue, setPivotIssue] = useState<number | null>(null);
+  const [pivot, setPivot] = useState<Pivot>(null);
 
   const close = useCallback(() => props.onOpenChange(false), [props]);
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
       if (!next) {
-        setPivotIssue(null);
+        setPivot(null);
       }
       props.onOpenChange(next);
     },
@@ -30,18 +32,22 @@ export function LinkedWorktreeItemDialog(props: LinkedWorktreeItemDialogProps) {
   );
 
   const handleSelectLinkedIssue = useCallback((issueNumber: number) => {
-    setPivotIssue(issueNumber);
+    setPivot({ kind: "issue", number: issueNumber });
   }, []);
 
-  const handleBackFromPivotIssue = useCallback(() => {
-    setPivotIssue(null);
+  const handleSelectLinkedChangeRequest = useCallback((number: number) => {
+    setPivot({ kind: "pr", number });
+  }, []);
+
+  const handleBackFromPivot = useCallback(() => {
+    setPivot(null);
   }, []);
 
   const item = props.item;
 
   return (
     <Dialog open={props.open} onOpenChange={handleOpenChange}>
-      <DialogPopup className="flex h-[80vh] max-h-[800px] w-full max-w-3xl flex-col p-0 sm:max-w-3xl">
+      <DialogPopup className="flex h-[88vh] max-h-[1000px] w-full max-w-6xl flex-col p-0 sm:max-w-6xl">
         <DialogTitle className="sr-only">
           {item?.kind === "pr"
             ? `Pull request #${item.number}`
@@ -50,13 +56,24 @@ export function LinkedWorktreeItemDialog(props: LinkedWorktreeItemDialogProps) {
               : "Linked item"}
         </DialogTitle>
 
-        {item === null ? null : pivotIssue !== null ? (
-          <IssueDetail
-            environmentId={props.environmentId}
-            cwd={props.cwd}
-            issueNumber={pivotIssue}
-            onBack={handleBackFromPivotIssue}
-          />
+        {item === null ? null : pivot !== null ? (
+          pivot.kind === "issue" ? (
+            <IssueDetail
+              environmentId={props.environmentId}
+              cwd={props.cwd}
+              issueNumber={pivot.number}
+              onBack={handleBackFromPivot}
+              onSelectLinkedChangeRequest={handleSelectLinkedChangeRequest}
+            />
+          ) : (
+            <PullRequestDetail
+              environmentId={props.environmentId}
+              cwd={props.cwd}
+              pullRequestNumber={pivot.number}
+              onBack={handleBackFromPivot}
+              onSelectLinkedIssue={handleSelectLinkedIssue}
+            />
+          )
         ) : item.kind === "pr" ? (
           <PullRequestDetail
             environmentId={props.environmentId}
@@ -71,6 +88,7 @@ export function LinkedWorktreeItemDialog(props: LinkedWorktreeItemDialogProps) {
             cwd={props.cwd}
             issueNumber={item.number}
             onBack={close}
+            onSelectLinkedChangeRequest={handleSelectLinkedChangeRequest}
           />
         )}
       </DialogPopup>

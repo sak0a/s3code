@@ -122,6 +122,24 @@ describe("buildTurnStartParams", () => {
     });
   });
 
+  it("appends project custom system prompt to collaboration developer instructions", () => {
+    const params = Effect.runSync(
+      buildTurnStartParams({
+        threadId: "provider-thread-1",
+        runtimeMode: "full-access",
+        prompt: "Implement it",
+        model: "gpt-5.3-codex",
+        interactionMode: "default",
+        customSystemPrompt: "Always use TypeScript.",
+      }),
+    );
+
+    assert.equal(
+      params.collaborationMode?.settings?.developer_instructions,
+      `${CODEX_DEFAULT_MODE_DEVELOPER_INSTRUCTIONS}\n\nProject custom system prompt:\n<project_custom_system_prompt>\nAlways use TypeScript.\n</project_custom_system_prompt>`,
+    );
+  });
+
   it("omits collaboration mode when interaction mode is absent", () => {
     const params = Effect.runSync(
       buildTurnStartParams({

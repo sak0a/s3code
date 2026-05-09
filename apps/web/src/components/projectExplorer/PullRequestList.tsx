@@ -65,7 +65,7 @@ export const PullRequestList = memo(function PullRequestList(props: {
                     </span>
                   </span>
                   {visibleLabels.map((label) => (
-                    <LabelChip key={label} label={label} />
+                    <LabelChip key={label.name} label={label} />
                   ))}
                   {moreLabelCount > 0 ? (
                     <span className="text-[10px]">+{moreLabelCount}</span>

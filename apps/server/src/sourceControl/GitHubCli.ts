@@ -23,6 +23,12 @@ export class GitHubCliError extends Schema.TaggedErrorClass<GitHubCliError>()("G
   }
 }
 
+export interface GitHubLabel {
+  readonly name: string;
+  readonly color?: string;
+  readonly description?: string;
+}
+
 export interface GitHubPullRequestSummary {
   readonly number: number;
   readonly title: string;
@@ -34,10 +40,31 @@ export interface GitHubPullRequestSummary {
   readonly isDraft?: boolean;
   readonly author?: string | null;
   readonly assignees?: ReadonlyArray<string>;
-  readonly labels?: ReadonlyArray<string>;
+  readonly labels?: ReadonlyArray<GitHubLabel>;
   readonly commentsCount?: number | null;
   readonly headRepositoryNameWithOwner?: string | null;
   readonly headRepositoryOwnerLogin?: string | null;
+}
+
+export interface GitHubPullRequestCommit {
+  readonly oid: string;
+  readonly shortOid: string;
+  readonly messageHeadline: string;
+  readonly committedDate?: string;
+  readonly author?: string;
+}
+
+export type GitHubReviewState =
+  | "approved"
+  | "changes_requested"
+  | "commented"
+  | "dismissed"
+  | "pending";
+
+export interface GitHubPullRequestFile {
+  readonly path: string;
+  readonly additions: number;
+  readonly deletions: number;
 }
 
 export interface GitHubPullRequestDetail extends GitHubPullRequestSummary {
@@ -47,8 +74,15 @@ export interface GitHubPullRequestDetail extends GitHubPullRequestSummary {
     readonly body: string;
     readonly createdAt: string;
     readonly authorAssociation?: string;
+    readonly reviewState?: GitHubReviewState;
   }>;
   readonly linkedIssueNumbers: ReadonlyArray<number>;
+  readonly reviewers: ReadonlyArray<string>;
+  readonly commits: ReadonlyArray<GitHubPullRequestCommit>;
+  readonly additions: number;
+  readonly deletions: number;
+  readonly changedFiles: number;
+  readonly files: ReadonlyArray<GitHubPullRequestFile>;
 }
 
 export interface GitHubRepositoryCloneUrls {
@@ -131,6 +165,11 @@ export interface GitHubCliShape {
     readonly cwd: string;
     readonly reference: string;
   }) => Effect.Effect<GitHubPullRequestDetail, GitHubCliError>;
+
+  readonly getPullRequestDiff: (input: {
+    readonly cwd: string;
+    readonly reference: string;
+  }) => Effect.Effect<string, GitHubCliError>;
 }
 
 export class GitHubCli extends Context.Service<GitHubCli, GitHubCliShape>()(
@@ -548,7 +587,7 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           "view",
           input.reference,
           "--json",
-          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,isDraft,author,assignees,labels,headRepository,headRepositoryOwner,body,comments",
+          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,isDraft,author,assignees,labels,headRepository,headRepositoryOwner,body,comments,reviewRequests,reviews,commits,additions,deletions,changedFiles,files",
         ],
       }).pipe(
         Effect.map((r) => r.stdout.trim()),
@@ -570,6 +609,11 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           ),
         ),
       ),
+    getPullRequestDiff: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: ["pr", "diff", input.reference],
+      }).pipe(Effect.map((r) => r.stdout)),
   });
 });
 

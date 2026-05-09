@@ -168,7 +168,7 @@ it.effect("listIssues returns summaries with provider: github", () =>
             state: "open" as const,
             author: "alice",
             updatedAt: Option.some("2026-01-02T00:00:00.000Z"),
-            labels: ["bug"],
+            labels: [{ name: "bug" }],
             assignees: [],
             commentsCount: 0,
           },
@@ -271,6 +271,12 @@ it.effect("getChangeRequestDetail returns body and comments", () =>
             { author: "reviewer", body: "Looks good!", createdAt: "2026-03-01T10:00:00Z" },
           ],
           linkedIssueNumbers: [],
+          reviewers: [],
+          commits: [],
+          additions: 0,
+          deletions: 0,
+          changedFiles: 0,
+          files: [],
         }),
     });
 

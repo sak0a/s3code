@@ -126,6 +126,11 @@ export interface SourceControlProviderShape {
     readonly reference: string;
     readonly fullContent?: boolean;
   }) => Effect.Effect<SourceControlChangeRequestDetail, SourceControlProviderError>;
+  readonly getChangeRequestDiff: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProviderContext;
+    readonly reference: string;
+  }) => Effect.Effect<string, SourceControlProviderError>;
 }
 
 export class SourceControlProvider extends Context.Service<

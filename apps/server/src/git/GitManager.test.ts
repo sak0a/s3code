@@ -601,6 +601,8 @@ function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
         Effect.fail(new GitHubCliError({ operation: "searchPullRequests", detail: "stub" })),
       getPullRequestDetail: () =>
         Effect.fail(new GitHubCliError({ operation: "getPullRequestDetail", detail: "stub" })),
+      getPullRequestDiff: () =>
+        Effect.fail(new GitHubCliError({ operation: "getPullRequestDiff", detail: "stub" })),
     },
     ghCalls,
   };

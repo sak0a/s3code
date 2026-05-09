@@ -71,6 +71,8 @@ export const sourceControlContextQueryKeys = {
       reference,
       fullContent ? "full" : "truncated",
     ] as const,
+  changeRequestDiff: (environmentId: EnvironmentId | null, cwd: string | null, reference: string) =>
+    ["sourceControl", "changeRequests", environmentId ?? null, cwd, "diff", reference] as const,
   changeRequestSearch: (
     environmentId: EnvironmentId | null,
     cwd: string | null,
@@ -256,6 +258,37 @@ export function searchChangeRequestsQueryOptions(input: {
       input.cwd !== null &&
       input.query.length > 0,
     staleTime: 30_000,
+  });
+}
+
+export function changeRequestDiffQueryOptions(input: {
+  environmentId: EnvironmentId | null;
+  cwd: string | null;
+  reference: string | null;
+  enabled?: boolean;
+}) {
+  return queryOptions({
+    queryKey: sourceControlContextQueryKeys.changeRequestDiff(
+      input.environmentId,
+      input.cwd,
+      input.reference ?? "",
+    ),
+    queryFn: async () => {
+      if (!input.cwd || !input.environmentId || !input.reference) {
+        throw new Error("Change request diff is unavailable.");
+      }
+      const client = requireEnvironmentConnection(input.environmentId).client;
+      return client.sourceControl.getChangeRequestDiff({
+        cwd: input.cwd,
+        reference: input.reference,
+      });
+    },
+    enabled:
+      (input.enabled ?? true) &&
+      input.environmentId !== null &&
+      input.cwd !== null &&
+      input.reference !== null,
+    staleTime: 300_000,
   });
 }
 

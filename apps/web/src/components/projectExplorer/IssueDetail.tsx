@@ -1,14 +1,13 @@
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId, SourceControlIssueDetail } from "@t3tools/contracts";
 import { DateTime, Option } from "effect";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react";
 import { issueDetailQueryOptions } from "~/lib/sourceControlContextRpc";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
-import { CommentThread } from "./CommentThread";
-import { LabelChip } from "./LabelChip";
-import { MarkdownView } from "./MarkdownView";
+import { CommentItem } from "./CommentThread";
 import { StateBadge } from "./StateBadge";
+import { WorktreeItemSidebar } from "./WorktreeItemSidebar";
 
 const dateFmt = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
@@ -21,6 +20,7 @@ interface IssueDetailProps {
   cwd: string | null;
   issueNumber: number;
   onBack: () => void;
+  onSelectLinkedChangeRequest?: ((number: number) => void) | undefined;
   onAttach?: ((mode: "local" | "worktree") => Promise<void> | void) | undefined;
   attachInProgress?: "local" | "worktree" | null;
   attachLabel?: string;
@@ -41,7 +41,7 @@ export function IssueDetail(props: IssueDetailProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-2 border-border/60 border-b px-4 py-2">
+      <div className="flex items-center gap-2 border-border/60 border-b py-2 pr-12 pl-4">
         <Button type="button" size="sm" variant="ghost" onClick={props.onBack}>
           <ArrowLeftIcon className="size-3.5" />
           Back
@@ -59,57 +59,21 @@ export function IssueDetail(props: IssueDetailProps) {
         ) : null}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {detailQuery.isLoading ? (
-          <div className="flex items-center gap-2 text-muted-foreground text-sm">
+          <div className="flex items-center gap-2 px-5 py-4 text-muted-foreground text-sm">
             <Spinner className="size-4" />
             Loading issue…
           </div>
         ) : detailQuery.isError ? (
-          <p className="text-destructive text-sm">
+          <p className="px-5 py-4 text-destructive text-sm">
             {detailQuery.error instanceof Error ? detailQuery.error.message : "Failed to load."}
           </p>
         ) : detail ? (
-          <div className="space-y-5">
-            <header className="space-y-2">
-              <div className="flex items-start gap-3">
-                <h2 className="flex-1 font-heading font-semibold text-xl leading-tight">
-                  {detail.title}{" "}
-                  <span className="font-normal text-muted-foreground">#{detail.number}</span>
-                </h2>
-                <StateBadge
-                  kind={detail.state === "open" ? "issue-open" : "issue-closed"}
-                  className="mt-1"
-                />
-              </div>
-              <p className="text-muted-foreground text-xs">
-                {detail.author ? `Opened by ${detail.author}` : "Opened"}
-                {detail.updatedAt && Option.isSome(detail.updatedAt) ? (
-                  <> · updated {dateFmt.format(DateTime.toDate(detail.updatedAt.value))}</>
-                ) : null}
-              </p>
-              {detail.labels && detail.labels.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {detail.labels.map((label) => (
-                    <LabelChip key={label} label={label} />
-                  ))}
-                </div>
-              ) : null}
-            </header>
-
-            <section>
-              <MarkdownView text={detail.body} />
-            </section>
-
-            {detail.comments.length > 0 ? (
-              <section className="space-y-2">
-                <h3 className="font-medium text-foreground text-sm">
-                  {detail.comments.length} comment{detail.comments.length === 1 ? "" : "s"}
-                </h3>
-                <CommentThread comments={detail.comments} />
-              </section>
-            ) : null}
-          </div>
+          <IssueDetailBody
+            detail={detail}
+            onSelectLinkedChangeRequest={props.onSelectLinkedChangeRequest}
+          />
         ) : null}
       </div>
 
@@ -137,6 +101,72 @@ export function IssueDetail(props: IssueDetailProps) {
           </Button>
         </footer>
       ) : null}
+    </div>
+  );
+}
+
+function IssueDetailBody(props: {
+  detail: SourceControlIssueDetail;
+  onSelectLinkedChangeRequest?: ((number: number) => void) | undefined;
+}) {
+  const { detail } = props;
+  const opCreatedAt =
+    detail.updatedAt && Option.isSome(detail.updatedAt)
+      ? detail.updatedAt.value
+      : DateTime.fromDateUnsafe(new Date());
+  const opAuthor = detail.author ?? "unknown";
+
+  return (
+    <div className="flex h-full min-h-0">
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-5 py-4">
+        <header className="mb-5 space-y-2">
+          <div className="flex items-start gap-3">
+            <h2 className="flex-1 font-heading font-semibold text-xl leading-tight">
+              {detail.title}{" "}
+              <span className="font-normal text-muted-foreground">#{detail.number}</span>
+            </h2>
+            <StateBadge
+              kind={detail.state === "open" ? "issue-open" : "issue-closed"}
+              className="mt-1"
+            />
+          </div>
+          <p className="text-muted-foreground text-xs">
+            {detail.author ? `Opened by ${detail.author}` : "Opened"}
+            {detail.updatedAt && Option.isSome(detail.updatedAt) ? (
+              <> · updated {dateFmt.format(DateTime.toDate(detail.updatedAt.value))}</>
+            ) : null}
+          </p>
+        </header>
+
+        <ol className="space-y-4">
+          <li>
+            <CommentItem
+              author={opAuthor}
+              body={detail.body}
+              createdAt={opCreatedAt}
+              isOriginalPost
+            />
+          </li>
+          {detail.comments.map((comment, index) => (
+            <li key={`${comment.author}-${index}`}>
+              <CommentItem
+                author={comment.author}
+                body={comment.body}
+                createdAt={comment.createdAt}
+                authorAssociation={comment.authorAssociation}
+                reviewState={comment.reviewState}
+              />
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <WorktreeItemSidebar
+        assignees={detail.assignees}
+        labels={detail.labels}
+        linkedChangeRequestNumbers={detail.linkedChangeRequestNumbers ?? []}
+        onSelectLinkedChangeRequest={props.onSelectLinkedChangeRequest}
+      />
     </div>
   );
 }

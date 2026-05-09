@@ -21,6 +21,7 @@ import {
   resolveThreadRowClassName,
   resolveThreadStatusPill,
   shouldSuggestArchive,
+  shouldConfirmCloseSidebarThread,
   shouldClearThreadSelectionOnMouseDown,
   sortProjectsForSidebar,
   THREAD_JUMP_HINT_SHOW_DELAY_MS,
@@ -75,6 +76,15 @@ describe("canArchiveSidebarThread", () => {
   it("requires a sent user message timestamp", () => {
     expect(canArchiveSidebarThread({ latestUserMessageAt: null })).toBe(false);
     expect(canArchiveSidebarThread({ latestUserMessageAt: "2026-05-09T10:00:00.000Z" })).toBe(true);
+  });
+});
+
+describe("shouldConfirmCloseSidebarThread", () => {
+  it("only confirms when conversation history exists", () => {
+    expect(shouldConfirmCloseSidebarThread({ latestUserMessageAt: null })).toBe(false);
+    expect(
+      shouldConfirmCloseSidebarThread({ latestUserMessageAt: "2026-05-09T10:00:00.000Z" }),
+    ).toBe(true);
   });
 });
 

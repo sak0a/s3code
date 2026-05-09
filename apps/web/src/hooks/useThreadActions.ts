@@ -13,6 +13,12 @@ import { selectThreadByRef, selectThreadsForEnvironment, useStore } from "../sto
 import { useTerminalStateStore } from "../terminalStateStore";
 import { buildThreadRouteParams, resolveThreadRouteRef } from "../threadRoutes";
 import { useSettings } from "./useSettings";
+import { stackedThreadToast, toastManager } from "../components/ui/toast";
+
+type DeleteThreadOptions = {
+  deletedThreadKeys?: ReadonlySet<string>;
+  optimistic?: boolean;
+};
 
 export function useThreadActions() {
   const sidebarThreadSortOrder = useSettings((settings) => settings.sidebarThreadSortOrder);
@@ -86,7 +92,7 @@ export function useThreadActions() {
   }, []);
 
   const deleteThread = useCallback(
-    async (target: ScopedThreadRef, opts: { deletedThreadKeys?: ReadonlySet<string> } = {}) => {
+    async (target: ScopedThreadRef, opts: DeleteThreadOptions = {}) => {
       const api = readEnvironmentApi(target.environmentId);
       if (!api) return;
       const resolved = resolveThreadTarget(target);
@@ -113,11 +119,56 @@ export function useThreadActions() {
         deletedThreadIds: deletedIds ?? new Set<ThreadId>(),
         sortOrder: sidebarThreadSortOrder,
       });
-      await api.orchestration.dispatchCommand({
+      const dispatchDelete = api.orchestration.dispatchCommand({
         type: "thread.delete",
         commandId: newCommandId(),
         threadId: threadRef.threadId,
       });
+
+      if (opts.optimistic) {
+        useStore.getState().removeThread(threadRef);
+        clearComposerDraftForThread(threadRef);
+        clearProjectDraftThreadById(
+          scopeProjectRef(threadRef.environmentId, thread.projectId),
+          threadRef,
+        );
+        clearTerminalState(threadRef);
+
+        if (shouldNavigateToFallback) {
+          if (fallbackThreadId) {
+            const fallbackThread = selectThreadByRef(
+              useStore.getState(),
+              scopeThreadRef(threadRef.environmentId, fallbackThreadId),
+            );
+            if (fallbackThread) {
+              await router.navigate({
+                to: "/$environmentId/$threadId",
+                params: buildThreadRouteParams(
+                  scopeThreadRef(fallbackThread.environmentId, fallbackThread.id),
+                ),
+                replace: true,
+              });
+            } else {
+              await router.navigate({ to: "/", replace: true });
+            }
+          } else {
+            await router.navigate({ to: "/", replace: true });
+          }
+        }
+
+        void dispatchDelete.catch((error: unknown) => {
+          toastManager.add(
+            stackedThreadToast({
+              type: "error",
+              title: "Failed to delete thread",
+              description: error instanceof Error ? error.message : "An error occurred.",
+            }),
+          );
+        });
+        return;
+      }
+
+      await dispatchDelete;
       clearComposerDraftForThread(threadRef);
       clearProjectDraftThreadById(
         scopeProjectRef(threadRef.environmentId, thread.projectId),

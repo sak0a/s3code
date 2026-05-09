@@ -169,6 +169,7 @@ export const WS_METHODS = {
   sourceControlSearchIssues: "sourceControl.searchIssues",
   sourceControlSearchChangeRequests: "sourceControl.searchChangeRequests",
   sourceControlGetChangeRequestDetail: "sourceControl.getChangeRequestDetail",
+  sourceControlGetChangeRequestDiff: "sourceControl.getChangeRequestDiff",
 
   // Streaming subscriptions
   subscribeVcsStatus: "subscribeVcsStatus",
@@ -358,6 +359,18 @@ export const WsSourceControlGetChangeRequestDetailRpc = Rpc.make(
       fullContent: Schema.optional(Schema.Boolean),
     }),
     success: SourceControlChangeRequestDetail,
+    error: SourceControlProviderError,
+  },
+);
+
+export const WsSourceControlGetChangeRequestDiffRpc = Rpc.make(
+  WS_METHODS.sourceControlGetChangeRequestDiff,
+  {
+    payload: Schema.Struct({
+      cwd: Schema.String,
+      reference: Schema.String,
+    }),
+    success: Schema.String,
     error: SourceControlProviderError,
   },
 );
@@ -642,6 +655,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsSourceControlSearchIssuesRpc,
   WsSourceControlSearchChangeRequestsRpc,
   WsSourceControlGetChangeRequestDetailRpc,
+  WsSourceControlGetChangeRequestDiffRpc,
   WsProjectsListEntriesRpc,
   WsProjectsSearchEntriesRpc,
   WsProjectsReadFileRpc,
