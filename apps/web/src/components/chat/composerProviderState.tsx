@@ -11,10 +11,12 @@ import {
   isClaudeUltrathinkPrompt,
 } from "@t3tools/shared/model";
 import type { ReactNode } from "react";
+import type { VariantProps } from "class-variance-authority";
 
 import type { DraftId } from "../../composerDraftStore";
 import { getProviderModelCapabilities } from "../../providerModels";
 import { shouldRenderTraitsControls, TraitsMenuContent, TraitsPicker } from "./TraitsPicker";
+import { type buttonVariants } from "../ui/button";
 
 export type ComposerProviderStateInput = {
   provider: ProviderDriverKind;
@@ -42,6 +44,7 @@ type TraitsRenderInput = {
   modelOptions: ReadonlyArray<ProviderOptionSelection> | undefined;
   prompt: string;
   onPromptChange: (prompt: string) => void;
+  triggerSize?: VariantProps<typeof buttonVariants>["size"];
 };
 
 export function getComposerProviderState(input: ComposerProviderStateInput): ComposerProviderState {
@@ -95,6 +98,7 @@ function renderTraitsControl(
       modelOptions={modelOptions}
       prompt={prompt}
       onPromptChange={onPromptChange}
+      {...(input.triggerSize ? { triggerSize: input.triggerSize } : {})}
     />
   );
 }
