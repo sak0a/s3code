@@ -132,6 +132,62 @@ describe("composeSidebarTree", () => {
     expect(worktree?.buckets.done).toHaveLength(1);
   });
 
+  it("synthesizes a separate legacy branch group for null-path branch sessions", () => {
+    const tree = composeSidebarTree({
+      isGitRepoByProjectId: new Map([[ProjectId.make("project-1"), true]]),
+      nowMs: Date.parse("2026-05-08T00:00:00.000Z"),
+      projects: [makeProject()],
+      threads: [
+        makeThread({
+          id: ThreadId.make("thread-main"),
+          branch: "main",
+          worktreePath: null,
+        }),
+        makeThread({
+          id: ThreadId.make("thread-feature"),
+          branch: "feature/legacy",
+          worktreePath: null,
+        }),
+      ],
+      worktrees: [],
+    });
+
+    expect(tree.projects[0]?.worktrees.map((entry) => entry.worktree.origin)).toEqual([
+      "main",
+      "branch",
+    ]);
+    expect(tree.projects[0]?.worktrees[0]?.sessions.map((thread) => thread.id)).toEqual([
+      ThreadId.make("thread-main"),
+    ]);
+    expect(tree.projects[0]?.worktrees[1]?.worktree.branch).toBe("feature/legacy");
+    expect(tree.projects[0]?.worktrees[1]?.sessions.map((thread) => thread.id)).toEqual([
+      ThreadId.make("thread-feature"),
+    ]);
+  });
+
+  it("synthesizes a path worktree for threads materialized without a worktree row", () => {
+    const tree = composeSidebarTree({
+      isGitRepoByProjectId: new Map([[ProjectId.make("project-1"), true]]),
+      nowMs: Date.parse("2026-05-08T00:00:00.000Z"),
+      projects: [makeProject()],
+      threads: [
+        makeThread({
+          id: ThreadId.make("thread-worktree"),
+          branch: "feature/materialized",
+          worktreePath: "/repo/.s3code/worktrees/feature-materialized",
+        }),
+      ],
+      worktrees: [],
+    });
+
+    const worktree = tree.projects[0]?.worktrees[0];
+    expect(worktree?.worktree.origin).toBe("branch");
+    expect(worktree?.worktree.worktreePath).toBe("/repo/.s3code/worktrees/feature-materialized");
+    expect(worktree?.sessions.map((thread) => thread.id)).toEqual([
+      ThreadId.make("thread-worktree"),
+    ]);
+  });
+
   it("merges duplicate base worktree rows for the same project", () => {
     const tree = composeSidebarTree({
       isGitRepoByProjectId: new Map([[ProjectId.make("project-1"), true]]),
