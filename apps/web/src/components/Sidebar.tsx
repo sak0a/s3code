@@ -2307,7 +2307,11 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       }
       await deleteThread(threadRef, {
         ...opts,
-        optimistic: !shouldConfirmClose,
+        // Always optimistic after the (synchronous) confirmation. The
+        // non-optimistic branch awaits the WS round-trip before touching
+        // the UI — perceived as a multi-second freeze. The optimistic
+        // branch already toasts errors if the server delete fails.
+        optimistic: true,
       });
     },
     [deleteThread, router],

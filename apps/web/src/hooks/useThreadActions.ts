@@ -126,36 +126,9 @@ export function useThreadActions() {
       });
 
       if (opts.optimistic) {
-        useStore.getState().removeThread(threadRef);
-        clearComposerDraftForThread(threadRef);
-        clearProjectDraftThreadById(
-          scopeProjectRef(threadRef.environmentId, thread.projectId),
-          threadRef,
-        );
-        clearTerminalState(threadRef);
-
-        if (shouldNavigateToFallback) {
-          if (fallbackThreadId) {
-            const fallbackThread = selectThreadByRef(
-              useStore.getState(),
-              scopeThreadRef(threadRef.environmentId, fallbackThreadId),
-            );
-            if (fallbackThread) {
-              await router.navigate({
-                to: "/$environmentId/$threadId",
-                params: buildThreadRouteParams(
-                  scopeThreadRef(fallbackThread.environmentId, fallbackThread.id),
-                ),
-                replace: true,
-              });
-            } else {
-              await router.navigate({ to: "/", replace: true });
-            }
-          } else {
-            await router.navigate({ to: "/", replace: true });
-          }
-        }
-
+        // Fire WS delete first so the network round-trip parallelizes
+        // with the local cleanup + render. Errors surface via toast; the
+        // local state stays cleared (matches existing behavior).
         void dispatchDelete.catch((error: unknown) => {
           toastManager.add(
             stackedThreadToast({
@@ -165,6 +138,50 @@ export function useThreadActions() {
             }),
           );
         });
+
+        // Resolve the fallback ref before mutating the store; once
+        // removeThread runs the deleted thread is gone from selectors.
+        let navigateTarget: { kind: "fallback"; ref: ScopedThreadRef } | { kind: "home" } | null =
+          null;
+        if (shouldNavigateToFallback) {
+          if (fallbackThreadId) {
+            const fallbackThread = selectThreadByRef(
+              useStore.getState(),
+              scopeThreadRef(threadRef.environmentId, fallbackThreadId),
+            );
+            navigateTarget = fallbackThread
+              ? {
+                  kind: "fallback",
+                  ref: scopeThreadRef(fallbackThread.environmentId, fallbackThread.id),
+                }
+              : { kind: "home" };
+          } else {
+            navigateTarget = { kind: "home" };
+          }
+        }
+
+        useStore.getState().removeThread(threadRef);
+        clearComposerDraftForThread(threadRef);
+        clearProjectDraftThreadById(
+          scopeProjectRef(threadRef.environmentId, thread.projectId),
+          threadRef,
+        );
+        clearTerminalState(threadRef);
+
+        if (navigateTarget) {
+          // Kick off without awaiting — the click handler returns
+          // immediately and React can commit the local-cleanup paint
+          // alongside the route change.
+          if (navigateTarget.kind === "fallback") {
+            void router.navigate({
+              to: "/$environmentId/$threadId",
+              params: buildThreadRouteParams(navigateTarget.ref),
+              replace: true,
+            });
+          } else {
+            void router.navigate({ to: "/", replace: true });
+          }
+        }
         return;
       }
 
