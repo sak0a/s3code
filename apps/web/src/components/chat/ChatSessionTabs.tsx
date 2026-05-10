@@ -60,7 +60,7 @@ export const ChatSessionTabs = memo(function ChatSessionTabs(props: ChatSessionT
       ref={containerRef}
       role="tablist"
       aria-label="Sessions in this worktree"
-      className="-mb-px flex min-h-7 shrink-0 items-end gap-0.5 overflow-x-auto"
+      className="-mb-px flex min-h-7 shrink-0 items-end gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {props.items.map((item, index) => {
         const isActive = item.key === displayedActiveKey;
