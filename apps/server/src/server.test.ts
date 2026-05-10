@@ -21,6 +21,7 @@ import {
   ProviderInstanceId,
   ResolvedKeybindingRule,
   ThreadId,
+  WorktreeId,
   WS_METHODS,
   WsRpcGroup,
   EditorId,
@@ -2646,6 +2647,196 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
           }),
         ),
       );
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("deletes stale worktree records when the on-disk worktree is already gone", () =>
+    Effect.gen(function* () {
+      const projectId = ProjectId.make("project-stale-worktree");
+      const worktreeId = WorktreeId.make("worktree-stale-delete");
+      const missingWorktreePath = "/tmp/s3-missing-worktree-delete";
+      const dispatchedCommands: Array<OrchestrationCommand> = [];
+      let removeWorktreeCalls = 0;
+
+      yield* buildAppUnderTest({
+        layers: {
+          vcsStatusBroadcaster: {
+            refreshStatus: () =>
+              Effect.succeed({
+                isRepo: true,
+                hasPrimaryRemote: true,
+                isDefaultRef: false,
+                refName: "feature/stale-delete",
+                hasWorkingTreeChanges: false,
+                workingTree: { files: [], insertions: 0, deletions: 0 },
+                hasUpstream: false,
+                aheadCount: 0,
+                behindCount: 0,
+                aheadOfDefaultCount: 0,
+                pr: null,
+              }),
+          },
+          gitVcsDriver: {
+            removeWorktree: () =>
+              Effect.sync(() => {
+                removeWorktreeCalls += 1;
+              }),
+          },
+          orchestrationEngine: {
+            dispatch: (command) =>
+              Effect.sync(() => {
+                dispatchedCommands.push(command);
+                return { sequence: dispatchedCommands.length };
+              }),
+          },
+          projectionSnapshotQuery: {
+            getProjectShellById: () =>
+              Effect.succeed(
+                Option.some({
+                  id: projectId,
+                  title: "Stale Worktree Project",
+                  workspaceRoot: "/tmp/s3-stale-worktree-project",
+                  defaultModelSelection: defaultModelSelection,
+                  scripts: [],
+                  createdAt: "2026-05-10T00:00:00.000Z",
+                  updatedAt: "2026-05-10T00:00:00.000Z",
+                }),
+              ),
+          },
+          projectionWorktreeRepository: {
+            getById: () =>
+              Effect.succeed(
+                Option.some({
+                  worktreeId,
+                  projectId,
+                  title: null,
+                  branch: "feature/stale-delete",
+                  worktreePath: missingWorktreePath,
+                  origin: "pr",
+                  prNumber: 12,
+                  issueNumber: null,
+                  prTitle: null,
+                  issueTitle: null,
+                  createdAt: "2026-05-10T00:00:00.000Z",
+                  updatedAt: "2026-05-10T00:00:00.000Z",
+                  archivedAt: null,
+                  manualPosition: 0,
+                }),
+              ),
+          },
+        },
+      });
+
+      const wsUrl = yield* getWsServerUrl("/ws");
+      yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          client[WS_METHODS.gitDeleteWorktree]({
+            worktreeId,
+            deleteBranch: false,
+          }),
+        ),
+      );
+
+      assert.equal(removeWorktreeCalls, 0);
+      assert.equal(dispatchedCommands.at(-1)?.type, "worktree.delete");
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("archives stale worktree records when the requested branch is already gone", () =>
+    Effect.gen(function* () {
+      const projectId = ProjectId.make("project-stale-branch");
+      const worktreeId = WorktreeId.make("worktree-stale-archive");
+      const dispatchedCommands: Array<OrchestrationCommand> = [];
+      let deleteBranchCalls = 0;
+
+      const missingBranchError = new GitCommandError({
+        operation: "GitVcsDriver.deleteBranch",
+        command: "git branch -D feature/stale-archive",
+        cwd: "/tmp/s3-stale-branch-project",
+        detail: "error: branch 'feature/stale-archive' not found.",
+      });
+
+      yield* buildAppUnderTest({
+        layers: {
+          vcsStatusBroadcaster: {
+            refreshStatus: () =>
+              Effect.succeed({
+                isRepo: true,
+                hasPrimaryRemote: true,
+                isDefaultRef: false,
+                refName: "feature/stale-archive",
+                hasWorkingTreeChanges: false,
+                workingTree: { files: [], insertions: 0, deletions: 0 },
+                hasUpstream: false,
+                aheadCount: 0,
+                behindCount: 0,
+                aheadOfDefaultCount: 0,
+                pr: null,
+              }),
+          },
+          gitVcsDriver: {
+            deleteBranch: () =>
+              Effect.sync(() => {
+                deleteBranchCalls += 1;
+              }).pipe(Effect.andThen(Effect.fail(missingBranchError))),
+          },
+          orchestrationEngine: {
+            dispatch: (command) =>
+              Effect.sync(() => {
+                dispatchedCommands.push(command);
+                return { sequence: dispatchedCommands.length };
+              }),
+          },
+          projectionSnapshotQuery: {
+            getProjectShellById: () =>
+              Effect.succeed(
+                Option.some({
+                  id: projectId,
+                  title: "Stale Branch Project",
+                  workspaceRoot: "/tmp/s3-stale-branch-project",
+                  defaultModelSelection: defaultModelSelection,
+                  scripts: [],
+                  createdAt: "2026-05-10T00:00:00.000Z",
+                  updatedAt: "2026-05-10T00:00:00.000Z",
+                }),
+              ),
+          },
+          projectionWorktreeRepository: {
+            getById: () =>
+              Effect.succeed(
+                Option.some({
+                  worktreeId,
+                  projectId,
+                  title: null,
+                  branch: "feature/stale-archive",
+                  worktreePath: null,
+                  origin: "issue",
+                  prNumber: null,
+                  issueNumber: 34,
+                  prTitle: null,
+                  issueTitle: null,
+                  createdAt: "2026-05-10T00:00:00.000Z",
+                  updatedAt: "2026-05-10T00:00:00.000Z",
+                  archivedAt: null,
+                  manualPosition: 0,
+                }),
+              ),
+          },
+        },
+      });
+
+      const wsUrl = yield* getWsServerUrl("/ws");
+      yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          client[WS_METHODS.gitArchiveWorktree]({
+            worktreeId,
+            deleteBranch: true,
+          }),
+        ),
+      );
+
+      assert.equal(deleteBranchCalls, 1);
+      assert.equal(dispatchedCommands.at(-1)?.type, "worktree.archive");
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 

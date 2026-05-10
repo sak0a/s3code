@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+
 import { Cause, Duration, Effect, Layer, Option, Queue, Ref, Schema, Stream } from "effect";
 import {
   type AuthAccessStreamEvent,
@@ -110,6 +112,44 @@ const randomShortId = (length = 8) =>
   Array.from({ length }, () =>
     "abcdefghijklmnopqrstuvwxyz0123456789".charAt(Math.floor(Math.random() * 36)),
   ).join("");
+
+function gitErrorText(error: GitManagerServiceError): string {
+  const detail = "detail" in error ? error.detail : "";
+  return `${error.message}\n${detail}`.toLowerCase();
+}
+
+function isAlreadyMissingGitResourceError(error: GitManagerServiceError): boolean {
+  const text = gitErrorText(error);
+  if (text.includes("command not found")) {
+    return false;
+  }
+  return (
+    text.includes("not found") ||
+    text.includes("does not exist") ||
+    text.includes("no such branch") ||
+    text.includes("not a working tree") ||
+    text.includes("is not a valid working tree")
+  );
+}
+
+const ignoreAlreadyMissingGitResource = (
+  effect: Effect.Effect<void, GitManagerServiceError>,
+  context: {
+    readonly operation: string;
+    readonly action: "remove-worktree" | "delete-branch";
+    readonly target: string;
+  },
+): Effect.Effect<void, GitManagerServiceError> =>
+  effect.pipe(
+    Effect.catch((error) =>
+      isAlreadyMissingGitResourceError(error)
+        ? Effect.logWarning("ignored missing git resource during worktree cleanup", {
+            ...context,
+            error: error.message,
+          }).pipe(Effect.asVoid)
+        : Effect.fail(error),
+    ),
+  );
 
 function toAuthAccessStreamEvent(
   change: BootstrapCredentialChange | SessionCredentialChange,
@@ -853,18 +893,34 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
           }
           const project = yield* loadProjectForGitWorkflow(operation, worktree.projectId);
           if (worktree.worktreePath !== null) {
-            yield* gitWorkflow.removeWorktree({
-              cwd: project.workspaceRoot,
-              path: worktree.worktreePath,
-              force: true,
-            });
+            if (existsSync(worktree.worktreePath)) {
+              yield* ignoreAlreadyMissingGitResource(
+                gitWorkflow.removeWorktree({
+                  cwd: project.workspaceRoot,
+                  path: worktree.worktreePath,
+                  force: true,
+                }),
+                {
+                  operation,
+                  action: "remove-worktree",
+                  target: worktree.worktreePath,
+                },
+              );
+            }
           }
           if (input.deleteBranch) {
-            yield* gitWorkflow.deleteBranch({
-              cwd: project.workspaceRoot,
-              refName: worktree.branch,
-              force: true,
-            });
+            yield* ignoreAlreadyMissingGitResource(
+              gitWorkflow.deleteBranch({
+                cwd: project.workspaceRoot,
+                refName: worktree.branch,
+                force: true,
+              }),
+              {
+                operation,
+                action: "delete-branch",
+                target: worktree.branch,
+              },
+            );
           }
           yield* dispatchWorktreeCommand(
             {
@@ -920,18 +976,34 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
           }
           const project = yield* loadProjectForGitWorkflow(operation, worktree.projectId);
           if (worktree.worktreePath !== null) {
-            yield* gitWorkflow.removeWorktree({
-              cwd: project.workspaceRoot,
-              path: worktree.worktreePath,
-              force: true,
-            });
+            if (existsSync(worktree.worktreePath)) {
+              yield* ignoreAlreadyMissingGitResource(
+                gitWorkflow.removeWorktree({
+                  cwd: project.workspaceRoot,
+                  path: worktree.worktreePath,
+                  force: true,
+                }),
+                {
+                  operation,
+                  action: "remove-worktree",
+                  target: worktree.worktreePath,
+                },
+              );
+            }
           }
           if (input.deleteBranch) {
-            yield* gitWorkflow.deleteBranch({
-              cwd: project.workspaceRoot,
-              refName: worktree.branch,
-              force: true,
-            });
+            yield* ignoreAlreadyMissingGitResource(
+              gitWorkflow.deleteBranch({
+                cwd: project.workspaceRoot,
+                refName: worktree.branch,
+                force: true,
+              }),
+              {
+                operation,
+                action: "delete-branch",
+                target: worktree.branch,
+              },
+            );
           }
           yield* dispatchWorktreeCommand(
             {
