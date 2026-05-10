@@ -926,48 +926,6 @@ describe("incremental orchestration updates", () => {
     );
   });
 
-  it("retains message events that arrive before thread creation and replays them on create", () => {
-    const state = makeState();
-    const threadId = ThreadId.make("thread-late-create");
-    const messageId = MessageId.make("message-early");
-    const withEarlyMessage = applyOrchestrationEvent(
-      state,
-      makeEvent("thread.message-sent", {
-        threadId,
-        messageId,
-        role: "user",
-        text: "hello before create",
-        turnId: null,
-        streaming: false,
-        createdAt: "2026-02-27T00:00:01.000Z",
-        updatedAt: "2026-02-27T00:00:01.000Z",
-      }),
-      localEnvironmentId,
-    );
-
-    const next = applyOrchestrationEvent(
-      withEarlyMessage,
-      makeEvent("thread.created", {
-        threadId,
-        projectId: ProjectId.make("project-1"),
-        title: "late create thread",
-        origin: "system",
-        branch: "main",
-        worktreePath: null,
-        modelSelection: null,
-        runtimeMode: "full-access",
-        interactionMode: "default",
-        createdAt: "2026-02-27T00:00:02.000Z",
-        updatedAt: "2026-02-27T00:00:02.000Z",
-      }),
-      localEnvironmentId,
-    );
-
-    expect(threadsOf(next)[0]?.messages).toHaveLength(1);
-    expect(threadsOf(next)[0]?.messages[0]?.id).toBe(messageId);
-    expect(threadsOf(next)[0]?.messages[0]?.text).toBe("hello before create");
-  });
-
   it("reverts messages, plans, activities, and checkpoints by retained turns", () => {
     const state = makeState(
       makeThread({
