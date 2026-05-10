@@ -2662,11 +2662,20 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
             ...worktreeNode.archivedSessions.map((thread) => thread.id),
           ];
           for (const threadId of threadIds) {
-            await api.orchestration.dispatchCommand({
-              type: "thread.delete",
-              commandId: newCommandId(),
-              threadId,
-            });
+            const threadRef = scopeThreadRef(project.environmentId, threadId);
+            try {
+              await api.orchestration.dispatchCommand({
+                type: "thread.delete",
+                commandId: newCommandId(),
+                threadId,
+              });
+            } catch (error: unknown) {
+              const message = error instanceof Error ? error.message : "";
+              if (!message.includes("does not exist")) {
+                throw error;
+              }
+              useStore.getState().removeThread(threadRef);
+            }
           }
           return;
         }
