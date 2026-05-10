@@ -4,7 +4,7 @@ import {
   TrimmedNonEmptyString,
   type SourceControlRepositoryVisibility,
   type VcsError,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as GitHubIssues from "./gitHubIssues.ts";
@@ -23,6 +23,12 @@ export class GitHubCliError extends Schema.TaggedErrorClass<GitHubCliError>()("G
   }
 }
 
+export interface GitHubLabel {
+  readonly name: string;
+  readonly color?: string;
+  readonly description?: string;
+}
+
 export interface GitHubPullRequestSummary {
   readonly number: number;
   readonly title: string;
@@ -31,8 +37,34 @@ export interface GitHubPullRequestSummary {
   readonly headRefName: string;
   readonly state?: "open" | "closed" | "merged";
   readonly isCrossRepository?: boolean;
+  readonly isDraft?: boolean;
+  readonly author?: string | null;
+  readonly assignees?: ReadonlyArray<string>;
+  readonly labels?: ReadonlyArray<GitHubLabel>;
+  readonly commentsCount?: number | null;
   readonly headRepositoryNameWithOwner?: string | null;
   readonly headRepositoryOwnerLogin?: string | null;
+}
+
+export interface GitHubPullRequestCommit {
+  readonly oid: string;
+  readonly shortOid: string;
+  readonly messageHeadline: string;
+  readonly committedDate?: string;
+  readonly author?: string;
+}
+
+export type GitHubReviewState =
+  | "approved"
+  | "changes_requested"
+  | "commented"
+  | "dismissed"
+  | "pending";
+
+export interface GitHubPullRequestFile {
+  readonly path: string;
+  readonly additions: number;
+  readonly deletions: number;
 }
 
 export interface GitHubPullRequestDetail extends GitHubPullRequestSummary {
@@ -41,7 +73,16 @@ export interface GitHubPullRequestDetail extends GitHubPullRequestSummary {
     readonly author: string;
     readonly body: string;
     readonly createdAt: string;
+    readonly authorAssociation?: string;
+    readonly reviewState?: GitHubReviewState;
   }>;
+  readonly linkedIssueNumbers: ReadonlyArray<number>;
+  readonly reviewers: ReadonlyArray<string>;
+  readonly commits: ReadonlyArray<GitHubPullRequestCommit>;
+  readonly additions: number;
+  readonly deletions: number;
+  readonly changedFiles: number;
+  readonly files: ReadonlyArray<GitHubPullRequestFile>;
 }
 
 export interface GitHubRepositoryCloneUrls {
@@ -124,10 +165,15 @@ export interface GitHubCliShape {
     readonly cwd: string;
     readonly reference: string;
   }) => Effect.Effect<GitHubPullRequestDetail, GitHubCliError>;
+
+  readonly getPullRequestDiff: (input: {
+    readonly cwd: string;
+    readonly reference: string;
+  }) => Effect.Effect<string, GitHubCliError>;
 }
 
 export class GitHubCli extends Context.Service<GitHubCli, GitHubCliShape>()(
-  "t3/source-control/GitHubCli",
+  "s3/source-control/GitHubCli",
 ) {}
 
 function errorText(error: VcsError | unknown): string {
@@ -289,7 +335,7 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           "--limit",
           String(input.limit ?? 1),
           "--json",
-          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner",
+          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,isDraft,author,assignees,labels,comments,headRepository,headRepositoryOwner",
         ],
       }).pipe(
         Effect.map((result) => result.stdout.trim()),
@@ -323,7 +369,7 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           "view",
           input.reference,
           "--json",
-          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner",
+          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,isDraft,author,assignees,labels,comments,headRepository,headRepositoryOwner",
         ],
       }).pipe(
         Effect.map((result) => result.stdout.trim()),
@@ -414,7 +460,7 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           "--limit",
           String(input.limit ?? 50),
           "--json",
-          "number,title,url,state,updatedAt,author,labels",
+          "number,title,url,state,updatedAt,author,labels,assignees,comments",
         ],
       }).pipe(
         Effect.map((r) => r.stdout.trim()),
@@ -444,7 +490,7 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           "view",
           input.reference,
           "--json",
-          "number,title,url,state,updatedAt,author,labels,body,comments",
+          "number,title,url,state,updatedAt,author,labels,assignees,body,comments",
         ],
       }).pipe(
         Effect.map((r) => r.stdout.trim()),
@@ -475,7 +521,7 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           "--limit",
           String(input.limit ?? 20),
           "--json",
-          "number,title,url,state,updatedAt,author,labels",
+          "number,title,url,state,updatedAt,author,labels,assignees,comments",
         ],
       }).pipe(
         Effect.map((r) => r.stdout.trim()),
@@ -508,7 +554,7 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           "--limit",
           String(input.limit ?? 20),
           "--json",
-          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner",
+          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,isDraft,author,assignees,labels,comments,headRepository,headRepositoryOwner",
         ],
       }).pipe(
         Effect.map((result) => result.stdout.trim()),
@@ -541,7 +587,7 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           "view",
           input.reference,
           "--json",
-          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner,body,comments",
+          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,isDraft,author,assignees,labels,headRepository,headRepositoryOwner,body,comments,reviewRequests,reviews,commits,additions,deletions,changedFiles,files",
         ],
       }).pipe(
         Effect.map((r) => r.stdout.trim()),
@@ -563,6 +609,11 @@ export const make = Effect.fn("makeGitHubCli")(function* () {
           ),
         ),
       ),
+    getPullRequestDiff: (input) =>
+      execute({
+        cwd: input.cwd,
+        args: ["pr", "diff", input.reference],
+      }).pipe(Effect.map((r) => r.stdout)),
   });
 });
 

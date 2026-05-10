@@ -4,7 +4,7 @@ import {
   CursorSettings,
   OpenCodeSettings,
   ProviderDriverKind,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import type { Schema } from "effect";
 import { ClaudeAI, CursorIcon, type Icon, OpenAI, OpenCodeIcon } from "../Icons";
 

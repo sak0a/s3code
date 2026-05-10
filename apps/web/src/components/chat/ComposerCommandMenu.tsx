@@ -5,7 +5,7 @@ import {
   type ServerProviderSkill,
   type ServerProviderSlashCommand,
   type SourceControlIssueSummary,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { BotIcon, CircleDotIcon, GitBranchIcon } from "lucide-react";
 import { memo, useLayoutEffect, useMemo, useRef } from "react";
 

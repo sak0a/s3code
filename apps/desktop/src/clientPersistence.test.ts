@@ -6,7 +6,7 @@ import {
   EnvironmentId,
   type ClientSettings,
   type PersistedSavedEnvironmentRecord,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -29,7 +29,7 @@ afterEach(() => {
 });
 
 function makeTempPath(fileName: string): string {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "t3-client-persistence-test-"));
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "s3-client-persistence-test-"));
   tempDirectories.push(directory);
   return path.join(directory, fileName);
 }

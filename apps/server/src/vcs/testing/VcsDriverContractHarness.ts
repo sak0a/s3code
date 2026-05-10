@@ -10,7 +10,7 @@ import {
   Option,
 } from "effect";
 
-import type { VcsDriverKind } from "@t3tools/contracts";
+import type { VcsDriverKind } from "@s3tools/contracts";
 import * as VcsDriver from "../VcsDriver.ts";
 
 export interface VcsDriverFixture<R, E> {
@@ -41,7 +41,7 @@ export interface VcsDriverContractSuiteInput<R, E> {
 
 export function runVcsDriverContractSuite<R, E>(input: VcsDriverContractSuiteInput<R, E>) {
   const makeTmpDir = (
-    prefix = `t3-${input.kind}-vcs-contract-`,
+    prefix = `s3-${input.kind}-vcs-contract-`,
   ): Effect.Effect<string, PlatformError.PlatformError, FileSystem.FileSystem | Scope.Scope> =>
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;

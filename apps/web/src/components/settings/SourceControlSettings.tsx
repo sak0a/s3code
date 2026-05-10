@@ -8,7 +8,7 @@ import type {
   SourceControlProviderDiscoveryItem,
   VcsDriverKind,
   VcsDiscoveryItem,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 import { cn } from "../../lib/utils";
 import {

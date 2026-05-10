@@ -1,27 +1,24 @@
-import { parseScopedThreadKey, scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime";
-import { type ScopedThreadRef, ThreadId } from "@t3tools/contracts";
-import { useQueryClient } from "@tanstack/react-query";
+import { parseScopedThreadKey, scopeProjectRef, scopeThreadRef } from "@s3tools/client-runtime";
+import { type ScopedThreadRef, ThreadId } from "@s3tools/contracts";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useRef } from "react";
 
 import { getFallbackThreadIdAfterDelete } from "../components/Sidebar.logic";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { useNewThreadHandler } from "./useHandleNewThread";
-import { ensureEnvironmentApi, readEnvironmentApi } from "../environmentApi";
-import { invalidateGitQueries } from "../lib/gitReactQuery";
+import { readEnvironmentApi } from "../environmentApi";
 import { newCommandId } from "../lib/utils";
 import { readLocalApi } from "../localApi";
-import {
-  selectProjectByRef,
-  selectThreadByRef,
-  selectThreadsForEnvironment,
-  useStore,
-} from "../store";
+import { selectThreadByRef, selectThreadsForEnvironment, useStore } from "../store";
 import { useTerminalStateStore } from "../terminalStateStore";
 import { buildThreadRouteParams, resolveThreadRouteRef } from "../threadRoutes";
-import { formatWorktreePathForDisplay, getOrphanedWorktreePathForThread } from "../worktreeCleanup";
-import { stackedThreadToast, toastManager } from "../components/ui/toast";
 import { useSettings } from "./useSettings";
+import { stackedThreadToast, toastManager } from "../components/ui/toast";
+
+type DeleteThreadOptions = {
+  deletedThreadKeys?: ReadonlySet<string>;
+  optimistic?: boolean;
+};
 
 export function useThreadActions() {
   const sidebarThreadSortOrder = useSettings((settings) => settings.sidebarThreadSortOrder);
@@ -39,7 +36,6 @@ export function useThreadActions() {
   // sidebar row via archiveThread → attemptArchiveThread.
   const handleNewThreadRef = useRef(handleNewThread);
   handleNewThreadRef.current = handleNewThread;
-  const queryClient = useQueryClient();
 
   const resolveThreadTarget = useCallback((target: ScopedThreadRef) => {
     const state = useStore.getState();
@@ -96,18 +92,13 @@ export function useThreadActions() {
   }, []);
 
   const deleteThread = useCallback(
-    async (target: ScopedThreadRef, opts: { deletedThreadKeys?: ReadonlySet<string> } = {}) => {
+    async (target: ScopedThreadRef, opts: DeleteThreadOptions = {}) => {
       const api = readEnvironmentApi(target.environmentId);
       if (!api) return;
       const resolved = resolveThreadTarget(target);
       if (!resolved) return;
       const { thread, threadRef } = resolved;
-      const state = useStore.getState();
-      const threads = selectThreadsForEnvironment(state, threadRef.environmentId);
-      const threadProject = selectProjectByRef(state, {
-        environmentId: threadRef.environmentId,
-        projectId: thread.projectId,
-      });
+      const threads = selectThreadsForEnvironment(useStore.getState(), threadRef.environmentId);
       const deletedIds =
         opts.deletedThreadKeys && opts.deletedThreadKeys.size > 0
           ? new Set<ThreadId>(
@@ -117,49 +108,7 @@ export function useThreadActions() {
               }),
             )
           : undefined;
-      const survivingThreads =
-        deletedIds && deletedIds.size > 0
-          ? threads.filter((entry) => entry.id === threadRef.threadId || !deletedIds.has(entry.id))
-          : threads;
-      const orphanedWorktreePath = getOrphanedWorktreePathForThread(
-        survivingThreads,
-        threadRef.threadId,
-      );
-      const displayWorktreePath = orphanedWorktreePath
-        ? formatWorktreePathForDisplay(orphanedWorktreePath)
-        : null;
-      const canDeleteWorktree = orphanedWorktreePath !== null && threadProject !== undefined;
-      const localApi = readLocalApi();
-      const shouldDeleteWorktree =
-        canDeleteWorktree &&
-        localApi &&
-        (await localApi.dialogs.confirm(
-          [
-            "This thread is the only one linked to this worktree:",
-            displayWorktreePath ?? orphanedWorktreePath,
-            "",
-            "Delete the worktree too?",
-          ].join("\n"),
-        ));
 
-      if (thread.session && thread.session.status !== "closed") {
-        await api.orchestration
-          .dispatchCommand({
-            type: "thread.session.stop",
-            commandId: newCommandId(),
-            threadId: threadRef.threadId,
-            createdAt: new Date().toISOString(),
-          })
-          .catch(() => undefined);
-      }
-
-      try {
-        await api.terminal.close({ threadId: threadRef.threadId, deleteHistory: true });
-      } catch {
-        // Terminal may already be closed.
-      }
-
-      const deletedThreadIds = deletedIds ?? new Set<ThreadId>();
       const currentRouteThreadRef = getCurrentRouteThreadRef();
       const shouldNavigateToFallback =
         currentRouteThreadRef?.threadId === threadRef.threadId &&
@@ -167,14 +116,85 @@ export function useThreadActions() {
       const fallbackThreadId = getFallbackThreadIdAfterDelete({
         threads,
         deletedThreadId: threadRef.threadId,
-        deletedThreadIds,
+        deletedThreadIds: deletedIds ?? new Set<ThreadId>(),
         sortOrder: sidebarThreadSortOrder,
       });
-      await api.orchestration.dispatchCommand({
+      const dispatchDelete = api.orchestration.dispatchCommand({
         type: "thread.delete",
         commandId: newCommandId(),
         threadId: threadRef.threadId,
       });
+
+      if (opts.optimistic) {
+        // Fire WS delete first so the network round-trip parallelizes
+        // with the route switch / local cleanup. Errors surface via toast;
+        // the local state stays cleared (matches existing behavior).
+        void dispatchDelete.catch((error: unknown) => {
+          toastManager.add(
+            stackedThreadToast({
+              type: "error",
+              title: "Failed to delete thread",
+              description: error instanceof Error ? error.message : "An error occurred.",
+            }),
+          );
+        });
+
+        // Resolve the fallback ref before mutating the store; once
+        // removeThread runs the deleted thread is gone from selectors.
+        let navigateTarget: { kind: "fallback"; ref: ScopedThreadRef } | { kind: "home" } | null =
+          null;
+        if (shouldNavigateToFallback) {
+          if (fallbackThreadId) {
+            const fallbackThread = selectThreadByRef(
+              useStore.getState(),
+              scopeThreadRef(threadRef.environmentId, fallbackThreadId),
+            );
+            navigateTarget = fallbackThread
+              ? {
+                  kind: "fallback",
+                  ref: scopeThreadRef(fallbackThread.environmentId, fallbackThread.id),
+                }
+              : { kind: "home" };
+          } else {
+            navigateTarget = { kind: "home" };
+          }
+        }
+
+        const cleanupDeletedThread = () => {
+          useStore.getState().removeThread(threadRef);
+          clearComposerDraftForThread(threadRef);
+          clearProjectDraftThreadById(
+            scopeProjectRef(threadRef.environmentId, thread.projectId),
+            threadRef,
+          );
+          clearTerminalState(threadRef);
+        };
+
+        if (navigateTarget) {
+          // Kick off without awaiting — the click handler returns
+          // immediately. For the active thread, defer local removal until
+          // after navigation has had a chance to paint; removing the mounted
+          // active thread first forces ChatView to reconcile a missing heavy
+          // thread and makes close feel frozen.
+          if (navigateTarget.kind === "fallback") {
+            void router.navigate({
+              to: "/$environmentId/$threadId",
+              params: buildThreadRouteParams(navigateTarget.ref),
+              replace: true,
+            });
+          } else {
+            void router.navigate({ to: "/", replace: true });
+          }
+          requestAnimationFrame(() => {
+            setTimeout(cleanupDeletedThread, 0);
+          });
+        } else {
+          cleanupDeletedThread();
+        }
+        return;
+      }
+
+      await dispatchDelete;
       clearComposerDraftForThread(threadRef);
       clearProjectDraftThreadById(
         scopeProjectRef(threadRef.environmentId, thread.projectId),
@@ -196,42 +216,10 @@ export function useThreadActions() {
               ),
               replace: true,
             });
-          } else {
-            await router.navigate({ to: "/", replace: true });
+            return;
           }
-        } else {
-          await router.navigate({ to: "/", replace: true });
         }
-      }
-
-      if (!shouldDeleteWorktree || !orphanedWorktreePath || !threadProject) {
-        return;
-      }
-
-      try {
-        await ensureEnvironmentApi(threadRef.environmentId).vcs.removeWorktree({
-          cwd: threadProject.cwd,
-          path: orphanedWorktreePath,
-          force: true,
-        });
-        await invalidateGitQueries(queryClient, {
-          environmentId: threadRef.environmentId,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown error removing worktree.";
-        console.error("Failed to remove orphaned worktree after thread deletion", {
-          threadId: threadRef.threadId,
-          projectCwd: threadProject.cwd,
-          worktreePath: orphanedWorktreePath,
-          error,
-        });
-        toastManager.add(
-          stackedThreadToast({
-            type: "error",
-            title: "Thread deleted, but worktree removal failed",
-            description: `Could not remove ${displayWorktreePath ?? orphanedWorktreePath}. ${message}`,
-          }),
-        );
+        await router.navigate({ to: "/", replace: true });
       }
     },
     [
@@ -240,7 +228,6 @@ export function useThreadActions() {
       clearTerminalState,
       getCurrentRouteThreadRef,
       router,
-      queryClient,
       resolveThreadTarget,
       sidebarThreadSortOrder,
     ],

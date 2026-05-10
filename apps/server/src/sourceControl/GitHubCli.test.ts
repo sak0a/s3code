@@ -1,7 +1,7 @@
 import { assert, it, afterEach, describe, expect, vi } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import { VcsProcessExitError, type VcsError } from "@t3tools/contracts";
+import { VcsProcessExitError, type VcsError } from "@s3tools/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as GitHubCli from "./GitHubCli.ts";
@@ -67,6 +67,10 @@ describe("GitHubCli.layer", () => {
         baseRefName: "main",
         headRefName: "feature/pr-threads",
         state: "open",
+        author: null,
+        assignees: [],
+        labels: [],
+        commentsCount: null,
         isCrossRepository: true,
         headRepositoryNameWithOwner: "octocat/codething-mvp",
         headRepositoryOwnerLogin: "octocat",
@@ -79,7 +83,7 @@ describe("GitHubCli.layer", () => {
           "view",
           "#42",
           "--json",
-          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner",
+          "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,isDraft,author,assignees,labels,comments,headRepository,headRepositoryOwner",
         ],
         cwd: "/repo",
         timeoutMs: 30_000,
@@ -125,6 +129,10 @@ describe("GitHubCli.layer", () => {
         baseRefName: "main",
         headRefName: "feature/pr-threads",
         state: "open",
+        author: null,
+        assignees: [],
+        labels: [],
+        commentsCount: null,
         isCrossRepository: true,
         headRepositoryNameWithOwner: "octocat/codething-mvp",
         headRepositoryOwnerLogin: "octocat",
@@ -177,6 +185,10 @@ describe("GitHubCli.layer", () => {
           baseRefName: "main",
           headRefName: "feature/pr-list",
           state: "open",
+          author: null,
+          assignees: [],
+          labels: [],
+          commentsCount: null,
         },
       ]);
     }).pipe(Effect.provide(layer)),
@@ -331,7 +343,7 @@ describe("GitHubCli.layer", () => {
             "view",
             "42",
             "--json",
-            "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner,body,comments",
+            "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,isDraft,author,assignees,labels,headRepository,headRepositoryOwner,body,comments,reviewRequests,reviews,commits,additions,deletions,changedFiles,files",
           ],
           cwd: "/tmp",
           timeoutMs: 30_000,
@@ -365,7 +377,7 @@ describe("GitHubCli.layer", () => {
             "--limit",
             "20",
             "--json",
-            "number,title,url,state,updatedAt,author,labels",
+            "number,title,url,state,updatedAt,author,labels,assignees,comments",
           ],
           cwd: "/tmp",
           timeoutMs: 30_000,
@@ -412,7 +424,7 @@ describe("GitHubCli.layer", () => {
             "--limit",
             "20",
             "--json",
-            "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,headRepository,headRepositoryOwner",
+            "number,title,url,baseRefName,headRefName,state,mergedAt,isCrossRepository,isDraft,author,assignees,labels,comments,headRepository,headRepositoryOwner",
           ],
           cwd: "/tmp",
           timeoutMs: 30_000,
@@ -453,7 +465,7 @@ describe("GitHubCli.layer", () => {
             "view",
             "42",
             "--json",
-            "number,title,url,state,updatedAt,author,labels,body,comments",
+            "number,title,url,state,updatedAt,author,labels,assignees,body,comments",
           ],
           cwd: "/tmp",
           timeoutMs: 30_000,
@@ -512,7 +524,7 @@ describe("GitHubCli.layer", () => {
             "--limit",
             "20",
             "--json",
-            "number,title,url,state,updatedAt,author,labels",
+            "number,title,url,state,updatedAt,author,labels,assignees,comments",
           ],
           cwd: "/tmp",
           timeoutMs: 30_000,

@@ -1,6 +1,12 @@
 import { Cause, Exit, Option, Result, Schema } from "effect";
-import { PositiveInt, TrimmedNonEmptyString } from "@t3tools/contracts";
-import { decodeJsonResult, formatSchemaError } from "@t3tools/shared/schemaJson";
+import { PositiveInt, TrimmedNonEmptyString } from "@s3tools/contracts";
+import { decodeJsonResult, formatSchemaError } from "@s3tools/shared/schemaJson";
+
+export interface NormalizedGitHubLabel {
+  readonly name: string;
+  readonly color?: string;
+  readonly description?: string;
+}
 
 export interface NormalizedGitHubIssueRecord {
   readonly number: number;
@@ -9,7 +15,30 @@ export interface NormalizedGitHubIssueRecord {
   readonly state: "open" | "closed";
   readonly author: string | null;
   readonly updatedAt: Option.Option<string>;
-  readonly labels: ReadonlyArray<string>;
+  readonly labels: ReadonlyArray<NormalizedGitHubLabel>;
+  readonly assignees: ReadonlyArray<string>;
+  readonly commentsCount: number | null;
+}
+
+function normalizeLabels(
+  raw:
+    | ReadonlyArray<{
+        name: string;
+        color?: string | null | undefined;
+        description?: string | null | undefined;
+      }>
+    | undefined,
+): ReadonlyArray<NormalizedGitHubLabel> {
+  if (!raw) return [];
+  return raw.map((l) => {
+    const color = l.color?.trim() ?? "";
+    const description = l.description?.trim() ?? "";
+    return {
+      name: l.name,
+      ...(color.length > 0 ? { color } : {}),
+      ...(description.length > 0 ? { description } : {}),
+    };
+  });
 }
 
 export interface NormalizedGitHubIssueDetail extends NormalizedGitHubIssueRecord {
@@ -18,6 +47,7 @@ export interface NormalizedGitHubIssueDetail extends NormalizedGitHubIssueRecord
     readonly author: string;
     readonly body: string;
     readonly createdAt: string;
+    readonly authorAssociation?: string;
   }>;
 }
 
@@ -28,16 +58,31 @@ const GitHubIssueSchema = Schema.Struct({
   state: Schema.optional(Schema.NullOr(Schema.String)),
   updatedAt: Schema.optional(Schema.NullOr(Schema.String)),
   author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
-  labels: Schema.optional(Schema.Array(Schema.Struct({ name: Schema.String }))),
-  body: Schema.optional(Schema.NullOr(Schema.String)),
-  comments: Schema.optional(
+  labels: Schema.optional(
     Schema.Array(
       Schema.Struct({
-        author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
-        body: Schema.String,
-        createdAt: Schema.String,
+        name: Schema.String,
+        color: Schema.optional(Schema.NullOr(Schema.String)),
+        description: Schema.optional(Schema.NullOr(Schema.String)),
       }),
     ),
+  ),
+  assignees: Schema.optional(Schema.Array(Schema.Struct({ login: Schema.String }))),
+  body: Schema.optional(Schema.NullOr(Schema.String)),
+  comments: Schema.optional(
+    Schema.Union([
+      // `gh issue view` returns full comment objects.
+      Schema.Array(
+        Schema.Struct({
+          author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
+          authorAssociation: Schema.optional(Schema.NullOr(Schema.String)),
+          body: Schema.String,
+          createdAt: Schema.String,
+        }),
+      ),
+      // `gh issue list` returns just the count.
+      Schema.Number,
+    ]),
   ),
 });
 
@@ -45,9 +90,32 @@ function normalizeIssueState(raw: string | null | undefined): "open" | "closed" 
   return raw?.trim().toUpperCase() === "CLOSED" ? "closed" : "open";
 }
 
+function normalizeIssueComment(raw: {
+  readonly author?: { readonly login: string } | null;
+  readonly authorAssociation?: string | null;
+  readonly body: string;
+  readonly createdAt: string;
+}): NormalizedGitHubIssueDetail["comments"][number] {
+  const base = {
+    author: raw.author?.login ?? "unknown",
+    body: raw.body,
+    createdAt: raw.createdAt,
+  };
+  if (raw.authorAssociation) {
+    return { ...base, authorAssociation: raw.authorAssociation };
+  }
+  return base;
+}
+
 function normalizeGitHubIssueRecord(
   raw: Schema.Schema.Type<typeof GitHubIssueSchema>,
 ): NormalizedGitHubIssueRecord {
+  const commentsCount =
+    typeof raw.comments === "number"
+      ? raw.comments
+      : Array.isArray(raw.comments)
+        ? raw.comments.length
+        : null;
   return {
     number: raw.number,
     title: raw.title,
@@ -55,7 +123,9 @@ function normalizeGitHubIssueRecord(
     state: normalizeIssueState(raw.state),
     author: raw.author?.login ?? null,
     updatedAt: raw.updatedAt ? Option.some(raw.updatedAt) : Option.none(),
-    labels: (raw.labels ?? []).map((l) => l.name),
+    labels: normalizeLabels(raw.labels),
+    assignees: (raw.assignees ?? []).map((a) => a.login),
+    commentsCount,
   };
 }
 
@@ -85,14 +155,11 @@ export function decodeGitHubIssueDetailJson(
   const result = decodeIssueDetail(raw);
   if (!Result.isSuccess(result)) return Result.fail(result.failure);
   const summary = normalizeGitHubIssueRecord(result.success);
+  const rawComments = Array.isArray(result.success.comments) ? result.success.comments : [];
   const detail: NormalizedGitHubIssueDetail = {
     ...summary,
     body: result.success.body ?? "",
-    comments: (result.success.comments ?? []).map((c) => ({
-      author: c.author?.login ?? "unknown",
-      body: c.body,
-      createdAt: c.createdAt,
-    })),
+    comments: rawComments.map((c) => normalizeIssueComment(c)),
   };
   return Result.succeed(detail);
 }

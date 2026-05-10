@@ -12,10 +12,10 @@ import {
   type ServerProvider,
   type TerminalEvent,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ContextMenuItem } from "@t3tools/contracts";
+import type { ContextMenuItem } from "@s3tools/contracts";
 
 const showContextMenuFallbackMock =
   vi.fn<
@@ -370,6 +370,7 @@ describe("wsApi", () => {
         id: ProjectId.make("project-1"),
         title: "Project",
         workspaceRoot: "/tmp/workspace",
+        projectMetadataDir: ".s3code",
         defaultModelSelection: {
           instanceId: ProviderInstanceId.make("codex"),
           model: "gpt-5-codex",
@@ -436,6 +437,7 @@ describe("wsApi", () => {
       projectId: ProjectId.make("project-1"),
       title: "Project",
       workspaceRoot: "/tmp/project",
+      projectMetadataDir: ".s3code",
       defaultModelSelection: {
         instanceId: ProviderInstanceId.make("codex"),
         model: "gpt-5-codex",

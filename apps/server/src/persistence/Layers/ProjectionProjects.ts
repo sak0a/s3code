@@ -2,7 +2,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import { Effect, Layer, Schema, Struct } from "effect";
 
-import { ModelSelection, ProjectScript } from "@t3tools/contracts";
+import { ModelSelection, ProjectScript } from "@s3tools/contracts";
 import { toPersistenceSqlError } from "../Errors.ts";
 import {
   DeleteProjectionProjectInput,
@@ -31,7 +31,9 @@ const makeProjectionProjectRepository = Effect.gen(function* () {
           project_id,
           title,
           workspace_root,
+          project_metadata_dir,
           default_model_selection_json,
+          custom_system_prompt,
           scripts_json,
           created_at,
           updated_at,
@@ -41,7 +43,9 @@ const makeProjectionProjectRepository = Effect.gen(function* () {
           ${row.projectId},
           ${row.title},
           ${row.workspaceRoot},
+          ${row.projectMetadataDir},
           ${row.defaultModelSelection !== null ? JSON.stringify(row.defaultModelSelection) : null},
+          ${row.customSystemPrompt ?? null},
           ${JSON.stringify(row.scripts)},
           ${row.createdAt},
           ${row.updatedAt},
@@ -51,7 +55,9 @@ const makeProjectionProjectRepository = Effect.gen(function* () {
         DO UPDATE SET
           title = excluded.title,
           workspace_root = excluded.workspace_root,
+          project_metadata_dir = excluded.project_metadata_dir,
           default_model_selection_json = excluded.default_model_selection_json,
+          custom_system_prompt = excluded.custom_system_prompt,
           scripts_json = excluded.scripts_json,
           created_at = excluded.created_at,
           updated_at = excluded.updated_at,
@@ -68,7 +74,9 @@ const makeProjectionProjectRepository = Effect.gen(function* () {
           project_id AS "projectId",
           title,
           workspace_root AS "workspaceRoot",
+          project_metadata_dir AS "projectMetadataDir",
           default_model_selection_json AS "defaultModelSelection",
+          custom_system_prompt AS "customSystemPrompt",
           scripts_json AS "scripts",
           created_at AS "createdAt",
           updated_at AS "updatedAt",
@@ -87,7 +95,9 @@ const makeProjectionProjectRepository = Effect.gen(function* () {
           project_id AS "projectId",
           title,
           workspace_root AS "workspaceRoot",
+          project_metadata_dir AS "projectMetadataDir",
           default_model_selection_json AS "defaultModelSelection",
+          custom_system_prompt AS "customSystemPrompt",
           scripts_json AS "scripts",
           created_at AS "createdAt",
           updated_at AS "updatedAt",

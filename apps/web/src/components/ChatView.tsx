@@ -20,24 +20,28 @@ import {
   ProviderDriverKind,
   RuntimeMode,
   TerminalOpenInput,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import {
   parseScopedThreadKey,
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@t3tools/client-runtime";
+} from "@s3tools/client-runtime";
 import {
   applyClaudePromptEffortPrefix,
   createModelSelection,
   resolvePromptInjectedEffort,
-} from "@t3tools/shared/model";
-import { projectScriptCwd, projectScriptRuntimeEnv } from "@t3tools/shared/projectScripts";
-import { truncate } from "@t3tools/shared/String";
+} from "@s3tools/shared/model";
+import { projectScriptCwd, projectScriptRuntimeEnv } from "@s3tools/shared/projectScripts";
+import { truncate } from "@s3tools/shared/String";
 import { Debouncer } from "@tanstack/react-pacer";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  changeRequestListQueryOptions,
+  issueListQueryOptions,
+} from "~/lib/sourceControlContextRpc";
 import { DateTime } from "effect";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useShallow } from "zustand/react/shallow";
 import { useGitStatus } from "~/lib/gitStatusState";
@@ -82,6 +86,7 @@ import {
 } from "../pendingUserInput";
 import {
   selectProjectsAcrossEnvironments,
+  selectSidebarThreadsForProjectRef,
   selectThreadsAcrossEnvironments,
   useStore,
 } from "../store";
@@ -106,7 +111,7 @@ import {
 import { useTheme } from "../hooks/useTheme";
 import { useTurnDiffSummaries } from "../hooks/useTurnDiffSummaries";
 import { useCommandPaletteStore } from "../commandPaletteStore";
-import { buildTemporaryWorktreeBranchName } from "@t3tools/shared/git";
+import { buildTemporaryWorktreeBranchName } from "@s3tools/shared/git";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY } from "../rightPanelLayout";
 import { BranchToolbar } from "./BranchToolbar";
@@ -126,6 +131,7 @@ import {
 import { newCommandId, newDraftId, newMessageId, newThreadId } from "~/lib/utils";
 import { getProviderModelCapabilities, resolveSelectableProvider } from "../providerModels";
 import { useSettings } from "../hooks/useSettings";
+import { useEvent } from "../hooks/useEvent";
 import { resolveAppModelSelectionForInstance } from "../modelSelection";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { deriveLogicalProjectKeyFromSettings } from "../logicalProject";
@@ -151,8 +157,18 @@ import { selectThreadTerminalState, useTerminalStateStore } from "../terminalSta
 import { ChatComposer, type ChatComposerHandle } from "./chat/ChatComposer";
 import { ExpandedImageDialog } from "./chat/ExpandedImageDialog";
 import { PullRequestThreadDialog } from "./PullRequestThreadDialog";
+import { NewWorktreeDialog, type NewWorktreeDialogTab } from "./worktrees/NewWorktreeDialog";
 import { MessagesTimeline } from "./chat/MessagesTimeline";
 import { ChatHeader } from "./chat/ChatHeader";
+import { type ChatSessionTabsItem } from "./chat/ChatSessionTabs";
+import { createTabPrefetchController } from "./chat/ChatSessionTabsPrefetch";
+import { createSessionTabsSelector, draftThreadToSidebarSummary } from "../sessionTabs.selectors";
+import type { SidebarThreadSummary } from "../types";
+import {
+  markTabSwitchClick,
+  markTabSwitchFirstPaint,
+  usePerfMark,
+} from "../perf/tabSwitchInstrumentation";
 import { type ExpandedImagePreview } from "./chat/ExpandedImagePreview";
 import { NoActiveThreadState } from "./NoActiveThreadState";
 import { resolveEffectiveEnvMode, resolveEnvironmentOptionLabel } from "./BranchToolbar.logic";
@@ -206,6 +222,7 @@ const EMPTY_ACTIVITIES: OrchestrationThreadActivity[] = [];
 const EMPTY_PROPOSED_PLANS: Thread["proposedPlans"] = [];
 const EMPTY_PROVIDERS: ServerProvider[] = [];
 const EMPTY_PENDING_USER_INPUT_ANSWERS: Record<string, PendingUserInputDraftAnswer> = {};
+const EMPTY_SESSION_TABS: ReadonlyArray<ChatSessionTabsItem> = Object.freeze([]);
 type EnvironmentUnavailableState = {
   readonly environmentId: EnvironmentId;
   readonly label: string;
@@ -614,6 +631,7 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
 });
 
 export default function ChatView(props: ChatViewProps) {
+  usePerfMark("ChatView");
   const {
     environmentId,
     threadId,
@@ -724,6 +742,9 @@ export default function ChatView(props: ChatViewProps) {
   const [terminalFocusRequestId, setTerminalFocusRequestId] = useState(0);
   const [pullRequestDialogState, setPullRequestDialogState] =
     useState<PullRequestDialogState | null>(null);
+  const [projectExplorerOpen, setProjectExplorerOpen] = useState(false);
+  const [projectExplorerInitialTab, setProjectExplorerInitialTab] =
+    useState<NewWorktreeDialogTab>("prs");
   const [terminalLaunchContext, setTerminalLaunchContext] = useState<TerminalLaunchContext | null>(
     null,
   );
@@ -818,6 +839,13 @@ export default function ChatView(props: ChatViewProps) {
   );
   const isServerThread = routeKind === "server" && serverThread !== undefined;
   const activeThread = isServerThread ? serverThread : localDraftThread;
+  // Defers heavy MessagesTimeline render to a transition. When threadId
+  // changes, the urgent render paints with the placeholder branch (see
+  // the JSX gate below); React then re-renders in a transition where
+  // the deferred id catches up and the real timeline mounts.
+  const activeThreadIdRaw = activeThread?.id ?? null;
+  const deferredActiveThreadId = useDeferredValue(activeThreadIdRaw);
+  const isActiveThreadIdFresh = deferredActiveThreadId === activeThreadIdRaw;
   const runtimeMode = composerRuntimeMode ?? activeThread?.runtimeMode ?? DEFAULT_RUNTIME_MODE;
   const interactionMode =
     composerInteractionMode ?? activeThread?.interactionMode ?? DEFAULT_INTERACTION_MODE;
@@ -871,6 +899,150 @@ export default function ChatView(props: ChatViewProps) {
   const activeProject = useStore(
     useMemo(() => createProjectSelectorByRef(activeProjectRef), [activeProjectRef]),
   );
+
+  const activeWorktreeSummary = useStore(
+    useMemo(
+      () => (state: Parameters<typeof selectSidebarThreadsForProjectRef>[0]) => {
+        if (!activeThread || !activeThread.environmentId) return null;
+        const wid = activeThread.worktreeId;
+        if (!wid) return null;
+        const env = state.environmentStateById[activeThread.environmentId];
+        if (!env?.worktreeById) return null;
+        return (
+          (
+            env.worktreeById as Record<
+              string,
+              (typeof env.worktreeById)[keyof typeof env.worktreeById]
+            >
+          )[wid] ?? null
+        );
+      },
+      // Re-create the selector only when the identity inputs change.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [activeThread?.environmentId, activeThread?.worktreeId],
+    ),
+  );
+  const sessionTabsSelector = useMemo(() => createSessionTabsSelector(), []);
+  const tabsWorktreeId = activeThread?.worktreeId;
+  const tabsWorktreePath = activeThread?.worktreePath;
+  const draftThreadSummariesForProject = useMemo<SidebarThreadSummary[]>(() => {
+    if (!activeProjectRef) return [];
+    const drafts: SidebarThreadSummary[] = [];
+    for (const draft of Object.values(draftThreadsByThreadKey)) {
+      if (draft.promotedTo != null) continue;
+      if (draft.environmentId !== activeProjectRef.environmentId) continue;
+      if (draft.projectId !== activeProjectRef.projectId) continue;
+      drafts.push(draftThreadToSidebarSummary(draft));
+    }
+    return drafts;
+  }, [draftThreadsByThreadKey, activeProjectRef]);
+  const activeWorktreeSessionTabs = useStore((state) => {
+    if (!activeProjectRef || !activeThread) return EMPTY_SESSION_TABS;
+    const serverThreads = selectSidebarThreadsForProjectRef(state, activeProjectRef);
+    const allThreads =
+      draftThreadSummariesForProject.length > 0
+        ? [...serverThreads, ...draftThreadSummariesForProject]
+        : serverThreads;
+    return sessionTabsSelector(allThreads, {
+      worktreeId: tabsWorktreeId ?? null,
+      worktreePath: tabsWorktreePath ?? null,
+    });
+  });
+  const activeSessionTabKey = activeThread
+    ? scopedThreadKey(scopeThreadRef(activeThread.environmentId, activeThread.id))
+    : null;
+  const activeProjectIssuesQuery = useQuery(
+    issueListQueryOptions({
+      environmentId: activeProject?.environmentId ?? null,
+      cwd: activeProject?.cwd ?? null,
+      state: "open",
+      limit: 100,
+      enabled: activeProject !== undefined,
+    }),
+  );
+  const activeProjectPullRequestsQuery = useQuery(
+    changeRequestListQueryOptions({
+      environmentId: activeProject?.environmentId ?? null,
+      cwd: activeProject?.cwd ?? null,
+      state: "open",
+      limit: 100,
+      enabled: activeProject !== undefined,
+    }),
+  );
+  const activeProjectIssueCount = activeProjectIssuesQuery.data?.length ?? 0;
+  const activeProjectPullRequestCount = activeProjectPullRequestsQuery.data?.length ?? 0;
+
+  const handleSelectSessionTab = useCallback(
+    (key: string) => {
+      const target = parseScopedThreadKey(key);
+      if (!target) return;
+      markTabSwitchClick(key);
+      // Defer navigate to the next macrotask so React can commit the
+      // optimistic pendingKey paint in ChatSessionTabs before the heavy
+      // route-driven re-render kicks in. Wrapping in startTransition
+      // composed badly with tanstack-router's internal Transitioner.
+      setTimeout(() => {
+        void navigate({
+          to: "/$environmentId/$threadId",
+          params: {
+            environmentId: target.environmentId,
+            threadId: target.threadId,
+          },
+        });
+      }, 0);
+    },
+    [navigate],
+  );
+
+  const prefetchControllerRef = useRef<ReturnType<typeof createTabPrefetchController> | null>(null);
+  useEffect(() => {
+    const controller = createTabPrefetchController({
+      retain: (key) => {
+        const ref = parseScopedThreadKey(key);
+        if (!ref) return () => {};
+        return retainThreadDetailSubscription(ref.environmentId, ref.threadId);
+      },
+      releaseDelayMs: 250,
+    });
+    prefetchControllerRef.current = controller;
+    return () => {
+      controller.dispose();
+      prefetchControllerRef.current = null;
+    };
+  }, []);
+  const handleTabPrefetchEnter = useCallback(
+    (key: string) => prefetchControllerRef.current?.enter(key),
+    [],
+  );
+  const handleTabPrefetchLeave = useCallback(
+    (key: string) => prefetchControllerRef.current?.leave(key),
+    [],
+  );
+
+  // Speculatively warm WS subscriptions for every sibling tab in the
+  // active worktree. Subscriptions are reference-counted by
+  // retainThreadDetailSubscription, so the active route's own retain
+  // is not duplicated and idle ones are evicted by the existing cap.
+  // This makes cold clicks (no hover) behave like warm clicks.
+  useEffect(() => {
+    if (activeWorktreeSessionTabs.length === 0) return;
+    const releases: Array<() => void> = [];
+    for (const tab of activeWorktreeSessionTabs) {
+      if (tab.key === activeSessionTabKey) continue;
+      const ref = parseScopedThreadKey(tab.key);
+      if (!ref) continue;
+      releases.push(retainThreadDetailSubscription(ref.environmentId, ref.threadId));
+    }
+    return () => {
+      for (const release of releases) release();
+    };
+  }, [activeWorktreeSessionTabs, activeSessionTabKey]);
+
+  useEffect(() => {
+    if (!activeSessionTabKey) return;
+    const key = activeSessionTabKey;
+    queueMicrotask(() => markTabSwitchFirstPaint(key));
+  }, [activeSessionTabKey]);
 
   useEffect(() => {
     if (routeKind !== "server") {
@@ -1728,7 +1900,7 @@ export default function ChatView(props: ChatViewProps) {
     () => shortcutLabelForCommand(keybindings, "diff.toggle", nonTerminalShortcutLabelOptions),
     [keybindings, nonTerminalShortcutLabelOptions],
   );
-  const onToggleDiff = useCallback(() => {
+  const onToggleDiff = useEvent(() => {
     if (!isServerThread) {
       return;
     }
@@ -1753,8 +1925,8 @@ export default function ChatView(props: ChatViewProps) {
             }
           : buildOpenDiffSearch(previous),
     });
-  }, [diffOpen, environmentId, isServerThread, navigate, onDiffPanelOpen, threadId]);
-  const onTogglePreview = useCallback(() => {
+  });
+  const onTogglePreview = useEvent(() => {
     if (!activeProject) {
       return;
     }
@@ -1789,16 +1961,7 @@ export default function ChatView(props: ChatViewProps) {
       replace: true,
       search: nextSearch,
     });
-  }, [
-    activeProject,
-    draftId,
-    environmentId,
-    navigate,
-    onPreviewPanelOpen,
-    previewOpen,
-    routeKind,
-    threadId,
-  ]);
+  });
 
   const envLocked = Boolean(
     activeThread &&
@@ -1932,7 +2095,7 @@ export default function ChatView(props: ChatViewProps) {
       terminalState.terminalIds.length,
     ],
   );
-  const runProjectScript = useCallback(
+  const runProjectScript = useEvent(
     async (
       script: ProjectScript,
       options?: {
@@ -2019,22 +2182,6 @@ export default function ChatView(props: ChatViewProps) {
         );
       }
     },
-    [
-      activeProject,
-      activeThread,
-      activeThreadId,
-      activeThreadRef,
-      gitCwd,
-      setTerminalOpen,
-      setThreadError,
-      storeNewTerminal,
-      storeSetActiveTerminal,
-      setLastInvokedScriptByProjectId,
-      environmentId,
-      terminalState.activeTerminalId,
-      terminalState.runningTerminalIds,
-      terminalState.terminalIds,
-    ],
   );
 
   const persistProjectScripts = useCallback(
@@ -2539,6 +2686,24 @@ export default function ChatView(props: ChatViewProps) {
 
     terminalOpenByThreadRef.current[activeThreadKey] = current;
   }, [activeThreadKey, focusComposer, terminalState.terminalOpen]);
+
+  useEffect(() => {
+    const handler = (event: globalThis.KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      const isToggleProjectExplorer =
+        event.key.toLowerCase() === "p" &&
+        event.shiftKey &&
+        (event.metaKey || event.ctrlKey) &&
+        !event.altKey;
+      if (!isToggleProjectExplorer) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setProjectExplorerInitialTab("prs");
+      setProjectExplorerOpen((value) => !value);
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, []);
 
   useEffect(() => {
     const handler = (event: globalThis.KeyboardEvent) => {
@@ -3626,14 +3791,14 @@ export default function ChatView(props: ChatViewProps) {
       {/* Top bar */}
       <header
         className={cn(
-          "border-b border-border",
+          "border-b border-border bg-muted/24",
           isElectron
             ? cn(
-                "drag-region flex h-[52px] items-center px-3 sm:px-5 wco:h-[env(titlebar-area-height)]",
+                "drag-region flex min-h-[52px] items-stretch px-3 sm:px-5 wco:min-h-[env(titlebar-area-height)]",
                 reserveTitleBarControlInset &&
                   "wco:pr-[calc(100vw-env(titlebar-area-width)-env(titlebar-area-x)+1em)]",
               )
-            : "pb-2 pl-[calc(env(safe-area-inset-left)+0.75rem)] pr-[calc(env(safe-area-inset-right)+0.75rem)] pt-2 sm:pb-3 sm:pl-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)] sm:pt-3",
+            : "pl-[calc(env(safe-area-inset-left)+0.75rem)] pr-[calc(env(safe-area-inset-right)+0.75rem)] sm:pl-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)]",
         )}
       >
         <ChatHeader
@@ -3655,6 +3820,16 @@ export default function ChatView(props: ChatViewProps) {
           previewAvailable={activeProject !== undefined}
           diffOpen={diffOpen}
           previewOpen={previewOpen}
+          worktreeBranch={activeWorktreeSummary?.branch ?? activeThread.branch ?? null}
+          worktreeTitle={activeWorktreeSummary?.title ?? null}
+          worktreeOrigin={activeWorktreeSummary?.origin ?? null}
+          sessionTabs={activeWorktreeSessionTabs}
+          activeSessionTabKey={activeSessionTabKey}
+          issueCount={activeProjectIssueCount}
+          pullRequestCount={activeProjectPullRequestCount}
+          onSelectSessionTab={handleSelectSessionTab}
+          onPrefetchTabEnter={handleTabPrefetchEnter}
+          onPrefetchTabLeave={handleTabPrefetchLeave}
           onRunProjectScript={runProjectScript}
           onAddProjectScript={saveProjectScript}
           onUpdateProjectScript={updateProjectScript}
@@ -3676,31 +3851,38 @@ export default function ChatView(props: ChatViewProps) {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {/* Messages Wrapper */}
           <div className="relative flex min-h-0 flex-1 flex-col">
-            {/* Messages — LegendList handles virtualization and scrolling internally */}
-            <MessagesTimeline
-              key={activeThread.id}
-              isWorking={isWorking}
-              activeTurnInProgress={isWorking || !latestTurnSettled}
-              activeTurnId={activeLatestTurn?.turnId ?? null}
-              activeTurnStartedAt={activeWorkStartedAt}
-              listRef={legendListRef}
-              timelineEntries={timelineEntries}
-              completionDividerBeforeEntryId={completionDividerBeforeEntryId}
-              completionSummary={completionSummary}
-              turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
-              activeThreadEnvironmentId={activeThread.environmentId}
-              routeThreadKey={routeThreadKey}
-              onOpenTurnDiff={onOpenTurnDiff}
-              revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
-              onRevertUserMessage={onRevertUserMessage}
-              isRevertingCheckpoint={isRevertingCheckpoint}
-              onImageExpand={onExpandTimelineImage}
-              markdownCwd={gitCwd ?? undefined}
-              resolvedTheme={resolvedTheme}
-              timestampFormat={timestampFormat}
-              workspaceRoot={activeWorkspaceRoot}
-              onIsAtEndChange={onIsAtEndChange}
-            />
+            {/* Messages — LegendList handles virtualization and scrolling internally.
+                Gated on useDeferredValue: the urgent render after a tab switch
+                paints the placeholder, then React commits the heavy timeline in
+                a low-priority transition. */}
+            {isActiveThreadIdFresh ? (
+              <MessagesTimeline
+                key={activeThread.id}
+                isWorking={isWorking}
+                activeTurnInProgress={isWorking || !latestTurnSettled}
+                activeTurnId={activeLatestTurn?.turnId ?? null}
+                activeTurnStartedAt={activeWorkStartedAt}
+                listRef={legendListRef}
+                timelineEntries={timelineEntries}
+                completionDividerBeforeEntryId={completionDividerBeforeEntryId}
+                completionSummary={completionSummary}
+                turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
+                activeThreadEnvironmentId={activeThread.environmentId}
+                routeThreadKey={routeThreadKey}
+                onOpenTurnDiff={onOpenTurnDiff}
+                revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
+                onRevertUserMessage={onRevertUserMessage}
+                isRevertingCheckpoint={isRevertingCheckpoint}
+                onImageExpand={onExpandTimelineImage}
+                markdownCwd={gitCwd ?? undefined}
+                resolvedTheme={resolvedTheme}
+                timestampFormat={timestampFormat}
+                workspaceRoot={activeWorkspaceRoot}
+                onIsAtEndChange={onIsAtEndChange}
+              />
+            ) : (
+              <div aria-hidden className="flex min-h-0 flex-1" />
+            )}
 
             {/* scroll to bottom pill — shown when user has scrolled away from the bottom */}
             {showScrollToBottom && (
@@ -3836,6 +4018,11 @@ export default function ChatView(props: ChatViewProps) {
                 terminalOpen={terminalState.terminalOpen}
                 terminalToggleShortcutLabel={terminalToggleShortcutLabel}
                 onToggleTerminal={toggleTerminalVisibility}
+                onOpenProjectExplorer={() => {
+                  setProjectExplorerInitialTab("prs");
+                  setProjectExplorerOpen(true);
+                }}
+                projectExplorerShortcutLabel="⇧⌘P"
                 terminalCount={terminalState.terminalIds.length}
               />
             )}
@@ -3846,6 +4033,7 @@ export default function ChatView(props: ChatViewProps) {
               key={pullRequestDialogState.key}
               open
               environmentId={activeThread.environmentId}
+              projectId={activeProject?.id ?? null}
               threadId={activeThread.id}
               cwd={activeProject?.cwd ?? null}
               initialReference={pullRequestDialogState.initialReference}
@@ -3857,6 +4045,23 @@ export default function ChatView(props: ChatViewProps) {
               onPrepared={handlePreparedPullRequestThread}
             />
           ) : null}
+          <NewWorktreeDialog
+            open={projectExplorerOpen}
+            environmentId={activeThread.environmentId}
+            projectId={activeProject?.id ?? null}
+            cwd={activeProject?.cwd ?? null}
+            initialTab={projectExplorerInitialTab}
+            onCreated={(result) => {
+              void navigate({
+                to: "/$environmentId/$threadId",
+                params: {
+                  environmentId: activeThread.environmentId,
+                  threadId: result.sessionId,
+                },
+              });
+            }}
+            onOpenChange={setProjectExplorerOpen}
+          />
         </div>
         {/* end chat column */}
 

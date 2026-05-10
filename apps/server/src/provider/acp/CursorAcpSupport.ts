@@ -1,4 +1,4 @@
-import { type CursorSettings, type ProviderOptionSelection } from "@t3tools/contracts";
+import { type CursorSettings, type ProviderOptionSelection } from "@s3tools/contracts";
 import { Effect, Layer, Scope } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import type * as EffectAcpErrors from "effect-acp/errors";

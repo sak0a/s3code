@@ -13,9 +13,11 @@ import {
   ProjectId,
   ProviderInteractionMode,
   RuntimeMode,
+  StatusBucket,
   ThreadId,
   TurnId,
-} from "@t3tools/contracts";
+  WorktreeId,
+} from "@s3tools/contracts";
 import { Option, Schema, Context } from "effect";
 import type { Effect } from "effect";
 
@@ -30,6 +32,9 @@ export const ProjectionThread = Schema.Struct({
   interactionMode: ProviderInteractionMode,
   branch: Schema.NullOr(Schema.String),
   worktreePath: Schema.NullOr(Schema.String),
+  worktreeId: Schema.optional(Schema.NullOr(WorktreeId)),
+  manualStatusBucket: Schema.optional(Schema.NullOr(StatusBucket)),
+  manualPosition: Schema.optional(Schema.Number),
   latestTurnId: Schema.NullOr(TurnId),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -56,6 +61,26 @@ export const ListProjectionThreadsByProjectInput = Schema.Struct({
   projectId: ProjectId,
 });
 export type ListProjectionThreadsByProjectInput = typeof ListProjectionThreadsByProjectInput.Type;
+
+export const AttachProjectionThreadToWorktreeInput = Schema.Struct({
+  threadId: ThreadId,
+  worktreeId: Schema.NullOr(WorktreeId),
+});
+export type AttachProjectionThreadToWorktreeInput =
+  typeof AttachProjectionThreadToWorktreeInput.Type;
+
+export const SetProjectionThreadManualBucketInput = Schema.Struct({
+  threadId: ThreadId,
+  bucket: Schema.NullOr(StatusBucket),
+});
+export type SetProjectionThreadManualBucketInput = typeof SetProjectionThreadManualBucketInput.Type;
+
+export const SetProjectionThreadManualPositionInput = Schema.Struct({
+  threadId: ThreadId,
+  position: Schema.Number,
+});
+export type SetProjectionThreadManualPositionInput =
+  typeof SetProjectionThreadManualPositionInput.Type;
 
 /**
  * ProjectionThreadRepositoryShape - Service API for projected thread records.
@@ -90,6 +115,18 @@ export interface ProjectionThreadRepositoryShape {
   readonly deleteById: (
     input: DeleteProjectionThreadInput,
   ) => Effect.Effect<void, ProjectionRepositoryError>;
+
+  readonly attachToWorktree: (
+    input: AttachProjectionThreadToWorktreeInput,
+  ) => Effect.Effect<void, ProjectionRepositoryError>;
+
+  readonly setManualBucket: (
+    input: SetProjectionThreadManualBucketInput,
+  ) => Effect.Effect<void, ProjectionRepositoryError>;
+
+  readonly setManualPosition: (
+    input: SetProjectionThreadManualPositionInput,
+  ) => Effect.Effect<void, ProjectionRepositoryError>;
 }
 
 /**
@@ -98,4 +135,4 @@ export interface ProjectionThreadRepositoryShape {
 export class ProjectionThreadRepository extends Context.Service<
   ProjectionThreadRepository,
   ProjectionThreadRepositoryShape
->()("t3/persistence/Services/ProjectionThreads/ProjectionThreadRepository") {}
+>()("s3/persistence/Services/ProjectionThreads/ProjectionThreadRepository") {}

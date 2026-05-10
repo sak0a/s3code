@@ -65,7 +65,7 @@ function makeRegistry(input: {
         Layer.mock(GitHubCli.GitHubCli)(input.githubCli ?? {}),
         Layer.mock(GitLabCli.GitLabCli)({}),
         Layer.mock(VcsProcess.VcsProcess)({}),
-        ServerConfig.layerTest(process.cwd(), { prefix: "t3-source-control-registry-test-" }).pipe(
+        ServerConfig.layerTest(process.cwd(), { prefix: "s3-source-control-registry-test-" }).pipe(
           Layer.provide(NodeServices.layer),
         ),
       ),
@@ -76,7 +76,7 @@ function makeRegistry(input: {
 it.effect("routes GitHub remotes to the GitHub provider", () =>
   Effect.gen(function* () {
     const registry = yield* makeRegistry({
-      remotes: [{ name: "origin", url: "git@github.com:pingdotgg/t3code.git" }],
+      remotes: [{ name: "origin", url: "git@github.com:pingdotgg/s3code.git" }],
     });
 
     const provider = yield* registry.resolve({ cwd: "/repo" });
@@ -112,7 +112,7 @@ it.effect("routes GitLab remotes to the GitLab provider", () =>
 it.effect("routes Bitbucket remotes to the Bitbucket provider", () =>
   Effect.gen(function* () {
     const registry = yield* makeRegistry({
-      remotes: [{ name: "origin", url: "git@bitbucket.org:pingdotgg/t3code.git" }],
+      remotes: [{ name: "origin", url: "git@bitbucket.org:pingdotgg/s3code.git" }],
     });
 
     const provider = yield* registry.resolve({ cwd: "/repo" });
@@ -149,7 +149,7 @@ it.effect("dispatches listIssues to the GitHub provider for GitHub remotes", () 
   Effect.gen(function* () {
     const called = yield* Ref.make(false);
     const registry = yield* makeRegistry({
-      remotes: [{ name: "origin", url: "git@github.com:pingdotgg/t3code.git" }],
+      remotes: [{ name: "origin", url: "git@github.com:pingdotgg/s3code.git" }],
       githubCli: {
         listIssues: (_input) => Effect.tap(Effect.succeed([]), () => Ref.set(called, true)),
       },
@@ -172,18 +172,20 @@ it.effect(
       const getChangeRequestDetailCalled = yield* Ref.make(false);
 
       const registry = yield* makeRegistry({
-        remotes: [{ name: "origin", url: "git@github.com:pingdotgg/t3code.git" }],
+        remotes: [{ name: "origin", url: "git@github.com:pingdotgg/s3code.git" }],
         githubCli: {
           getIssue: (_input) =>
             Effect.tap(
               Effect.succeed({
                 number: 1,
                 title: "Test issue",
-                url: "https://github.com/pingdotgg/t3code/issues/1",
+                url: "https://github.com/pingdotgg/s3code/issues/1",
                 state: "open" as const,
                 author: null,
                 updatedAt: Option.none(),
                 labels: [],
+                assignees: [],
+                commentsCount: 0,
                 body: "body",
                 comments: [],
               }),
@@ -198,11 +200,22 @@ it.effect(
               Effect.succeed({
                 number: 1,
                 title: "Test PR",
-                url: "https://github.com/pingdotgg/t3code/pull/1",
+                url: "https://github.com/pingdotgg/s3code/pull/1",
                 baseRefName: "main",
                 headRefName: "feature/test",
+                author: null,
+                assignees: [],
+                labels: [],
+                commentsCount: 0,
                 body: "body",
                 comments: [],
+                linkedIssueNumbers: [],
+                reviewers: [],
+                commits: [],
+                additions: 0,
+                deletions: 0,
+                changedFiles: 0,
+                files: [],
               }),
               () => Ref.set(getChangeRequestDetailCalled, true),
             ),

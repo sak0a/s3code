@@ -11,10 +11,10 @@ import {
   type ProviderSession,
   type RuntimeMode,
   type TurnId,
-} from "@t3tools/contracts";
-import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@t3tools/shared/git";
+} from "@s3tools/contracts";
+import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@s3tools/shared/git";
 import { Cache, Cause, Duration, Effect, Equal, Layer, Option, Schema, Stream } from "effect";
-import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
+import { makeDrainableWorker } from "@s3tools/shared/DrainableWorker";
 
 import { resolveThreadWorkspaceCwd } from "../../checkpointing/Utils.ts";
 import { increment, orchestrationEventsProcessedTotal } from "../../observability/Metrics.ts";
@@ -389,6 +389,7 @@ const make = Effect.gen(function* () {
       thread,
       projects: project ? [project] : [],
     });
+    const customSystemPrompt = project?.customSystemPrompt?.trim() || undefined;
 
     const startProviderSession = (input?: {
       readonly resumeCursor?: unknown;
@@ -402,6 +403,7 @@ const make = Effect.gen(function* () {
         modelSelection: desiredModelSelection,
         ...(input?.resumeCursor !== undefined ? { resumeCursor: input.resumeCursor } : {}),
         runtimeMode: desiredRuntimeMode,
+        ...(customSystemPrompt !== undefined ? { customSystemPrompt } : {}),
       });
 
     const bindSessionToThread = (session: ProviderSession) =>
@@ -526,6 +528,8 @@ const make = Effect.gen(function* () {
     }
     const normalizedInput = toNonEmptyProviderInput(input.messageText);
     const normalizedAttachments = input.attachments ?? [];
+    const project = yield* resolveProject(thread.projectId);
+    const customSystemPrompt = project?.customSystemPrompt?.trim() || undefined;
     const activeSession = yield* providerService
       .listSessions()
       .pipe(
@@ -560,6 +564,7 @@ const make = Effect.gen(function* () {
       ...(normalizedAttachments.length > 0 ? { attachments: normalizedAttachments } : {}),
       ...(modelForTurn !== undefined ? { modelSelection: modelForTurn } : {}),
       ...(input.interactionMode !== undefined ? { interactionMode: input.interactionMode } : {}),
+      ...(customSystemPrompt !== undefined ? { customSystemPrompt } : {}),
     };
   });
 

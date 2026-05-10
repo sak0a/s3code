@@ -10,7 +10,7 @@ import type {
   SourceControlProviderKind,
   SourceControlRepositoryCloneUrls,
   SourceControlRepositoryVisibility,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 export interface SourceControlProviderContext {
   readonly provider: SourceControlProviderInfo;
@@ -106,6 +106,7 @@ export interface SourceControlProviderShape {
     readonly cwd: string;
     readonly context?: SourceControlProviderContext;
     readonly reference: string;
+    readonly fullContent?: boolean;
   }) => Effect.Effect<SourceControlIssueDetail, SourceControlProviderError>;
   readonly searchIssues: (input: {
     readonly cwd: string;
@@ -123,10 +124,16 @@ export interface SourceControlProviderShape {
     readonly cwd: string;
     readonly context?: SourceControlProviderContext;
     readonly reference: string;
+    readonly fullContent?: boolean;
   }) => Effect.Effect<SourceControlChangeRequestDetail, SourceControlProviderError>;
+  readonly getChangeRequestDiff: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProviderContext;
+    readonly reference: string;
+  }) => Effect.Effect<string, SourceControlProviderError>;
 }
 
 export class SourceControlProvider extends Context.Service<
   SourceControlProvider,
   SourceControlProviderShape
->()("t3/source-control/SourceControlProvider") {}
+>()("s3/source-control/SourceControlProvider") {}

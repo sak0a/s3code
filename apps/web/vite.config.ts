@@ -2,6 +2,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import babel from "@rolldown/plugin-babel";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import { readEnv } from "@s3tools/shared/runtimeEnv";
 import { defineConfig } from "vite";
 import pkg from "./package.json" with { type: "json" };
 
@@ -18,7 +19,7 @@ const configuredHostedAppUrl = (() => {
   }
   return process.env.VITE_HOSTED_APP_URL?.trim();
 })();
-const sourcemapEnv = process.env.T3CODE_WEB_SOURCEMAP?.trim().toLowerCase();
+const sourcemapEnv = readEnv("S3CODE_WEB_SOURCEMAP")?.trim().toLowerCase();
 
 const buildSourcemap =
   sourcemapEnv === "0" || sourcemapEnv === "false"

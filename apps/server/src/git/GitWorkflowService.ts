@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { Context, Effect, Layer } from "effect";
 
 import {
@@ -24,7 +25,7 @@ import {
   type VcsStatusLocalResult,
   type VcsStatusRemoteResult,
   type VcsStatusResult,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 import { GitManager, type GitRunStackedActionOptions } from "./GitManager.ts";
 import { GitVcsDriver } from "../vcs/GitVcsDriver.ts";
@@ -62,6 +63,11 @@ export interface GitWorkflowServiceShape {
   readonly createRef: (
     input: VcsCreateRefInput,
   ) => Effect.Effect<VcsCreateRefResult, GitCommandError>;
+  readonly deleteBranch: (input: {
+    readonly cwd: string;
+    readonly refName: string;
+    readonly force?: boolean;
+  }) => Effect.Effect<void, GitCommandError>;
   readonly switchRef: (
     input: VcsSwitchRefInput,
   ) => Effect.Effect<VcsSwitchRefResult, GitCommandError>;
@@ -75,7 +81,7 @@ export interface GitWorkflowServiceShape {
 export class GitWorkflowService extends Context.Service<
   GitWorkflowService,
   GitWorkflowServiceShape
->()("t3/git/GitWorkflowService") {}
+>()("s3/git/GitWorkflowService") {}
 
 const unsupportedGitWorkflow = (operation: string, cwd: string, detail: string) =>
   new GitManagerError({
@@ -234,6 +240,13 @@ export const make = Effect.fn("makeGitWorkflowService")(function* () {
     return true;
   });
 
+  const recoverMissingCwd =
+    <A, E>(cwd: string, fallback: A): ((error: E) => Effect.Effect<A, E>) =>
+    (error) =>
+      Effect.sync(() => existsSync(cwd)).pipe(
+        Effect.flatMap((exists) => (exists ? Effect.fail(error) : Effect.succeed(fallback))),
+      );
+
   const routeGitManager =
     <Input extends { readonly cwd: string }, Output>(
       operation: string,
@@ -246,21 +259,29 @@ export const make = Effect.fn("makeGitWorkflowService")(function* () {
     status: (input) =>
       detectGitRepositoryForStatus("GitWorkflowService.status", input.cwd).pipe(
         Effect.flatMap((isGitRepository) =>
-          isGitRepository ? gitManager.status(input) : Effect.succeed(nonRepositoryStatus()),
+          isGitRepository
+            ? gitManager
+                .status(input)
+                .pipe(Effect.catch(recoverMissingCwd(input.cwd, nonRepositoryStatus())))
+            : Effect.succeed(nonRepositoryStatus()),
         ),
       ),
     localStatus: (input) =>
       detectGitRepositoryForStatus("GitWorkflowService.localStatus", input.cwd).pipe(
         Effect.flatMap((isGitRepository) =>
           isGitRepository
-            ? gitManager.localStatus(input)
+            ? gitManager
+                .localStatus(input)
+                .pipe(Effect.catch(recoverMissingCwd(input.cwd, nonRepositoryLocalStatus())))
             : Effect.succeed(nonRepositoryLocalStatus()),
         ),
       ),
     remoteStatus: (input) =>
       detectGitRepositoryForStatus("GitWorkflowService.remoteStatus", input.cwd).pipe(
         Effect.flatMap((isGitRepository) =>
-          isGitRepository ? gitManager.remoteStatus(input) : Effect.succeed(null),
+          isGitRepository
+            ? gitManager.remoteStatus(input).pipe(Effect.catch(recoverMissingCwd(input.cwd, null)))
+            : Effect.succeed(null),
         ),
       ),
     invalidateLocalStatus: gitManager.invalidateLocalStatus,
@@ -285,7 +306,11 @@ export const make = Effect.fn("makeGitWorkflowService")(function* () {
     listRefs: (input) =>
       detectGitRepositoryForCommand("GitWorkflowService.listRefs", input.cwd).pipe(
         Effect.flatMap((isGitRepository) =>
-          isGitRepository ? git.listRefs(input) : Effect.succeed(nonRepositoryListRefs()),
+          isGitRepository
+            ? git
+                .listRefs(input)
+                .pipe(Effect.catch(recoverMissingCwd(input.cwd, nonRepositoryListRefs())))
+            : Effect.succeed(nonRepositoryListRefs()),
         ),
       ),
     createWorktree: (input) =>
@@ -299,6 +324,10 @@ export const make = Effect.fn("makeGitWorkflowService")(function* () {
     createRef: (input) =>
       ensureGitCommand("GitWorkflowService.createRef", input.cwd).pipe(
         Effect.andThen(git.createRef(input)),
+      ),
+    deleteBranch: (input) =>
+      ensureGitCommand("GitWorkflowService.deleteBranch", input.cwd).pipe(
+        Effect.andThen(git.deleteBranch(input)),
       ),
     switchRef: (input) =>
       ensureGitCommand("GitWorkflowService.switchRef", input.cwd).pipe(

@@ -11,7 +11,7 @@ import {
   ThreadId,
   TurnId,
   ProviderDriverKind,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { Effect, Queue, Stream } from "effect";
 
 import {

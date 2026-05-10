@@ -1,4 +1,4 @@
-import type { ServerProviderRateLimitWindow } from "@t3tools/contracts";
+import type { ServerProviderRateLimitWindow } from "@s3tools/contracts";
 
 import { formatRelativeTimeUntilLabel } from "../../timestampFormat";
 

@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/ssh",
+  "name": "@s3tools/ssh",
   "version": "0.0.0-alpha.1",
   "private": true,
   "type": "module",
@@ -30,8 +30,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@t3tools/contracts": "workspace:*",
-    "@t3tools/shared": "workspace:*",
+    "@s3tools/contracts": "workspace:*",
+    "@s3tools/shared": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

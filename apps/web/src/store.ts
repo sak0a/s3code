@@ -14,20 +14,23 @@ import type {
   OrchestrationThread,
   OrchestrationThreadShell,
   OrchestrationThreadActivity,
+  OrchestrationWorktreeShell,
   ProjectId,
   ScopedProjectRef,
   ScopedThreadRef,
-} from "@t3tools/contracts";
-import { isProviderDriverKind, ProviderDriverKind } from "@t3tools/contracts";
-import type { ThreadId, TurnId } from "@t3tools/contracts";
+  WorktreeId,
+} from "@s3tools/contracts";
+import { isProviderDriverKind, ProviderDriverKind } from "@s3tools/contracts";
+import type { ThreadId, TurnId } from "@s3tools/contracts";
 import { Schema } from "effect";
-import { resolveModelSlugForProvider } from "@t3tools/shared/model";
+import { resolveModelSlugForProvider } from "@s3tools/shared/model";
 import { create } from "zustand";
 import {
   type ChatMessage,
   type Project,
   type ProposedPlan,
   type SidebarThreadSummary,
+  type SidebarWorktreeSummary,
   type Thread,
   type ThreadSession,
   type ThreadShell,
@@ -41,6 +44,9 @@ import { getThreadFromEnvironmentState } from "./threadDerivation";
 export interface EnvironmentState {
   projectIds: ProjectId[];
   projectById: Record<ProjectId, Project>;
+  worktreeIds?: WorktreeId[] | undefined;
+  worktreeIdsByProjectId?: Record<ProjectId, WorktreeId[]> | undefined;
+  worktreeById?: Record<WorktreeId, SidebarWorktreeSummary> | undefined;
 
   // ---------------------------------------------------------------------------
   // Thread bookkeeping — written by BOTH shell stream and detail stream.
@@ -97,6 +103,9 @@ export interface AppState {
 const initialEnvironmentState: EnvironmentState = {
   projectIds: [],
   projectById: {},
+  worktreeIds: [],
+  worktreeIdsByProjectId: {},
+  worktreeById: {},
   threadIds: [],
   threadIdsByProjectId: {},
   threadShellById: {},
@@ -124,6 +133,7 @@ const MAX_THREAD_CHECKPOINTS = 500;
 const MAX_THREAD_PROPOSED_PLANS = 200;
 const MAX_THREAD_ACTIVITIES = 500;
 const EMPTY_THREAD_IDS: ThreadId[] = [];
+const EMPTY_WORKTREE_IDS: WorktreeId[] = [];
 
 function arraysEqual<T>(left: readonly T[], right: readonly T[]): boolean {
   return left.length === right.length && left.every((value, index) => value === right[index]);
@@ -219,13 +229,38 @@ function mapProject(
     environmentId,
     name: project.title,
     cwd: project.workspaceRoot,
+    projectMetadataDir: project.projectMetadataDir,
     repositoryIdentity: project.repositoryIdentity ?? null,
     defaultModelSelection: project.defaultModelSelection
       ? normalizeModelSelection(project.defaultModelSelection)
       : null,
+    customSystemPrompt: project.customSystemPrompt ?? null,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     scripts: mapProjectScripts(project.scripts),
+  };
+}
+
+function mapWorktree(
+  worktree: OrchestrationWorktreeShell,
+  environmentId: EnvironmentId,
+): SidebarWorktreeSummary {
+  return {
+    id: worktree.worktreeId,
+    environmentId,
+    projectId: worktree.projectId,
+    title: worktree.title ?? null,
+    branch: worktree.branch,
+    worktreePath: worktree.worktreePath,
+    origin: worktree.origin,
+    prNumber: worktree.prNumber,
+    issueNumber: worktree.issueNumber,
+    prTitle: worktree.prTitle,
+    issueTitle: worktree.issueTitle,
+    createdAt: worktree.createdAt,
+    updatedAt: worktree.updatedAt,
+    archivedAt: worktree.archivedAt,
+    manualPosition: worktree.manualPosition,
   };
 }
 
@@ -250,6 +285,9 @@ function mapThread(thread: OrchestrationThread, environmentId: EnvironmentId): T
     pendingSourceProposedPlan: thread.latestTurn?.sourceProposedPlan,
     branch: thread.branch,
     worktreePath: thread.worktreePath,
+    worktreeId: thread.worktreeId ?? null,
+    manualStatusBucket: thread.manualStatusBucket ?? null,
+    manualPosition: thread.manualPosition ?? 0,
     turnDiffSummaries: thread.checkpoints.map(mapTurnDiffSummary),
     activities: thread.activities.map((activity) => ({ ...activity })),
   };
@@ -279,6 +317,9 @@ function mapThreadShell(
     updatedAt: thread.updatedAt,
     branch: thread.branch,
     worktreePath: thread.worktreePath,
+    worktreeId: thread.worktreeId ?? null,
+    manualStatusBucket: thread.manualStatusBucket ?? null,
+    manualPosition: thread.manualPosition ?? 0,
   };
   const session = thread.session ? mapSession(thread.session) : null;
   const turnState: ThreadTurnState = {
@@ -298,6 +339,9 @@ function mapThreadShell(
     latestTurn: thread.latestTurn,
     branch: thread.branch,
     worktreePath: thread.worktreePath,
+    worktreeId: thread.worktreeId ?? null,
+    manualStatusBucket: thread.manualStatusBucket ?? null,
+    manualPosition: thread.manualPosition ?? 0,
     latestUserMessageAt: thread.latestUserMessageAt,
     hasPendingApprovals: thread.hasPendingApprovals,
     hasPendingUserInput: thread.hasPendingUserInput,
@@ -327,6 +371,9 @@ function toThreadShell(thread: Thread): ThreadShell {
     updatedAt: thread.updatedAt,
     branch: thread.branch,
     worktreePath: thread.worktreePath,
+    worktreeId: thread.worktreeId,
+    manualStatusBucket: thread.manualStatusBucket,
+    manualPosition: thread.manualPosition,
   };
 }
 
@@ -399,6 +446,9 @@ function sidebarThreadSummariesEqual(
     latestTurnsEqual(left.latestTurn, right.latestTurn) &&
     left.branch === right.branch &&
     left.worktreePath === right.worktreePath &&
+    left.worktreeId === right.worktreeId &&
+    left.manualStatusBucket === right.manualStatusBucket &&
+    left.manualPosition === right.manualPosition &&
     left.latestUserMessageAt === right.latestUserMessageAt &&
     left.hasPendingApprovals === right.hasPendingApprovals &&
     left.hasPendingUserInput === right.hasPendingUserInput &&
@@ -422,7 +472,34 @@ function threadShellsEqual(left: ThreadShell | undefined, right: ThreadShell): b
     left.archivedAt === right.archivedAt &&
     left.updatedAt === right.updatedAt &&
     left.branch === right.branch &&
-    left.worktreePath === right.worktreePath
+    left.worktreePath === right.worktreePath &&
+    left.worktreeId === right.worktreeId &&
+    left.manualStatusBucket === right.manualStatusBucket &&
+    left.manualPosition === right.manualPosition
+  );
+}
+
+function sidebarWorktreesEqual(
+  left: SidebarWorktreeSummary | undefined,
+  right: SidebarWorktreeSummary,
+): boolean {
+  return (
+    left !== undefined &&
+    left.id === right.id &&
+    left.environmentId === right.environmentId &&
+    left.projectId === right.projectId &&
+    left.title === right.title &&
+    left.branch === right.branch &&
+    left.worktreePath === right.worktreePath &&
+    left.origin === right.origin &&
+    left.prNumber === right.prNumber &&
+    left.issueNumber === right.issueNumber &&
+    left.prTitle === right.prTitle &&
+    left.issueTitle === right.issueTitle &&
+    left.createdAt === right.createdAt &&
+    left.updatedAt === right.updatedAt &&
+    left.archivedAt === right.archivedAt &&
+    left.manualPosition === right.manualPosition
   );
 }
 
@@ -826,6 +903,106 @@ function removeThreadState(state: EnvironmentState, threadId: ThreadId): Environ
   };
 }
 
+export function removeThreadByRef(state: AppState, threadRef: ScopedThreadRef): AppState {
+  const environmentState = state.environmentStateById[threadRef.environmentId];
+  if (!environmentState) {
+    return state;
+  }
+  return commitEnvironmentState(
+    state,
+    threadRef.environmentId,
+    removeThreadState(environmentState, threadRef.threadId),
+  );
+}
+
+function upsertWorktreeState(
+  state: EnvironmentState,
+  worktree: SidebarWorktreeSummary,
+): EnvironmentState {
+  const worktreeById = state.worktreeById ?? {};
+  const currentWorktreeIds = state.worktreeIds ?? EMPTY_WORKTREE_IDS;
+  const previous = worktreeById[worktree.id];
+  const projectChanged = previous !== undefined && previous.projectId !== worktree.projectId;
+  let worktreeIds = currentWorktreeIds.includes(worktree.id)
+    ? currentWorktreeIds
+    : [...currentWorktreeIds, worktree.id];
+  let worktreeIdsByProjectId = state.worktreeIdsByProjectId ?? {};
+  const existingProjectIds = worktreeIdsByProjectId[worktree.projectId] ?? [];
+
+  if (
+    sidebarWorktreesEqual(previous, worktree) &&
+    currentWorktreeIds.includes(worktree.id) &&
+    existingProjectIds.includes(worktree.id)
+  ) {
+    return state;
+  }
+
+  if (projectChanged) {
+    const previousIds = worktreeIdsByProjectId[previous.projectId] ?? [];
+    const nextPreviousIds = removeId(previousIds, worktree.id);
+    if (nextPreviousIds.length === 0) {
+      const { [previous.projectId]: _removed, ...rest } = worktreeIdsByProjectId;
+      worktreeIdsByProjectId = rest as Record<ProjectId, WorktreeId[]>;
+    } else {
+      worktreeIdsByProjectId = {
+        ...worktreeIdsByProjectId,
+        [previous.projectId]: nextPreviousIds,
+      };
+    }
+  }
+
+  const projectIds = worktreeIdsByProjectId[worktree.projectId] ?? [];
+  if (!projectIds.includes(worktree.id)) {
+    worktreeIdsByProjectId = {
+      ...worktreeIdsByProjectId,
+      [worktree.projectId]: [...projectIds, worktree.id],
+    };
+  }
+
+  if (previous === undefined && worktreeIds === currentWorktreeIds) {
+    worktreeIds = [...worktreeIds];
+  }
+
+  return {
+    ...state,
+    worktreeIds,
+    worktreeIdsByProjectId,
+    worktreeById: {
+      ...worktreeById,
+      [worktree.id]: worktree,
+    },
+  };
+}
+
+function removeWorktreeState(state: EnvironmentState, worktreeId: WorktreeId): EnvironmentState {
+  const worktreeByIdRecord = state.worktreeById ?? {};
+  const existing = worktreeByIdRecord[worktreeId];
+  if (!existing) {
+    return state;
+  }
+  const { [worktreeId]: _removed, ...worktreeById } = worktreeByIdRecord;
+  const worktreeIdsByProjectIdRecord = state.worktreeIdsByProjectId ?? {};
+  const projectIds = worktreeIdsByProjectIdRecord[existing.projectId] ?? [];
+  const nextProjectIds = removeId(projectIds, worktreeId);
+  const worktreeIdsByProjectId =
+    nextProjectIds.length === 0
+      ? Object.fromEntries(
+          Object.entries(worktreeIdsByProjectIdRecord).filter(
+            ([projectId]) => projectId !== existing.projectId,
+          ),
+        )
+      : {
+          ...worktreeIdsByProjectIdRecord,
+          [existing.projectId]: nextProjectIds,
+        };
+  return {
+    ...state,
+    worktreeIds: removeId(state.worktreeIds ?? EMPTY_WORKTREE_IDS, worktreeId),
+    worktreeIdsByProjectId: worktreeIdsByProjectId as Record<ProjectId, WorktreeId[]>,
+    worktreeById,
+  };
+}
+
 function checkpointStatusToLatestTurnState(status: "ready" | "missing" | "error") {
   if (status === "error") {
     return "error" as const;
@@ -1043,6 +1220,28 @@ function buildProjectState(
   };
 }
 
+function buildWorktreeState(
+  worktrees: ReadonlyArray<SidebarWorktreeSummary>,
+): Pick<EnvironmentState, "worktreeIds" | "worktreeIdsByProjectId" | "worktreeById"> {
+  const worktreeIdsByProjectId: Record<ProjectId, WorktreeId[]> = {} as Record<
+    ProjectId,
+    WorktreeId[]
+  >;
+  for (const worktree of worktrees) {
+    worktreeIdsByProjectId[worktree.projectId] = [
+      ...(worktreeIdsByProjectId[worktree.projectId] ?? []),
+      worktree.id,
+    ];
+  }
+  return {
+    worktreeIds: worktrees.map((worktree) => worktree.id),
+    worktreeIdsByProjectId,
+    worktreeById: Object.fromEntries(
+      worktrees.map((worktree) => [worktree.id, worktree] as const),
+    ) as Record<WorktreeId, SidebarWorktreeSummary>,
+  };
+}
+
 function getStoredEnvironmentState(
   state: AppState,
   environmentId: EnvironmentId,
@@ -1080,10 +1279,14 @@ function syncEnvironmentShellSnapshot(
   environmentId: EnvironmentId,
 ): EnvironmentState {
   const nextProjects = snapshot.projects.map((project) => mapProject(project, environmentId));
+  const nextWorktrees = (snapshot.worktrees ?? []).map((worktree) =>
+    mapWorktree(worktree, environmentId),
+  );
   const nextThreadIds = new Set(snapshot.threads.map((thread) => thread.id));
   let nextState: EnvironmentState = {
     ...state,
     ...buildProjectState(nextProjects),
+    ...buildWorktreeState(nextWorktrees),
     threadIds: [],
     threadIdsByProjectId: {},
     threadShellById: {},
@@ -1156,6 +1359,7 @@ function applyEnvironmentOrchestrationEvent(
           id: event.payload.projectId,
           title: event.payload.title,
           workspaceRoot: event.payload.workspaceRoot,
+          projectMetadataDir: event.payload.projectMetadataDir,
           repositoryIdentity: event.payload.repositoryIdentity ?? null,
           defaultModelSelection: event.payload.defaultModelSelection,
           scripts: event.payload.scripts,
@@ -1210,6 +1414,9 @@ function applyEnvironmentOrchestrationEvent(
         ...project,
         ...(event.payload.title !== undefined ? { name: event.payload.title } : {}),
         ...(event.payload.workspaceRoot !== undefined ? { cwd: event.payload.workspaceRoot } : {}),
+        ...(event.payload.projectMetadataDir !== undefined
+          ? { projectMetadataDir: event.payload.projectMetadataDir }
+          : {}),
         ...(event.payload.repositoryIdentity !== undefined
           ? { repositoryIdentity: event.payload.repositoryIdentity ?? null }
           : {}),
@@ -1258,6 +1465,9 @@ function applyEnvironmentOrchestrationEvent(
           interactionMode: event.payload.interactionMode,
           branch: event.payload.branch,
           worktreePath: event.payload.worktreePath,
+          worktreeId: null,
+          manualStatusBucket: null,
+          manualPosition: 0,
           latestTurn: null,
           createdAt: event.payload.createdAt,
           updatedAt: event.payload.updatedAt,
@@ -1626,6 +1836,80 @@ function applyEnvironmentOrchestrationEvent(
         };
       });
 
+    case "worktree.created":
+      return upsertWorktreeState(
+        state,
+        mapWorktree(
+          {
+            worktreeId: event.payload.worktreeId,
+            projectId: event.payload.projectId,
+            title: null,
+            branch: event.payload.branch,
+            worktreePath: event.payload.worktreePath,
+            origin: event.payload.origin,
+            prNumber: event.payload.prNumber,
+            issueNumber: event.payload.issueNumber,
+            prTitle: event.payload.prTitle,
+            issueTitle: event.payload.issueTitle,
+            createdAt: event.payload.createdAt,
+            updatedAt: event.payload.updatedAt,
+            archivedAt: null,
+            manualPosition: 0,
+          },
+          environmentId,
+        ),
+      );
+
+    case "worktree.archived": {
+      const existing = state.worktreeById?.[event.payload.worktreeId];
+      return existing
+        ? upsertWorktreeState(state, {
+            ...existing,
+            archivedAt: event.payload.archivedAt,
+            updatedAt: event.payload.archivedAt,
+          })
+        : state;
+    }
+
+    case "worktree.metaUpdated": {
+      const existing = state.worktreeById?.[event.payload.worktreeId];
+      return existing
+        ? upsertWorktreeState(state, {
+            ...existing,
+            title: event.payload.title ?? null,
+            updatedAt: event.payload.changedAt,
+          })
+        : state;
+    }
+
+    case "worktree.restored": {
+      const existing = state.worktreeById?.[event.payload.worktreeId];
+      return existing
+        ? upsertWorktreeState(state, {
+            ...existing,
+            archivedAt: null,
+            updatedAt: event.payload.restoredAt,
+          })
+        : state;
+    }
+
+    case "worktree.deleted":
+      return removeWorktreeState(state, event.payload.worktreeId);
+
+    case "thread.attachedToWorktree":
+      return updateThreadState(state, event.payload.threadId, (thread) => ({
+        ...thread,
+        worktreeId: event.payload.worktreeId,
+        updatedAt: event.payload.attachedAt,
+      }));
+
+    case "thread.statusBucketOverridden":
+      return updateThreadState(state, event.payload.threadId, (thread) => ({
+        ...thread,
+        manualStatusBucket: event.payload.bucket,
+        updatedAt: event.payload.changedAt,
+      }));
+
     case "thread.approval-response-requested":
     case "thread.user-input-response-requested":
       return state;
@@ -1690,8 +1974,12 @@ function applyEnvironmentShellEvent(
     }
     case "thread-upserted":
       return writeThreadShellState(state, mapThreadShell(event.thread, environmentId));
+    case "worktree-upserted":
+      return upsertWorktreeState(state, mapWorktree(event.worktree, environmentId));
     case "thread-removed":
       return removeThreadState(state, event.threadId);
+    case "worktree-removed":
+      return removeWorktreeState(state, event.worktreeId);
   }
 }
 
@@ -1769,6 +2057,41 @@ export function selectSidebarThreadsAcrossEnvironments(state: AppState): Sidebar
       return thread && thread.environmentId === environmentId ? [thread] : [];
     }),
   );
+}
+
+export function selectSidebarWorktreesAcrossEnvironments(
+  state: AppState,
+): SidebarWorktreeSummary[] {
+  return getEnvironmentEntries(state).flatMap(([environmentId, environmentState]) =>
+    (environmentState.worktreeIds ?? EMPTY_WORKTREE_IDS).flatMap((worktreeId) => {
+      const worktree = environmentState.worktreeById?.[worktreeId];
+      return worktree && worktree.environmentId === environmentId ? [worktree] : [];
+    }),
+  );
+}
+
+export function selectSidebarWorktreesForProjectRef(
+  state: AppState,
+  ref: ScopedProjectRef | null | undefined,
+): SidebarWorktreeSummary[] {
+  if (!ref) {
+    return [];
+  }
+  const environmentState = selectEnvironmentState(state, ref.environmentId);
+  const worktreeIds = environmentState.worktreeIdsByProjectId?.[ref.projectId] ?? [];
+  return worktreeIds.flatMap((worktreeId) => {
+    const worktree = environmentState.worktreeById?.[worktreeId];
+    return worktree ? [worktree] : [];
+  });
+}
+
+export function selectSidebarWorktreesForProjectRefs(
+  state: AppState,
+  refs: readonly ScopedProjectRef[],
+): SidebarWorktreeSummary[] {
+  if (refs.length === 0) return [];
+  if (refs.length === 1) return selectSidebarWorktreesForProjectRef(state, refs[0]);
+  return refs.flatMap((ref) => selectSidebarWorktreesForProjectRef(state, ref));
 }
 
 export function selectSidebarThreadsForProjectRef(
@@ -1942,6 +2265,29 @@ export function setThreadBranch(
   return commitEnvironmentState(state, threadRef.environmentId, nextEnvironmentState);
 }
 
+export function setSidebarWorktreeTitle(
+  state: AppState,
+  environmentId: EnvironmentId,
+  worktreeId: WorktreeId,
+  title: string | null,
+  updatedAt: string,
+): AppState {
+  const environmentState = getStoredEnvironmentState(state, environmentId);
+  const existing = environmentState.worktreeById?.[worktreeId];
+  if (!existing) {
+    return state;
+  }
+  return commitEnvironmentState(
+    state,
+    environmentId,
+    upsertWorktreeState(environmentState, {
+      ...existing,
+      title,
+      updatedAt,
+    }),
+  );
+}
+
 interface AppStore extends AppState {
   setActiveEnvironmentId: (environmentId: EnvironmentId) => void;
   removeEnvironmentState: (environmentId: EnvironmentId) => void;
@@ -1956,11 +2302,18 @@ interface AppStore extends AppState {
     environmentId: EnvironmentId,
   ) => void;
   applyShellEvent: (event: OrchestrationShellStreamEvent, environmentId: EnvironmentId) => void;
+  removeThread: (threadRef: ScopedThreadRef) => void;
   setError: (threadId: ThreadId, error: string | null) => void;
   setThreadBranch: (
     threadRef: ScopedThreadRef,
     branch: string | null,
     worktreePath: string | null,
+  ) => void;
+  setSidebarWorktreeTitle: (
+    environmentId: EnvironmentId,
+    worktreeId: WorktreeId,
+    title: string | null,
+    updatedAt: string,
   ) => void;
 }
 
@@ -1980,7 +2333,10 @@ export const useStore = create<AppStore>((set) => ({
     set((state) => applyOrchestrationEvents(state, events, environmentId)),
   applyShellEvent: (event, environmentId) =>
     set((state) => applyShellEvent(state, event, environmentId)),
+  removeThread: (threadRef) => set((state) => removeThreadByRef(state, threadRef)),
   setError: (threadId, error) => set((state) => setError(state, threadId, error)),
   setThreadBranch: (threadRef, branch, worktreePath) =>
     set((state) => setThreadBranch(state, threadRef, branch, worktreePath)),
+  setSidebarWorktreeTitle: (environmentId, worktreeId, title, updatedAt) =>
+    set((state) => setSidebarWorktreeTitle(state, environmentId, worktreeId, title, updatedAt)),
 }));

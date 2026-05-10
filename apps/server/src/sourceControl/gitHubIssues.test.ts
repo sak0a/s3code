@@ -22,7 +22,7 @@ describe("decodeGitHubIssueListJson", () => {
     expect(result.success[0]?.number).toBe(42);
     expect(result.success[0]?.state).toBe("open");
     expect(result.success[0]?.author).toBe("alice");
-    expect(result.success[0]?.labels).toEqual(["bug", "good-first-issue"]);
+    expect(result.success[0]?.labels).toEqual([{ name: "bug" }, { name: "good-first-issue" }]);
   });
 
   it("skips invalid entries silently", () => {
@@ -62,5 +62,40 @@ describe("decodeGitHubIssueDetailJson", () => {
     expect(result.success.comments).toHaveLength(2);
     expect(result.success.comments[0]?.author).toBe("bob");
     expect(result.success.comments[1]?.author).toBe("unknown");
+  });
+
+  it("preserves authorAssociation when present", () => {
+    const raw = JSON.stringify({
+      number: 42,
+      title: "title",
+      url: "https://x/42",
+      state: "OPEN",
+      body: "issue body",
+      comments: [
+        {
+          author: { login: "bob" },
+          authorAssociation: "OWNER",
+          body: "first",
+          createdAt: "2026-03-14T10:00:00Z",
+        },
+        {
+          author: { login: "carol" },
+          authorAssociation: "NONE",
+          body: "second",
+          createdAt: "2026-03-14T11:00:00Z",
+        },
+        {
+          author: { login: "dave" },
+          body: "no association",
+          createdAt: "2026-03-14T12:00:00Z",
+        },
+      ],
+    });
+    const result = decodeGitHubIssueDetailJson(raw);
+    expect(Result.isSuccess(result)).toBe(true);
+    if (!Result.isSuccess(result)) return;
+    expect(result.success.comments[0]?.authorAssociation).toBe("OWNER");
+    expect(result.success.comments[1]?.authorAssociation).toBe("NONE");
+    expect(result.success.comments[2]?.authorAssociation).toBeUndefined();
   });
 });

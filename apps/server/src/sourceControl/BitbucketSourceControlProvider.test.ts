@@ -1,6 +1,6 @@
 import { assert, it } from "@effect/vitest";
 import { DateTime, Effect, Layer, Option } from "effect";
-import { SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES } from "@t3tools/contracts";
+import { SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES } from "@s3tools/contracts";
 
 import * as BitbucketApi from "./BitbucketApi.ts";
 import * as BitbucketSourceControlProvider from "./BitbucketSourceControlProvider.ts";
@@ -18,13 +18,13 @@ it.effect("maps Bitbucket PR summaries into provider-neutral change requests", (
         Effect.succeed({
           number: 42,
           title: "Add Bitbucket provider",
-          url: "https://bitbucket.org/pingdotgg/t3code/pull-requests/42",
+          url: "https://bitbucket.org/pingdotgg/s3code/pull-requests/42",
           baseRefName: "main",
           headRefName: "feature/source-control",
           state: "open",
           updatedAt: Option.none(),
           isCrossRepository: true,
-          headRepositoryNameWithOwner: "fork/t3code",
+          headRepositoryNameWithOwner: "fork/s3code",
           headRepositoryOwnerLogin: "fork",
         }),
     });
@@ -38,13 +38,13 @@ it.effect("maps Bitbucket PR summaries into provider-neutral change requests", (
       provider: "bitbucket",
       number: 42,
       title: "Add Bitbucket provider",
-      url: "https://bitbucket.org/pingdotgg/t3code/pull-requests/42",
+      url: "https://bitbucket.org/pingdotgg/s3code/pull-requests/42",
       baseRefName: "main",
       headRefName: "feature/source-control",
       state: "open",
       updatedAt: Option.none(),
       isCrossRepository: true,
-      headRepositoryNameWithOwner: "fork/t3code",
+      headRepositoryNameWithOwner: "fork/s3code",
       headRepositoryOwnerLogin: "fork",
     });
   }),

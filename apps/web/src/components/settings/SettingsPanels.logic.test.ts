@@ -3,7 +3,7 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ProviderInstanceConfig,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { describe, expect, it } from "vitest";
 import { buildProviderInstanceUpdatePatch } from "./SettingsPanels.logic";
 
@@ -14,7 +14,7 @@ describe("buildProviderInstanceUpdatePatch", () => {
       driver: ProviderDriverKind.make("codex"),
       enabled: true,
       config: {
-        binaryPath: "/opt/t3/codex",
+        binaryPath: "/opt/s3/codex",
       },
     } satisfies ProviderInstanceConfig;
 

@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/shared",
+  "name": "@s3tools/shared",
   "version": "0.0.0-alpha.1",
   "private": true,
   "type": "module",
@@ -60,6 +60,10 @@
       "types": "./src/projectScripts.ts",
       "import": "./src/projectScripts.ts"
     },
+    "./runtimeEnv": {
+      "types": "./src/runtimeEnv.ts",
+      "import": "./src/runtimeEnv.ts"
+    },
     "./searchRanking": {
       "types": "./src/searchRanking.ts",
       "import": "./src/searchRanking.ts"
@@ -90,7 +94,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@t3tools/contracts": "workspace:*",
+    "@s3tools/contracts": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

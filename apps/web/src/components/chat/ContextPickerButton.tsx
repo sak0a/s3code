@@ -1,4 +1,4 @@
-import type { ChangeRequest, EnvironmentId, SourceControlIssueSummary } from "@t3tools/contracts";
+import type { ChangeRequest, EnvironmentId, SourceControlIssueSummary } from "@s3tools/contracts";
 import { useState } from "react";
 import { PaperclipIcon } from "lucide-react";
 import { Button } from "../ui/button";

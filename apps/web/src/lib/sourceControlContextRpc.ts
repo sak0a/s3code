@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId } from "@s3tools/contracts";
 import { queryOptions } from "@tanstack/react-query";
 import { requireEnvironmentConnection } from "~/environments/runtime";
 
@@ -11,8 +11,21 @@ export const sourceControlContextQueryKeys = {
     limit?: number,
   ) =>
     ["sourceControl", "issues", environmentId ?? null, cwd, "list", state, limit ?? null] as const,
-  issueDetail: (environmentId: EnvironmentId | null, cwd: string | null, reference: string) =>
-    ["sourceControl", "issues", environmentId ?? null, cwd, "detail", reference] as const,
+  issueDetail: (
+    environmentId: EnvironmentId | null,
+    cwd: string | null,
+    reference: string,
+    fullContent: boolean = false,
+  ) =>
+    [
+      "sourceControl",
+      "issues",
+      environmentId ?? null,
+      cwd,
+      "detail",
+      reference,
+      fullContent ? "full" : "truncated",
+    ] as const,
   issueSearch: (
     environmentId: EnvironmentId | null,
     cwd: string | null,
@@ -47,8 +60,19 @@ export const sourceControlContextQueryKeys = {
     environmentId: EnvironmentId | null,
     cwd: string | null,
     reference: string,
+    fullContent: boolean = false,
   ) =>
-    ["sourceControl", "changeRequests", environmentId ?? null, cwd, "detail", reference] as const,
+    [
+      "sourceControl",
+      "changeRequests",
+      environmentId ?? null,
+      cwd,
+      "detail",
+      reference,
+      fullContent ? "full" : "truncated",
+    ] as const,
+  changeRequestDiff: (environmentId: EnvironmentId | null, cwd: string | null, reference: string) =>
+    ["sourceControl", "changeRequests", environmentId ?? null, cwd, "diff", reference] as const,
   changeRequestSearch: (
     environmentId: EnvironmentId | null,
     cwd: string | null,
@@ -100,13 +124,16 @@ export function issueDetailQueryOptions(input: {
   environmentId: EnvironmentId | null;
   cwd: string | null;
   reference: string | null;
+  fullContent?: boolean;
   enabled?: boolean;
 }) {
+  const fullContent = input.fullContent ?? false;
   return queryOptions({
     queryKey: sourceControlContextQueryKeys.issueDetail(
       input.environmentId,
       input.cwd,
       input.reference ?? "",
+      fullContent,
     ),
     queryFn: async () => {
       if (!input.cwd || !input.environmentId || !input.reference) {
@@ -116,6 +143,7 @@ export function issueDetailQueryOptions(input: {
       return client.sourceControl.getIssue({
         cwd: input.cwd,
         reference: input.reference,
+        ...(fullContent ? { fullContent: true } : {}),
       });
     },
     enabled:
@@ -233,17 +261,51 @@ export function searchChangeRequestsQueryOptions(input: {
   });
 }
 
-export function changeRequestDetailQueryOptions(input: {
+export function changeRequestDiffQueryOptions(input: {
   environmentId: EnvironmentId | null;
   cwd: string | null;
   reference: string | null;
   enabled?: boolean;
 }) {
   return queryOptions({
+    queryKey: sourceControlContextQueryKeys.changeRequestDiff(
+      input.environmentId,
+      input.cwd,
+      input.reference ?? "",
+    ),
+    queryFn: async () => {
+      if (!input.cwd || !input.environmentId || !input.reference) {
+        throw new Error("Change request diff is unavailable.");
+      }
+      const client = requireEnvironmentConnection(input.environmentId).client;
+      return client.sourceControl.getChangeRequestDiff({
+        cwd: input.cwd,
+        reference: input.reference,
+      });
+    },
+    enabled:
+      (input.enabled ?? true) &&
+      input.environmentId !== null &&
+      input.cwd !== null &&
+      input.reference !== null,
+    staleTime: 300_000,
+  });
+}
+
+export function changeRequestDetailQueryOptions(input: {
+  environmentId: EnvironmentId | null;
+  cwd: string | null;
+  reference: string | null;
+  fullContent?: boolean;
+  enabled?: boolean;
+}) {
+  const fullContent = input.fullContent ?? false;
+  return queryOptions({
     queryKey: sourceControlContextQueryKeys.changeRequestDetail(
       input.environmentId,
       input.cwd,
       input.reference ?? "",
+      fullContent,
     ),
     queryFn: async () => {
       if (!input.cwd || !input.environmentId || !input.reference) {
@@ -253,6 +315,7 @@ export function changeRequestDetailQueryOptions(input: {
       return client.sourceControl.getChangeRequestDetail({
         cwd: input.cwd,
         reference: input.reference,
+        ...(fullContent ? { fullContent: true } : {}),
       });
     },
     enabled:

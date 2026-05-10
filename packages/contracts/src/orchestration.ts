@@ -17,6 +17,7 @@ import {
 } from "./baseSchemas.ts";
 import { ProviderInstanceId } from "./providerInstance.ts";
 import { ComposerSourceControlContext } from "./sourceControl.ts";
+import { StatusBucket, Worktree, WorktreeId, WorktreeOrigin } from "./worktree.ts";
 
 export const ORCHESTRATION_WS_METHODS = {
   dispatchCommand: "orchestration.dispatchCommand",
@@ -192,12 +193,29 @@ export const ProjectScript = Schema.Struct({
 });
 export type ProjectScript = typeof ProjectScript.Type;
 
+export const PROJECT_CUSTOM_SYSTEM_PROMPT_MAX_CHARS = 20_000;
+export const ProjectCustomSystemPrompt = TrimmedNonEmptyString.check(
+  Schema.isMaxLength(PROJECT_CUSTOM_SYSTEM_PROMPT_MAX_CHARS),
+);
+export type ProjectCustomSystemPrompt = typeof ProjectCustomSystemPrompt.Type;
+
+export const DEFAULT_PROJECT_METADATA_DIR = ".s3code";
+export const ProjectMetadataDir = TrimmedNonEmptyString.check(
+  Schema.isMaxLength(256),
+  Schema.isPattern(/^(?![\\/])(?!~)(?![A-Za-z]:[\\/])(?!.*(?:^|[\\/])\.\.(?:[\\/]|$)).+$/),
+);
+export type ProjectMetadataDir = typeof ProjectMetadataDir.Type;
+
 export const OrchestrationProject = Schema.Struct({
   id: ProjectId,
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
+  projectMetadataDir: Schema.optional(ProjectMetadataDir).pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_PROJECT_METADATA_DIR)),
+  ),
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),
   defaultModelSelection: Schema.NullOr(ModelSelection),
+  customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
   scripts: Schema.Array(ProjectScript),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -336,6 +354,9 @@ export const OrchestrationThread = Schema.Struct({
   ),
   branch: Schema.NullOr(TrimmedNonEmptyString),
   worktreePath: Schema.NullOr(TrimmedNonEmptyString),
+  worktreeId: Schema.optional(Schema.NullOr(WorktreeId)),
+  manualStatusBucket: Schema.optional(Schema.NullOr(StatusBucket)),
+  manualPosition: Schema.optional(Schema.Number),
   latestTurn: Schema.NullOr(OrchestrationLatestTurn),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -351,9 +372,13 @@ export const OrchestrationThread = Schema.Struct({
 });
 export type OrchestrationThread = typeof OrchestrationThread.Type;
 
+export const OrchestrationWorktreeShell = Worktree;
+export type OrchestrationWorktreeShell = typeof OrchestrationWorktreeShell.Type;
+
 export const OrchestrationReadModel = Schema.Struct({
   snapshotSequence: NonNegativeInt,
   projects: Schema.Array(OrchestrationProject),
+  worktrees: Schema.optional(Schema.Array(OrchestrationWorktreeShell)),
   threads: Schema.Array(OrchestrationThread),
   updatedAt: IsoDateTime,
 });
@@ -363,8 +388,12 @@ export const OrchestrationProjectShell = Schema.Struct({
   id: ProjectId,
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
+  projectMetadataDir: Schema.optional(ProjectMetadataDir).pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_PROJECT_METADATA_DIR)),
+  ),
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),
   defaultModelSelection: Schema.NullOr(ModelSelection),
+  customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
   scripts: Schema.Array(ProjectScript),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -382,6 +411,9 @@ export const OrchestrationThreadShell = Schema.Struct({
   ),
   branch: Schema.NullOr(TrimmedNonEmptyString),
   worktreePath: Schema.NullOr(TrimmedNonEmptyString),
+  worktreeId: Schema.optional(Schema.NullOr(WorktreeId)),
+  manualStatusBucket: Schema.optional(Schema.NullOr(StatusBucket)),
+  manualPosition: Schema.optional(Schema.Number),
   latestTurn: Schema.NullOr(OrchestrationLatestTurn),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -397,6 +429,7 @@ export type OrchestrationThreadShell = typeof OrchestrationThreadShell.Type;
 export const OrchestrationShellSnapshot = Schema.Struct({
   snapshotSequence: NonNegativeInt,
   projects: Schema.Array(OrchestrationProjectShell),
+  worktrees: Schema.optional(Schema.Array(OrchestrationWorktreeShell)),
   threads: Schema.Array(OrchestrationThreadShell),
   updatedAt: IsoDateTime,
 });
@@ -419,9 +452,19 @@ export const OrchestrationShellStreamEvent = Schema.Union([
     thread: OrchestrationThreadShell,
   }),
   Schema.Struct({
+    kind: Schema.Literal("worktree-upserted"),
+    sequence: NonNegativeInt,
+    worktree: OrchestrationWorktreeShell,
+  }),
+  Schema.Struct({
     kind: Schema.Literal("thread-removed"),
     sequence: NonNegativeInt,
     threadId: ThreadId,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("worktree-removed"),
+    sequence: NonNegativeInt,
+    worktreeId: WorktreeId,
   }),
 ]);
 export type OrchestrationShellStreamEvent = typeof OrchestrationShellStreamEvent.Type;
@@ -452,8 +495,12 @@ export const ProjectCreateCommand = Schema.Struct({
   projectId: ProjectId,
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
+  projectMetadataDir: Schema.optional(ProjectMetadataDir).pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_PROJECT_METADATA_DIR)),
+  ),
   createWorkspaceRootIfMissing: Schema.optional(Schema.Boolean),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
+  customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
   createdAt: IsoDateTime,
 });
 
@@ -463,7 +510,9 @@ const ProjectMetaUpdateCommand = Schema.Struct({
   projectId: ProjectId,
   title: Schema.optional(TrimmedNonEmptyString),
   workspaceRoot: Schema.optional(TrimmedNonEmptyString),
+  projectMetadataDir: Schema.optional(ProjectMetadataDir),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
+  customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
   scripts: Schema.optional(Schema.Array(ProjectScript)),
 });
 
@@ -642,6 +691,85 @@ const ThreadSessionStopCommand = Schema.Struct({
   createdAt: IsoDateTime,
 });
 
+const WorktreeCreateCommand = Schema.Struct({
+  type: Schema.Literal("worktree.create"),
+  commandId: CommandId,
+  worktreeId: WorktreeId,
+  projectId: ProjectId,
+  branch: TrimmedNonEmptyString,
+  worktreePath: Schema.NullOr(TrimmedNonEmptyString),
+  origin: WorktreeOrigin,
+  prNumber: Schema.NullOr(Schema.Number),
+  issueNumber: Schema.NullOr(Schema.Number),
+  prTitle: Schema.NullOr(TrimmedNonEmptyString),
+  issueTitle: Schema.NullOr(TrimmedNonEmptyString),
+  createdAt: IsoDateTime,
+});
+
+const WorktreeArchiveCommand = Schema.Struct({
+  type: Schema.Literal("worktree.archive"),
+  commandId: CommandId,
+  worktreeId: WorktreeId,
+  archivedAt: IsoDateTime,
+  deletedBranch: Schema.Boolean,
+});
+
+const WorktreeMetaUpdateCommand = Schema.Struct({
+  type: Schema.Literal("worktree.meta.update"),
+  commandId: CommandId,
+  worktreeId: WorktreeId,
+  title: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  changedAt: IsoDateTime,
+});
+
+const WorktreeRestoreCommand = Schema.Struct({
+  type: Schema.Literal("worktree.restore"),
+  commandId: CommandId,
+  worktreeId: WorktreeId,
+  worktreePath: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  restoredAt: IsoDateTime,
+});
+
+const WorktreeDeleteCommand = Schema.Struct({
+  type: Schema.Literal("worktree.delete"),
+  commandId: CommandId,
+  worktreeId: WorktreeId,
+  deletedAt: IsoDateTime,
+  deletedBranch: Schema.Boolean,
+});
+
+const ThreadAttachToWorktreeCommand = Schema.Struct({
+  type: Schema.Literal("thread.attach-to-worktree"),
+  commandId: CommandId,
+  threadId: ThreadId,
+  worktreeId: WorktreeId,
+  attachedAt: IsoDateTime,
+});
+
+const ThreadStatusBucketOverrideCommand = Schema.Struct({
+  type: Schema.Literal("thread.status-bucket.override"),
+  commandId: CommandId,
+  threadId: ThreadId,
+  bucket: Schema.NullOr(StatusBucket),
+  changedAt: IsoDateTime,
+});
+
+const ThreadManualPositionSetCommand = Schema.Struct({
+  type: Schema.Literal("thread.manual-position.set"),
+  commandId: CommandId,
+  threadId: ThreadId,
+  position: Schema.Number,
+  changedAt: IsoDateTime,
+});
+
+const WorktreeManualPositionSetCommand = Schema.Struct({
+  type: Schema.Literal("worktree.manual-position.set"),
+  commandId: CommandId,
+  worktreeId: WorktreeId,
+  position: Schema.Number,
+  changedAt: IsoDateTime,
+});
+
 const DispatchableClientOrchestrationCommand = Schema.Union([
   ProjectCreateCommand,
   ProjectMetaUpdateCommand,
@@ -659,6 +787,15 @@ const DispatchableClientOrchestrationCommand = Schema.Union([
   ThreadUserInputRespondCommand,
   ThreadCheckpointRevertCommand,
   ThreadSessionStopCommand,
+  WorktreeCreateCommand,
+  WorktreeArchiveCommand,
+  WorktreeMetaUpdateCommand,
+  WorktreeRestoreCommand,
+  WorktreeDeleteCommand,
+  ThreadAttachToWorktreeCommand,
+  ThreadStatusBucketOverrideCommand,
+  ThreadManualPositionSetCommand,
+  WorktreeManualPositionSetCommand,
 ]);
 export type DispatchableClientOrchestrationCommand =
   typeof DispatchableClientOrchestrationCommand.Type;
@@ -680,6 +817,15 @@ export const ClientOrchestrationCommand = Schema.Union([
   ThreadUserInputRespondCommand,
   ThreadCheckpointRevertCommand,
   ThreadSessionStopCommand,
+  WorktreeCreateCommand,
+  WorktreeArchiveCommand,
+  WorktreeMetaUpdateCommand,
+  WorktreeRestoreCommand,
+  WorktreeDeleteCommand,
+  ThreadAttachToWorktreeCommand,
+  ThreadStatusBucketOverrideCommand,
+  ThreadManualPositionSetCommand,
+  WorktreeManualPositionSetCommand,
 ]);
 export type ClientOrchestrationCommand = typeof ClientOrchestrationCommand.Type;
 
@@ -788,10 +934,19 @@ export const OrchestrationEventType = Schema.Literals([
   "thread.proposed-plan-upserted",
   "thread.turn-diff-completed",
   "thread.activity-appended",
+  "worktree.created",
+  "worktree.archived",
+  "worktree.metaUpdated",
+  "worktree.restored",
+  "worktree.deleted",
+  "thread.attachedToWorktree",
+  "thread.statusBucketOverridden",
+  "thread.manualPositionSet",
+  "worktree.manualPositionSet",
 ]);
 export type OrchestrationEventType = typeof OrchestrationEventType.Type;
 
-export const OrchestrationAggregateKind = Schema.Literals(["project", "thread"]);
+export const OrchestrationAggregateKind = Schema.Literals(["project", "thread", "worktree"]);
 export type OrchestrationAggregateKind = typeof OrchestrationAggregateKind.Type;
 export const OrchestrationActorKind = Schema.Literals(["client", "server", "provider"]);
 
@@ -799,8 +954,12 @@ export const ProjectCreatedPayload = Schema.Struct({
   projectId: ProjectId,
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
+  projectMetadataDir: Schema.optional(ProjectMetadataDir).pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_PROJECT_METADATA_DIR)),
+  ),
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),
   defaultModelSelection: Schema.NullOr(ModelSelection),
+  customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
   scripts: Schema.Array(ProjectScript),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -810,8 +969,10 @@ export const ProjectMetaUpdatedPayload = Schema.Struct({
   projectId: ProjectId,
   title: Schema.optional(TrimmedNonEmptyString),
   workspaceRoot: Schema.optional(TrimmedNonEmptyString),
+  projectMetadataDir: Schema.optional(ProjectMetadataDir),
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
+  customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
   scripts: Schema.optional(Schema.Array(ProjectScript)),
   updatedAt: IsoDateTime,
 });
@@ -962,6 +1123,68 @@ export const ThreadActivityAppendedPayload = Schema.Struct({
   activity: OrchestrationThreadActivity,
 });
 
+export const WorktreeCreatedPayload = Schema.Struct({
+  worktreeId: WorktreeId,
+  projectId: ProjectId,
+  branch: TrimmedNonEmptyString,
+  worktreePath: Schema.NullOr(TrimmedNonEmptyString),
+  origin: WorktreeOrigin,
+  prNumber: Schema.NullOr(Schema.Number),
+  issueNumber: Schema.NullOr(Schema.Number),
+  prTitle: Schema.NullOr(TrimmedNonEmptyString),
+  issueTitle: Schema.NullOr(TrimmedNonEmptyString),
+  createdAt: IsoDateTime,
+  updatedAt: IsoDateTime,
+});
+
+export const WorktreeArchivedPayload = Schema.Struct({
+  worktreeId: WorktreeId,
+  archivedAt: IsoDateTime,
+  deletedBranch: Schema.Boolean,
+});
+
+export const WorktreeMetaUpdatedPayload = Schema.Struct({
+  worktreeId: WorktreeId,
+  title: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  changedAt: IsoDateTime,
+});
+
+export const WorktreeRestoredPayload = Schema.Struct({
+  worktreeId: WorktreeId,
+  worktreePath: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  restoredAt: IsoDateTime,
+});
+
+export const WorktreeDeletedPayload = Schema.Struct({
+  worktreeId: WorktreeId,
+  deletedAt: IsoDateTime,
+  deletedBranch: Schema.Boolean,
+});
+
+export const ThreadAttachedToWorktreePayload = Schema.Struct({
+  threadId: ThreadId,
+  worktreeId: WorktreeId,
+  attachedAt: IsoDateTime,
+});
+
+export const ThreadStatusBucketOverriddenPayload = Schema.Struct({
+  threadId: ThreadId,
+  bucket: Schema.NullOr(StatusBucket),
+  changedAt: IsoDateTime,
+});
+
+export const ThreadManualPositionSetPayload = Schema.Struct({
+  threadId: ThreadId,
+  position: Schema.Number,
+  changedAt: IsoDateTime,
+});
+
+export const WorktreeManualPositionSetPayload = Schema.Struct({
+  worktreeId: WorktreeId,
+  position: Schema.Number,
+  changedAt: IsoDateTime,
+});
+
 export const OrchestrationEventMetadata = Schema.Struct({
   providerTurnId: Schema.optional(TrimmedNonEmptyString),
   providerItemId: Schema.optional(ProviderItemId),
@@ -975,7 +1198,7 @@ const EventBaseFields = {
   sequence: NonNegativeInt,
   eventId: EventId,
   aggregateKind: OrchestrationAggregateKind,
-  aggregateId: Schema.Union([ProjectId, ThreadId]),
+  aggregateId: Schema.Union([ProjectId, ThreadId, WorktreeId]),
   occurredAt: IsoDateTime,
   commandId: Schema.NullOr(CommandId),
   causationEventId: Schema.NullOr(EventId),
@@ -1093,6 +1316,51 @@ export const OrchestrationEvent = Schema.Union([
     ...EventBaseFields,
     type: Schema.Literal("thread.activity-appended"),
     payload: ThreadActivityAppendedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("worktree.created"),
+    payload: WorktreeCreatedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("worktree.archived"),
+    payload: WorktreeArchivedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("worktree.metaUpdated"),
+    payload: WorktreeMetaUpdatedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("worktree.restored"),
+    payload: WorktreeRestoredPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("worktree.deleted"),
+    payload: WorktreeDeletedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("thread.attachedToWorktree"),
+    payload: ThreadAttachedToWorktreePayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("thread.statusBucketOverridden"),
+    payload: ThreadStatusBucketOverriddenPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("thread.manualPositionSet"),
+    payload: ThreadManualPositionSetPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("worktree.manualPositionSet"),
+    payload: WorktreeManualPositionSetPayload,
   }),
 ]);
 export type OrchestrationEvent = typeof OrchestrationEvent.Type;

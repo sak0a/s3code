@@ -1,5 +1,5 @@
-import { ProjectId } from "@t3tools/contracts";
-import { projectScriptRuntimeEnv, setupProjectScript } from "@t3tools/shared/projectScripts";
+import { ProjectId } from "@s3tools/contracts";
+import { projectScriptRuntimeEnv, setupProjectScript } from "@s3tools/shared/projectScripts";
 import { Effect, Layer, Option } from "effect";
 
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";

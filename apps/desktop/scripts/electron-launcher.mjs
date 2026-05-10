@@ -1,4 +1,4 @@
-// This file mostly exists because we want dev mode to say "T3 Code (Dev)" instead of "electron"
+// This file mostly exists because we want dev mode to say "S3Code (Dev)" instead of "electron"
 
 import { spawnSync } from "node:child_process";
 import {

@@ -6,8 +6,8 @@ import {
   ProjectId,
   ThreadId,
   ProviderInstanceId,
-} from "@t3tools/contracts";
-import { createModelSelection } from "@t3tools/shared/model";
+} from "@s3tools/contracts";
+import { createModelSelection } from "@s3tools/shared/model";
 import { describe, expect, it } from "vitest";
 import { Effect } from "effect";
 

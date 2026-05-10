@@ -20,7 +20,15 @@ import {
   ThreadApprovalResponseRequestedPayload as ContractsThreadApprovalResponseRequestedPayloadSchema,
   ThreadCheckpointRevertRequestedPayload as ContractsThreadCheckpointRevertRequestedPayloadSchema,
   ThreadSessionStopRequestedPayload as ContractsThreadSessionStopRequestedPayloadSchema,
-} from "@t3tools/contracts";
+  ThreadAttachedToWorktreePayload as ContractsThreadAttachedToWorktreePayloadSchema,
+  ThreadStatusBucketOverriddenPayload as ContractsThreadStatusBucketOverriddenPayloadSchema,
+  WorktreeArchivedPayload as ContractsWorktreeArchivedPayloadSchema,
+  WorktreeCreatedPayload as ContractsWorktreeCreatedPayloadSchema,
+  WorktreeDeletedPayload as ContractsWorktreeDeletedPayloadSchema,
+  WorktreeManualPositionSetPayload as ContractsWorktreeManualPositionSetPayloadSchema,
+  WorktreeMetaUpdatedPayload as ContractsWorktreeMetaUpdatedPayloadSchema,
+  WorktreeRestoredPayload as ContractsWorktreeRestoredPayloadSchema,
+} from "@s3tools/contracts";
 
 // Server-internal alias surface, backed by contract schemas as the source of truth.
 export const ProjectCreatedPayload = ContractsProjectCreatedPayloadSchema;
@@ -50,3 +58,12 @@ export const ThreadApprovalResponseRequestedPayload =
 export const ThreadCheckpointRevertRequestedPayload =
   ContractsThreadCheckpointRevertRequestedPayloadSchema;
 export const ThreadSessionStopRequestedPayload = ContractsThreadSessionStopRequestedPayloadSchema;
+export const ThreadAttachedToWorktreePayload = ContractsThreadAttachedToWorktreePayloadSchema;
+export const ThreadStatusBucketOverriddenPayload =
+  ContractsThreadStatusBucketOverriddenPayloadSchema;
+export const WorktreeCreatedPayload = ContractsWorktreeCreatedPayloadSchema;
+export const WorktreeArchivedPayload = ContractsWorktreeArchivedPayloadSchema;
+export const WorktreeMetaUpdatedPayload = ContractsWorktreeMetaUpdatedPayloadSchema;
+export const WorktreeRestoredPayload = ContractsWorktreeRestoredPayloadSchema;
+export const WorktreeDeletedPayload = ContractsWorktreeDeletedPayloadSchema;
+export const WorktreeManualPositionSetPayload = ContractsWorktreeManualPositionSetPayloadSchema;

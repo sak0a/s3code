@@ -8,8 +8,8 @@
  */
 import { spawn } from "node:child_process";
 
-import { EDITORS, OpenError, type EditorId } from "@t3tools/contracts";
-import { isCommandAvailable, type CommandAvailabilityOptions } from "@t3tools/shared/shell";
+import { EDITORS, OpenError, type EditorId } from "@s3tools/contracts";
+import { isCommandAvailable, type CommandAvailabilityOptions } from "@s3tools/shared/shell";
 import { Context, Effect, Layer } from "effect";
 
 // ==============================
@@ -17,7 +17,7 @@ import { Context, Effect, Layer } from "effect";
 // ==============================
 
 export { OpenError };
-export { isCommandAvailable } from "@t3tools/shared/shell";
+export { isCommandAvailable } from "@s3tools/shared/shell";
 
 export interface OpenInEditorInput {
   readonly cwd: string;
@@ -209,7 +209,7 @@ export interface OpenShape {
 /**
  * Open - Service tag for browser/editor launch operations.
  */
-export class Open extends Context.Service<Open, OpenShape>()("t3/open") {}
+export class Open extends Context.Service<Open, OpenShape>()("s3/open") {}
 
 // ==============================
 // Implementations

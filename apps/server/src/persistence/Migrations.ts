@@ -9,6 +9,7 @@
  */
 
 import * as Migrator from "effect/unstable/sql/Migrator";
+import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as Layer from "effect/Layer";
 import * as Effect from "effect/Effect";
 
@@ -42,6 +43,10 @@ import Migration0026 from "./Migrations/026_CanonicalizeModelSelectionOptions.ts
 import Migration0027 from "./Migrations/027_ProviderSessionRuntimeInstanceId.ts";
 import Migration0028 from "./Migrations/028_ProjectionThreadSessionInstanceId.ts";
 import Migration0029 from "./Migrations/029_ProjectionThreadDetailOrderingIndexes.ts";
+import Migration0030 from "./Migrations/030_Worktrees.ts";
+import Migration0031 from "./Migrations/031_WorktreeTitles.ts";
+import Migration0032 from "./Migrations/032_ProjectCustomSystemPrompt.ts";
+import Migration0033 from "./Migrations/033_ProjectMetadataDir.ts";
 
 /**
  * Migration loader with all migrations defined inline.
@@ -83,6 +88,10 @@ export const migrationEntries = [
   [27, "ProviderSessionRuntimeInstanceId", Migration0027],
   [28, "ProjectionThreadSessionInstanceId", Migration0028],
   [29, "ProjectionThreadDetailOrderingIndexes", Migration0029],
+  [30, "Worktrees", Migration0030],
+  [31, "WorktreeTitles", Migration0031],
+  [32, "ProjectCustomSystemPrompt", Migration0032],
+  [33, "ProjectMetadataDir", Migration0033],
 ] as const;
 
 export const makeMigrationLoader = (throughId?: number) =>
@@ -104,6 +113,29 @@ export interface RunMigrationsOptions {
   readonly toMigrationInclusive?: number | undefined;
 }
 
+export const repairProjectionWorktreeTitleColumn = Effect.fn("repairProjectionWorktreeTitleColumn")(
+  function* () {
+    const sql = yield* SqlClient.SqlClient;
+    const tables = yield* sql<{ readonly name: string }>`
+    SELECT name FROM sqlite_master
+    WHERE type = 'table' AND name = 'projection_worktrees'
+  `;
+    if (tables.length === 0) {
+      return;
+    }
+
+    const columns = yield* sql<{ readonly name: string }>`
+    PRAGMA table_info(projection_worktrees)
+  `;
+    if (columns.some((column) => column.name === "title")) {
+      return;
+    }
+
+    yield* sql`ALTER TABLE projection_worktrees ADD COLUMN title TEXT`;
+    yield* Effect.log("Repaired projection_worktrees.title column");
+  },
+);
+
 /**
  * Run all pending migrations.
  *
@@ -123,6 +155,9 @@ export const runMigrations = Effect.fn("runMigrations")(function* ({
       : `Running migrations 1 through ${toMigrationInclusive}...`,
   );
   const executedMigrations = yield* run({ loader: makeMigrationLoader(toMigrationInclusive) });
+  if (toMigrationInclusive === undefined || toMigrationInclusive >= 31) {
+    yield* repairProjectionWorktreeTitleColumn();
+  }
   yield* Effect.log("Migrations ran successfully").pipe(
     Effect.annotateLogs({ migrations: executedMigrations.map(([id, name]) => `${id}_${name}`) }),
   );

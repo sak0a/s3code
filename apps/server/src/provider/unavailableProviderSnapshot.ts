@@ -14,7 +14,7 @@ import {
   ProviderDriverKind,
   type ProviderInstanceId,
   type ServerProvider,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 import { buildServerProvider } from "./providerSnapshot.ts";
 

@@ -1,0 +1,480 @@
+import { useMemo } from "react";
+import type { DraftId } from "../../../composerDraftStore";
+import type { Project, SidebarThreadSummary } from "../../../types";
+import {
+  aggregateWorktreeStatus,
+  deriveStatusBucket,
+  resolveThreadStatusPill,
+  shouldSuggestArchive,
+  type SidebarStatusBucket,
+  type ThreadStatusPill,
+} from "../../Sidebar.logic";
+
+export type SidebarWorktreeOrigin = "main" | "branch" | "pr" | "issue" | "manual";
+
+export interface SidebarWorktree {
+  worktreeId: string;
+  projectId: Project["id"] | string;
+  title?: string | null | undefined;
+  branch: string;
+  worktreePath: string | null;
+  origin: SidebarWorktreeOrigin;
+  prNumber?: number | null | undefined;
+  issueNumber?: number | null | undefined;
+  archivedAt?: string | null | undefined;
+  manualPosition?: number | null | undefined;
+  updatedAt?: string | undefined;
+}
+
+export interface SidebarWorktreeDiffStats {
+  added: number;
+  removed: number;
+}
+
+export type SidebarTreeThread = SidebarThreadSummary & {
+  draftId?: DraftId | undefined;
+  manualStatusBucket?: SidebarStatusBucket | null | undefined;
+  statusPill?: ThreadStatusPill | null | undefined;
+  worktreeId?: string | null | undefined;
+};
+
+export interface SidebarTreeWorktree {
+  aggregateStatus: SidebarStatusBucket;
+  archivedSessions: ReadonlyArray<SidebarTreeThread>;
+  buckets: Record<SidebarStatusBucket, ReadonlyArray<SidebarTreeThread>>;
+  diffStats: SidebarWorktreeDiffStats | null;
+  sessions: ReadonlyArray<SidebarTreeThread>;
+  shouldSuggestArchive: boolean;
+  worktree: SidebarWorktree;
+}
+
+export interface SidebarTreeProject {
+  archivedSessions: ReadonlyArray<SidebarTreeThread>;
+  archivedWorktrees: ReadonlyArray<SidebarTreeWorktree>;
+  flatSessions: ReadonlyArray<SidebarTreeThread>;
+  isGitRepo: boolean;
+  project: Project;
+  worktrees: ReadonlyArray<SidebarTreeWorktree>;
+}
+
+export interface SidebarTree {
+  projects: ReadonlyArray<SidebarTreeProject>;
+}
+
+export type SidebarProjectGitRepoFlags =
+  | ReadonlyMap<Project["id"] | string, boolean>
+  | Record<string, boolean>;
+
+export interface ComposeSidebarTreeInput {
+  diffStatsByWorktreeId?: ReadonlyMap<string, SidebarWorktreeDiffStats | null> | undefined;
+  diffStatsByWorktreeIdRecord?: Record<string, SidebarWorktreeDiffStats | null> | undefined;
+  isGitRepoByProjectId?: SidebarProjectGitRepoFlags | undefined;
+  nowMs: number;
+  projects: ReadonlyArray<Project>;
+  threads: ReadonlyArray<SidebarTreeThread>;
+  worktrees?: ReadonlyArray<SidebarWorktree> | undefined;
+}
+
+export type UseSidebarTreeInput = Omit<ComposeSidebarTreeInput, "nowMs"> & {
+  nowMs?: number | undefined;
+};
+
+export function composeSidebarTree(input: ComposeSidebarTreeInput): SidebarTree {
+  const threadsByProjectId = groupBy(input.threads, (thread) => thread.projectId);
+  const explicitWorktreesByProjectId = groupBy(input.worktrees ?? [], (worktree) =>
+    String(worktree.projectId),
+  );
+
+  return {
+    projects: input.projects.map((project) => {
+      const projectThreads = threadsByProjectId.get(project.id) ?? [];
+      const isGitRepo = resolveProjectIsGitRepo(project, input.isGitRepoByProjectId);
+      const archivedSessions = projectThreads.filter((thread) => thread.archivedAt !== null);
+
+      if (!isGitRepo) {
+        return {
+          archivedSessions,
+          archivedWorktrees: [],
+          flatSessions: projectThreads.filter((thread) => thread.archivedAt === null),
+          isGitRepo,
+          project,
+          worktrees: [],
+        };
+      }
+
+      const projectWorktrees = ensureProjectWorktrees({
+        project,
+        threads: projectThreads,
+        worktrees: explicitWorktreesByProjectId.get(project.id) ?? [],
+      });
+      const mergedProjectWorktrees = mergeEquivalentWorktrees(projectWorktrees);
+
+      return {
+        archivedSessions,
+        archivedWorktrees: sortWorktrees(mergedProjectWorktrees)
+          .filter((worktree) => worktree.archivedAt != null)
+          .map((worktree) =>
+            composeWorktreeNode({
+              diffStats: getDiffStats(input, worktree.worktreeId),
+              nowMs: input.nowMs,
+              threads: projectThreads.filter((thread) => belongsToWorktree(thread, worktree)),
+              worktree,
+            }),
+          ),
+        flatSessions: [],
+        isGitRepo,
+        project,
+        worktrees: sortWorktrees(mergedProjectWorktrees)
+          .filter((worktree) => worktree.archivedAt == null)
+          .map((worktree) =>
+            composeWorktreeNode({
+              diffStats: getDiffStats(input, worktree.worktreeId),
+              nowMs: input.nowMs,
+              threads: projectThreads.filter((thread) => belongsToWorktree(thread, worktree)),
+              worktree,
+            }),
+          ),
+      };
+    }),
+  };
+}
+
+export function useSidebarTree(input: UseSidebarTreeInput): SidebarTree {
+  const {
+    diffStatsByWorktreeId,
+    diffStatsByWorktreeIdRecord,
+    isGitRepoByProjectId,
+    nowMs,
+    projects,
+    threads,
+    worktrees,
+  } = input;
+
+  return useMemo(
+    () =>
+      composeSidebarTree({
+        diffStatsByWorktreeId,
+        diffStatsByWorktreeIdRecord,
+        isGitRepoByProjectId,
+        nowMs: nowMs ?? Date.now(),
+        projects,
+        threads,
+        worktrees,
+      }),
+    [
+      diffStatsByWorktreeId,
+      diffStatsByWorktreeIdRecord,
+      isGitRepoByProjectId,
+      nowMs,
+      projects,
+      threads,
+      worktrees,
+    ],
+  );
+}
+
+function composeWorktreeNode(input: {
+  diffStats: SidebarWorktreeDiffStats | null;
+  nowMs: number;
+  threads: ReadonlyArray<SidebarTreeThread>;
+  worktree: SidebarWorktree;
+}): SidebarTreeWorktree {
+  const buckets: Record<SidebarStatusBucket, SidebarTreeThread[]> = {
+    done: [],
+    idle: [],
+    in_progress: [],
+    review: [],
+  };
+  const activeBuckets: SidebarStatusBucket[] = [];
+  const archivedSessions: SidebarTreeThread[] = [];
+  const sessions: SidebarTreeThread[] = [];
+
+  for (const thread of input.threads) {
+    if (thread.archivedAt !== null) {
+      archivedSessions.push(thread);
+      continue;
+    }
+
+    sessions.push(thread);
+    const bucket = getThreadBucket(thread);
+    activeBuckets.push(bucket);
+    buckets[bucket].push(thread);
+  }
+
+  return {
+    aggregateStatus: aggregateWorktreeStatus(activeBuckets),
+    archivedSessions,
+    buckets,
+    diffStats: input.diffStats,
+    sessions,
+    shouldSuggestArchive: shouldSuggestArchive({
+      buckets: activeBuckets,
+      latestUpdatedAt: getLatestUpdatedAt(input.threads),
+      nowMs: input.nowMs,
+    }),
+    worktree: input.worktree,
+  };
+}
+
+function getThreadBucket(thread: SidebarTreeThread): SidebarStatusBucket {
+  return deriveStatusBucket({
+    manualBucket: thread.manualStatusBucket ?? null,
+    statusPill: thread.statusPill ?? resolveThreadStatusPill({ thread }),
+  });
+}
+
+function belongsToWorktree(thread: SidebarTreeThread, worktree: SidebarWorktree): boolean {
+  if (thread.worktreeId !== undefined && thread.worktreeId !== null) {
+    if (thread.worktreeId === worktree.worktreeId) {
+      return true;
+    }
+  }
+
+  if (thread.worktreePath === worktree.worktreePath) {
+    return true;
+  }
+
+  return (
+    worktree.origin === "main" &&
+    thread.worktreePath === null &&
+    (thread.branch === null || thread.branch === worktree.branch)
+  );
+}
+
+function mergeEquivalentWorktrees(
+  worktrees: ReadonlyArray<SidebarWorktree>,
+): ReadonlyArray<SidebarWorktree> {
+  const mergedByKey = new Map<string, SidebarWorktree>();
+  for (const worktree of worktrees) {
+    const key = canonicalWorktreeGroupKey(worktree);
+    const existing = mergedByKey.get(key);
+    mergedByKey.set(key, existing ? mergeWorktree(existing, worktree) : worktree);
+  }
+  return [...mergedByKey.values()];
+}
+
+function canonicalWorktreeGroupKey(worktree: SidebarWorktree): string {
+  if (worktree.origin === "main") {
+    return `${worktree.projectId}:main`;
+  }
+  if (worktree.worktreePath === null) {
+    return `${worktree.projectId}:${worktree.origin}:${worktree.branch}`;
+  }
+  return `${worktree.projectId}:path:${normalizeWorktreePath(worktree.worktreePath)}`;
+}
+
+function normalizeWorktreePath(worktreePath: string): string {
+  return worktreePath.replace(/\\/g, "/").replace(/\/+$/g, "").toLowerCase();
+}
+
+function mergeWorktree(left: SidebarWorktree, right: SidebarWorktree): SidebarWorktree {
+  return {
+    ...left,
+    archivedAt: mergeArchivedAt(left.archivedAt, right.archivedAt),
+    branch: preferWorktreeBranch(left.branch, right.branch),
+    manualPosition: minNumber(left.manualPosition, right.manualPosition),
+    origin: left.origin === "main" || right.origin !== "main" ? left.origin : right.origin,
+    prNumber: left.prNumber ?? right.prNumber ?? null,
+    issueNumber: left.issueNumber ?? right.issueNumber ?? null,
+    title: preferWorktreeTitle(left, right),
+    updatedAt: maxIso(left.updatedAt, right.updatedAt),
+    worktreeId: preferWorktreeId(left, right),
+    worktreePath: left.worktreePath ?? right.worktreePath,
+  };
+}
+
+function preferWorktreeTitle(
+  left: SidebarWorktree,
+  right: SidebarWorktree,
+): string | null | undefined {
+  if (left.title == null) return right.title ?? null;
+  if (right.title == null) return left.title;
+  const leftMs = left.updatedAt ? Date.parse(left.updatedAt) : Number.NEGATIVE_INFINITY;
+  const rightMs = right.updatedAt ? Date.parse(right.updatedAt) : Number.NEGATIVE_INFINITY;
+  if (Number.isNaN(leftMs)) return right.title;
+  if (Number.isNaN(rightMs)) return left.title;
+  return rightMs > leftMs ? right.title : left.title;
+}
+
+function preferWorktreeBranch(left: string, right: string): string {
+  if (left === "main" && right !== "main") {
+    return right;
+  }
+  return left;
+}
+
+function preferWorktreeId(left: SidebarWorktree, right: SidebarWorktree): string {
+  const leftSynthetic = isSyntheticWorktreeId(left.worktreeId);
+  const rightSynthetic = isSyntheticWorktreeId(right.worktreeId);
+  if (leftSynthetic && !rightSynthetic) {
+    return right.worktreeId;
+  }
+  if (rightSynthetic && !leftSynthetic) {
+    return left.worktreeId;
+  }
+  if (left.origin === "main") {
+    return left.worktreeId;
+  }
+  if (right.origin === "main") {
+    return right.worktreeId;
+  }
+  return left.worktreeId;
+}
+
+function isSyntheticWorktreeId(worktreeId: string): boolean {
+  return /^(main|branch|pr|issue|manual):/.test(worktreeId);
+}
+
+function mergeArchivedAt(
+  left: string | null | undefined,
+  right: string | null | undefined,
+): string | null | undefined {
+  if (left == null || right == null) {
+    return null;
+  }
+  return maxIso(left, right);
+}
+
+function minNumber(
+  left: number | null | undefined,
+  right: number | null | undefined,
+): number | null | undefined {
+  if (left == null) return right;
+  if (right == null) return left;
+  return Math.min(left, right);
+}
+
+function ensureProjectWorktrees(input: {
+  project: Project;
+  threads: ReadonlyArray<SidebarTreeThread>;
+  worktrees: ReadonlyArray<SidebarWorktree>;
+}): ReadonlyArray<SidebarWorktree> {
+  if (input.worktrees.length > 0) {
+    return input.worktrees;
+  }
+
+  if (input.threads.length === 0) {
+    return [];
+  }
+
+  const latestUpdatedAt = getLatestUpdatedAt(input.threads);
+  return [
+    {
+      archivedAt: null,
+      branch: getFallbackMainBranch(input.threads),
+      manualPosition: 0,
+      origin: "main",
+      projectId: input.project.id,
+      updatedAt: latestUpdatedAt,
+      worktreeId: `main:${input.project.environmentId}:${input.project.id}`,
+      worktreePath: null,
+    },
+  ];
+}
+
+function getFallbackMainBranch(threads: ReadonlyArray<SidebarTreeThread>): string {
+  return threads.find((thread) => thread.worktreePath === null && thread.branch)?.branch ?? "main";
+}
+
+function sortWorktrees(worktrees: ReadonlyArray<SidebarWorktree>): SidebarWorktree[] {
+  return [...worktrees].toSorted((left, right) => {
+    if (left.origin === "main" && right.origin !== "main") return -1;
+    if (right.origin === "main" && left.origin !== "main") return 1;
+
+    const leftPosition = left.manualPosition ?? Number.MAX_SAFE_INTEGER;
+    const rightPosition = right.manualPosition ?? Number.MAX_SAFE_INTEGER;
+    if (leftPosition !== rightPosition) {
+      return leftPosition - rightPosition;
+    }
+
+    const byUpdatedAt = compareOptionalIsoDesc(left.updatedAt, right.updatedAt);
+    if (byUpdatedAt !== 0) {
+      return byUpdatedAt;
+    }
+
+    return (
+      left.branch.localeCompare(right.branch) || left.worktreeId.localeCompare(right.worktreeId)
+    );
+  });
+}
+
+function compareOptionalIsoDesc(left: string | undefined, right: string | undefined): number {
+  const rightMs = right ? Date.parse(right) : Number.NEGATIVE_INFINITY;
+  const leftMs = left ? Date.parse(left) : Number.NEGATIVE_INFINITY;
+  const normalizedRightMs = Number.isNaN(rightMs) ? Number.NEGATIVE_INFINITY : rightMs;
+  const normalizedLeftMs = Number.isNaN(leftMs) ? Number.NEGATIVE_INFINITY : leftMs;
+  return normalizedRightMs - normalizedLeftMs;
+}
+
+function maxIso(left: string | undefined, right: string | undefined): string | undefined {
+  if (!left) return right;
+  if (!right) return left;
+  const leftMs = Date.parse(left);
+  const rightMs = Date.parse(right);
+  if (Number.isNaN(leftMs)) return right;
+  if (Number.isNaN(rightMs)) return left;
+  return rightMs > leftMs ? right : left;
+}
+
+function getLatestUpdatedAt(threads: ReadonlyArray<SidebarTreeThread>): string | undefined {
+  return threads
+    .map((thread) => thread.updatedAt ?? thread.createdAt)
+    .filter((timestamp) => timestamp !== undefined)
+    .toSorted((left, right) => Date.parse(right) - Date.parse(left))[0];
+}
+
+function getDiffStats(
+  input: ComposeSidebarTreeInput,
+  worktreeId: string,
+): SidebarWorktreeDiffStats | null {
+  if (input.diffStatsByWorktreeId) {
+    return input.diffStatsByWorktreeId.get(worktreeId) ?? null;
+  }
+  return input.diffStatsByWorktreeIdRecord?.[worktreeId] ?? null;
+}
+
+function resolveProjectIsGitRepo(
+  project: Project,
+  flags: SidebarProjectGitRepoFlags | undefined,
+): boolean {
+  const flagged = getProjectFlag(flags, project.id);
+  if (flagged !== undefined) {
+    return flagged;
+  }
+
+  return true;
+}
+
+function getProjectFlag(
+  flags: SidebarProjectGitRepoFlags | undefined,
+  projectId: Project["id"],
+): boolean | undefined {
+  if (!flags) {
+    return undefined;
+  }
+  if (isReadonlyMap(flags)) {
+    return flags.get(projectId);
+  }
+  return (flags as Readonly<Record<string, boolean>>)[String(projectId)];
+}
+
+function isReadonlyMap<K, V>(value: unknown): value is ReadonlyMap<K, V> {
+  return value instanceof Map;
+}
+
+function groupBy<TItem, TKey>(
+  items: ReadonlyArray<TItem>,
+  getKey: (item: TItem) => TKey,
+): Map<TKey, TItem[]> {
+  const grouped = new Map<TKey, TItem[]>();
+  for (const item of items) {
+    const key = getKey(item);
+    const group = grouped.get(key);
+    if (group) {
+      group.push(item);
+    } else {
+      grouped.set(key, [item]);
+    }
+  }
+  return grouped;
+}

@@ -6,7 +6,7 @@ import {
   type SourceControlChangeRequestDetail,
   type SourceControlIssueDetail,
   type SourceControlIssueSummary,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 import * as BitbucketApi from "./BitbucketApi.ts";
 import * as BitbucketIssues from "./bitbucketIssues.ts";
@@ -61,45 +61,45 @@ function toIssueSummary(
     state: raw.state,
     ...(raw.author ? { author: raw.author } : {}),
     updatedAt: raw.updatedAt.pipe(Option.map((s) => DateTime.fromDateUnsafe(new Date(s)))),
-    labels: raw.labels,
+    labels: raw.labels.map((name) => ({ name })),
   };
 }
 
 function toIssueDetail(
   raw: BitbucketIssues.NormalizedBitbucketIssueDetail,
+  options: { readonly fullContent: boolean },
 ): SourceControlIssueDetail {
-  const truncated = truncateSourceControlDetailContent({
-    body: raw.body,
-    comments: raw.comments,
-  });
+  const content = options.fullContent
+    ? { body: raw.body, comments: raw.comments, truncated: false }
+    : truncateSourceControlDetailContent({ body: raw.body, comments: raw.comments });
   return {
     ...toIssueSummary(raw),
-    body: truncated.body,
-    comments: truncated.comments.map((c) => ({
+    body: content.body,
+    comments: content.comments.map((c) => ({
       author: c.author,
       body: c.body,
       createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
     })),
-    truncated: truncated.truncated,
+    truncated: content.truncated,
   };
 }
 
 function toChangeRequestDetail(
   raw: BitbucketPullRequests.NormalizedBitbucketPullRequestDetail,
+  options: { readonly fullContent: boolean },
 ): SourceControlChangeRequestDetail {
-  const truncated = truncateSourceControlDetailContent({
-    body: raw.body,
-    comments: raw.comments,
-  });
+  const content = options.fullContent
+    ? { body: raw.body, comments: raw.comments, truncated: false }
+    : truncateSourceControlDetailContent({ body: raw.body, comments: raw.comments });
   return {
     ...toChangeRequest(raw),
-    body: truncated.body,
-    comments: truncated.comments.map((c) => ({
+    body: content.body,
+    comments: content.comments.map((c) => ({
       author: c.author,
       body: c.body,
       createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
     })),
-    truncated: truncated.truncated,
+    truncated: content.truncated,
   };
 }
 
@@ -188,7 +188,7 @@ export const make = Effect.fn("makeBitbucketSourceControlProvider")(function* ()
           reference: input.reference,
         })
         .pipe(
-          Effect.map(toIssueDetail),
+          Effect.map((raw) => toIssueDetail(raw, { fullContent: input.fullContent ?? false })),
           Effect.mapError((error) => providerError("getIssue", error)),
         ),
     searchIssues: (input) =>
@@ -223,9 +223,12 @@ export const make = Effect.fn("makeBitbucketSourceControlProvider")(function* ()
           reference: input.reference,
         })
         .pipe(
-          Effect.map(toChangeRequestDetail),
+          Effect.map((raw) =>
+            toChangeRequestDetail(raw, { fullContent: input.fullContent ?? false }),
+          ),
           Effect.mapError((error) => providerError("getChangeRequestDetail", error)),
         ),
+    getChangeRequestDiff: (_input) => Effect.succeed(""),
   });
 });
 
@@ -239,7 +242,7 @@ export const makeDiscovery = Effect.fn("makeBitbucketSourceControlProviderDiscov
     kind: "bitbucket",
     label: "Bitbucket",
     installHint:
-      "Set T3CODE_BITBUCKET_EMAIL and T3CODE_BITBUCKET_API_TOKEN on the server (use a Bitbucket API token with pull request and repository scopes).",
+      "Set S3CODE_BITBUCKET_EMAIL and S3CODE_BITBUCKET_API_TOKEN on the server (use a Bitbucket API token with pull request and repository scopes).",
     probeAuth: bitbucket.probeAuth,
   } satisfies SourceControlProviderDiscovery.SourceControlApiDiscoverySpec;
 });

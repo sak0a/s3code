@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ProviderDriverKind } from "@t3tools/contracts";
+import { ProviderDriverKind } from "@s3tools/contracts";
 
 import {
+  aggregateWorktreeStatus,
+  canArchiveSidebarThread,
   createThreadJumpHintVisibilityController,
+  deriveStatusBucket,
   getSidebarThreadIdsToPrewarm,
   getVisibleSidebarThreadIds,
   resolveAdjacentThreadId,
@@ -17,6 +20,8 @@ import {
   resolveSidebarNewThreadEnvMode,
   resolveThreadRowClassName,
   resolveThreadStatusPill,
+  shouldSuggestArchive,
+  shouldConfirmCloseSidebarThread,
   shouldClearThreadSelectionOnMouseDown,
   sortProjectsForSidebar,
   THREAD_JUMP_HINT_SHOW_DELAY_MS,
@@ -27,7 +32,7 @@ import {
   ProjectId,
   ProviderInstanceId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import {
   DEFAULT_INTERACTION_MODE,
   DEFAULT_RUNTIME_MODE,
@@ -63,6 +68,22 @@ describe("hasUnseenCompletion", () => {
         lastVisitedAt: "2026-03-09T10:04:00.000Z",
         session: null,
       }),
+    ).toBe(true);
+  });
+});
+
+describe("canArchiveSidebarThread", () => {
+  it("requires a sent user message timestamp", () => {
+    expect(canArchiveSidebarThread({ latestUserMessageAt: null })).toBe(false);
+    expect(canArchiveSidebarThread({ latestUserMessageAt: "2026-05-09T10:00:00.000Z" })).toBe(true);
+  });
+});
+
+describe("shouldConfirmCloseSidebarThread", () => {
+  it("only confirms when conversation history exists", () => {
+    expect(shouldConfirmCloseSidebarThread({ latestUserMessageAt: null })).toBe(false);
+    expect(
+      shouldConfirmCloseSidebarThread({ latestUserMessageAt: "2026-05-09T10:00:00.000Z" }),
     ).toBe(true);
   });
 });
@@ -131,11 +152,11 @@ describe("createThreadJumpHintVisibilityController", () => {
 
 describe("getSidebarThreadIdsToPrewarm", () => {
   it("returns only the first visible thread ids up to the prewarm limit", () => {
-    expect(getSidebarThreadIdsToPrewarm(["t1", "t2", "t3"], 2)).toEqual(["t1", "t2"]);
+    expect(getSidebarThreadIdsToPrewarm(["a1", "a2", "a3"], 2)).toEqual(["a1", "a2"]);
   });
 
   it("returns all visible thread ids when they fit within the limit", () => {
-    expect(getSidebarThreadIdsToPrewarm(["t1", "t2"], 10)).toEqual(["t1", "t2"]);
+    expect(getSidebarThreadIdsToPrewarm(["a1", "a2"], 10)).toEqual(["a1", "a2"]);
   });
 
   it("returns no thread ids when the limit is zero", () => {
@@ -199,12 +220,12 @@ describe("resolveSidebarNewThreadSeedContext", () => {
         activeThread: {
           projectId: "project-1",
           branch: "feature/existing",
-          worktreePath: "/repo/.t3/worktrees/existing",
+          worktreePath: "/repo/.s3code/worktrees/existing",
         },
         activeDraftThread: {
           projectId: "project-1",
           branch: "feature/draft",
-          worktreePath: "/repo/.t3/worktrees/draft",
+          worktreePath: "/repo/.s3code/worktrees/draft",
           envMode: "worktree",
         },
       }),
@@ -572,6 +593,124 @@ describe("resolveThreadStatusPill", () => {
   });
 });
 
+describe("deriveStatusBucket", () => {
+  it("uses a manual override before derived status", () => {
+    expect(
+      deriveStatusBucket({
+        manualBucket: "review",
+        statusPill: { label: "Working", colorClass: "", dotClass: "", pulse: false },
+      }),
+    ).toBe("review");
+  });
+
+  it("maps active runtime statuses to in_progress", () => {
+    for (const label of ["Working", "Connecting"] as const) {
+      expect(
+        deriveStatusBucket({
+          manualBucket: null,
+          statusPill: { label, colorClass: "", dotClass: "", pulse: false },
+        }),
+      ).toBe("in_progress");
+    }
+  });
+
+  it("maps review-needed statuses to review", () => {
+    for (const label of ["Plan Ready", "Pending Approval", "Awaiting Input"] as const) {
+      expect(
+        deriveStatusBucket({
+          manualBucket: null,
+          statusPill: { label, colorClass: "", dotClass: "", pulse: false },
+        }),
+      ).toBe("review");
+    }
+  });
+
+  it("maps completed status to done", () => {
+    expect(
+      deriveStatusBucket({
+        manualBucket: null,
+        statusPill: { label: "Completed", colorClass: "", dotClass: "", pulse: false },
+      }),
+    ).toBe("done");
+  });
+
+  it("falls back to idle when the thread has no visible status", () => {
+    expect(deriveStatusBucket({ manualBucket: null, statusPill: null })).toBe("idle");
+  });
+});
+
+describe("aggregateWorktreeStatus", () => {
+  it("returns in_progress if any session is in progress", () => {
+    expect(aggregateWorktreeStatus(["idle", "in_progress", "review", "done"])).toBe("in_progress");
+  });
+
+  it("returns review when review is the strongest state", () => {
+    expect(aggregateWorktreeStatus(["idle", "review", "done"])).toBe("review");
+  });
+
+  it("returns done only when every session is done", () => {
+    expect(aggregateWorktreeStatus(["done", "done"])).toBe("done");
+  });
+
+  it("returns idle for empty, all-idle, or mixed idle and done sessions", () => {
+    expect(aggregateWorktreeStatus([])).toBe("idle");
+    expect(aggregateWorktreeStatus(["idle", "idle"])).toBe("idle");
+    expect(aggregateWorktreeStatus(["idle", "done"])).toBe("idle");
+  });
+});
+
+describe("shouldSuggestArchive", () => {
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+  const nowMs = Date.parse("2026-05-08T00:00:00.000Z");
+
+  it("returns true when all sessions are done and the newest update is at least seven days old", () => {
+    expect(
+      shouldSuggestArchive({
+        buckets: ["done", "done"],
+        latestUpdatedAt: new Date(nowMs - sevenDaysMs).toISOString(),
+        nowMs,
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false when any session is not done", () => {
+    expect(
+      shouldSuggestArchive({
+        buckets: ["done", "in_progress"],
+        latestUpdatedAt: "2024-01-01T00:00:00.000Z",
+        nowMs,
+      }),
+    ).toBe(false);
+  });
+
+  it("returns false when done sessions are still recent", () => {
+    expect(
+      shouldSuggestArchive({
+        buckets: ["done"],
+        latestUpdatedAt: new Date(nowMs - sevenDaysMs + 1).toISOString(),
+        nowMs,
+      }),
+    ).toBe(false);
+  });
+
+  it("returns false for empty input or invalid timestamps", () => {
+    expect(
+      shouldSuggestArchive({
+        buckets: [],
+        latestUpdatedAt: "2024-01-01T00:00:00.000Z",
+        nowMs,
+      }),
+    ).toBe(false);
+    expect(
+      shouldSuggestArchive({
+        buckets: ["done"],
+        latestUpdatedAt: "not-a-date",
+        nowMs,
+      }),
+    ).toBe(false);
+  });
+});
+
 describe("resolveThreadRowClassName", () => {
   it("uses the darker selected palette when a thread is both selected and active", () => {
     const className = resolveThreadRowClassName({ isActive: true, isSelected: true });
@@ -810,6 +949,35 @@ describe("getFallbackThreadIdAfterDelete", () => {
     });
 
     expect(fallbackThreadId).toBe(ThreadId.make("thread-next"));
+  });
+
+  it("falls back to another project when the deleted thread is the last in its project", () => {
+    const fallbackThreadId = getFallbackThreadIdAfterDelete({
+      threads: [
+        makeThread({
+          id: ThreadId.make("thread-active"),
+          projectId: ProjectId.make("project-1"),
+          createdAt: "2026-03-09T10:05:00.000Z",
+          messages: [],
+        }),
+        makeThread({
+          id: ThreadId.make("thread-other-old"),
+          projectId: ProjectId.make("project-2"),
+          createdAt: "2026-03-09T10:06:00.000Z",
+          messages: [],
+        }),
+        makeThread({
+          id: ThreadId.make("thread-other-new"),
+          projectId: ProjectId.make("project-3"),
+          createdAt: "2026-03-09T10:10:00.000Z",
+          messages: [],
+        }),
+      ],
+      deletedThreadId: ThreadId.make("thread-active"),
+      sortOrder: "created_at",
+    });
+
+    expect(fallbackThreadId).toBe(ThreadId.make("thread-other-new"));
   });
 });
 describe("sortProjectsForSidebar", () => {

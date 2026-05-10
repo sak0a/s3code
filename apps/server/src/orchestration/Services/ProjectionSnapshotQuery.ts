@@ -14,9 +14,11 @@ import type {
   OrchestrationShellSnapshot,
   OrchestrationThread,
   OrchestrationThreadShell,
+  OrchestrationWorktreeShell,
   ProjectId,
   ThreadId,
-} from "@t3tools/contracts";
+  WorktreeId,
+} from "@s3tools/contracts";
 import { Context } from "effect";
 import type { Option } from "effect";
 import type { Effect } from "effect";
@@ -122,6 +124,13 @@ export interface ProjectionSnapshotQueryShape {
   ) => Effect.Effect<Option.Option<OrchestrationThreadShell>, ProjectionRepositoryError>;
 
   /**
+   * Read a single worktree shell row by id.
+   */
+  readonly getWorktreeShellById?: (
+    worktreeId: WorktreeId,
+  ) => Effect.Effect<Option.Option<OrchestrationWorktreeShell>, ProjectionRepositoryError>;
+
+  /**
    * Read a single active thread detail snapshot by id.
    */
   readonly getThreadDetailById: (
@@ -135,4 +144,4 @@ export interface ProjectionSnapshotQueryShape {
 export class ProjectionSnapshotQuery extends Context.Service<
   ProjectionSnapshotQuery,
   ProjectionSnapshotQueryShape
->()("t3/orchestration/Services/ProjectionSnapshotQuery") {}
+>()("s3/orchestration/Services/ProjectionSnapshotQuery") {}

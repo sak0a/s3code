@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/desktop",
+  "name": "@s3tools/desktop",
   "version": "0.0.23",
   "private": true,
   "type": "module",
@@ -21,11 +21,11 @@
     "electron-updater": "^6.6.2"
   },
   "devDependencies": {
-    "@t3tools/client-runtime": "workspace:*",
-    "@t3tools/contracts": "workspace:*",
-    "@t3tools/shared": "workspace:*",
-    "@t3tools/ssh": "workspace:*",
-    "@t3tools/tailscale": "workspace:*",
+    "@s3tools/client-runtime": "workspace:*",
+    "@s3tools/contracts": "workspace:*",
+    "@s3tools/shared": "workspace:*",
+    "@s3tools/ssh": "workspace:*",
+    "@s3tools/tailscale": "workspace:*",
     "@types/node": "catalog:",
     "effect-acp": "workspace:*",
     "tsdown": "catalog:",

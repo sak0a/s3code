@@ -19,7 +19,7 @@ import {
   defaultInstanceIdForDriver,
   ProviderInstanceId,
   type ProviderDriverKind,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { Effect, Layer } from "effect";
 
 import { ProviderUnsupportedError } from "../Errors.ts";

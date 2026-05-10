@@ -2,7 +2,7 @@ import * as Crypto from "node:crypto";
 
 import * as NodeHttpClient from "@effect/platform-node/NodeHttpClient";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { NetService } from "@t3tools/shared/Net";
+import { NetService } from "@s3tools/shared/Net";
 import type {
   AuthBearerBootstrapResult,
   AuthSessionState,
@@ -11,22 +11,22 @@ import type {
   DesktopSshEnvironmentTarget,
   DesktopSshPasswordPromptRequest,
   ExecutionEnvironmentDescriptor,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import {
   SshPasswordPrompt,
   type SshPasswordPromptShape,
   type SshPasswordRequest,
-} from "@t3tools/ssh/auth";
-import { discoverSshHosts } from "@t3tools/ssh/config";
-import { SshPasswordPromptError } from "@t3tools/ssh/errors";
+} from "@s3tools/ssh/auth";
+import { discoverSshHosts } from "@s3tools/ssh/config";
+import { SshPasswordPromptError } from "@s3tools/ssh/errors";
 import {
   fetchLoopbackSshJson,
   SshEnvironmentManager,
-  type RemoteT3RunnerOptions,
-} from "@t3tools/ssh/tunnel";
+  type RemoteS3RunnerOptions,
+} from "@s3tools/ssh/tunnel";
 import { Effect, Exit, Layer, ManagedRuntime, Scope } from "effect";
 
-export { resolveRemoteT3CliPackageSpec } from "@t3tools/ssh/command";
+export { resolveRemoteS3CliPackageSpec } from "@s3tools/ssh/command";
 
 const DISCOVER_SSH_HOSTS_CHANNEL = "desktop:discover-ssh-hosts";
 const ENSURE_SSH_ENVIRONMENT_CHANNEL = "desktop:ensure-ssh-environment";
@@ -43,7 +43,7 @@ const SSH_PASSWORD_PROMPT_CANCELLED_RESULT = "ssh-password-prompt-cancelled";
 interface DesktopSshEnvironmentManagerOptions {
   readonly passwordProvider?: (request: SshPasswordRequest) => Promise<string | null>;
   readonly resolveCliPackageSpec?: () => string;
-  readonly resolveCliRunner?: () => RemoteT3RunnerOptions;
+  readonly resolveCliRunner?: () => RemoteS3RunnerOptions;
 }
 
 const sshRuntime = ManagedRuntime.make(
@@ -193,7 +193,7 @@ export interface DesktopSshBridgeIpcMain {
 export interface DesktopSshEnvironmentBridgeOptions {
   readonly getMainWindow: () => DesktopSshBridgeWindow | null;
   readonly resolveCliPackageSpec?: () => string;
-  readonly resolveCliRunner?: () => RemoteT3RunnerOptions;
+  readonly resolveCliRunner?: () => RemoteS3RunnerOptions;
   readonly passwordPromptTimeoutMs?: number;
 }
 
@@ -283,7 +283,7 @@ export class DesktopSshEnvironmentBridge {
       sshRuntime.runPromise(
         fetchLoopbackSshJson<ExecutionEnvironmentDescriptor>({
           httpBaseUrl: rawHttpBaseUrl,
-          pathname: "/.well-known/t3/environment",
+          pathname: "/.well-known/s3/environment",
         }),
       ),
     );
@@ -368,7 +368,7 @@ export class DesktopSshEnvironmentBridge {
   private async requestPasswordFromRenderer(input: SshPasswordRequest): Promise<string | null> {
     const window = this.options.getMainWindow();
     if (!window || window.isDestroyed()) {
-      throw new Error("T3 Code window is not available for SSH authentication.");
+      throw new Error("S3Code window is not available for SSH authentication.");
     }
 
     const request: DesktopSshPasswordPromptRequest = {
@@ -395,24 +395,24 @@ export class DesktopSshEnvironmentBridge {
 
       try {
         if (window.isDestroyed()) {
-          throw new Error("T3 Code window is not available for SSH authentication.");
+          throw new Error("S3Code window is not available for SSH authentication.");
         }
         window.webContents.send(SSH_PASSWORD_PROMPT_CHANNEL, request);
         if (window.isDestroyed()) {
-          throw new Error("T3 Code window is not available for SSH authentication.");
+          throw new Error("S3Code window is not available for SSH authentication.");
         }
         if (window.isMinimized()) {
           window.restore();
         }
         if (window.isDestroyed()) {
-          throw new Error("T3 Code window is not available for SSH authentication.");
+          throw new Error("S3Code window is not available for SSH authentication.");
         }
         window.focus();
       } catch (error) {
         rejectPrompt(
           error instanceof Error
             ? error
-            : new Error("T3 Code window is not available for SSH authentication."),
+            : new Error("S3Code window is not available for SSH authentication."),
         );
       }
     });

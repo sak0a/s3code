@@ -1,6 +1,12 @@
 import { Cause, DateTime, Exit, Option, Result, Schema } from "effect";
-import { PositiveInt, TrimmedNonEmptyString } from "@t3tools/contracts";
-import { decodeJsonResult, formatSchemaError } from "@t3tools/shared/schemaJson";
+import { PositiveInt, TrimmedNonEmptyString } from "@s3tools/contracts";
+import { decodeJsonResult, formatSchemaError } from "@s3tools/shared/schemaJson";
+
+export interface NormalizedGitHubLabel {
+  readonly name: string;
+  readonly color?: string;
+  readonly description?: string;
+}
 
 export interface NormalizedGitHubPullRequestRecord {
   readonly number: number;
@@ -11,8 +17,34 @@ export interface NormalizedGitHubPullRequestRecord {
   readonly state: "open" | "closed" | "merged";
   readonly updatedAt: Option.Option<DateTime.Utc>;
   readonly isCrossRepository?: boolean;
+  readonly isDraft?: boolean;
+  readonly author: string | null;
+  readonly assignees: ReadonlyArray<string>;
+  readonly labels: ReadonlyArray<NormalizedGitHubLabel>;
+  readonly commentsCount: number | null;
   readonly headRepositoryNameWithOwner?: string | null;
   readonly headRepositoryOwnerLogin?: string | null;
+}
+
+function normalizeLabels(
+  raw:
+    | ReadonlyArray<{
+        name: string;
+        color?: string | null | undefined;
+        description?: string | null | undefined;
+      }>
+    | undefined,
+): ReadonlyArray<NormalizedGitHubLabel> {
+  if (!raw) return [];
+  return raw.map((l) => {
+    const color = l.color?.trim() ?? "";
+    const description = l.description?.trim() ?? "";
+    return {
+      name: l.name,
+      ...(color.length > 0 ? { color } : {}),
+      ...(description.length > 0 ? { description } : {}),
+    };
+  });
 }
 
 const GitHubPullRequestSchema = Schema.Struct({
@@ -25,6 +57,18 @@ const GitHubPullRequestSchema = Schema.Struct({
   mergedAt: Schema.optional(Schema.NullOr(Schema.String)),
   updatedAt: Schema.optional(Schema.OptionFromNullOr(Schema.DateTimeUtcFromString)),
   isCrossRepository: Schema.optional(Schema.Boolean),
+  isDraft: Schema.optional(Schema.Boolean),
+  author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
+  assignees: Schema.optional(Schema.Array(Schema.Struct({ login: Schema.String }))),
+  labels: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        name: Schema.String,
+        color: Schema.optional(Schema.NullOr(Schema.String)),
+        description: Schema.optional(Schema.NullOr(Schema.String)),
+      }),
+    ),
+  ),
   headRepository: Schema.optional(
     Schema.NullOr(
       Schema.Struct({
@@ -41,11 +85,63 @@ const GitHubPullRequestSchema = Schema.Struct({
   ),
   body: Schema.optional(Schema.NullOr(Schema.String)),
   comments: Schema.optional(
+    Schema.Union([
+      Schema.Array(
+        Schema.Struct({
+          author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
+          authorAssociation: Schema.optional(Schema.NullOr(Schema.String)),
+          body: Schema.String,
+          createdAt: Schema.String,
+        }),
+      ),
+      Schema.Number,
+    ]),
+  ),
+  reviewRequests: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        login: Schema.optional(Schema.NullOr(Schema.String)),
+        name: Schema.optional(Schema.NullOr(Schema.String)),
+      }),
+    ),
+  ),
+  reviews: Schema.optional(
     Schema.Array(
       Schema.Struct({
         author: Schema.optional(Schema.NullOr(Schema.Struct({ login: Schema.String }))),
-        body: Schema.String,
-        createdAt: Schema.String,
+        authorAssociation: Schema.optional(Schema.NullOr(Schema.String)),
+        state: Schema.optional(Schema.NullOr(Schema.String)),
+        body: Schema.optional(Schema.NullOr(Schema.String)),
+        submittedAt: Schema.optional(Schema.NullOr(Schema.String)),
+      }),
+    ),
+  ),
+  commits: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        oid: Schema.String,
+        messageHeadline: Schema.optional(Schema.NullOr(Schema.String)),
+        committedDate: Schema.optional(Schema.NullOr(Schema.String)),
+        authors: Schema.optional(
+          Schema.Array(
+            Schema.Struct({
+              login: Schema.optional(Schema.NullOr(Schema.String)),
+              name: Schema.optional(Schema.NullOr(Schema.String)),
+            }),
+          ),
+        ),
+      }),
+    ),
+  ),
+  additions: Schema.optional(Schema.NullOr(Schema.Number)),
+  deletions: Schema.optional(Schema.NullOr(Schema.Number)),
+  changedFiles: Schema.optional(Schema.NullOr(Schema.Number)),
+  files: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        path: Schema.String,
+        additions: Schema.optional(Schema.NullOr(Schema.Number)),
+        deletions: Schema.optional(Schema.NullOr(Schema.Number)),
       }),
     ),
   ),
@@ -82,6 +178,12 @@ function normalizeGitHubPullRequestRecord(
     (typeof headRepositoryNameWithOwner === "string" && headRepositoryNameWithOwner.includes("/")
       ? (headRepositoryNameWithOwner.split("/")[0] ?? null)
       : null);
+  const commentsCount =
+    typeof raw.comments === "number"
+      ? raw.comments
+      : Array.isArray(raw.comments)
+        ? raw.comments.length
+        : null;
 
   return {
     number: raw.number,
@@ -91,9 +193,14 @@ function normalizeGitHubPullRequestRecord(
     headRefName: raw.headRefName,
     state: normalizeGitHubPullRequestState(raw),
     updatedAt: raw.updatedAt ?? Option.none(),
+    author: raw.author?.login ?? null,
+    assignees: (raw.assignees ?? []).map((a) => a.login),
+    labels: normalizeLabels(raw.labels),
+    commentsCount,
     ...(typeof raw.isCrossRepository === "boolean"
       ? { isCrossRepository: raw.isCrossRepository }
       : {}),
+    ...(typeof raw.isDraft === "boolean" ? { isDraft: raw.isDraft } : {}),
     ...(headRepositoryNameWithOwner ? { headRepositoryNameWithOwner } : {}),
     ...(headRepositoryOwnerLogin ? { headRepositoryOwnerLogin } : {}),
   };
@@ -136,13 +243,190 @@ export function decodeGitHubPullRequestJson(
   return Result.fail(result.failure);
 }
 
+export interface NormalizedGitHubPullRequestCommit {
+  readonly oid: string;
+  readonly shortOid: string;
+  readonly messageHeadline: string;
+  readonly committedDate?: string;
+  readonly author?: string;
+}
+
+export type NormalizedGitHubReviewState =
+  | "approved"
+  | "changes_requested"
+  | "commented"
+  | "dismissed"
+  | "pending";
+
+export interface NormalizedGitHubPullRequestFile {
+  readonly path: string;
+  readonly additions: number;
+  readonly deletions: number;
+}
+
 export interface NormalizedGitHubPullRequestDetail extends NormalizedGitHubPullRequestRecord {
   readonly body: string;
   readonly comments: ReadonlyArray<{
     readonly author: string;
     readonly body: string;
     readonly createdAt: string;
+    readonly authorAssociation?: string;
+    readonly reviewState?: NormalizedGitHubReviewState;
   }>;
+  readonly linkedIssueNumbers: ReadonlyArray<number>;
+  readonly reviewers: ReadonlyArray<string>;
+  readonly commits: ReadonlyArray<NormalizedGitHubPullRequestCommit>;
+  readonly additions: number;
+  readonly deletions: number;
+  readonly changedFiles: number;
+  readonly files: ReadonlyArray<NormalizedGitHubPullRequestFile>;
+}
+
+function normalizePullRequestComment(raw: {
+  readonly author?: { readonly login: string } | null;
+  readonly authorAssociation?: string | null;
+  readonly body: string;
+  readonly createdAt: string;
+}): NormalizedGitHubPullRequestDetail["comments"][number] {
+  const base = {
+    author: raw.author?.login ?? "unknown",
+    body: raw.body,
+    createdAt: raw.createdAt,
+  };
+  if (raw.authorAssociation) {
+    return { ...base, authorAssociation: raw.authorAssociation };
+  }
+  return base;
+}
+
+const LINKED_ISSUE_PATTERN = /\b(?:close[sd]?|fixe?[sd]?|resolve[sd]?)\s+#(\d+)/giu;
+
+export function parseLinkedIssueNumbers(body: string): ReadonlyArray<number> {
+  if (!body) return [];
+  const seen = new Set<number>();
+  const numbers: number[] = [];
+  for (const match of body.matchAll(LINKED_ISSUE_PATTERN)) {
+    const captured = match[1];
+    if (!captured) continue;
+    const parsed = Number.parseInt(captured, 10);
+    if (Number.isNaN(parsed) || seen.has(parsed)) continue;
+    seen.add(parsed);
+    numbers.push(parsed);
+  }
+  return numbers;
+}
+
+function trimNonEmpty(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function pickReviewerLabel(entry: {
+  login?: string | null | undefined;
+  name?: string | null | undefined;
+}): string | null {
+  return trimNonEmpty(entry.login) ?? trimNonEmpty(entry.name);
+}
+
+function pickCommitAuthor(
+  authors: ReadonlyArray<{
+    login?: string | null | undefined;
+    name?: string | null | undefined;
+  }>,
+): string | null {
+  for (const a of authors) {
+    const label = trimNonEmpty(a.login) ?? trimNonEmpty(a.name);
+    if (label !== null) return label;
+  }
+  return null;
+}
+
+function normalizeCommits(
+  raw:
+    | ReadonlyArray<{
+        oid: string;
+        messageHeadline?: string | null | undefined;
+        committedDate?: string | null | undefined;
+        authors?:
+          | ReadonlyArray<{
+              login?: string | null | undefined;
+              name?: string | null | undefined;
+            }>
+          | undefined;
+      }>
+    | undefined,
+): ReadonlyArray<NormalizedGitHubPullRequestCommit> {
+  if (!raw) return [];
+  return raw.map((c) => {
+    const messageHeadline = trimNonEmpty(c.messageHeadline) ?? "";
+    const committedDate = trimNonEmpty(c.committedDate);
+    const author = pickCommitAuthor(c.authors ?? []);
+    return {
+      oid: c.oid,
+      shortOid: c.oid.slice(0, 7),
+      messageHeadline,
+      ...(committedDate ? { committedDate } : {}),
+      ...(author ? { author } : {}),
+    };
+  });
+}
+
+function normalizeReviewState(
+  state: string | null | undefined,
+): NormalizedGitHubReviewState | null {
+  switch (state?.trim().toUpperCase()) {
+    case "APPROVED":
+      return "approved";
+    case "CHANGES_REQUESTED":
+      return "changes_requested";
+    case "COMMENTED":
+      return "commented";
+    case "DISMISSED":
+      return "dismissed";
+    case "PENDING":
+      return "pending";
+    default:
+      return null;
+  }
+}
+
+function reviewToComment(raw: {
+  author?: { login: string } | null | undefined;
+  authorAssociation?: string | null | undefined;
+  state?: string | null | undefined;
+  body?: string | null | undefined;
+  submittedAt?: string | null | undefined;
+}): NormalizedGitHubPullRequestDetail["comments"][number] | null {
+  const body = (raw.body ?? "").trim();
+  if (body.length === 0) return null;
+  const submittedAt = trimNonEmpty(raw.submittedAt);
+  if (submittedAt === null) return null;
+  const reviewState = normalizeReviewState(raw.state);
+  return {
+    author: raw.author?.login ?? "unknown",
+    body: raw.body ?? "",
+    createdAt: submittedAt,
+    ...(raw.authorAssociation ? { authorAssociation: raw.authorAssociation } : {}),
+    ...(reviewState ? { reviewState } : {}),
+  };
+}
+
+function normalizeFiles(
+  raw:
+    | ReadonlyArray<{
+        path: string;
+        additions?: number | null | undefined;
+        deletions?: number | null | undefined;
+      }>
+    | undefined,
+): ReadonlyArray<NormalizedGitHubPullRequestFile> {
+  if (!raw) return [];
+  return raw.map((f) => ({
+    path: f.path,
+    additions: typeof f.additions === "number" ? f.additions : 0,
+    deletions: typeof f.deletions === "number" ? f.deletions : 0,
+  }));
 }
 
 export function decodeGitHubPullRequestDetailJson(
@@ -151,14 +435,31 @@ export function decodeGitHubPullRequestDetailJson(
   const result = decodeGitHubPullRequest(raw);
   if (!Result.isSuccess(result)) return Result.fail(result.failure);
   const summary = normalizeGitHubPullRequestRecord(result.success);
+  const body = result.success.body ?? "";
+  const rawComments = Array.isArray(result.success.comments) ? result.success.comments : [];
+  const reviewers = (result.success.reviewRequests ?? [])
+    .map((r) => pickReviewerLabel(r))
+    .filter((label): label is string => label !== null);
+  const generalComments = rawComments.map((c) => normalizePullRequestComment(c));
+  const reviewComments = (result.success.reviews ?? [])
+    .map((r) => reviewToComment(r))
+    .filter((c): c is NonNullable<typeof c> => c !== null);
+  const merged = [...generalComments, ...reviewComments].toSorted((a, b) =>
+    a.createdAt.localeCompare(b.createdAt),
+  );
+  const files = normalizeFiles(result.success.files);
   const detail: NormalizedGitHubPullRequestDetail = {
     ...summary,
-    body: result.success.body ?? "",
-    comments: (result.success.comments ?? []).map((c) => ({
-      author: c.author?.login ?? "unknown",
-      body: c.body,
-      createdAt: c.createdAt,
-    })),
+    body,
+    comments: merged,
+    linkedIssueNumbers: parseLinkedIssueNumbers(body),
+    reviewers,
+    commits: normalizeCommits(result.success.commits),
+    additions: typeof result.success.additions === "number" ? result.success.additions : 0,
+    deletions: typeof result.success.deletions === "number" ? result.success.deletions : 0,
+    changedFiles:
+      typeof result.success.changedFiles === "number" ? result.success.changedFiles : files.length,
+    files,
   };
   return Result.succeed(detail);
 }

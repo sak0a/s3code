@@ -3,7 +3,7 @@ import type {
   SourceControlIssueComment,
   SourceControlIssueDetail,
   SourceControlChangeRequestDetail,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 function formatComment(comment: SourceControlIssueComment): string {
   const ts =

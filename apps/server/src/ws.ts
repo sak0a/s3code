@@ -4,6 +4,7 @@ import {
   AuthSessionId,
   CommandId,
   EventId,
+  type GitCreateWorktreeForProjectInput,
   type OrchestrationCommand,
   type GitActionProgressEvent,
   type GitManagerServiceError,
@@ -14,6 +15,8 @@ import {
   OrchestrationGetSnapshotError,
   OrchestrationGetTurnDiffError,
   ORCHESTRATION_WS_METHODS,
+  GitManagerError,
+  ProjectId,
   ProjectListEntriesError,
   ProjectReadFileError,
   ProjectSearchEntriesError,
@@ -22,9 +25,10 @@ import {
   FilesystemBrowseError,
   ThreadId,
   type TerminalEvent,
+  WorktreeId,
   WS_METHODS,
   WsRpcGroup,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { clamp } from "effect/Number";
 import { HttpRouter, HttpServerRequest } from "effect/unstable/http";
 import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
@@ -54,8 +58,10 @@ import { VcsProvisioningService } from "./vcs/VcsProvisioningService.ts";
 import { GitWorkflowService } from "./git/GitWorkflowService.ts";
 import { ProjectSetupScriptRunner } from "./project/Services/ProjectSetupScriptRunner.ts";
 import { RepositoryIdentityResolver } from "./project/Services/RepositoryIdentityResolver.ts";
+import { resolveProjectWorktreesDir } from "./project/projectMetadataPaths.ts";
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment.ts";
 import { ServerAuth } from "./auth/Services/ServerAuth.ts";
+import { ProjectionWorktreeRepository } from "./persistence/Services/ProjectionWorktrees.ts";
 import * as SourceControlDiscoveryLayer from "./sourceControl/SourceControlDiscovery.ts";
 import { SourceControlRepositoryService } from "./sourceControl/SourceControlRepositoryService.ts";
 import * as AzureDevOpsCli from "./sourceControl/AzureDevOpsCli.ts";
@@ -100,6 +106,10 @@ function isThreadDetailEvent(event: OrchestrationEvent): event is Extract<
 }
 
 const PROVIDER_STATUS_DEBOUNCE_MS = 200;
+const randomShortId = (length = 8) =>
+  Array.from({ length }, () =>
+    "abcdefghijklmnopqrstuvwxyz0123456789".charAt(Math.floor(Math.random() * 36)),
+  ).join("");
 
 function toAuthAccessStreamEvent(
   change: BootstrapCredentialChange | SessionCredentialChange,
@@ -170,6 +180,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
         yield* SourceControlProviderRegistry.SourceControlProviderRegistry;
       const bootstrapCredentials = yield* BootstrapCredentialService;
       const sessions = yield* SessionCredentialService;
+      const projectionWorktrees = yield* ProjectionWorktreeRepository;
       const serverCommandId = (tag: string) =>
         CommandId.make(`server:${tag}:${crypto.randomUUID()}`);
 
@@ -299,6 +310,33 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
                 kind: "thread-removed" as const,
                 sequence: event.sequence,
                 threadId: event.payload.threadId,
+              }),
+            );
+          case "worktree.created":
+          case "worktree.archived":
+          case "worktree.metaUpdated":
+          case "worktree.restored": {
+            const getWorktreeShellById = projectionSnapshotQuery.getWorktreeShellById;
+            if (getWorktreeShellById === undefined) {
+              return Effect.succeed(Option.none());
+            }
+            return getWorktreeShellById(WorktreeId.make(event.payload.worktreeId)).pipe(
+              Effect.map((worktree) =>
+                Option.map(worktree, (nextWorktree) => ({
+                  kind: "worktree-upserted" as const,
+                  sequence: event.sequence,
+                  worktree: nextWorktree,
+                })),
+              ),
+              Effect.catch(() => Effect.succeed(Option.none())),
+            );
+          }
+          case "worktree.deleted":
+            return Effect.succeed(
+              Option.some({
+                kind: "worktree-removed" as const,
+                sequence: event.sequence,
+                worktreeId: event.payload.worktreeId,
               }),
             );
           default:
@@ -474,11 +512,26 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             }
 
             if (bootstrap?.prepareWorktree) {
+              const bootstrapProject = yield* projectionSnapshotQuery
+                .getActiveProjectByWorkspaceRoot(bootstrap.prepareWorktree.projectCwd)
+                .pipe(
+                  Effect.map(Option.getOrNull),
+                  Effect.mapError((cause) =>
+                    toGitManagerError(
+                      "git.bootstrapPrepareWorktree",
+                      "Failed to load project for bootstrap worktree.",
+                      cause,
+                    ),
+                  ),
+                );
               const worktree = yield* gitWorkflow.createWorktree({
                 cwd: bootstrap.prepareWorktree.projectCwd,
                 refName: bootstrap.prepareWorktree.baseBranch,
                 newRefName: bootstrap.prepareWorktree.branch,
-                path: null,
+                path: resolveProjectWorktreesDir(
+                  bootstrap.prepareWorktree.projectCwd,
+                  bootstrapProject?.projectMetadataDir,
+                ),
               });
               targetWorktreePath = worktree.worktree.path;
               yield* orchestrationEngine.dispatch({
@@ -564,6 +617,391 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
         vcsStatusBroadcaster
           .refreshStatus(cwd)
           .pipe(Effect.ignoreCause({ log: true }), Effect.forkDetach, Effect.asVoid);
+
+      const toGitManagerError = (operation: string, detail: string, cause?: unknown) =>
+        new GitManagerError({
+          operation,
+          detail,
+          ...(cause !== undefined ? { cause } : {}),
+        });
+
+      const failGitWorkflow = (operation: string, detail: string, cause?: unknown) =>
+        Effect.fail(toGitManagerError(operation, detail, cause));
+
+      const loadProjectForGitWorkflow = (operation: string, projectId: ProjectId) =>
+        projectionSnapshotQuery.getProjectShellById(projectId).pipe(
+          Effect.mapError((cause) =>
+            toGitManagerError(operation, `Failed to load project ${projectId}.`, cause),
+          ),
+          Effect.flatMap(
+            Option.match({
+              onNone: () => failGitWorkflow(operation, `Project ${projectId} not found.`),
+              onSome: Effect.succeed,
+            }),
+          ),
+        );
+
+      const loadWorktreeForGitWorkflow = (operation: string, worktreeId: WorktreeId) =>
+        projectionWorktrees.getById({ worktreeId }).pipe(
+          Effect.mapError((cause) =>
+            toGitManagerError(operation, `Failed to load worktree ${worktreeId}.`, cause),
+          ),
+          Effect.flatMap(
+            Option.match({
+              onNone: () => failGitWorkflow(operation, `Worktree ${worktreeId} not found.`),
+              onSome: Effect.succeed,
+            }),
+          ),
+        );
+
+      const dispatchWorktreeCommand = (
+        command: OrchestrationCommand,
+        operation: string,
+      ): Effect.Effect<void, GitManagerServiceError> =>
+        dispatchNormalizedCommand(command).pipe(
+          Effect.mapError((cause) =>
+            toGitManagerError(operation, "Failed to dispatch orchestration command.", cause),
+          ),
+          Effect.asVoid,
+        );
+
+      const createWorktreeForProject = (input: GitCreateWorktreeForProjectInput) =>
+        Effect.gen(function* () {
+          const operation = "git.createWorktreeForProject";
+          if (input.intent.kind === "pr" || input.intent.kind === "issue") {
+            const existing = yield* projectionWorktrees
+              .findByOrigin({
+                projectId: input.projectId,
+                kind: input.intent.kind,
+                number: input.intent.number ?? 0,
+              })
+              .pipe(
+                Effect.mapError((cause) =>
+                  toGitManagerError(operation, "Failed to find existing worktree.", cause),
+                ),
+              );
+            if (existing !== null) {
+              const existingWorktree = yield* loadWorktreeForGitWorkflow(operation, existing);
+              const project = yield* loadProjectForGitWorkflow(operation, input.projectId);
+              if (project.defaultModelSelection === null) {
+                return yield* failGitWorkflow(
+                  operation,
+                  `Project ${input.projectId} has no default model selection.`,
+                );
+              }
+              const now = new Date().toISOString();
+              const threadId = ThreadId.make(`thread-${crypto.randomUUID()}`);
+              yield* dispatchWorktreeCommand(
+                {
+                  type: "thread.create",
+                  commandId: serverCommandId("worktree-thread-create"),
+                  threadId,
+                  projectId: input.projectId,
+                  title:
+                    existingWorktree.prTitle ??
+                    existingWorktree.issueTitle ??
+                    existingWorktree.branch,
+                  modelSelection: project.defaultModelSelection,
+                  runtimeMode: "full-access",
+                  interactionMode: "default",
+                  branch: existingWorktree.branch,
+                  worktreePath: existingWorktree.worktreePath,
+                  createdAt: now,
+                },
+                operation,
+              );
+              yield* dispatchWorktreeCommand(
+                {
+                  type: "thread.attach-to-worktree",
+                  commandId: serverCommandId("worktree-thread-attach"),
+                  threadId,
+                  worktreeId: existing,
+                  attachedAt: now,
+                },
+                operation,
+              );
+              return { worktreeId: existing, sessionId: threadId };
+            }
+          }
+
+          const project = yield* loadProjectForGitWorkflow(operation, input.projectId);
+          if (project.defaultModelSelection === null) {
+            return yield* failGitWorkflow(
+              operation,
+              `Project ${input.projectId} has no default model selection.`,
+            );
+          }
+
+          const now = new Date().toISOString();
+          const worktreeId = WorktreeId.make(`worktree-${crypto.randomUUID()}`);
+          const threadId = ThreadId.make(`thread-${crypto.randomUUID()}`);
+          let branch: string;
+          let refName: string;
+          let newRefName: string | undefined;
+          let title: string;
+          let origin: "branch" | "pr" | "issue" | "manual" = "branch";
+          let prNumber: number | null = null;
+          let issueNumber: number | null = null;
+          let prTitle: string | null = null;
+          let issueTitle: string | null = null;
+
+          switch (input.intent.kind) {
+            case "branch":
+              branch = input.intent.branchName ?? "HEAD";
+              refName = branch;
+              title = branch;
+              break;
+            case "newBranch":
+              branch = input.intent.branchName ?? `task/${randomShortId(6)}`;
+              refName = input.intent.baseBranch ?? "HEAD";
+              newRefName = branch;
+              title = branch;
+              break;
+            case "pr": {
+              const number = input.intent.number ?? 0;
+              const resolved = yield* gitWorkflow.resolvePullRequest({
+                cwd: project.workspaceRoot,
+                reference: String(number),
+              });
+              branch = resolved.pullRequest.headBranch;
+              refName = branch;
+              title = resolved.pullRequest.title;
+              origin = "pr";
+              prNumber = resolved.pullRequest.number;
+              prTitle = resolved.pullRequest.title;
+              break;
+            }
+            case "issue": {
+              const number = input.intent.number ?? 0;
+              branch = `issue/${number}-${randomShortId(6)}`;
+              refName = "HEAD";
+              newRefName = branch;
+              title = `Issue #${number}`;
+              origin = "issue";
+              issueNumber = number;
+              issueTitle = title;
+              break;
+            }
+          }
+
+          const worktree = yield* gitWorkflow.createWorktree({
+            cwd: project.workspaceRoot,
+            refName,
+            ...(newRefName !== undefined ? { newRefName } : {}),
+            path: resolveProjectWorktreesDir(project.workspaceRoot, project.projectMetadataDir),
+          });
+
+          yield* dispatchWorktreeCommand(
+            {
+              type: "worktree.create",
+              commandId: serverCommandId("worktree-create"),
+              worktreeId,
+              projectId: input.projectId,
+              branch,
+              worktreePath: worktree.worktree.path,
+              origin,
+              prNumber,
+              issueNumber,
+              prTitle,
+              issueTitle,
+              createdAt: now,
+            },
+            operation,
+          );
+
+          yield* dispatchWorktreeCommand(
+            {
+              type: "thread.create",
+              commandId: serverCommandId("worktree-thread-create"),
+              threadId,
+              projectId: input.projectId,
+              title,
+              modelSelection: project.defaultModelSelection,
+              runtimeMode: "full-access",
+              interactionMode: "default",
+              branch,
+              worktreePath: worktree.worktree.path,
+              createdAt: now,
+            },
+            operation,
+          );
+
+          yield* dispatchWorktreeCommand(
+            {
+              type: "thread.attach-to-worktree",
+              commandId: serverCommandId("worktree-thread-attach"),
+              threadId,
+              worktreeId,
+              attachedAt: now,
+            },
+            operation,
+          );
+
+          yield* refreshGitStatus(worktree.worktree.path);
+          return { worktreeId, sessionId: threadId };
+        });
+
+      const archiveWorktree = (input: {
+        readonly worktreeId: WorktreeId;
+        readonly deleteBranch: boolean;
+      }) =>
+        Effect.gen(function* () {
+          const operation = "git.archiveWorktree";
+          const worktree = yield* loadWorktreeForGitWorkflow(operation, input.worktreeId);
+          if (worktree.origin === "main") {
+            return yield* failGitWorkflow(operation, "Cannot archive the main worktree.");
+          }
+          const project = yield* loadProjectForGitWorkflow(operation, worktree.projectId);
+          if (worktree.worktreePath !== null) {
+            yield* gitWorkflow.removeWorktree({
+              cwd: project.workspaceRoot,
+              path: worktree.worktreePath,
+              force: true,
+            });
+          }
+          if (input.deleteBranch) {
+            yield* gitWorkflow.deleteBranch({
+              cwd: project.workspaceRoot,
+              refName: worktree.branch,
+              force: true,
+            });
+          }
+          yield* dispatchWorktreeCommand(
+            {
+              type: "worktree.archive",
+              commandId: serverCommandId("worktree-archive"),
+              worktreeId: input.worktreeId,
+              archivedAt: new Date().toISOString(),
+              deletedBranch: input.deleteBranch,
+            },
+            operation,
+          );
+          yield* refreshGitStatus(project.workspaceRoot);
+          return {};
+        });
+
+      const restoreWorktree = (worktreeId: WorktreeId) =>
+        Effect.gen(function* () {
+          const operation = "git.restoreWorktree";
+          const worktree = yield* loadWorktreeForGitWorkflow(operation, worktreeId);
+          const project = yield* loadProjectForGitWorkflow(operation, worktree.projectId);
+          const created =
+            worktree.origin === "main"
+              ? null
+              : yield* gitWorkflow.createWorktree({
+                  cwd: project.workspaceRoot,
+                  refName: worktree.branch,
+                  path: worktree.worktreePath,
+                });
+          const restoredPath = created?.worktree.path ?? worktree.worktreePath;
+          yield* dispatchWorktreeCommand(
+            {
+              type: "worktree.restore",
+              commandId: serverCommandId("worktree-restore"),
+              worktreeId,
+              worktreePath: restoredPath,
+              restoredAt: new Date().toISOString(),
+            },
+            operation,
+          );
+          yield* refreshGitStatus(restoredPath ?? project.workspaceRoot);
+          return {};
+        });
+
+      const deleteWorktree = (input: {
+        readonly worktreeId: WorktreeId;
+        readonly deleteBranch: boolean;
+      }) =>
+        Effect.gen(function* () {
+          const operation = "git.deleteWorktree";
+          const worktree = yield* loadWorktreeForGitWorkflow(operation, input.worktreeId);
+          if (worktree.origin === "main") {
+            return yield* failGitWorkflow(operation, "Cannot delete the main worktree.");
+          }
+          const project = yield* loadProjectForGitWorkflow(operation, worktree.projectId);
+          if (worktree.worktreePath !== null) {
+            yield* gitWorkflow.removeWorktree({
+              cwd: project.workspaceRoot,
+              path: worktree.worktreePath,
+              force: true,
+            });
+          }
+          if (input.deleteBranch) {
+            yield* gitWorkflow.deleteBranch({
+              cwd: project.workspaceRoot,
+              refName: worktree.branch,
+              force: true,
+            });
+          }
+          yield* dispatchWorktreeCommand(
+            {
+              type: "worktree.delete",
+              commandId: serverCommandId("worktree-delete"),
+              worktreeId: input.worktreeId,
+              deletedAt: new Date().toISOString(),
+              deletedBranch: input.deleteBranch,
+            },
+            operation,
+          );
+          yield* refreshGitStatus(project.workspaceRoot);
+          return {};
+        });
+
+      const initializeGitForProject = (projectId: ProjectId) =>
+        Effect.gen(function* () {
+          const operation = "projects.initializeGit";
+          const project = yield* loadProjectForGitWorkflow(operation, projectId);
+          yield* vcsProvisioning
+            .initRepository({ cwd: project.workspaceRoot, kind: "git" })
+            .pipe(
+              Effect.mapError((cause) =>
+                toGitManagerError(operation, "Failed to initialize git repository.", cause),
+              ),
+            );
+          const status = yield* gitWorkflow.localStatus({ cwd: project.workspaceRoot });
+          const branch = status.refName ?? "main";
+          const worktreeId = WorktreeId.make(`worktree-${projectId}-main`);
+          const now = new Date().toISOString();
+          yield* dispatchWorktreeCommand(
+            {
+              type: "worktree.create",
+              commandId: serverCommandId("project-main-worktree-create"),
+              worktreeId,
+              projectId,
+              branch,
+              worktreePath: null,
+              origin: "main",
+              prNumber: null,
+              issueNumber: null,
+              prTitle: null,
+              issueTitle: null,
+              createdAt: now,
+            },
+            operation,
+          );
+          const snapshot = yield* projectionSnapshotQuery
+            .getShellSnapshot()
+            .pipe(
+              Effect.mapError((cause) =>
+                toGitManagerError(operation, "Failed to load project threads.", cause),
+              ),
+            );
+          for (const thread of snapshot.threads) {
+            if (thread.projectId !== projectId) continue;
+            yield* dispatchWorktreeCommand(
+              {
+                type: "thread.attach-to-worktree",
+                commandId: serverCommandId("project-main-thread-attach"),
+                threadId: thread.id,
+                worktreeId,
+                attachedAt: now,
+              },
+              operation,
+            );
+          }
+          yield* refreshGitStatus(project.workspaceRoot);
+          return {};
+        });
 
       return WsRpcGroup.of({
         [ORCHESTRATION_WS_METHODS.dispatchCommand]: (command) =>
@@ -864,12 +1302,18 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               "rpc.aggregate": "source-control",
             },
           ),
-        [WS_METHODS.sourceControlGetIssue]: ({ cwd, reference }) =>
+        [WS_METHODS.sourceControlGetIssue]: ({ cwd, reference, fullContent }) =>
           observeRpcEffect(
             WS_METHODS.sourceControlGetIssue,
-            sourceControlRegistry
-              .resolve({ cwd })
-              .pipe(Effect.flatMap((provider) => provider.getIssue({ cwd, reference }))),
+            sourceControlRegistry.resolve({ cwd }).pipe(
+              Effect.flatMap((provider) =>
+                provider.getIssue({
+                  cwd,
+                  reference,
+                  ...(fullContent !== undefined ? { fullContent } : {}),
+                }),
+              ),
+            ),
             {
               "rpc.aggregate": "source-control",
             },
@@ -906,13 +1350,29 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               "rpc.aggregate": "source-control",
             },
           ),
-        [WS_METHODS.sourceControlGetChangeRequestDetail]: ({ cwd, reference }) =>
+        [WS_METHODS.sourceControlGetChangeRequestDetail]: ({ cwd, reference, fullContent }) =>
           observeRpcEffect(
             WS_METHODS.sourceControlGetChangeRequestDetail,
+            sourceControlRegistry.resolve({ cwd }).pipe(
+              Effect.flatMap((provider) =>
+                provider.getChangeRequestDetail({
+                  cwd,
+                  reference,
+                  ...(fullContent !== undefined ? { fullContent } : {}),
+                }),
+              ),
+            ),
+            {
+              "rpc.aggregate": "source-control",
+            },
+          ),
+        [WS_METHODS.sourceControlGetChangeRequestDiff]: ({ cwd, reference }) =>
+          observeRpcEffect(
+            WS_METHODS.sourceControlGetChangeRequestDiff,
             sourceControlRegistry
               .resolve({ cwd })
               .pipe(
-                Effect.flatMap((provider) => provider.getChangeRequestDetail({ cwd, reference })),
+                Effect.flatMap((provider) => provider.getChangeRequestDiff({ cwd, reference })),
               ),
             {
               "rpc.aggregate": "source-control",
@@ -1058,9 +1518,114 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
         [WS_METHODS.gitPreparePullRequestThread]: (input) =>
           observeRpcEffect(
             WS_METHODS.gitPreparePullRequestThread,
-            gitWorkflow
-              .preparePullRequestThread(input)
-              .pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
+            (input.projectId
+              ? projectionSnapshotQuery.getProjectShellById(input.projectId).pipe(
+                  Effect.mapError((cause) =>
+                    toGitManagerError(
+                      "git.preparePullRequestThread",
+                      `Failed to load project ${input.projectId}.`,
+                      cause,
+                    ),
+                  ),
+                  Effect.map(Option.getOrNull),
+                  Effect.map((project) => ({
+                    ...input,
+                    worktreesDir: resolveProjectWorktreesDir(
+                      input.cwd,
+                      project?.projectMetadataDir,
+                    ),
+                  })),
+                  Effect.flatMap((normalizedInput) =>
+                    gitWorkflow.preparePullRequestThread(normalizedInput),
+                  ),
+                )
+              : gitWorkflow.preparePullRequestThread(input)
+            ).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
+            { "rpc.aggregate": "git" },
+          ),
+        [WS_METHODS.gitCreateWorktreeForProject]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.gitCreateWorktreeForProject,
+            createWorktreeForProject(input),
+            { "rpc.aggregate": "git" },
+          ),
+        [WS_METHODS.gitFindWorktreeForOrigin]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.gitFindWorktreeForOrigin,
+            projectionWorktrees
+              .findByOrigin(input)
+              .pipe(
+                Effect.mapError((cause) =>
+                  toGitManagerError(
+                    "git.findWorktreeForOrigin",
+                    "Failed to find worktree for origin.",
+                    cause,
+                  ),
+                ),
+              ),
+            { "rpc.aggregate": "git" },
+          ),
+        [WS_METHODS.gitArchiveWorktree]: (input) =>
+          observeRpcEffect(WS_METHODS.gitArchiveWorktree, archiveWorktree(input), {
+            "rpc.aggregate": "git",
+          }),
+        [WS_METHODS.gitRestoreWorktree]: (input) =>
+          observeRpcEffect(WS_METHODS.gitRestoreWorktree, restoreWorktree(input.worktreeId), {
+            "rpc.aggregate": "git",
+          }),
+        [WS_METHODS.gitDeleteWorktree]: (input) =>
+          observeRpcEffect(WS_METHODS.gitDeleteWorktree, deleteWorktree(input), {
+            "rpc.aggregate": "git",
+          }),
+        [WS_METHODS.threadsSetManualBucket]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.threadsSetManualBucket,
+            dispatchWorktreeCommand(
+              {
+                type: "thread.status-bucket.override",
+                commandId: serverCommandId("thread-status-bucket-override"),
+                threadId: input.threadId,
+                bucket: input.bucket,
+                changedAt: new Date().toISOString(),
+              },
+              "threads.setManualBucket",
+            ).pipe(Effect.as({})),
+            { "rpc.aggregate": "orchestration" },
+          ),
+        [WS_METHODS.threadsSetManualPosition]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.threadsSetManualPosition,
+            dispatchWorktreeCommand(
+              {
+                type: "thread.manual-position.set",
+                commandId: serverCommandId("thread-manual-position-set"),
+                threadId: input.threadId,
+                position: input.position,
+                changedAt: new Date().toISOString(),
+              },
+              "threads.setManualPosition",
+            ).pipe(Effect.as({})),
+            { "rpc.aggregate": "orchestration" },
+          ),
+        [WS_METHODS.worktreesSetManualPosition]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.worktreesSetManualPosition,
+            dispatchWorktreeCommand(
+              {
+                type: "worktree.manual-position.set",
+                commandId: serverCommandId("worktree-manual-position-set"),
+                worktreeId: input.worktreeId,
+                position: input.position,
+                changedAt: new Date().toISOString(),
+              },
+              "worktrees.setManualPosition",
+            ).pipe(Effect.as({})),
+            { "rpc.aggregate": "git" },
+          ),
+        [WS_METHODS.projectsInitializeGit]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.projectsInitializeGit,
+            initializeGitForProject(input.projectId),
             { "rpc.aggregate": "git" },
           ),
         [WS_METHODS.vcsListRefs]: (input) =>

@@ -1,4 +1,4 @@
-import { ProjectId, type OrchestrationProject } from "@t3tools/contracts";
+import { ProjectId, type OrchestrationProject } from "@s3tools/contracts";
 import { Effect, Layer, Option } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
@@ -143,8 +143,8 @@ describe("ProjectSetupScriptRunner", () => {
       cwd: "/repo/worktrees/a",
       worktreePath: "/repo/worktrees/a",
       env: {
-        T3CODE_PROJECT_ROOT: "/repo/project",
-        T3CODE_WORKTREE_PATH: "/repo/worktrees/a",
+        S3CODE_PROJECT_ROOT: "/repo/project",
+        S3CODE_WORKTREE_PATH: "/repo/worktrees/a",
       },
     });
     expect(write).toHaveBeenCalledWith({

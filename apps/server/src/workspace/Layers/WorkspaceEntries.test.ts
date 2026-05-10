@@ -18,7 +18,7 @@ const TestLayer = Layer.empty.pipe(
   Layer.provideMerge(VcsDriverRegistry.layer.pipe(Layer.provide(VcsProcess.layer))),
   Layer.provide(
     ServerConfig.layerTest(process.cwd(), {
-      prefix: "t3-workspace-entries-test-",
+      prefix: "s3-workspace-entries-test-",
     }),
   ),
   Layer.provideMerge(NodeServices.layer),
@@ -27,7 +27,7 @@ const TestLayer = Layer.empty.pipe(
 const makeTempDir = Effect.fn(function* (opts?: { prefix?: string; git?: boolean }) {
   const fileSystem = yield* FileSystem.FileSystem;
   const dir = yield* fileSystem.makeTempDirectoryScoped({
-    prefix: opts?.prefix ?? "t3code-workspace-entries-",
+    prefix: opts?.prefix ?? "s3code-workspace-entries-",
   });
   if (opts?.git) {
     yield* git(dir, ["init"]);
@@ -104,7 +104,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
 
     it.effect("filters and ranks entries by query", () =>
       Effect.gen(function* () {
-        const cwd = yield* makeTempDir({ prefix: "t3code-workspace-query-" });
+        const cwd = yield* makeTempDir({ prefix: "s3code-workspace-query-" });
         yield* writeTextFile(cwd, "src/components/Composer.tsx");
         yield* writeTextFile(cwd, "src/components/composePrompt.ts");
         yield* writeTextFile(cwd, "docs/composition.md");
@@ -121,7 +121,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
 
     it.effect("supports fuzzy subsequence queries for composer path search", () =>
       Effect.gen(function* () {
-        const cwd = yield* makeTempDir({ prefix: "t3code-workspace-fuzzy-query-" });
+        const cwd = yield* makeTempDir({ prefix: "s3code-workspace-fuzzy-query-" });
         yield* writeTextFile(cwd, "src/components/Composer.tsx");
         yield* writeTextFile(cwd, "src/components/composePrompt.ts");
         yield* writeTextFile(cwd, "docs/composition.md");
@@ -137,7 +137,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
 
     it.effect("prioritizes exact basename matches ahead of broader path matches", () =>
       Effect.gen(function* () {
-        const cwd = yield* makeTempDir({ prefix: "t3code-workspace-exact-ranking-" });
+        const cwd = yield* makeTempDir({ prefix: "s3code-workspace-exact-ranking-" });
         yield* writeTextFile(cwd, "src/components/Composer.tsx");
         yield* writeTextFile(cwd, "docs/composer.tsx-notes.md");
 
@@ -149,7 +149,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
 
     it.effect("tracks truncation without sorting every fuzzy match", () =>
       Effect.gen(function* () {
-        const cwd = yield* makeTempDir({ prefix: "t3code-workspace-fuzzy-limit-" });
+        const cwd = yield* makeTempDir({ prefix: "s3code-workspace-fuzzy-limit-" });
         yield* writeTextFile(cwd, "src/components/Composer.tsx");
         yield* writeTextFile(cwd, "src/components/composePrompt.ts");
         yield* writeTextFile(cwd, "docs/composition.md");
@@ -163,7 +163,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
 
     it.effect("excludes gitignored paths for git repositories", () =>
       Effect.gen(function* () {
-        const cwd = yield* makeTempDir({ prefix: "t3code-workspace-gitignore-", git: true });
+        const cwd = yield* makeTempDir({ prefix: "s3code-workspace-gitignore-", git: true });
         yield* writeTextFile(cwd, ".gitignore", ".convex/\nconvex/\nignored.txt\n");
         yield* writeTextFile(cwd, "src/keep.ts", "export {};");
         yield* writeTextFile(cwd, "ignored.txt", "ignore me");
@@ -184,7 +184,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
     it.effect("excludes tracked paths that match ignore rules", () =>
       Effect.gen(function* () {
         const cwd = yield* makeTempDir({
-          prefix: "t3code-workspace-tracked-gitignore-",
+          prefix: "s3code-workspace-tracked-gitignore-",
           git: true,
         });
         yield* writeTextFile(cwd, ".convex/local-storage/data.json", "{}");
@@ -203,7 +203,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
 
     it.effect("excludes .convex in non-git workspaces", () =>
       Effect.gen(function* () {
-        const cwd = yield* makeTempDir({ prefix: "t3code-workspace-non-git-convex-" });
+        const cwd = yield* makeTempDir({ prefix: "s3code-workspace-non-git-convex-" });
         yield* writeTextFile(cwd, ".convex/local-storage/data.json", "{}");
         yield* writeTextFile(cwd, "src/keep.ts", "export {};");
 
@@ -218,7 +218,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
 
     it.effect("deduplicates concurrent index builds for the same cwd", () =>
       Effect.gen(function* () {
-        const cwd = yield* makeTempDir({ prefix: "t3code-workspace-concurrent-build-" });
+        const cwd = yield* makeTempDir({ prefix: "s3code-workspace-concurrent-build-" });
         yield* writeTextFile(cwd, "src/components/Composer.tsx");
 
         let rootReadCount = 0;
@@ -248,7 +248,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
 
     it.effect("limits concurrent directory reads while walking the filesystem", () =>
       Effect.gen(function* () {
-        const cwd = yield* makeTempDir({ prefix: "t3code-workspace-read-concurrency-" });
+        const cwd = yield* makeTempDir({ prefix: "s3code-workspace-read-concurrency-" });
         yield* Effect.forEach(
           Array.from({ length: 80 }, (_, index) => index),
           (index) => writeTextFile(cwd, `group-${index}/entry-${index}.ts`, "export {};"),
@@ -287,7 +287,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
       Effect.gen(function* () {
         const workspaceEntries = yield* WorkspaceEntries;
         const path = yield* Path.Path;
-        const cwd = yield* makeTempDir({ prefix: "t3code-workspace-browse-prefix-" });
+        const cwd = yield* makeTempDir({ prefix: "s3code-workspace-browse-prefix-" });
         yield* writeTextFile(cwd, "alphabet.txt", "ignore me");
         yield* writeTextFile(cwd, "alpha/index.ts", "export {};\n");
         yield* writeTextFile(cwd, "alpine/index.ts", "export {};\n");
@@ -310,7 +310,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
       Effect.gen(function* () {
         const workspaceEntries = yield* WorkspaceEntries;
         const path = yield* Path.Path;
-        const cwd = yield* makeTempDir({ prefix: "t3code-workspace-browse-hidden-" });
+        const cwd = yield* makeTempDir({ prefix: "s3code-workspace-browse-hidden-" });
         yield* writeTextFile(cwd, ".config/settings.json", "{}");
         yield* writeTextFile(cwd, "config/settings.json", "{}");
 
@@ -333,7 +333,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
       Effect.gen(function* () {
         const workspaceEntries = yield* WorkspaceEntries;
         const path = yield* Path.Path;
-        const cwd = yield* makeTempDir({ prefix: "t3code-workspace-browse-relative-" });
+        const cwd = yield* makeTempDir({ prefix: "s3code-workspace-browse-relative-" });
         yield* writeTextFile(cwd, "packages/pkg.json", "{}");
 
         const result = yield* workspaceEntries.browse({
@@ -368,7 +368,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
         Effect.gen(function* () {
           const workspaceEntries = yield* WorkspaceEntries;
           const path = yield* Path.Path;
-          const cwd = yield* makeTempDir({ prefix: "t3code-workspace-browse-symlink-" });
+          const cwd = yield* makeTempDir({ prefix: "s3code-workspace-browse-symlink-" });
           yield* writeTextFile(cwd, "real-dir/index.ts", "export {};\n");
           yield* writeTextFile(cwd, "real-file.txt", "hello");
 
@@ -398,7 +398,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
     it.effect("detects files starting with the bookmark magic", () =>
       Effect.gen(function* () {
         const path = yield* Path.Path;
-        const cwd = yield* makeTempDir({ prefix: "t3code-bookmark-magic-" });
+        const cwd = yield* makeTempDir({ prefix: "s3code-bookmark-magic-" });
         const aliasPath = path.join(cwd, "alias.bin");
         // Minimal header: "book\x00\x00\x00\x00mark\x00\x00\x00\x00" matches
         // the modern macOS alias format we care about; only the first four
@@ -417,7 +417,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
     it.effect("returns false for regular text files", () =>
       Effect.gen(function* () {
         const path = yield* Path.Path;
-        const cwd = yield* makeTempDir({ prefix: "t3code-bookmark-magic-" });
+        const cwd = yield* makeTempDir({ prefix: "s3code-bookmark-magic-" });
         const textPath = path.join(cwd, "note.txt");
         yield* writeTextFile(cwd, "note.txt", "hello world");
         const result = yield* Effect.promise(() => isMacOSBookmarkAlias(textPath));
@@ -428,7 +428,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
     it.effect("returns false for files shorter than the magic", () =>
       Effect.gen(function* () {
         const path = yield* Path.Path;
-        const cwd = yield* makeTempDir({ prefix: "t3code-bookmark-magic-" });
+        const cwd = yield* makeTempDir({ prefix: "s3code-bookmark-magic-" });
         const shortPath = path.join(cwd, "short.bin");
         yield* Effect.promise(() => fsPromises.writeFile(shortPath, Buffer.from("bo")));
         const result = yield* Effect.promise(() => isMacOSBookmarkAlias(shortPath));
@@ -439,7 +439,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
     it.effect("returns false for missing files", () =>
       Effect.gen(function* () {
         const path = yield* Path.Path;
-        const cwd = yield* makeTempDir({ prefix: "t3code-bookmark-magic-" });
+        const cwd = yield* makeTempDir({ prefix: "s3code-bookmark-magic-" });
         const missing = path.join(cwd, "does-not-exist.bin");
         const result = yield* Effect.promise(() => isMacOSBookmarkAlias(missing));
         expect(result).toBe(false);
@@ -449,7 +449,7 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
     it.effect("rejects files larger than the probe cap without reading magic", () =>
       Effect.gen(function* () {
         const path = yield* Path.Path;
-        const cwd = yield* makeTempDir({ prefix: "t3code-bookmark-magic-" });
+        const cwd = yield* makeTempDir({ prefix: "s3code-bookmark-magic-" });
         const largePath = path.join(cwd, "big-fake-alias.bin");
         // Starts with the bookmark magic but is larger than the probe cap
         // (64 KB). Without the size prefilter this would return true; with

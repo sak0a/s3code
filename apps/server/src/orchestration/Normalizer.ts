@@ -1,10 +1,12 @@
-import { Effect, FileSystem, Path } from "effect";
+import { Effect, FileSystem, Path, Schema } from "effect";
 import {
   type ClientOrchestrationCommand,
+  DEFAULT_PROJECT_METADATA_DIR,
   type OrchestrationCommand,
   OrchestrationDispatchCommandError,
+  ProjectMetadataDir,
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 import { createAttachmentId, resolveAttachmentPath } from "../attachmentStore.ts";
 import { ServerConfig } from "../config.ts";
@@ -45,6 +47,18 @@ export const normalizeDispatchCommand = (command: ClientOrchestrationCommand) =>
           ),
         );
 
+    const normalizeProjectMetadataDir = (projectMetadataDir: string | undefined) =>
+      Effect.try({
+        try: () =>
+          Schema.decodeUnknownSync(ProjectMetadataDir)(
+            (projectMetadataDir ?? DEFAULT_PROJECT_METADATA_DIR).trim(),
+          ),
+        catch: () =>
+          new OrchestrationDispatchCommandError({
+            message: "Project metadata directory must be a relative path inside the project root.",
+          }),
+      });
+
     if (command.type === "project.create") {
       return {
         ...command,
@@ -52,14 +66,20 @@ export const normalizeDispatchCommand = (command: ClientOrchestrationCommand) =>
           command.workspaceRoot,
           command.createWorkspaceRootIfMissing,
         ),
+        projectMetadataDir: yield* normalizeProjectMetadataDir(command.projectMetadataDir),
         createWorkspaceRootIfMissing: command.createWorkspaceRootIfMissing === true,
       } satisfies OrchestrationCommand;
     }
 
-    if (command.type === "project.meta.update" && command.workspaceRoot !== undefined) {
+    if (command.type === "project.meta.update") {
       return {
         ...command,
-        workspaceRoot: yield* normalizeProjectWorkspaceRoot(command.workspaceRoot),
+        ...(command.workspaceRoot !== undefined
+          ? { workspaceRoot: yield* normalizeProjectWorkspaceRoot(command.workspaceRoot) }
+          : {}),
+        ...(command.projectMetadataDir !== undefined
+          ? { projectMetadataDir: yield* normalizeProjectMetadataDir(command.projectMetadataDir) }
+          : {}),
       } satisfies OrchestrationCommand;
     }
 

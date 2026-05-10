@@ -2,12 +2,12 @@ import type { NetworkInterfaceInfo } from "node:os";
 import {
   createAdvertisedEndpoint,
   type CreateAdvertisedEndpointInput,
-} from "@t3tools/client-runtime";
+} from "@s3tools/client-runtime";
 import type {
   AdvertisedEndpoint,
   AdvertisedEndpointProvider,
   DesktopServerExposureMode,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 const DESKTOP_LOOPBACK_HOST = "127.0.0.1";
 const DESKTOP_LAN_BIND_HOST = "0.0.0.0";

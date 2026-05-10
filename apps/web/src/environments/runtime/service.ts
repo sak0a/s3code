@@ -9,7 +9,7 @@ import {
   type ServerConfig,
   type TerminalEvent,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { type QueryClient } from "@tanstack/react-query";
 import { Throttler } from "@tanstack/react-pacer";
 import {
@@ -18,7 +18,7 @@ import {
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@t3tools/client-runtime";
+} from "@s3tools/client-runtime";
 
 import {
   markPromotedDraftThreadByRef,
@@ -1057,6 +1057,9 @@ function applyShellEvent(event: OrchestrationShellStreamEvent, environmentId: En
     case "project-upserted":
     case "project-removed":
       syncProjectUiFromStore();
+      return;
+    case "worktree-upserted":
+    case "worktree-removed":
       return;
     case "thread-upserted":
       syncThreadUiFromStore();

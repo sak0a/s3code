@@ -8,8 +8,8 @@ import {
   ORCHESTRATION_WS_METHODS,
   type ServerSettingsPatch,
   WS_METHODS,
-} from "@t3tools/contracts";
-import { applyGitStatusStreamEvent } from "@t3tools/shared/git";
+} from "@s3tools/contracts";
+import { applyGitStatusStreamEvent } from "@s3tools/shared/git";
 import { Effect, Stream } from "effect";
 
 import { type WsRpcProtocolClient } from "./protocol";
@@ -69,6 +69,7 @@ export interface WsRpcClient {
     readonly readFile: RpcUnaryMethod<typeof WS_METHODS.projectsReadFile>;
     readonly searchEntries: RpcUnaryMethod<typeof WS_METHODS.projectsSearchEntries>;
     readonly writeFile: RpcUnaryMethod<typeof WS_METHODS.projectsWriteFile>;
+    readonly initializeGit: RpcUnaryMethod<typeof WS_METHODS.projectsInitializeGit>;
   };
   readonly filesystem: {
     readonly browse: RpcUnaryMethod<typeof WS_METHODS.filesystemBrowse>;
@@ -85,6 +86,9 @@ export interface WsRpcClient {
     >;
     readonly getChangeRequestDetail: RpcUnaryMethod<
       typeof WS_METHODS.sourceControlGetChangeRequestDetail
+    >;
+    readonly getChangeRequestDiff: RpcUnaryMethod<
+      typeof WS_METHODS.sourceControlGetChangeRequestDiff
     >;
   };
   readonly shell: {
@@ -120,6 +124,20 @@ export interface WsRpcClient {
     readonly preparePullRequestThread: RpcUnaryMethod<
       typeof WS_METHODS.gitPreparePullRequestThread
     >;
+    readonly createWorktreeForProject: RpcUnaryMethod<
+      typeof WS_METHODS.gitCreateWorktreeForProject
+    >;
+    readonly findWorktreeForOrigin: RpcUnaryMethod<typeof WS_METHODS.gitFindWorktreeForOrigin>;
+    readonly archiveWorktree: RpcUnaryMethod<typeof WS_METHODS.gitArchiveWorktree>;
+    readonly restoreWorktree: RpcUnaryMethod<typeof WS_METHODS.gitRestoreWorktree>;
+    readonly deleteWorktree: RpcUnaryMethod<typeof WS_METHODS.gitDeleteWorktree>;
+  };
+  readonly worktrees: {
+    readonly setManualPosition: RpcUnaryMethod<typeof WS_METHODS.worktreesSetManualPosition>;
+  };
+  readonly threads: {
+    readonly setManualBucket: RpcUnaryMethod<typeof WS_METHODS.threadsSetManualBucket>;
+    readonly setManualPosition: RpcUnaryMethod<typeof WS_METHODS.threadsSetManualPosition>;
   };
   readonly server: {
     readonly getConfig: RpcUnaryNoArgMethod<typeof WS_METHODS.serverGetConfig>;
@@ -180,6 +198,8 @@ export function createWsRpcClient(transport: WsTransport): WsRpcClient {
         transport.request((client) => client[WS_METHODS.projectsSearchEntries](input)),
       writeFile: (input) =>
         transport.request((client) => client[WS_METHODS.projectsWriteFile](input)),
+      initializeGit: (input) =>
+        transport.request((client) => client[WS_METHODS.projectsInitializeGit](input)),
     },
     filesystem: {
       browse: (input) => transport.request((client) => client[WS_METHODS.filesystemBrowse](input)),
@@ -203,6 +223,8 @@ export function createWsRpcClient(transport: WsTransport): WsRpcClient {
         transport.request((client) =>
           client[WS_METHODS.sourceControlGetChangeRequestDetail](input),
         ),
+      getChangeRequestDiff: (input) =>
+        transport.request((client) => client[WS_METHODS.sourceControlGetChangeRequestDiff](input)),
     },
     shell: {
       openInEditor: (input) =>
@@ -256,6 +278,26 @@ export function createWsRpcClient(transport: WsTransport): WsRpcClient {
         transport.request((client) => client[WS_METHODS.gitResolvePullRequest](input)),
       preparePullRequestThread: (input) =>
         transport.request((client) => client[WS_METHODS.gitPreparePullRequestThread](input)),
+      createWorktreeForProject: (input) =>
+        transport.request((client) => client[WS_METHODS.gitCreateWorktreeForProject](input)),
+      findWorktreeForOrigin: (input) =>
+        transport.request((client) => client[WS_METHODS.gitFindWorktreeForOrigin](input)),
+      archiveWorktree: (input) =>
+        transport.request((client) => client[WS_METHODS.gitArchiveWorktree](input)),
+      restoreWorktree: (input) =>
+        transport.request((client) => client[WS_METHODS.gitRestoreWorktree](input)),
+      deleteWorktree: (input) =>
+        transport.request((client) => client[WS_METHODS.gitDeleteWorktree](input)),
+    },
+    worktrees: {
+      setManualPosition: (input) =>
+        transport.request((client) => client[WS_METHODS.worktreesSetManualPosition](input)),
+    },
+    threads: {
+      setManualBucket: (input) =>
+        transport.request((client) => client[WS_METHODS.threadsSetManualBucket](input)),
+      setManualPosition: (input) =>
+        transport.request((client) => client[WS_METHODS.threadsSetManualPosition](input)),
     },
     server: {
       getConfig: () => transport.request((client) => client[WS_METHODS.serverGetConfig]({})),

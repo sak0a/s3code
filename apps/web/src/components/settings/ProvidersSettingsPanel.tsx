@@ -5,9 +5,9 @@ import {
   ProviderDriverKind,
   type ProviderInstanceConfig,
   type ProviderInstanceId,
-} from "@t3tools/contracts";
-import { DEFAULT_UNIFIED_SETTINGS } from "@t3tools/contracts/settings";
-import { createModelSelection } from "@t3tools/shared/model";
+} from "@s3tools/contracts";
+import { DEFAULT_UNIFIED_SETTINGS } from "@s3tools/contracts/settings";
+import { createModelSelection } from "@s3tools/shared/model";
 import { Equal } from "effect";
 
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";

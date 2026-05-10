@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ServerProviderModel } from "@t3tools/contracts";
+import type { ServerProviderModel } from "@s3tools/contracts";
 
 import { deriveProviderModelsForDisplay } from "./ProviderInstanceCard";
 

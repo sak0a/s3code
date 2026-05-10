@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "@t3tools/contracts/settings";
+import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "@s3tools/contracts/settings";
 import {
   getThreadSortTimestamp,
   sortThreads,
@@ -36,6 +36,83 @@ export interface ThreadStatusPill {
   colorClass: string;
   dotClass: string;
   pulse: boolean;
+}
+
+export type SidebarStatusBucket = "idle" | "in_progress" | "review" | "done";
+
+export interface DeriveStatusBucketInput {
+  manualBucket: SidebarStatusBucket | null;
+  statusPill: ThreadStatusPill | null;
+}
+
+export function deriveStatusBucket(input: DeriveStatusBucketInput): SidebarStatusBucket {
+  if (input.manualBucket !== null) {
+    return input.manualBucket;
+  }
+
+  switch (input.statusPill?.label) {
+    case "Working":
+    case "Connecting":
+      return "in_progress";
+    case "Plan Ready":
+    case "Pending Approval":
+    case "Awaiting Input":
+      return "review";
+    case "Completed":
+      return "done";
+    default:
+      return "idle";
+  }
+}
+
+export function aggregateWorktreeStatus(
+  buckets: ReadonlyArray<SidebarStatusBucket>,
+): SidebarStatusBucket {
+  if (buckets.includes("in_progress")) {
+    return "in_progress";
+  }
+  if (buckets.includes("review")) {
+    return "review";
+  }
+  if (buckets.length > 0 && buckets.every((bucket) => bucket === "done")) {
+    return "done";
+  }
+  return "idle";
+}
+
+const ARCHIVE_SUGGESTION_MIN_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+export interface ShouldSuggestArchiveInput {
+  buckets: ReadonlyArray<SidebarStatusBucket>;
+  latestUpdatedAt: string | undefined;
+  nowMs: number;
+}
+
+export function shouldSuggestArchive(input: ShouldSuggestArchiveInput): boolean {
+  if (input.buckets.length === 0) {
+    return false;
+  }
+  if (!input.buckets.every((bucket) => bucket === "done")) {
+    return false;
+  }
+  if (!input.latestUpdatedAt) {
+    return false;
+  }
+
+  const updatedMs = Date.parse(input.latestUpdatedAt);
+  return !Number.isNaN(updatedMs) && input.nowMs - updatedMs >= ARCHIVE_SUGGESTION_MIN_AGE_MS;
+}
+
+export function canArchiveSidebarThread(
+  thread: Pick<SidebarThreadSummary, "latestUserMessageAt">,
+): boolean {
+  return thread.latestUserMessageAt !== null;
+}
+
+export function shouldConfirmCloseSidebarThread(
+  thread: Pick<SidebarThreadSummary, "latestUserMessageAt">,
+): boolean {
+  return thread.latestUserMessageAt !== null;
 }
 
 const THREAD_STATUS_PRIORITY: Record<ThreadStatusPill["label"], number> = {
@@ -473,17 +550,15 @@ export function getFallbackThreadIdAfterDelete<
     return null;
   }
 
-  return (
-    sortThreads(
-      threads.filter(
-        (thread) =>
-          thread.projectId === deletedThread.projectId &&
-          thread.id !== deletedThreadId &&
-          !deletedThreadIds?.has(thread.id),
-      ),
-      sortOrder,
-    )[0]?.id ?? null
+  const remainingThreads = threads.filter(
+    (thread) => thread.id !== deletedThreadId && !deletedThreadIds?.has(thread.id),
   );
+  const sameProjectFallback = sortThreads(
+    remainingThreads.filter((thread) => thread.projectId === deletedThread.projectId),
+    sortOrder,
+  )[0]?.id;
+
+  return sameProjectFallback ?? sortThreads(remainingThreads, sortOrder)[0]?.id ?? null;
 }
 export function getProjectSortTimestamp(
   project: SidebarProject,
