@@ -230,14 +230,24 @@ function belongsToWorktree(thread: SidebarTreeThread, worktree: SidebarWorktree)
     }
   }
 
-  if (thread.worktreePath === worktree.worktreePath) {
+  if (
+    thread.worktreePath !== null &&
+    worktree.worktreePath !== null &&
+    thread.worktreePath === worktree.worktreePath
+  ) {
     return true;
   }
 
+  if (thread.worktreePath !== null || worktree.worktreePath !== null) {
+    return false;
+  }
+
+  if (worktree.origin !== "main") {
+    return thread.branch === worktree.branch;
+  }
+
   return (
-    worktree.origin === "main" &&
-    thread.worktreePath === null &&
-    (thread.branch === null || thread.branch === worktree.branch)
+    thread.branch === null || thread.branch === worktree.branch || isLikelyMainBranch(thread.branch)
   );
 }
 
@@ -349,31 +359,48 @@ function ensureProjectWorktrees(input: {
   threads: ReadonlyArray<SidebarTreeThread>;
   worktrees: ReadonlyArray<SidebarWorktree>;
 }): ReadonlyArray<SidebarWorktree> {
-  if (input.worktrees.length > 0) {
+  if (input.threads.length === 0) {
     return input.worktrees;
   }
 
-  if (input.threads.length === 0) {
-    return [];
+  const worktrees = [...input.worktrees];
+  for (const thread of input.threads) {
+    if (worktrees.some((worktree) => belongsToWorktree(thread, worktree))) {
+      continue;
+    }
+    worktrees.push(synthesizeWorktreeForThread(input.project, thread));
   }
 
-  const latestUpdatedAt = getLatestUpdatedAt(input.threads);
-  return [
-    {
-      archivedAt: null,
-      branch: getFallbackMainBranch(input.threads),
-      manualPosition: 0,
-      origin: "main",
-      projectId: input.project.id,
-      updatedAt: latestUpdatedAt,
-      worktreeId: `main:${input.project.environmentId}:${input.project.id}`,
-      worktreePath: null,
-    },
-  ];
+  return worktrees;
 }
 
-function getFallbackMainBranch(threads: ReadonlyArray<SidebarTreeThread>): string {
-  return threads.find((thread) => thread.worktreePath === null && thread.branch)?.branch ?? "main";
+function synthesizeWorktreeForThread(project: Project, thread: SidebarTreeThread): SidebarWorktree {
+  const branch = thread.branch ?? "main";
+  const origin: SidebarWorktreeOrigin =
+    thread.worktreePath === null && isLikelyMainBranch(thread.branch) ? "main" : "branch";
+  return {
+    archivedAt: null,
+    branch,
+    manualPosition: origin === "main" ? 0 : null,
+    origin,
+    projectId: project.id,
+    updatedAt: thread.updatedAt ?? thread.createdAt,
+    worktreeId:
+      origin === "main"
+        ? `main:${project.environmentId}:${project.id}`
+        : `branch:${project.environmentId}:${project.id}:${thread.worktreePath ? normalizeWorktreePath(thread.worktreePath) : branch}`,
+    worktreePath: thread.worktreePath,
+  };
+}
+
+function isLikelyMainBranch(branch: string | null | undefined): boolean {
+  return (
+    branch === null ||
+    branch === undefined ||
+    branch === "main" ||
+    branch === "master" ||
+    branch === "trunk"
+  );
 }
 
 function sortWorktrees(worktrees: ReadonlyArray<SidebarWorktree>): SidebarWorktree[] {

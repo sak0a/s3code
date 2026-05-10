@@ -2937,15 +2937,25 @@ export default function ChatView(props: ChatViewProps) {
     if (!activeProject) return;
     const threadIdForSend = activeThread.id;
     const isFirstMessage = !isServerThread || activeThread.messages.length === 0;
+    const shouldMaterializeLegacyBranchWorktree =
+      isServerThread &&
+      !isFirstMessage &&
+      activeThread.worktreePath === null &&
+      activeThreadBranch !== null &&
+      gitStatusQuery.data !== null &&
+      gitStatusQuery.data.refName !== activeThreadBranch;
     const baseBranchForWorktree =
       isFirstMessage && sendEnvMode === "worktree" && !activeThread.worktreePath
         ? activeThreadBranch
-        : null;
+        : shouldMaterializeLegacyBranchWorktree
+          ? activeThreadBranch
+          : null;
 
     // In worktree mode, require an explicit base branch so we don't silently
     // fall back to local execution when branch selection is missing.
     const shouldCreateWorktree =
-      isFirstMessage && sendEnvMode === "worktree" && !activeThread.worktreePath;
+      (isFirstMessage && sendEnvMode === "worktree" && !activeThread.worktreePath) ||
+      shouldMaterializeLegacyBranchWorktree;
     if (shouldCreateWorktree && !activeThreadBranch) {
       setThreadError(threadIdForSend, "Select a base branch before sending in New worktree mode.");
       return;
@@ -3134,7 +3144,9 @@ export default function ChatView(props: ChatViewProps) {
                     prepareWorktree: {
                       projectCwd: activeProject.cwd,
                       baseBranch: baseBranchForWorktree,
-                      branch: buildTemporaryWorktreeBranchName(),
+                      ...(shouldMaterializeLegacyBranchWorktree
+                        ? {}
+                        : { branch: buildTemporaryWorktreeBranchName() }),
                     },
                     runSetupScript: true,
                   }
