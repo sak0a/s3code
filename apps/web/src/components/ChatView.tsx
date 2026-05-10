@@ -921,10 +921,7 @@ export default function ChatView(props: ChatViewProps) {
     return drafts;
   }, [draftThreadsByThreadKey, activeProjectRef]);
   const activeWorktreeSessionTabs = useStore((state) => {
-    if (!activeProjectRef) return EMPTY_SESSION_TABS;
-    if (tabsWorktreeId === undefined && tabsWorktreePath === undefined) {
-      return EMPTY_SESSION_TABS;
-    }
+    if (!activeProjectRef || !activeThread) return EMPTY_SESSION_TABS;
     const serverThreads = selectSidebarThreadsForProjectRef(state, activeProjectRef);
     const allThreads =
       draftThreadSummariesForProject.length > 0

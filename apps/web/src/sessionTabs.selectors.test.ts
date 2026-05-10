@@ -127,6 +127,36 @@ describe("createSessionTabsSelector", () => {
     expect(titles).toEqual(["Empty Session", "Thread"]);
   });
 
+  it("groups main-worktree threads when filter has no worktreeId or path", () => {
+    // Main-branch threads have worktreePath = null and worktreeId = null.
+    // The sidebar treats them as members of a synthesized 'main' worktree;
+    // the tab strip should do the same instead of returning empty.
+    const select = createSessionTabsSelector();
+    const threads = [
+      makeThread({
+        id: "m1" as never,
+        worktreeId: null,
+        worktreePath: null,
+        branch: "main",
+      }),
+      makeThread({
+        id: "m2" as never,
+        worktreeId: null,
+        worktreePath: null,
+        branch: "main",
+      }),
+      makeThread({
+        id: "wt" as never,
+        worktreeId: "wt-1",
+        worktreePath: "/tmp/feature",
+        branch: "feature",
+      }),
+    ];
+    const result = select(threads, { worktreeId: null, worktreePath: null });
+    const ids = result.map((item) => item.key.split(":").at(-1)).sort();
+    expect(ids).toEqual(["m1", "m2"]);
+  });
+
   it("matches by worktreePath even when both sides have differing worktreeIds", () => {
     // Mirrors sidebar's belongsToWorktree behavior: new server-created
     // sessions can land with a fresh worktreeId despite sharing a path

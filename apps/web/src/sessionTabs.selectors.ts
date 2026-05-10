@@ -48,16 +48,19 @@ interface CachedItem {
 }
 
 // Mirrors sidebar/hooks/useSidebarTree.ts's belongsToWorktree: prefer
-// worktreeId match, but fall back to worktreePath even when worktreeId
-// is set on the thread but doesn't match the active. New server-side
-// sessions sometimes carry a fresh worktreeId despite sharing a path
-// with the active session.
+// worktreeId match, fall back to worktreePath even when worktreeId is
+// set but doesn't match the active session, and treat
+// "no worktreePath, no worktreeId" as the main worktree (groups threads
+// with worktreePath === null together).
 function threadBelongsToFilter(thread: SidebarThreadSummary, filter: SessionTabsFilter): boolean {
   if (thread.worktreeId !== undefined && thread.worktreeId !== null && filter.worktreeId) {
     if (thread.worktreeId === filter.worktreeId) return true;
   }
   if (filter.worktreePath && thread.worktreePath === filter.worktreePath) {
     return true;
+  }
+  if (!filter.worktreeId && !filter.worktreePath) {
+    return thread.worktreePath === null;
   }
   return false;
 }
