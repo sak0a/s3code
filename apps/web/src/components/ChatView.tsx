@@ -130,6 +130,7 @@ import {
 import { newCommandId, newDraftId, newMessageId, newThreadId } from "~/lib/utils";
 import { getProviderModelCapabilities, resolveSelectableProvider } from "../providerModels";
 import { useSettings } from "../hooks/useSettings";
+import { useEvent } from "../hooks/useEvent";
 import { resolveAppModelSelectionForInstance } from "../modelSelection";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { deriveLogicalProjectKeyFromSettings } from "../logicalProject";
@@ -1863,7 +1864,7 @@ export default function ChatView(props: ChatViewProps) {
     () => shortcutLabelForCommand(keybindings, "diff.toggle", nonTerminalShortcutLabelOptions),
     [keybindings, nonTerminalShortcutLabelOptions],
   );
-  const onToggleDiff = useCallback(() => {
+  const onToggleDiff = useEvent(() => {
     if (!isServerThread) {
       return;
     }
@@ -1888,8 +1889,8 @@ export default function ChatView(props: ChatViewProps) {
             }
           : buildOpenDiffSearch(previous),
     });
-  }, [diffOpen, environmentId, isServerThread, navigate, onDiffPanelOpen, threadId]);
-  const onTogglePreview = useCallback(() => {
+  });
+  const onTogglePreview = useEvent(() => {
     if (!activeProject) {
       return;
     }
@@ -1924,16 +1925,7 @@ export default function ChatView(props: ChatViewProps) {
       replace: true,
       search: nextSearch,
     });
-  }, [
-    activeProject,
-    draftId,
-    environmentId,
-    navigate,
-    onPreviewPanelOpen,
-    previewOpen,
-    routeKind,
-    threadId,
-  ]);
+  });
 
   const envLocked = Boolean(
     activeThread &&
@@ -2067,7 +2059,7 @@ export default function ChatView(props: ChatViewProps) {
       terminalState.terminalIds.length,
     ],
   );
-  const runProjectScript = useCallback(
+  const runProjectScript = useEvent(
     async (
       script: ProjectScript,
       options?: {
@@ -2154,22 +2146,6 @@ export default function ChatView(props: ChatViewProps) {
         );
       }
     },
-    [
-      activeProject,
-      activeThread,
-      activeThreadId,
-      activeThreadRef,
-      gitCwd,
-      setTerminalOpen,
-      setThreadError,
-      storeNewTerminal,
-      storeSetActiveTerminal,
-      setLastInvokedScriptByProjectId,
-      environmentId,
-      terminalState.activeTerminalId,
-      terminalState.runningTerminalIds,
-      terminalState.terminalIds,
-    ],
   );
 
   const persistProjectScripts = useCallback(
