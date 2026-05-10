@@ -550,17 +550,15 @@ export function getFallbackThreadIdAfterDelete<
     return null;
   }
 
-  return (
-    sortThreads(
-      threads.filter(
-        (thread) =>
-          thread.projectId === deletedThread.projectId &&
-          thread.id !== deletedThreadId &&
-          !deletedThreadIds?.has(thread.id),
-      ),
-      sortOrder,
-    )[0]?.id ?? null
+  const remainingThreads = threads.filter(
+    (thread) => thread.id !== deletedThreadId && !deletedThreadIds?.has(thread.id),
   );
+  const sameProjectFallback = sortThreads(
+    remainingThreads.filter((thread) => thread.projectId === deletedThread.projectId),
+    sortOrder,
+  )[0]?.id;
+
+  return sameProjectFallback ?? sortThreads(remainingThreads, sortOrder)[0]?.id ?? null;
 }
 export function getProjectSortTimestamp(
   project: SidebarProject,

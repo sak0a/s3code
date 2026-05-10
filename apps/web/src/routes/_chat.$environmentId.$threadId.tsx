@@ -18,9 +18,12 @@ import {
   type RightPanelRouteSearch,
 } from "../rightPanelRouteSearch";
 import { useMediaQuery } from "../hooks/useMediaQuery";
+import { useSettings } from "../hooks/useSettings";
+import { sortThreads } from "../lib/threadSort";
 import { RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY } from "../rightPanelLayout";
 import { selectEnvironmentState, selectThreadExistsByRef, useStore } from "../store";
 import { createThreadSelectorByRef } from "../storeSelectors";
+import { getThreadFromEnvironmentState } from "../threadDerivation";
 import { resolveThreadRouteRef, buildThreadRouteParams } from "../threadRoutes";
 import { RightPanelSheet } from "../components/RightPanelSheet";
 import { SidebarInset } from "~/components/ui/sidebar";
@@ -36,9 +39,19 @@ function ChatThreadRouteView() {
   );
   const serverThread = useStore(useMemo(() => createThreadSelectorByRef(threadRef), [threadRef]));
   const threadExists = useStore((store) => selectThreadExistsByRef(store, threadRef));
-  const environmentHasServerThreads = useStore(
-    (store) => selectEnvironmentState(store, threadRef?.environmentId ?? null).threadIds.length > 0,
+  const environmentState = useStore((store) =>
+    selectEnvironmentState(store, threadRef?.environmentId ?? null),
   );
+  const environmentHasServerThreads = environmentState.threadIds.length > 0;
+  const environmentThreads = useMemo(
+    () =>
+      environmentState.threadIds.flatMap((threadId) => {
+        const thread = getThreadFromEnvironmentState(environmentState, threadId);
+        return thread ? [thread] : [];
+      }),
+    [environmentState],
+  );
+  const sidebarThreadSortOrder = useSettings((settings) => settings.sidebarThreadSortOrder);
   const draftThreadExists = useComposerDraftStore((store) =>
     threadRef ? store.getDraftThreadByRef(threadRef) !== null : false,
   );
@@ -153,9 +166,29 @@ function ChatThreadRouteView() {
     }
 
     if (!routeThreadExists && environmentHasAnyThreads) {
-      void navigate({ to: "/", replace: true });
+      const fallbackThread = sortThreads(environmentThreads, sidebarThreadSortOrder)[0];
+      if (fallbackThread) {
+        void navigate({
+          to: "/$environmentId/$threadId",
+          params: buildThreadRouteParams({
+            environmentId: fallbackThread.environmentId,
+            threadId: fallbackThread.id,
+          }),
+          replace: true,
+        });
+      } else {
+        void navigate({ to: "/", replace: true });
+      }
     }
-  }, [bootstrapComplete, environmentHasAnyThreads, navigate, routeThreadExists, threadRef]);
+  }, [
+    bootstrapComplete,
+    environmentHasAnyThreads,
+    environmentThreads,
+    navigate,
+    routeThreadExists,
+    sidebarThreadSortOrder,
+    threadRef,
+  ]);
 
   useEffect(() => {
     if (!threadRef || !serverThreadStarted || !draftThread?.promotedTo) {

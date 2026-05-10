@@ -950,6 +950,35 @@ describe("getFallbackThreadIdAfterDelete", () => {
 
     expect(fallbackThreadId).toBe(ThreadId.make("thread-next"));
   });
+
+  it("falls back to another project when the deleted thread is the last in its project", () => {
+    const fallbackThreadId = getFallbackThreadIdAfterDelete({
+      threads: [
+        makeThread({
+          id: ThreadId.make("thread-active"),
+          projectId: ProjectId.make("project-1"),
+          createdAt: "2026-03-09T10:05:00.000Z",
+          messages: [],
+        }),
+        makeThread({
+          id: ThreadId.make("thread-other-old"),
+          projectId: ProjectId.make("project-2"),
+          createdAt: "2026-03-09T10:06:00.000Z",
+          messages: [],
+        }),
+        makeThread({
+          id: ThreadId.make("thread-other-new"),
+          projectId: ProjectId.make("project-3"),
+          createdAt: "2026-03-09T10:10:00.000Z",
+          messages: [],
+        }),
+      ],
+      deletedThreadId: ThreadId.make("thread-active"),
+      sortOrder: "created_at",
+    });
+
+    expect(fallbackThreadId).toBe(ThreadId.make("thread-other-new"));
+  });
 });
 describe("sortProjectsForSidebar", () => {
   it("sorts projects by the most recent user message across their threads", () => {

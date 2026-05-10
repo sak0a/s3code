@@ -127,8 +127,8 @@ export function useThreadActions() {
 
       if (opts.optimistic) {
         // Fire WS delete first so the network round-trip parallelizes
-        // with the local cleanup + render. Errors surface via toast; the
-        // local state stays cleared (matches existing behavior).
+        // with the route switch / local cleanup. Errors surface via toast;
+        // the local state stays cleared (matches existing behavior).
         void dispatchDelete.catch((error: unknown) => {
           toastManager.add(
             stackedThreadToast({
@@ -160,18 +160,22 @@ export function useThreadActions() {
           }
         }
 
-        useStore.getState().removeThread(threadRef);
-        clearComposerDraftForThread(threadRef);
-        clearProjectDraftThreadById(
-          scopeProjectRef(threadRef.environmentId, thread.projectId),
-          threadRef,
-        );
-        clearTerminalState(threadRef);
+        const cleanupDeletedThread = () => {
+          useStore.getState().removeThread(threadRef);
+          clearComposerDraftForThread(threadRef);
+          clearProjectDraftThreadById(
+            scopeProjectRef(threadRef.environmentId, thread.projectId),
+            threadRef,
+          );
+          clearTerminalState(threadRef);
+        };
 
         if (navigateTarget) {
           // Kick off without awaiting — the click handler returns
-          // immediately and React can commit the local-cleanup paint
-          // alongside the route change.
+          // immediately. For the active thread, defer local removal until
+          // after navigation has had a chance to paint; removing the mounted
+          // active thread first forces ChatView to reconcile a missing heavy
+          // thread and makes close feel frozen.
           if (navigateTarget.kind === "fallback") {
             void router.navigate({
               to: "/$environmentId/$threadId",
@@ -181,6 +185,11 @@ export function useThreadActions() {
           } else {
             void router.navigate({ to: "/", replace: true });
           }
+          requestAnimationFrame(() => {
+            setTimeout(cleanupDeletedThread, 0);
+          });
+        } else {
+          cleanupDeletedThread();
         }
         return;
       }
