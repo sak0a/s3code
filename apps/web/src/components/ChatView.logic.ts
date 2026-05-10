@@ -259,6 +259,16 @@ export function threadHasStarted(thread: Thread | null | undefined): boolean {
   );
 }
 
+// Stricter than `threadHasStarted`: the draft→server route swap must only
+// fire once the server has at least one message or turn recorded for the
+// thread. A bare `thread.session !== null` is not enough — the session can
+// be initialized before the first user message is persisted, and swapping
+// the ChatView at that point drops the optimistic user bubble before the
+// real message arrives.
+export function threadIsPromotedAndPersisted(thread: Thread | null | undefined): boolean {
+  return Boolean(thread && (thread.latestTurn !== null || thread.messages.length > 0));
+}
+
 // `threadProvider` is the open branded driver kind carried by the session.
 // Unknown driver kinds degrade to `null` (i.e. "unlocked"), which is the safe
 // rollback / fork behavior — the routing layer is the right place to surface

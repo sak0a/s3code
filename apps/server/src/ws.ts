@@ -1,5 +1,4 @@
 import { existsSync } from "node:fs";
-import path from "node:path";
 
 import { Cause, Duration, Effect, Layer, Option, Queue, Ref, Schema, Stream } from "effect";
 import {
@@ -62,6 +61,7 @@ import { GitWorkflowService } from "./git/GitWorkflowService.ts";
 import { ProjectSetupScriptRunner } from "./project/Services/ProjectSetupScriptRunner.ts";
 import { RepositoryIdentityResolver } from "./project/Services/RepositoryIdentityResolver.ts";
 import { resolveProjectWorktreesDir } from "./project/projectMetadataPaths.ts";
+import { resolveProjectWorktreeCheckoutPath } from "./project/worktreeCheckoutPaths.ts";
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment.ts";
 import { ServerAuth } from "./auth/Services/ServerAuth.ts";
 import { ProjectionWorktreeRepository } from "./persistence/Services/ProjectionWorktrees.ts";
@@ -113,17 +113,6 @@ const randomShortId = (length = 8) =>
   Array.from({ length }, () =>
     "abcdefghijklmnopqrstuvwxyz0123456789".charAt(Math.floor(Math.random() * 36)),
   ).join("");
-
-function resolveProjectWorktreeCheckoutPath(
-  workspaceRoot: string,
-  projectMetadataDir: string | null | undefined,
-  worktreeDirectoryName: string,
-): string {
-  return path.join(
-    resolveProjectWorktreesDir(workspaceRoot, projectMetadataDir),
-    worktreeDirectoryName,
-  );
-}
 
 function gitErrorText(error: GitManagerServiceError): string {
   const detail = "detail" in error ? error.detail : "";
@@ -583,7 +572,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
                 path: resolveProjectWorktreeCheckoutPath(
                   bootstrap.prepareWorktree.projectCwd,
                   bootstrapProject?.projectMetadataDir,
-                  command.threadId,
+                  bootstrap.prepareWorktree.branch ?? bootstrap.prepareWorktree.baseBranch,
                 ),
               });
               targetWorktreePath = worktree.worktree.path;
@@ -844,7 +833,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             path: resolveProjectWorktreeCheckoutPath(
               project.workspaceRoot,
               project.projectMetadataDir,
-              worktreeId,
+              branch,
             ),
           });
 

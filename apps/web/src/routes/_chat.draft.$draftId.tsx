@@ -1,7 +1,7 @@
 import { createFileRoute, retainSearchParams, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ChatView from "../components/ChatView";
-import { threadHasStarted } from "../components/ChatView.logic";
+import { threadIsPromotedAndPersisted } from "../components/ChatView.logic";
 import {
   LazyRightPanel,
   RightPanelInlineSidebar,
@@ -36,7 +36,7 @@ function DraftChatThreadRouteView() {
       [draftSession?.threadId],
     ),
   );
-  const serverThreadStarted = threadHasStarted(serverThread);
+  const serverThreadStarted = threadIsPromotedAndPersisted(serverThread);
   const canonicalThreadRef = useMemo(
     () =>
       draftSession?.promotedTo
