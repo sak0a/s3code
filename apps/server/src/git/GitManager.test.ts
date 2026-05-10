@@ -2667,9 +2667,13 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
         reference: "177",
         mode: "worktree",
         threadId: asThreadId("thread-pr-setup"),
+        worktreesDir: path.join(repoDir, ".s3code", "worktrees"),
       });
 
       expect(result.worktreePath).not.toBeNull();
+      expect(result.worktreePath).toBe(
+        path.join(repoDir, ".s3code", "worktrees", "feature-pr-worktree-setup"),
+      );
       expect(setupCalls).toHaveLength(1);
       expect(setupCalls[0]).toEqual({
         threadId: "thread-pr-setup",

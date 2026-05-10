@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import path from "node:path";
 
 import { Cause, Duration, Effect, Layer, Option, Queue, Ref, Schema, Stream } from "effect";
 import {
@@ -112,6 +113,17 @@ const randomShortId = (length = 8) =>
   Array.from({ length }, () =>
     "abcdefghijklmnopqrstuvwxyz0123456789".charAt(Math.floor(Math.random() * 36)),
   ).join("");
+
+function resolveProjectWorktreeCheckoutPath(
+  workspaceRoot: string,
+  projectMetadataDir: string | null | undefined,
+  worktreeDirectoryName: string,
+): string {
+  return path.join(
+    resolveProjectWorktreesDir(workspaceRoot, projectMetadataDir),
+    worktreeDirectoryName,
+  );
+}
 
 function gitErrorText(error: GitManagerServiceError): string {
   const detail = "detail" in error ? error.detail : "";
@@ -568,9 +580,10 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
                 cwd: bootstrap.prepareWorktree.projectCwd,
                 refName: bootstrap.prepareWorktree.baseBranch,
                 newRefName: bootstrap.prepareWorktree.branch,
-                path: resolveProjectWorktreesDir(
+                path: resolveProjectWorktreeCheckoutPath(
                   bootstrap.prepareWorktree.projectCwd,
                   bootstrapProject?.projectMetadataDir,
+                  command.threadId,
                 ),
               });
               targetWorktreePath = worktree.worktree.path;
@@ -828,7 +841,11 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             cwd: project.workspaceRoot,
             refName,
             ...(newRefName !== undefined ? { newRefName } : {}),
-            path: resolveProjectWorktreesDir(project.workspaceRoot, project.projectMetadataDir),
+            path: resolveProjectWorktreeCheckoutPath(
+              project.workspaceRoot,
+              project.projectMetadataDir,
+              worktreeId,
+            ),
           });
 
           yield* dispatchWorktreeCommand(

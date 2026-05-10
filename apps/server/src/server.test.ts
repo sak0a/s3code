@@ -3951,7 +3951,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
           cwd: "/tmp/project",
           refName: "main",
           newRefName: "s3code/bootstrap-refName",
-          path: null,
+          path: "/tmp/project/.s3code/worktrees/thread-bootstrap",
         });
         assert.deepEqual(runForThread.mock.calls[0]?.[0], {
           threadId: ThreadId.make("thread-bootstrap"),

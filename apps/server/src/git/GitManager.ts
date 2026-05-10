@@ -1543,7 +1543,12 @@ export const makeGitManager = Effect.fn("makeGitManager")(function* () {
       const worktree = yield* gitCore.createWorktree({
         cwd: input.cwd,
         refName: localPullRequestBranch,
-        path: input.worktreesDir ?? null,
+        path: input.worktreesDir
+          ? path.join(
+              input.worktreesDir,
+              sanitizeBranchFragment(localPullRequestBranch).replace(/\//g, "-"),
+            )
+          : null,
       });
       yield* ensureExistingWorktreeUpstream(worktree.worktree.path);
       yield* maybeRunSetupScript(worktree.worktree.path);
