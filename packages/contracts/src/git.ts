@@ -1,5 +1,11 @@
 import { Schema } from "effect";
-import { NonNegativeInt, PositiveInt, ThreadId, TrimmedNonEmptyString } from "./baseSchemas.ts";
+import {
+  NonNegativeInt,
+  PositiveInt,
+  ProjectId,
+  ThreadId,
+  TrimmedNonEmptyString,
+} from "./baseSchemas.ts";
 import { SourceControlProviderError, SourceControlProviderInfo } from "./sourceControl.ts";
 import { VcsDriverKind } from "./vcs.ts";
 
@@ -149,6 +155,8 @@ export const GitPreparePullRequestThreadInput = Schema.Struct({
   cwd: TrimmedNonEmptyStringSchema,
   reference: GitPullRequestReference,
   mode: GitPreparePullRequestThreadMode,
+  projectId: Schema.optional(ProjectId),
+  worktreesDir: Schema.optional(TrimmedNonEmptyStringSchema),
   threadId: Schema.optional(ThreadId),
 });
 export type GitPreparePullRequestThreadInput = typeof GitPreparePullRequestThreadInput.Type;

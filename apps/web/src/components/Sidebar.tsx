@@ -1274,8 +1274,10 @@ function ProjectSettingsDialog(props: {
   title: string;
   customSystemPrompt: string;
   workspaceRoot: string;
+  projectMetadataDir: string;
   worktrees: readonly SidebarWorktreeSummary[];
   onCustomSystemPromptChange: (value: string) => void;
+  onProjectMetadataDirChange: (value: string) => void;
   onTitleChange: (value: string) => void;
   onWorkspaceRootChange: (value: string) => void;
 }) {
@@ -1357,6 +1359,28 @@ function ProjectSettingsDialog(props: {
                   className="min-h-28 resize-y"
                   onChange={(event) => props.onCustomSystemPromptChange(event.target.value)}
                 />
+              </div>
+              <div className="grid gap-1.5">
+                <span className="text-xs font-medium text-foreground">Project metadata folder</span>
+                <Input
+                  aria-label="Project metadata folder"
+                  value={props.projectMetadataDir}
+                  placeholder=".s3code"
+                  onChange={(event) => props.onProjectMetadataDirChange(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      props.onSave();
+                    }
+                  }}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Worktrees will be created under{" "}
+                  <code>
+                    {props.workspaceRoot || "project-root"}/{props.projectMetadataDir || ".s3code"}
+                    /worktrees
+                  </code>
+                </p>
               </div>
             </section>
             <aside className="space-y-4">
@@ -1670,6 +1694,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   const [projectSettingsTitle, setProjectSettingsTitle] = useState("");
   const [projectSettingsWorkspaceRoot, setProjectSettingsWorkspaceRoot] = useState("");
   const [projectSettingsCustomSystemPrompt, setProjectSettingsCustomSystemPrompt] = useState("");
+  const [projectSettingsProjectMetadataDir, setProjectSettingsProjectMetadataDir] = useState("");
   const [projectSettingsSaving, setProjectSettingsSaving] = useState(false);
   const renamingCommittedRef = useRef(false);
   const renamingInputRef = useRef<HTMLInputElement | null>(null);
@@ -1945,6 +1970,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     setProjectSettingsTitle(member.name);
     setProjectSettingsWorkspaceRoot(member.cwd);
     setProjectSettingsCustomSystemPrompt(member.customSystemPrompt ?? "");
+    setProjectSettingsProjectMetadataDir(member.projectMetadataDir ?? ".s3code");
     setProjectSettingsSaving(false);
   }, []);
 
@@ -2813,6 +2839,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     setProjectSettingsTitle("");
     setProjectSettingsWorkspaceRoot("");
     setProjectSettingsCustomSystemPrompt("");
+    setProjectSettingsProjectMetadataDir("");
     setProjectSettingsSaving(false);
   }, []);
 
@@ -2842,6 +2869,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     const title = projectSettingsTitle.trim();
     const workspaceRoot = projectSettingsWorkspaceRoot.trim();
     const customSystemPrompt = projectSettingsCustomSystemPrompt.trim();
+    const projectMetadataDir = projectSettingsProjectMetadataDir.trim();
     if (title.length === 0) {
       toastManager.add({
         type: "warning",
@@ -2856,12 +2884,26 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       });
       return;
     }
+    if (projectMetadataDir.length === 0) {
+      toastManager.add({
+        type: "warning",
+        title: "Project metadata folder cannot be empty",
+      });
+      return;
+    }
 
     const titleChanged = title !== projectSettingsTarget.name;
     const workspaceRootChanged = workspaceRoot !== projectSettingsTarget.cwd;
+    const projectMetadataDirChanged =
+      projectMetadataDir !== (projectSettingsTarget.projectMetadataDir ?? ".s3code");
     const currentCustomSystemPrompt = projectSettingsTarget.customSystemPrompt?.trim() ?? "";
     const customSystemPromptChanged = customSystemPrompt !== currentCustomSystemPrompt;
-    if (!titleChanged && !workspaceRootChanged && !customSystemPromptChanged) {
+    if (
+      !titleChanged &&
+      !workspaceRootChanged &&
+      !projectMetadataDirChanged &&
+      !customSystemPromptChanged
+    ) {
       closeProjectSettingsDialog();
       return;
     }
@@ -2886,6 +2928,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         projectId: projectSettingsTarget.id,
         ...(titleChanged ? { title } : {}),
         ...(workspaceRootChanged ? { workspaceRoot } : {}),
+        ...(projectMetadataDirChanged ? { projectMetadataDir } : {}),
         ...(customSystemPromptChanged
           ? { customSystemPrompt: customSystemPrompt.length > 0 ? customSystemPrompt : null }
           : {}),
@@ -2905,6 +2948,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     closeProjectSettingsDialog,
     projectSettingsSaving,
     projectSettingsCustomSystemPrompt,
+    projectSettingsProjectMetadataDir,
     projectSettingsTarget,
     projectSettingsTitle,
     projectSettingsWorkspaceRoot,
@@ -3317,9 +3361,11 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         title={projectSettingsTitle}
         customSystemPrompt={projectSettingsCustomSystemPrompt}
         workspaceRoot={projectSettingsWorkspaceRoot}
+        projectMetadataDir={projectSettingsProjectMetadataDir}
         worktrees={projectSettingsWorktrees}
         saving={projectSettingsSaving}
         onCustomSystemPromptChange={setProjectSettingsCustomSystemPrompt}
+        onProjectMetadataDirChange={setProjectSettingsProjectMetadataDir}
         onOpenRemote={openProjectRemoteLink}
         onTitleChange={setProjectSettingsTitle}
         onWorkspaceRootChange={setProjectSettingsWorkspaceRoot}

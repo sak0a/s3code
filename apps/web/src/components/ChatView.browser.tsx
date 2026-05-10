@@ -328,6 +328,7 @@ function createSnapshotForTargetUser(options: {
         id: PROJECT_ID,
         title: "Project",
         workspaceRoot: "/repo/project",
+        projectMetadataDir: ".s3code",
         defaultModelSelection: {
           instanceId: ProviderInstanceId.make("codex"),
           model: "gpt-5",
@@ -813,6 +814,7 @@ function createSnapshotWithSecondaryProject(options?: {
         id: SECOND_PROJECT_ID,
         title: "Docs Portal",
         workspaceRoot: "/repo/clients/docs-portal",
+        projectMetadataDir: ".s3code",
         defaultModelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5" },
         scripts: [],
         createdAt: NOW_ISO,
@@ -4556,6 +4558,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             _tag: ORCHESTRATION_WS_METHODS.dispatchCommand,
             type: "project.create",
             workspaceRoot: "~/Development",
+            projectMetadataDir: ".s3code",
             title: "Development",
           });
         },
@@ -4872,6 +4875,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             _tag: ORCHESTRATION_WS_METHODS.dispatchCommand,
             type: "project.create",
             workspaceRoot: "~/Desktop/fresh-project",
+            projectMetadataDir: ".s3code",
             title: "fresh-project",
             createWorkspaceRootIfMissing: true,
           });
@@ -4966,6 +4970,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             _tag: ORCHESTRATION_WS_METHODS.dispatchCommand,
             type: "project.create",
             workspaceRoot: "~/Development/codex",
+            projectMetadataDir: ".s3code",
             title: "codex",
           });
         },
@@ -5085,6 +5090,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             expect.objectContaining({
               type: "project.create",
               workspaceRoot: "~/workspaces",
+              projectMetadataDir: ".s3code",
               title: "workspaces",
             }),
           );
@@ -5184,6 +5190,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             _tag: ORCHESTRATION_WS_METHODS.dispatchCommand,
             type: "project.create",
             workspaceRoot: "/Users/julius/Projects/finder-picked",
+            projectMetadataDir: ".s3code",
             title: "finder-picked",
           });
         },
@@ -5312,6 +5319,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             _tag: ORCHESTRATION_WS_METHODS.dispatchCommand,
             type: "project.create",
             workspaceRoot: "~/Development",
+            projectMetadataDir: ".s3code",
             title: "Development",
           });
         },

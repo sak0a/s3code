@@ -2,6 +2,7 @@ import {
   type EnvironmentId,
   type GitActionProgressEvent,
   type GitStackedAction,
+  type ProjectId,
   type SourceControlPublishRepositoryInput,
   type ThreadId,
 } from "@s3tools/contracts";
@@ -300,6 +301,7 @@ export function gitRemoveWorktreeMutationOptions(input: {
 export function gitPreparePullRequestThreadMutationOptions(input: {
   environmentId: EnvironmentId | null;
   cwd: string | null;
+  projectId?: ProjectId | null | undefined;
   queryClient: QueryClient;
 }) {
   return mutationOptions({
@@ -317,6 +319,7 @@ export function gitPreparePullRequestThreadMutationOptions(input: {
         cwd: input.cwd,
         reference: args.reference,
         mode: args.mode,
+        ...(input.projectId ? { projectId: input.projectId } : {}),
         ...(args.threadId ? { threadId: args.threadId } : {}),
       });
     },

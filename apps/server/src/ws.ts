@@ -58,6 +58,7 @@ import { VcsProvisioningService } from "./vcs/VcsProvisioningService.ts";
 import { GitWorkflowService } from "./git/GitWorkflowService.ts";
 import { ProjectSetupScriptRunner } from "./project/Services/ProjectSetupScriptRunner.ts";
 import { RepositoryIdentityResolver } from "./project/Services/RepositoryIdentityResolver.ts";
+import { resolveProjectWorktreesDir } from "./project/projectMetadataPaths.ts";
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment.ts";
 import { ServerAuth } from "./auth/Services/ServerAuth.ts";
 import { ProjectionWorktreeRepository } from "./persistence/Services/ProjectionWorktrees.ts";
@@ -511,11 +512,26 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             }
 
             if (bootstrap?.prepareWorktree) {
+              const bootstrapProject = yield* projectionSnapshotQuery
+                .getActiveProjectByWorkspaceRoot(bootstrap.prepareWorktree.projectCwd)
+                .pipe(
+                  Effect.map(Option.getOrNull),
+                  Effect.mapError((cause) =>
+                    toGitManagerError(
+                      "git.bootstrapPrepareWorktree",
+                      "Failed to load project for bootstrap worktree.",
+                      cause,
+                    ),
+                  ),
+                );
               const worktree = yield* gitWorkflow.createWorktree({
                 cwd: bootstrap.prepareWorktree.projectCwd,
                 refName: bootstrap.prepareWorktree.baseBranch,
                 newRefName: bootstrap.prepareWorktree.branch,
-                path: null,
+                path: resolveProjectWorktreesDir(
+                  bootstrap.prepareWorktree.projectCwd,
+                  bootstrapProject?.projectMetadataDir,
+                ),
               });
               targetWorktreePath = worktree.worktree.path;
               yield* orchestrationEngine.dispatch({
@@ -772,7 +788,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             cwd: project.workspaceRoot,
             refName,
             ...(newRefName !== undefined ? { newRefName } : {}),
-            path: null,
+            path: resolveProjectWorktreesDir(project.workspaceRoot, project.projectMetadataDir),
           });
 
           yield* dispatchWorktreeCommand(
@@ -1502,9 +1518,29 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
         [WS_METHODS.gitPreparePullRequestThread]: (input) =>
           observeRpcEffect(
             WS_METHODS.gitPreparePullRequestThread,
-            gitWorkflow
-              .preparePullRequestThread(input)
-              .pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
+            (input.projectId
+              ? projectionSnapshotQuery.getProjectShellById(input.projectId).pipe(
+                  Effect.mapError((cause) =>
+                    toGitManagerError(
+                      "git.preparePullRequestThread",
+                      `Failed to load project ${input.projectId}.`,
+                      cause,
+                    ),
+                  ),
+                  Effect.map(Option.getOrNull),
+                  Effect.map((project) => ({
+                    ...input,
+                    worktreesDir: resolveProjectWorktreesDir(
+                      input.cwd,
+                      project?.projectMetadataDir,
+                    ),
+                  })),
+                  Effect.flatMap((normalizedInput) =>
+                    gitWorkflow.preparePullRequestThread(normalizedInput),
+                  ),
+                )
+              : gitWorkflow.preparePullRequestThread(input)
+            ).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
             { "rpc.aggregate": "git" },
           ),
         [WS_METHODS.gitCreateWorktreeForProject]: (input) =>

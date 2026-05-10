@@ -229,6 +229,7 @@ function mapProject(
     environmentId,
     name: project.title,
     cwd: project.workspaceRoot,
+    projectMetadataDir: project.projectMetadataDir,
     repositoryIdentity: project.repositoryIdentity ?? null,
     defaultModelSelection: project.defaultModelSelection
       ? normalizeModelSelection(project.defaultModelSelection)
@@ -1358,6 +1359,7 @@ function applyEnvironmentOrchestrationEvent(
           id: event.payload.projectId,
           title: event.payload.title,
           workspaceRoot: event.payload.workspaceRoot,
+          projectMetadataDir: event.payload.projectMetadataDir,
           repositoryIdentity: event.payload.repositoryIdentity ?? null,
           defaultModelSelection: event.payload.defaultModelSelection,
           scripts: event.payload.scripts,
@@ -1412,6 +1414,9 @@ function applyEnvironmentOrchestrationEvent(
         ...project,
         ...(event.payload.title !== undefined ? { name: event.payload.title } : {}),
         ...(event.payload.workspaceRoot !== undefined ? { cwd: event.payload.workspaceRoot } : {}),
+        ...(event.payload.projectMetadataDir !== undefined
+          ? { projectMetadataDir: event.payload.projectMetadataDir }
+          : {}),
         ...(event.payload.repositoryIdentity !== undefined
           ? { repositoryIdentity: event.payload.repositoryIdentity ?? null }
           : {}),

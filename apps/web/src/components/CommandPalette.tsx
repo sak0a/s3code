@@ -1142,6 +1142,7 @@ function OpenCommandPaletteDialog() {
           projectId,
           title: inferProjectTitleFromPath(cwd),
           workspaceRoot: cwd,
+          projectMetadataDir: ".s3code",
           createWorkspaceRootIfMissing: true,
           defaultModelSelection: {
             instanceId: ProviderInstanceId.make("codex"),

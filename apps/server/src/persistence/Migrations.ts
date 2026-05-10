@@ -46,6 +46,7 @@ import Migration0029 from "./Migrations/029_ProjectionThreadDetailOrderingIndexe
 import Migration0030 from "./Migrations/030_Worktrees.ts";
 import Migration0031 from "./Migrations/031_WorktreeTitles.ts";
 import Migration0032 from "./Migrations/032_ProjectCustomSystemPrompt.ts";
+import Migration0033 from "./Migrations/033_ProjectMetadataDir.ts";
 
 /**
  * Migration loader with all migrations defined inline.
@@ -90,6 +91,7 @@ export const migrationEntries = [
   [30, "Worktrees", Migration0030],
   [31, "WorktreeTitles", Migration0031],
   [32, "ProjectCustomSystemPrompt", Migration0032],
+  [33, "ProjectMetadataDir", Migration0033],
 ] as const;
 
 export const makeMigrationLoader = (throughId?: number) =>

@@ -370,6 +370,7 @@ describe("wsApi", () => {
         id: ProjectId.make("project-1"),
         title: "Project",
         workspaceRoot: "/tmp/workspace",
+        projectMetadataDir: ".s3code",
         defaultModelSelection: {
           instanceId: ProviderInstanceId.make("codex"),
           model: "gpt-5-codex",
@@ -436,6 +437,7 @@ describe("wsApi", () => {
       projectId: ProjectId.make("project-1"),
       title: "Project",
       workspaceRoot: "/tmp/project",
+      projectMetadataDir: ".s3code",
       defaultModelSelection: {
         instanceId: ProviderInstanceId.make("codex"),
         model: "gpt-5-codex",

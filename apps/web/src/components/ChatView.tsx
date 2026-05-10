@@ -3991,6 +3991,7 @@ export default function ChatView(props: ChatViewProps) {
               key={pullRequestDialogState.key}
               open
               environmentId={activeThread.environmentId}
+              projectId={activeProject?.id ?? null}
               threadId={activeThread.id}
               cwd={activeProject?.cwd ?? null}
               initialReference={pullRequestDialogState.initialReference}

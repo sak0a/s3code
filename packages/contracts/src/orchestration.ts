@@ -199,10 +199,20 @@ export const ProjectCustomSystemPrompt = TrimmedNonEmptyString.check(
 );
 export type ProjectCustomSystemPrompt = typeof ProjectCustomSystemPrompt.Type;
 
+export const DEFAULT_PROJECT_METADATA_DIR = ".s3code";
+export const ProjectMetadataDir = TrimmedNonEmptyString.check(
+  Schema.isMaxLength(256),
+  Schema.isPattern(/^(?![\\/])(?!~)(?![A-Za-z]:[\\/])(?!.*(?:^|[\\/])\.\.(?:[\\/]|$)).+$/),
+);
+export type ProjectMetadataDir = typeof ProjectMetadataDir.Type;
+
 export const OrchestrationProject = Schema.Struct({
   id: ProjectId,
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
+  projectMetadataDir: Schema.optional(ProjectMetadataDir).pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_PROJECT_METADATA_DIR)),
+  ),
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),
   defaultModelSelection: Schema.NullOr(ModelSelection),
   customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
@@ -378,6 +388,9 @@ export const OrchestrationProjectShell = Schema.Struct({
   id: ProjectId,
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
+  projectMetadataDir: Schema.optional(ProjectMetadataDir).pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_PROJECT_METADATA_DIR)),
+  ),
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),
   defaultModelSelection: Schema.NullOr(ModelSelection),
   customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
@@ -482,6 +495,9 @@ export const ProjectCreateCommand = Schema.Struct({
   projectId: ProjectId,
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
+  projectMetadataDir: Schema.optional(ProjectMetadataDir).pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_PROJECT_METADATA_DIR)),
+  ),
   createWorkspaceRootIfMissing: Schema.optional(Schema.Boolean),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
   customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
@@ -494,6 +510,7 @@ const ProjectMetaUpdateCommand = Schema.Struct({
   projectId: ProjectId,
   title: Schema.optional(TrimmedNonEmptyString),
   workspaceRoot: Schema.optional(TrimmedNonEmptyString),
+  projectMetadataDir: Schema.optional(ProjectMetadataDir),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
   customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
   scripts: Schema.optional(Schema.Array(ProjectScript)),
@@ -937,6 +954,9 @@ export const ProjectCreatedPayload = Schema.Struct({
   projectId: ProjectId,
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
+  projectMetadataDir: Schema.optional(ProjectMetadataDir).pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_PROJECT_METADATA_DIR)),
+  ),
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),
   defaultModelSelection: Schema.NullOr(ModelSelection),
   customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
@@ -949,6 +969,7 @@ export const ProjectMetaUpdatedPayload = Schema.Struct({
   projectId: ProjectId,
   title: Schema.optional(TrimmedNonEmptyString),
   workspaceRoot: Schema.optional(TrimmedNonEmptyString),
+  projectMetadataDir: Schema.optional(ProjectMetadataDir),
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
   customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),

@@ -576,6 +576,7 @@ describe("incremental orchestration updates", () => {
         projectId: recreatedProjectId,
         title: "Project Recreated",
         workspaceRoot: "/tmp/project",
+        projectMetadataDir: ".s3code",
         defaultModelSelection: {
           instanceId: ProviderInstanceId.make("codex"),
           model: DEFAULT_MODEL,

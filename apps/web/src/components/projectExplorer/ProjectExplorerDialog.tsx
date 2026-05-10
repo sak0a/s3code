@@ -1,6 +1,7 @@
 import type {
   ChangeRequest,
   EnvironmentId,
+  ProjectId,
   SourceControlIssueSummary,
   ThreadId,
 } from "@s3tools/contracts";
@@ -22,6 +23,7 @@ type Selection = { kind: "issue"; number: number } | { kind: "pr"; number: numbe
 interface ProjectExplorerDialogProps {
   open: boolean;
   environmentId: EnvironmentId | null;
+  projectId?: ProjectId | null;
   threadId: ThreadId | null;
   cwd: string | null;
   onOpenChange: (open: boolean) => void;
@@ -63,6 +65,7 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
     gitPreparePullRequestThreadMutationOptions({
       environmentId: props.environmentId,
       cwd: props.cwd,
+      projectId: props.projectId ?? null,
       queryClient,
     }),
   );

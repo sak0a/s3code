@@ -1,6 +1,7 @@
 import {
   ApprovalRequestId,
   type ChatAttachment,
+  DEFAULT_PROJECT_METADATA_DIR,
   type OrchestrationEvent,
   ThreadId,
 } from "@s3tools/contracts";
@@ -469,6 +470,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
             projectId: event.payload.projectId,
             title: event.payload.title,
             workspaceRoot: event.payload.workspaceRoot,
+            projectMetadataDir: event.payload.projectMetadataDir ?? DEFAULT_PROJECT_METADATA_DIR,
             defaultModelSelection: event.payload.defaultModelSelection,
             customSystemPrompt: event.payload.customSystemPrompt ?? null,
             scripts: event.payload.scripts,
@@ -490,6 +492,9 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
             ...(event.payload.title !== undefined ? { title: event.payload.title } : {}),
             ...(event.payload.workspaceRoot !== undefined
               ? { workspaceRoot: event.payload.workspaceRoot }
+              : {}),
+            ...(event.payload.projectMetadataDir !== undefined
+              ? { projectMetadataDir: event.payload.projectMetadataDir }
               : {}),
             ...(event.payload.defaultModelSelection !== undefined
               ? { defaultModelSelection: event.payload.defaultModelSelection }

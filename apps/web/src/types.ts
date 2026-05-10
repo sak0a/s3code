@@ -89,6 +89,7 @@ export interface Project {
   environmentId: EnvironmentId;
   name: string;
   cwd: string;
+  projectMetadataDir?: string | undefined;
   repositoryIdentity?: RepositoryIdentity | null;
   defaultModelSelection: ModelSelection | null;
   customSystemPrompt?: string | null;

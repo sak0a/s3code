@@ -27,6 +27,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
         projectId: ProjectId.make("project-null-options"),
         title: "Null options project",
         workspaceRoot: "/tmp/project-null-options",
+        projectMetadataDir: ".s3code",
         defaultModelSelection: {
           instanceId: ProviderInstanceId.make("codex"),
           model: "gpt-5.4",

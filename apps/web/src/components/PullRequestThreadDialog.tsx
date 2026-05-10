@@ -1,4 +1,9 @@
-import type { EnvironmentId, GitResolvePullRequestResult, ThreadId } from "@s3tools/contracts";
+import type {
+  EnvironmentId,
+  GitResolvePullRequestResult,
+  ProjectId,
+  ThreadId,
+} from "@s3tools/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -27,6 +32,7 @@ import { Spinner } from "./ui/spinner";
 interface PullRequestThreadDialogProps {
   open: boolean;
   environmentId: EnvironmentId;
+  projectId?: ProjectId | null;
   threadId: ThreadId;
   cwd: string | null;
   initialReference: string | null;
@@ -37,6 +43,7 @@ interface PullRequestThreadDialogProps {
 export function PullRequestThreadDialog({
   open,
   environmentId,
+  projectId,
   threadId,
   cwd,
   initialReference,
@@ -102,7 +109,7 @@ export function PullRequestThreadDialog({
     return cached?.pullRequest ?? null;
   }, [cwd, environmentId, parsedReference, queryClient]);
   const preparePullRequestThreadMutation = useMutation(
-    gitPreparePullRequestThreadMutationOptions({ environmentId, cwd, queryClient }),
+    gitPreparePullRequestThreadMutationOptions({ environmentId, cwd, projectId, queryClient }),
   );
 
   const liveResolvedPullRequest =
