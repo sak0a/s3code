@@ -331,7 +331,7 @@ function preferWorktreeId(left: SidebarWorktree, right: SidebarWorktree): string
   return left.worktreeId;
 }
 
-function isSyntheticWorktreeId(worktreeId: string): boolean {
+export function isSyntheticWorktreeId(worktreeId: string): boolean {
   return /^(main|branch|pr|issue|manual):/.test(worktreeId);
 }
 

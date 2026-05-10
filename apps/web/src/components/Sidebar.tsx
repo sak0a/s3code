@@ -205,6 +205,7 @@ import {
 } from "./sidebar/sidebarTreeAdapters";
 import {
   composeSidebarTree,
+  isSyntheticWorktreeId,
   useSidebarTree,
   type SidebarTreeThread,
   type SidebarTreeWorktree,
@@ -2643,7 +2644,34 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
           }
         }
         const api = readEnvironmentApi(project.environmentId);
-        const deleteRpc = api?.git.deleteWorktree;
+        if (!api) {
+          toastManager.add(
+            stackedThreadToast({
+              type: "error",
+              title: "Delete unavailable",
+              description: "This environment is not connected.",
+            }),
+          );
+          return;
+        }
+        const worktreeIdRaw = worktreeNode.worktree.worktreeId;
+
+        if (isSyntheticWorktreeId(worktreeIdRaw)) {
+          const threadIds = [
+            ...worktreeNode.sessions.map((thread) => thread.id),
+            ...worktreeNode.archivedSessions.map((thread) => thread.id),
+          ];
+          for (const threadId of threadIds) {
+            await api.orchestration.dispatchCommand({
+              type: "thread.delete",
+              commandId: newCommandId(),
+              threadId,
+            });
+          }
+          return;
+        }
+
+        const deleteRpc = api.git.deleteWorktree;
         if (!deleteRpc) {
           toastManager.add(
             stackedThreadToast({
@@ -2656,7 +2684,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         }
         try {
           await deleteRpc({
-            worktreeId: WorktreeId.make(worktreeNode.worktree.worktreeId),
+            worktreeId: WorktreeId.make(worktreeIdRaw),
             deleteBranch: false,
           });
         } catch (error: unknown) {
@@ -2673,7 +2701,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
                   toastManager.close(fallbackToastId);
                   void (async () => {
                     await deleteRpc({
-                      worktreeId: WorktreeId.make(worktreeNode.worktree.worktreeId),
+                      worktreeId: WorktreeId.make(worktreeIdRaw),
                       deleteBranch: false,
                       force: true,
                     });
