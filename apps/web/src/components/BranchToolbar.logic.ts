@@ -1,9 +1,9 @@
-import type { EnvironmentId, VcsRef, ProjectId } from "@t3tools/contracts";
+import type { EnvironmentId, VcsRef, ProjectId } from "@s3tools/contracts";
 import { Schema } from "effect";
 export {
   dedupeRemoteBranchesWithLocalMatches,
   deriveLocalBranchNameFromRemoteRef,
-} from "@t3tools/shared/git";
+} from "@s3tools/shared/git";
 
 export interface EnvironmentOption {
   environmentId: EnvironmentId;

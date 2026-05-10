@@ -1,4 +1,4 @@
-import { CommandId, EventId, ProjectId, WorktreeId } from "@t3tools/contracts";
+import { CommandId, EventId, ProjectId, WorktreeId } from "@s3tools/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer, Option } from "effect";
@@ -19,7 +19,7 @@ const layer = it.layer(
   OrchestrationProjectionPipelineLive.pipe(
     Layer.provideMerge(OrchestrationEventStoreLive),
     Layer.provideMerge(ProjectionWorktreeRepositoryLive),
-    Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-worktree-proj-" })),
+    Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "s3-worktree-proj-" })),
     Layer.provideMerge(SqlitePersistenceMemory),
     Layer.provideMerge(NodeServices.layer),
   ),

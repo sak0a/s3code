@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
+import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@s3tools/contracts";
 import { DEFAULT_INTERACTION_MODE, type Project } from "../../../types";
 import { composeSidebarTree, type SidebarTreeThread, type SidebarWorktree } from "./useSidebarTree";
 

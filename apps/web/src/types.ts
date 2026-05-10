@@ -19,7 +19,7 @@ import type {
   StatusBucket,
   WorktreeId,
   WorktreeOrigin,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 export type SessionPhase = "disconnected" | "connecting" | "ready" | "running";
 export const DEFAULT_RUNTIME_MODE: RuntimeMode = "full-access";

@@ -1,6 +1,6 @@
 import { Cause, DateTime, Option, Result, Schema } from "effect";
-import { PositiveInt, TrimmedNonEmptyString } from "@t3tools/contracts";
-import { decodeJsonResult } from "@t3tools/shared/schemaJson";
+import { PositiveInt, TrimmedNonEmptyString } from "@s3tools/contracts";
+import { decodeJsonResult } from "@s3tools/shared/schemaJson";
 
 export interface NormalizedBitbucketPullRequestRecord {
   readonly number: number;

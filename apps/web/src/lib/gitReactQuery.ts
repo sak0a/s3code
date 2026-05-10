@@ -4,7 +4,7 @@ import {
   type GitStackedAction,
   type SourceControlPublishRepositoryInput,
   type ThreadId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import {
   infiniteQueryOptions,
   mutationOptions,

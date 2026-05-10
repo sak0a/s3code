@@ -1,7 +1,7 @@
 import { Cache, Context, Duration, Effect, Exit, Layer } from "effect";
 
-import type { VcsDriverKind, VcsError, VcsRepositoryIdentity } from "@t3tools/contracts";
-import { VcsUnsupportedOperationError } from "@t3tools/contracts";
+import type { VcsDriverKind, VcsError, VcsRepositoryIdentity } from "@s3tools/contracts";
+import { VcsUnsupportedOperationError } from "@s3tools/contracts";
 import * as GitVcsDriver from "./GitVcsDriver.ts";
 import * as VcsProjectConfig from "./VcsProjectConfig.ts";
 import * as VcsDriver from "./VcsDriver.ts";
@@ -29,7 +29,7 @@ export interface VcsDriverRegistryShape {
 }
 
 export class VcsDriverRegistry extends Context.Service<VcsDriverRegistry, VcsDriverRegistryShape>()(
-  "t3/vcs/VcsDriverRegistry",
+  "s3/vcs/VcsDriverRegistry",
 ) {}
 
 const unsupported = (operation: string, kind: VcsDriverKind, detail: string) =>

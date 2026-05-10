@@ -1,5 +1,5 @@
 import Mime from "@effect/platform-node/Mime";
-import { Data, Effect, FileSystem, Layer, Option, Path } from "effect";
+import { Data, Effect, FileSystem, Option, Path } from "effect";
 import { cast } from "effect/Function";
 import {
   HttpBody,
@@ -69,8 +69,6 @@ export const serverEnvironmentRouteLayer = HttpRouter.add(
   "GET",
   "/.well-known/s3/environment",
   serverEnvironmentRouteHandler,
-).pipe(
-  Layer.merge(HttpRouter.add("GET", "/.well-known/t3/environment", serverEnvironmentRouteHandler)),
 );
 
 class DecodeOtlpTraceRecordsError extends Data.TaggedError("DecodeOtlpTraceRecordsError")<{

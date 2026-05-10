@@ -4,7 +4,7 @@ import * as Path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { SshPasswordPromptError } from "@t3tools/ssh/errors";
+import { SshPasswordPromptError } from "@s3tools/ssh/errors";
 
 import { discoverDesktopSshHosts, isSshPasswordPromptCancellation } from "./sshEnvironment.ts";
 
@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 function makeTempHomeDir(): string {
-  const directory = FS.mkdtempSync(Path.join(OS.tmpdir(), "t3-ssh-env-test-"));
+  const directory = FS.mkdtempSync(Path.join(OS.tmpdir(), "s3-ssh-env-test-"));
   tempDirectories.push(directory);
   return directory;
 }

@@ -14,10 +14,10 @@ import { randomUUID } from "node:crypto";
 import { Effect, Layer, FileSystem, Path } from "effect";
 
 import { CheckpointInvariantError } from "../Errors.ts";
-import { VcsProcessExitError } from "@t3tools/contracts";
+import { VcsProcessExitError } from "@s3tools/contracts";
 import { VcsDriverRegistry } from "../../vcs/VcsDriverRegistry.ts";
 import { CheckpointStore, type CheckpointStoreShape } from "../Services/CheckpointStore.ts";
-import { CheckpointRef } from "@t3tools/contracts";
+import { CheckpointRef } from "@s3tools/contracts";
 
 const CHECKPOINT_DIFF_MAX_OUTPUT_BYTES = 10_000_000;
 
@@ -107,16 +107,16 @@ const makeCheckpointStore = Effect.gen(function* () {
     const operation = "CheckpointStore.captureCheckpoint";
 
     yield* Effect.acquireUseRelease(
-      fs.makeTempDirectory({ prefix: "t3-fs-checkpoint-" }),
+      fs.makeTempDirectory({ prefix: "s3-fs-checkpoint-" }),
       Effect.fn("captureCheckpoint.withTempDirectory")(function* (tempDir) {
         const tempIndexPath = path.join(tempDir, `index-${randomUUID()}`);
         const commitEnv: NodeJS.ProcessEnv = {
           ...process.env,
           GIT_INDEX_FILE: tempIndexPath,
-          GIT_AUTHOR_NAME: "T3 Code",
-          GIT_AUTHOR_EMAIL: "t3code@users.noreply.github.com",
-          GIT_COMMITTER_NAME: "T3 Code",
-          GIT_COMMITTER_EMAIL: "t3code@users.noreply.github.com",
+          GIT_AUTHOR_NAME: "S3Code",
+          GIT_AUTHOR_EMAIL: "s3code@users.noreply.github.com",
+          GIT_COMMITTER_NAME: "S3Code",
+          GIT_COMMITTER_EMAIL: "s3code@users.noreply.github.com",
         };
 
         const headExists = yield* hasHeadCommit(input.cwd);
@@ -153,7 +153,7 @@ const makeCheckpointStore = Effect.gen(function* () {
           });
         }
 
-        const message = `t3 checkpoint ref=${input.checkpointRef}`;
+        const message = `s3 checkpoint ref=${input.checkpointRef}`;
         const commitTreeResult = yield* vcs.execute({
           operation,
           cwd: input.cwd,

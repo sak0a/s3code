@@ -1,6 +1,6 @@
 import { Context, Effect, FileSystem, Layer, Path, Schema } from "effect";
 
-import { VcsDriverKind, type VcsDriverKind as VcsDriverKindType } from "@t3tools/contracts";
+import { VcsDriverKind, type VcsDriverKind as VcsDriverKindType } from "@s3tools/contracts";
 
 const ProjectVcsConfig = Schema.Struct({
   vcs: Schema.optional(
@@ -32,7 +32,7 @@ export interface VcsProjectConfigShape {
 }
 
 export class VcsProjectConfig extends Context.Service<VcsProjectConfig, VcsProjectConfigShape>()(
-  "t3/vcs/VcsProjectConfig",
+  "s3/vcs/VcsProjectConfig",
 ) {}
 
 function configuredKind(config: ProjectVcsConfigFile): VcsDriverKindType | "auto" {
@@ -55,14 +55,9 @@ export const make = Effect.fn("makeVcsProjectConfig")(function* () {
   const findConfigPath = Effect.fn("VcsProjectConfig.findConfigPath")(function* (cwd: string) {
     let current = cwd;
     while (true) {
-      const candidates = [
-        path.join(current, ".s3code", "vcs.json"),
-        path.join(current, ".t3code", "vcs.json"),
-      ];
-      for (const candidate of candidates) {
-        if (yield* fileSystem.exists(candidate).pipe(Effect.orElseSucceed(() => false))) {
-          return candidate;
-        }
+      const candidate = path.join(current, ".s3code", "vcs.json");
+      if (yield* fileSystem.exists(candidate).pipe(Effect.orElseSucceed(() => false))) {
+        return candidate;
       }
 
       const parent = path.dirname(current);

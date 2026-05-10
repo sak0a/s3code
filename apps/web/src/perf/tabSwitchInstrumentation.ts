@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-export const TAB_SWITCH_MARK_PREFIX = "t3:tab-switch:";
+export const TAB_SWITCH_MARK_PREFIX = "s3:tab-switch:";
 
 export type TabSwitchPhase = "click" | "first-paint";
 
@@ -22,7 +22,7 @@ export function markTabSwitchFirstPaint(key: string): void {
   if (performance.getEntriesByName(name).length > 0) return;
   performance.mark(name);
   try {
-    performance.measure(`t3:tab-switch:${key}`, makeTabSwitchMarkName("click", key), name);
+    performance.measure(`s3:tab-switch:${key}`, makeTabSwitchMarkName("click", key), name);
   } catch {
     // No matching click mark — initial mount, ignore.
   }

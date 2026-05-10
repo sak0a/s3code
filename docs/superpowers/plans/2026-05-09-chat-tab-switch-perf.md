@@ -79,7 +79,7 @@ Expected: FAIL — module not found.
 // apps/web/src/perf/tabSwitchInstrumentation.ts
 import { useEffect, useRef } from "react";
 
-export const TAB_SWITCH_MARK_PREFIX = "t3:tab-switch:";
+export const TAB_SWITCH_MARK_PREFIX = "s3:tab-switch:";
 
 export type TabSwitchPhase = "click" | "first-paint";
 
@@ -102,7 +102,7 @@ export function markTabSwitchFirstPaint(key: string): void {
   if (performance.getEntriesByName(name).length > 0) return;
   performance.mark(name);
   try {
-    performance.measure(`t3:tab-switch:${key}`, makeTabSwitchMarkName("click", key), name);
+    performance.measure(`s3:tab-switch:${key}`, makeTabSwitchMarkName("click", key), name);
   } catch {
     // No matching click mark — ignore. Happens for the initial route mount.
   }
@@ -500,7 +500,7 @@ Expected: FAIL — module not found.
 
 ```typescript
 // apps/web/src/sessionTabs.selectors.ts
-import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime";
+import { scopeThreadRef, scopedThreadKey } from "@s3tools/client-runtime";
 import type { ChatSessionTabsItem } from "./components/chat/ChatSessionTabs";
 import { deriveStatusBucket, resolveThreadStatusPill } from "./components/Sidebar.logic";
 import type { SidebarStatusBucket } from "./components/Sidebar.logic";
@@ -679,7 +679,7 @@ const handleSelectSessionTab = useCallback(
 );
 ```
 
-If a `parseScopedThreadKey` helper does not already exist in `@t3tools/client-runtime`, keep using `projectSidebarThreadsRef.current.find(...)` — that ref is fed by the existing untargeted selector and is still cheap.
+If a `parseScopedThreadKey` helper does not already exist in `@s3tools/client-runtime`, keep using `projectSidebarThreadsRef.current.find(...)` — that ref is fed by the existing untargeted selector and is still cheap.
 
 Add at the top of the file (next to other `EMPTY_*` constants):
 
@@ -894,13 +894,13 @@ User actions in dev:
 2. Hover a non-active tab — within ~250ms, the WS subscription warms (no visible UI change; verify in DevTools Network or via console.debug if instrumentation is added).
 3. Click the tab. Note the time displayed by `performance.measure` entries:
    ```js
-   performance.getEntriesByType("measure").filter((m) => m.name.startsWith("t3:tab-switch:"));
+   performance.getEntriesByType("measure").filter((m) => m.name.startsWith("s3:tab-switch:"));
    ```
 4. Verify: active tab highlight moves, ⌘1-⌘9 hints update, archived sessions still hidden, status dot color is correct, the active tab scrolls into view.
 
 - [ ] **Step 3: Capture before/after measurements**
 
-Pre-changes baseline: ask user to git stash the changes, run the manual smoke test, record `t3:tab-switch:<key>` measure durations for 5 clicks. Unstash.
+Pre-changes baseline: ask user to git stash the changes, run the manual smoke test, record `s3:tab-switch:<key>` measure durations for 5 clicks. Unstash.
 
 Post-changes: re-run the same 5 clicks, record durations.
 

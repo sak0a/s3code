@@ -6,9 +6,9 @@ import {
   EDITORS,
   type EditorId,
   type ScopedThreadRef,
-} from "@t3tools/contracts";
-import { scopeThreadRef } from "@t3tools/client-runtime";
-import { DEFAULT_UNIFIED_SETTINGS } from "@t3tools/contracts/settings";
+} from "@s3tools/contracts";
+import { scopeThreadRef } from "@s3tools/client-runtime";
+import { DEFAULT_UNIFIED_SETTINGS } from "@s3tools/contracts/settings";
 import { Equal } from "effect";
 import { APP_VERSION } from "../../branding";
 import {

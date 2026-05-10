@@ -4,7 +4,7 @@ import {
   TrimmedNonEmptyString,
   type SourceControlRepositoryVisibility,
   type VcsError,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as GitHubIssues from "./gitHubIssues.ts";
@@ -173,7 +173,7 @@ export interface GitHubCliShape {
 }
 
 export class GitHubCli extends Context.Service<GitHubCli, GitHubCliShape>()(
-  "t3/source-control/GitHubCli",
+  "s3/source-control/GitHubCli",
 ) {}
 
 function errorText(error: VcsError | unknown): string {

@@ -9,7 +9,7 @@ import {
   type OrchestrationReadModel,
   ProviderInstanceId,
   WorktreeId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 

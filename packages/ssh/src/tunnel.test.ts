@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { NetService } from "@t3tools/shared/Net";
+import { NetService } from "@s3tools/shared/Net";
 import { Duration, Effect, Fiber, Layer, Result, Sink, Stream } from "effect";
 import { TestClock } from "effect/testing";
 import { HttpClient, HttpClientResponse } from "effect/unstable/http";
@@ -11,7 +11,7 @@ import {
   buildRemoteLaunchScript,
   buildRemotePairingScript,
   buildRemoteStopScript,
-  buildRemoteT3RunnerScript,
+  buildRemoteS3RunnerScript,
   describeReadinessCause,
   issueRemotePairingToken,
   REMOTE_PICK_PORT_SCRIPT,
@@ -80,39 +80,39 @@ function commandArgs(command: ChildProcess.Command): ReadonlyArray<string> {
 }
 
 describe("ssh tunnel scripts", () => {
-  it("builds the remote t3 runner with npx and npm fallbacks", () => {
-    const script = buildRemoteT3RunnerScript();
+  it("builds the remote s3 runner with npx and npm fallbacks", () => {
+    const script = buildRemoteS3RunnerScript();
 
-    assert.include(script, "T3_NODE_SCRIPT_PATH=''");
-    assert.include(script, 'exec t3 "$@"');
-    assert.include(script, "exec npx --yes 't3@latest' \"$@\"");
-    assert.include(script, "exec npm exec --yes 't3@latest' -- \"$@\"");
-    assert.include(script, "could not install 't3@latest'");
+    assert.include(script, "S3_NODE_SCRIPT_PATH=''");
+    assert.include(script, 'exec s3 "$@"');
+    assert.include(script, "exec npx --yes 's3@latest' \"$@\"");
+    assert.include(script, "exec npm exec --yes 's3@latest' -- \"$@\"");
+    assert.include(script, "could not install 's3@latest'");
   });
 
-  it("shell-quotes package specs in the remote t3 runner", () => {
-    const script = buildRemoteT3RunnerScript({
-      packageSpec: "t3@nightly; touch /tmp/t3-owned",
+  it("shell-quotes package specs in the remote s3 runner", () => {
+    const script = buildRemoteS3RunnerScript({
+      packageSpec: "s3@nightly; touch /tmp/s3-owned",
     });
 
-    assert.include(script, "exec npx --yes 't3@nightly; touch /tmp/t3-owned' \"$@\"");
-    assert.include(script, "exec npm exec --yes 't3@nightly; touch /tmp/t3-owned' -- \"$@\"");
-    assert.notInclude(script, "exec npx --yes t3@nightly; touch /tmp/t3-owned");
+    assert.include(script, "exec npx --yes 's3@nightly; touch /tmp/s3-owned' \"$@\"");
+    assert.include(script, "exec npm exec --yes 's3@nightly; touch /tmp/s3-owned' -- \"$@\"");
+    assert.notInclude(script, "exec npx --yes s3@nightly; touch /tmp/s3-owned");
   });
 
-  it("builds the remote t3 runner with a node script override", () => {
-    const script = buildRemoteT3RunnerScript({
+  it("builds the remote s3 runner with a node script override", () => {
+    const script = buildRemoteS3RunnerScript({
       nodeScriptPath: "/Users/julius/Development/Work/codething-mvp/apps/server/dist/bin.mjs",
     });
 
     assert.include(
       script,
-      "T3_NODE_SCRIPT_PATH='/Users/julius/Development/Work/codething-mvp/apps/server/dist/bin.mjs'",
+      "S3_NODE_SCRIPT_PATH='/Users/julius/Development/Work/codething-mvp/apps/server/dist/bin.mjs'",
     );
-    assert.include(script, 'exec node "$T3_NODE_SCRIPT_PATH" "$@"');
+    assert.include(script, 'exec node "$S3_NODE_SCRIPT_PATH" "$@"');
   });
 
-  it("uses the remote t3 runner for launch and pairing scripts", () => {
+  it("uses the remote s3 runner for launch and pairing scripts", () => {
     const target = {
       alias: "devbox",
       hostname: "devbox.example.com",
@@ -130,15 +130,15 @@ describe("ssh tunnel scripts", () => {
     assert.include(buildRemoteLaunchScript(), '"$RUNNER_FILE" serve --host 127.0.0.1');
     assert.include(buildRemoteLaunchScript(), '--base-dir "$DEFAULT_SERVER_HOME"');
     assert.notInclude(buildRemoteLaunchScript(), "server-home");
-    assert.include(buildRemoteLaunchScript(), "Remote T3 server did not become ready");
-    assert.include(buildRemoteLaunchScript({ packageSpec: "t3@nightly" }), "t3@nightly");
+    assert.include(buildRemoteLaunchScript(), "Remote S3 server did not become ready");
+    assert.include(buildRemoteLaunchScript({ packageSpec: "s3@nightly" }), "s3@nightly");
     assert.include(
       buildRemotePairingScript(target),
       '"$RUNNER_FILE" auth pairing create --base-dir "$PAIRING_BASE_DIR" --json',
     );
     assert.include(buildRemotePairingScript(target), 'PAIRING_BASE_DIR="$DEFAULT_SERVER_HOME"');
     assert.notInclude(buildRemotePairingScript(target), "server-home");
-    assert.include(buildRemotePairingScript(target, { packageSpec: "t3@nightly" }), "t3@nightly");
+    assert.include(buildRemotePairingScript(target, { packageSpec: "s3@nightly" }), "s3@nightly");
     assert.include(
       buildRemoteStopScript(target),
       'if [ "$REMOTE_MANAGED" != "external" ] && [ -n "$REMOTE_PID" ]',

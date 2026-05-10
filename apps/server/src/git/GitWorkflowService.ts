@@ -25,7 +25,7 @@ import {
   type VcsStatusLocalResult,
   type VcsStatusRemoteResult,
   type VcsStatusResult,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 import { GitManager, type GitRunStackedActionOptions } from "./GitManager.ts";
 import { GitVcsDriver } from "../vcs/GitVcsDriver.ts";
@@ -81,7 +81,7 @@ export interface GitWorkflowServiceShape {
 export class GitWorkflowService extends Context.Service<
   GitWorkflowService,
   GitWorkflowServiceShape
->()("t3/git/GitWorkflowService") {}
+>()("s3/git/GitWorkflowService") {}
 
 const unsupportedGitWorkflow = (operation: string, cwd: string, detail: string) =>
   new GitManagerError({

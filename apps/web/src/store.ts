@@ -19,11 +19,11 @@ import type {
   ScopedProjectRef,
   ScopedThreadRef,
   WorktreeId,
-} from "@t3tools/contracts";
-import { isProviderDriverKind, ProviderDriverKind } from "@t3tools/contracts";
-import type { ThreadId, TurnId } from "@t3tools/contracts";
+} from "@s3tools/contracts";
+import { isProviderDriverKind, ProviderDriverKind } from "@s3tools/contracts";
+import type { ThreadId, TurnId } from "@s3tools/contracts";
 import { Schema } from "effect";
-import { resolveModelSlugForProvider } from "@t3tools/shared/model";
+import { resolveModelSlugForProvider } from "@s3tools/shared/model";
 import { create } from "zustand";
 import {
   type ChatMessage,

@@ -71,20 +71,20 @@ import {
   type ThreadEnvMode,
   ThreadId,
   WorktreeId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import {
   parseScopedThreadKey,
   scopedProjectKey,
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@t3tools/client-runtime";
+} from "@s3tools/client-runtime";
 import { Link, useLocation, useNavigate, useParams, useRouter } from "@tanstack/react-router";
 import { useQueries } from "@tanstack/react-query";
 import {
   type SidebarProjectSortOrder,
   type SidebarThreadSortOrder,
-} from "@t3tools/contracts/settings";
+} from "@s3tools/contracts/settings";
 import { usePrimaryEnvironmentId } from "../environments/primary";
 import { isElectron } from "../env";
 import { APP_STAGE_LABEL, APP_VERSION } from "../branding";

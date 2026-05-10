@@ -4,8 +4,8 @@ import type {
   ProjectId,
   ThreadId,
   WorktreeId,
-} from "@t3tools/contracts";
-import { OrchestrationCommand } from "@t3tools/contracts";
+} from "@s3tools/contracts";
+import { OrchestrationCommand } from "@s3tools/contracts";
 import {
   Cause,
   Deferred,

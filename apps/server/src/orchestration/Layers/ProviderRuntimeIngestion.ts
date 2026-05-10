@@ -16,10 +16,10 @@ import {
   type OrchestrationThread,
   type OrchestrationThreadActivity,
   type ProviderRuntimeEvent,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { Cache, Cause, Duration, Effect, Layer, Option, Stream } from "effect";
-import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
-import { readEnv } from "@t3tools/shared/runtimeEnv";
+import { makeDrainableWorker } from "@s3tools/shared/DrainableWorker";
+import { readEnv } from "@s3tools/shared/runtimeEnv";
 
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { ProjectionTurnRepository } from "../../persistence/Services/ProjectionTurns.ts";

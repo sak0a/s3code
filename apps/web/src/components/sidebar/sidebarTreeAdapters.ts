@@ -3,8 +3,8 @@ import {
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@t3tools/client-runtime";
-import type { ProjectId } from "@t3tools/contracts";
+} from "@s3tools/client-runtime";
+import type { ProjectId } from "@s3tools/contracts";
 import type { DraftId, DraftThreadState } from "../../composerDraftStore";
 import {
   DEFAULT_INTERACTION_MODE,

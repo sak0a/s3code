@@ -5,8 +5,8 @@ import {
   createSourceControlDiscoveryManager,
   getSourceControlDiscoveryTargetKey,
   sourceControlDiscoveryStateAtom,
-} from "@t3tools/client-runtime";
-import { EnvironmentId, type SourceControlDiscoveryResult } from "@t3tools/contracts";
+} from "@s3tools/client-runtime";
+import { EnvironmentId, type SourceControlDiscoveryResult } from "@s3tools/contracts";
 import { Effect } from "effect";
 import { Atom } from "effect/unstable/reactivity";
 

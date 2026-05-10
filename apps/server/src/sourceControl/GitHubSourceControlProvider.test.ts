@@ -1,7 +1,7 @@
 import { assert, it } from "@effect/vitest";
 import { DateTime, Effect, Layer, Option } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import { SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES } from "@t3tools/contracts";
+import { SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES } from "@s3tools/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as GitHubCli from "./GitHubCli.ts";
@@ -28,12 +28,12 @@ it.effect("maps GitHub PR summaries into provider-neutral change requests", () =
         Effect.succeed({
           number: 42,
           title: "Add GitHub provider",
-          url: "https://github.com/pingdotgg/t3code/pull/42",
+          url: "https://github.com/pingdotgg/s3code/pull/42",
           baseRefName: "main",
           headRefName: "feature/source-control",
           state: "open",
           isCrossRepository: true,
-          headRepositoryNameWithOwner: "fork/t3code",
+          headRepositoryNameWithOwner: "fork/s3code",
           headRepositoryOwnerLogin: "fork",
         }),
     });
@@ -47,13 +47,13 @@ it.effect("maps GitHub PR summaries into provider-neutral change requests", () =
       provider: "github",
       number: 42,
       title: "Add GitHub provider",
-      url: "https://github.com/pingdotgg/t3code/pull/42",
+      url: "https://github.com/pingdotgg/s3code/pull/42",
       baseRefName: "main",
       headRefName: "feature/source-control",
       state: "open",
       updatedAt: Option.none(),
       isCrossRepository: true,
-      headRepositoryNameWithOwner: "fork/t3code",
+      headRepositoryNameWithOwner: "fork/s3code",
       headRepositoryOwnerLogin: "fork",
     });
   }),
@@ -71,7 +71,7 @@ it.effect("uses gh json listing for non-open change request state queries", () =
               {
                 number: 7,
                 title: "Merged work",
-                url: "https://github.com/pingdotgg/t3code/pull/7",
+                url: "https://github.com/pingdotgg/s3code/pull/7",
                 baseRefName: "main",
                 headRefName: "feature/merged",
                 state: "merged",

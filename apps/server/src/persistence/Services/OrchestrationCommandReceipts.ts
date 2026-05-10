@@ -15,7 +15,7 @@ import {
   ProjectId,
   ThreadId,
   WorktreeId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { Option, Schema, Context } from "effect";
 import type { Effect } from "effect";
 
@@ -67,4 +67,4 @@ export interface OrchestrationCommandReceiptRepositoryShape {
 export class OrchestrationCommandReceiptRepository extends Context.Service<
   OrchestrationCommandReceiptRepository,
   OrchestrationCommandReceiptRepositoryShape
->()("t3/persistence/Services/OrchestrationCommandReceipts/OrchestrationCommandReceiptRepository") {}
+>()("s3/persistence/Services/OrchestrationCommandReceipts/OrchestrationCommandReceiptRepository") {}

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES,
   SOURCE_CONTROL_DETAIL_COMMENT_BODY_MAX_BYTES,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 import { bundleIssueThread } from "./IssueThreadBundler.ts";
 

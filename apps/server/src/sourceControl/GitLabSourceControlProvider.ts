@@ -6,7 +6,7 @@ import {
   type SourceControlChangeRequestDetail,
   type SourceControlIssueDetail,
   type SourceControlIssueSummary,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 import * as GitLabCli from "./GitLabCli.ts";
 import * as GitLabIssues from "./gitLabIssues.ts";

@@ -1,6 +1,6 @@
 import { Cause, Exit, Option, Result, Schema } from "effect";
-import { PositiveInt } from "@t3tools/contracts";
-import { decodeJsonResult, formatSchemaError } from "@t3tools/shared/schemaJson";
+import { PositiveInt } from "@s3tools/contracts";
+import { decodeJsonResult, formatSchemaError } from "@s3tools/shared/schemaJson";
 
 export interface NormalizedAzureDevOpsWorkItemRecord {
   readonly number: number;

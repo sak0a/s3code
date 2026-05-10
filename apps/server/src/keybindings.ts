@@ -16,7 +16,7 @@ import {
   ResolvedKeybindingRule,
   ResolvedKeybindingsConfig,
   type ServerConfigIssue,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import {
   Array,
   Cache,
@@ -43,14 +43,14 @@ import {
 import * as Semaphore from "effect/Semaphore";
 import { ServerConfig } from "./config.ts";
 import { writeFileStringAtomically } from "./atomicWrite.ts";
-import { fromLenientJson } from "@t3tools/shared/schemaJson";
+import { fromLenientJson } from "@s3tools/shared/schemaJson";
 import {
   DEFAULT_KEYBINDINGS,
   DEFAULT_RESOLVED_KEYBINDINGS,
   compileResolvedKeybindingRule,
   compileResolvedKeybindingsConfig,
   parseKeybindingShortcut,
-} from "@t3tools/shared/keybindings";
+} from "@s3tools/shared/keybindings";
 
 export {
   DEFAULT_KEYBINDINGS,
@@ -267,7 +267,7 @@ export interface KeybindingsShape {
  * Keybindings - Service tag for keybinding configuration operations.
  */
 export class Keybindings extends Context.Service<Keybindings, KeybindingsShape>()(
-  "t3/keybindings",
+  "s3/keybindings",
 ) {}
 
 const makeKeybindings = Effect.gen(function* () {

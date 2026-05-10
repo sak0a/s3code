@@ -28,7 +28,7 @@ import {
   WorktreeManualPositionSetPayload as ContractsWorktreeManualPositionSetPayloadSchema,
   WorktreeMetaUpdatedPayload as ContractsWorktreeMetaUpdatedPayloadSchema,
   WorktreeRestoredPayload as ContractsWorktreeRestoredPayloadSchema,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 // Server-internal alias surface, backed by contract schemas as the source of truth.
 export const ProjectCreatedPayload = ContractsProjectCreatedPayloadSchema;

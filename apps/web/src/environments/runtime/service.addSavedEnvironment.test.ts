@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@t3tools/contracts";
+import { EnvironmentId } from "@s3tools/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let mockSavedRecords: Array<Record<string, unknown>> = [];

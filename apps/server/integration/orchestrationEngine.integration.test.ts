@@ -15,7 +15,7 @@ import {
   ThreadId,
   ModelSelection,
   ProviderInstanceId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { assert, it } from "@effect/vitest";
 import { Effect, Option, Schema } from "effect";
 

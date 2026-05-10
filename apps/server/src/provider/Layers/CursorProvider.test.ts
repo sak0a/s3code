@@ -4,8 +4,8 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Effect, FileSystem, Path } from "effect";
 import { describe, expect, it } from "vitest";
 import type * as EffectAcpSchema from "effect-acp/schema";
-import type { CursorSettings, ServerProviderModel } from "@t3tools/contracts";
-import { createModelCapabilities } from "@t3tools/shared/model";
+import type { CursorSettings, ServerProviderModel } from "@s3tools/contracts";
+import { createModelCapabilities } from "@s3tools/shared/model";
 
 import {
   buildCursorProviderSnapshot,
@@ -145,7 +145,7 @@ const makeExitLogFixture = Effect.fn("makeExitLogFixture")(function* (prefix: st
   return {
     exitLogPath,
     wrapperPath: yield* makeMockAgentWrapper({
-      T3_ACP_EXIT_LOG_PATH: exitLogPath,
+      S3_ACP_EXIT_LOG_PATH: exitLogPath,
     }),
   };
 });
@@ -511,7 +511,7 @@ describe("checkCursorProviderStatus", () => {
         },
         {
           ...process.env,
-          T3_ACP_REQUEST_LOG_PATH: requestLogPath,
+          S3_ACP_REQUEST_LOG_PATH: requestLogPath,
         },
       ).pipe(Effect.provide(NodeServices.layer)),
     );

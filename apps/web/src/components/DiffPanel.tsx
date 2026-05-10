@@ -2,8 +2,8 @@ import { parsePatchFiles } from "@pierre/diffs";
 import { FileDiff, type FileDiffMetadata, Virtualizer } from "@pierre/diffs/react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { scopeThreadRef } from "@t3tools/client-runtime";
-import type { TurnId } from "@t3tools/contracts";
+import { scopeThreadRef } from "@s3tools/client-runtime";
+import type { TurnId } from "@s3tools/contracts";
 import {
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -120,7 +120,7 @@ const DIFF_PANEL_UNSAFE_CSS = `
   cursor: pointer;
 }
 
-::highlight(t3-diff-search-match) {
+::highlight(s3-diff-search-match) {
   background-color: color-mix(in srgb, var(--warning) 60%, transparent);
   color: var(--foreground);
 }
@@ -177,7 +177,7 @@ function buildFileDiffRenderKey(fileDiff: FileDiffMetadata): string {
   return fileDiff.cacheKey ?? `${fileDiff.prevName ?? "none"}:${fileDiff.name}`;
 }
 
-const DIFF_SEARCH_HIGHLIGHT_NAME = "t3-diff-search-match";
+const DIFF_SEARCH_HIGHLIGHT_NAME = "s3-diff-search-match";
 
 function isCSSHighlightSupported(): boolean {
   return (

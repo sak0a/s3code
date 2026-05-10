@@ -4,10 +4,10 @@ import {
   type SourceControlProviderAuth,
   type SourceControlRepositoryCloneUrls,
   type SourceControlRepositoryVisibility,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
-import { sanitizeBranchFragment, WORKTREE_BRANCH_PREFIX } from "@t3tools/shared/git";
-import { detectSourceControlProviderFromRemoteUrl } from "@t3tools/shared/sourceControl";
+import { sanitizeBranchFragment, WORKTREE_BRANCH_PREFIX } from "@s3tools/shared/git";
+import { detectSourceControlProviderFromRemoteUrl } from "@s3tools/shared/sourceControl";
 
 import * as BitbucketIssues from "./bitbucketIssues.ts";
 import * as BitbucketPullRequests from "./bitbucketPullRequests.ts";
@@ -188,7 +188,7 @@ export interface BitbucketApiShape {
 }
 
 export class BitbucketApi extends Context.Service<BitbucketApi, BitbucketApiShape>()(
-  "t3/source-control/BitbucketApi",
+  "s3/source-control/BitbucketApi",
 ) {}
 
 function nonEmpty(value: string | undefined): Option.Option<string> {

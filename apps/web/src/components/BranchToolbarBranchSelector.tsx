@@ -1,5 +1,5 @@
-import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime";
-import type { EnvironmentId, VcsRef, ThreadId } from "@t3tools/contracts";
+import { scopeProjectRef, scopeThreadRef } from "@s3tools/client-runtime";
+import type { EnvironmentId, VcsRef, ThreadId } from "@s3tools/contracts";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { ChevronDownIcon } from "lucide-react";

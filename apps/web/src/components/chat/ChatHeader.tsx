@@ -4,8 +4,8 @@ import {
   type ProjectScript,
   type ResolvedKeybindingsConfig,
   type ThreadId,
-} from "@t3tools/contracts";
-import { scopeThreadRef } from "@t3tools/client-runtime";
+} from "@s3tools/contracts";
+import { scopeThreadRef } from "@s3tools/client-runtime";
 import { memo, useMemo } from "react";
 import GitActionsControl from "../GitActionsControl";
 import { type DraftId } from "~/composerDraftStore";

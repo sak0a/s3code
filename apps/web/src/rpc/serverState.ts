@@ -9,8 +9,8 @@ import {
   type ServerProvider,
   type ServerProviderUpdatedPayload,
   type ServerSettings,
-} from "@t3tools/contracts";
-import { DEFAULT_RESOLVED_KEYBINDINGS } from "@t3tools/shared/keybindings";
+} from "@s3tools/contracts";
+import { DEFAULT_RESOLVED_KEYBINDINGS } from "@s3tools/shared/keybindings";
 import { Atom } from "effect/unstable/reactivity";
 import { useCallback, useRef } from "react";
 

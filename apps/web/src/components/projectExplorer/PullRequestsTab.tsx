@@ -1,4 +1,4 @@
-import type { ChangeRequest, EnvironmentId, SourceControlIssueSummary } from "@t3tools/contracts";
+import type { ChangeRequest, EnvironmentId, SourceControlIssueSummary } from "@s3tools/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { SearchIcon, RotateCwIcon } from "lucide-react";

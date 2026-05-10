@@ -25,7 +25,7 @@ import type {
   ProviderDriverKind,
   ProviderInstanceEnvironment,
   ProviderInstanceId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import type { Effect, Schema, Scope } from "effect";
 
 import type { TextGenerationShape } from "../textGeneration/TextGeneration.ts";

@@ -295,8 +295,8 @@ Create `gitHubIssues.ts` mirroring `gitHubPullRequests.ts` shape:
 
 ```ts
 import { Cause, Exit, Option, Result, Schema } from "effect";
-import { PositiveInt, TrimmedNonEmptyString } from "@t3tools/contracts";
-import { decodeJsonResult, formatSchemaError } from "@t3tools/shared/schemaJson";
+import { PositiveInt, TrimmedNonEmptyString } from "@s3tools/contracts";
+import { decodeJsonResult, formatSchemaError } from "@s3tools/shared/schemaJson";
 
 export interface NormalizedGitHubIssueRecord {
   readonly number: number;
@@ -1030,7 +1030,7 @@ git commit -m "server(sc): add GitHubCli.getPullRequestDetail with body + commen
 
 - [ ] **Step 1: Add new methods to `SourceControlProviderShape`**
 
-Import `SourceControlIssueSummary`, `SourceControlIssueDetail`, `SourceControlChangeRequestDetail` from `@t3tools/contracts`. Add:
+Import `SourceControlIssueSummary`, `SourceControlIssueDetail`, `SourceControlChangeRequestDetail` from `@s3tools/contracts`. Add:
 
 ```ts
 readonly listIssues: (input: {
@@ -1160,7 +1160,7 @@ Expected: PASS (or only fails inside `GitHubSourceControlProvider.ts` — Task 1
 Inside `make`, add normalizer that converts `NormalizedGitHubIssueRecord` → `SourceControlIssueSummary` (adds `provider: "github"`, maps `Option` types correctly), and converts detail similarly while running `truncateSourceControlDetailContent` on body/comments.
 
 ```ts
-import { truncateSourceControlDetailContent } from "@t3tools/contracts";
+import { truncateSourceControlDetailContent } from "@s3tools/contracts";
 
 const toIssueSummary = (
   raw: GitHubIssues.NormalizedGitHubIssueRecord,
@@ -1459,7 +1459,7 @@ Pattern reference: `apps/web/src/lib/projectReactQuery.ts`. **Read it first** to
 
 ```ts
 import { queryOptions } from "@tanstack/react-query";
-import type { SourceControlIssueSummary, SourceControlIssueDetail } from "@t3tools/contracts";
+import type { SourceControlIssueSummary, SourceControlIssueDetail } from "@s3tools/contracts";
 import { invokeRpc } from "./rpc"; // ← REPLACE with actual helper from projectReactQuery.ts
 
 export const issueListQueryOptions = (input: {
@@ -1596,7 +1596,7 @@ Pattern: identical idea to `composerSlashCommandSearch.ts` — case-insensitive,
 ```ts
 import { describe, expect, it } from "vitest";
 import { searchSourceControlSummaries } from "./composerSourceControlContextSearch";
-import type { SourceControlIssueSummary } from "@t3tools/contracts";
+import type { SourceControlIssueSummary } from "@s3tools/contracts";
 
 const summaries: SourceControlIssueSummary[] = [
   {
@@ -1656,7 +1656,7 @@ describe("searchSourceControlSummaries", () => {
 - [ ] **Step 3: Implement**
 
 ```ts
-import type { SourceControlIssueSummary } from "@t3tools/contracts";
+import type { SourceControlIssueSummary } from "@s3tools/contracts";
 
 type Rankable = SourceControlIssueSummary & { __score?: number };
 
@@ -1704,7 +1704,7 @@ git commit -m "web(sc): add client-side fuzzy filter for issue/PR summaries"
 - [ ] **Step 1: Implement the list**
 
 ```tsx
-import type { SourceControlIssueSummary } from "@t3tools/contracts";
+import type { SourceControlIssueSummary } from "@s3tools/contracts";
 import { memo } from "react";
 import { cn } from "~/lib/utils";
 
@@ -1923,7 +1923,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "~/components/ui/popover
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { PaperclipIcon } from "lucide-react";
 import { ContextPickerPopup } from "./ContextPickerPopup";
-import type { SourceControlIssueSummary, ChangeRequest } from "@t3tools/contracts";
+import type { SourceControlIssueSummary, ChangeRequest } from "@s3tools/contracts";
 
 export function ContextPickerButton(props: {
   cwd: string;
@@ -1987,7 +1987,7 @@ import userEvent from "@testing-library/user-event";
 import { SourceControlContextChip } from "./SourceControlContextChip";
 import { describe, expect, it, vi } from "vitest";
 import { DateTime } from "effect";
-import type { ComposerSourceControlContext } from "@t3tools/contracts";
+import type { ComposerSourceControlContext } from "@s3tools/contracts";
 
 function fakeIssueContext(
   overrides: Partial<{

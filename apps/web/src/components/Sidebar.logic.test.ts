@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ProviderDriverKind } from "@t3tools/contracts";
+import { ProviderDriverKind } from "@s3tools/contracts";
 
 import {
   aggregateWorktreeStatus,
@@ -32,7 +32,7 @@ import {
   ProjectId,
   ProviderInstanceId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import {
   DEFAULT_INTERACTION_MODE,
   DEFAULT_RUNTIME_MODE,
@@ -152,11 +152,11 @@ describe("createThreadJumpHintVisibilityController", () => {
 
 describe("getSidebarThreadIdsToPrewarm", () => {
   it("returns only the first visible thread ids up to the prewarm limit", () => {
-    expect(getSidebarThreadIdsToPrewarm(["t1", "t2", "t3"], 2)).toEqual(["t1", "t2"]);
+    expect(getSidebarThreadIdsToPrewarm(["a1", "a2", "a3"], 2)).toEqual(["a1", "a2"]);
   });
 
   it("returns all visible thread ids when they fit within the limit", () => {
-    expect(getSidebarThreadIdsToPrewarm(["t1", "t2"], 10)).toEqual(["t1", "t2"]);
+    expect(getSidebarThreadIdsToPrewarm(["a1", "a2"], 10)).toEqual(["a1", "a2"]);
   });
 
   it("returns no thread ids when the limit is zero", () => {

@@ -1,4 +1,4 @@
-import type { ProjectScript } from "@t3tools/contracts";
+import type { ProjectScript } from "@s3tools/contracts";
 
 interface ProjectScriptRuntimeEnvInput {
   project: {
@@ -22,11 +22,9 @@ export function projectScriptRuntimeEnv(
 ): Record<string, string> {
   const env: Record<string, string> = {
     S3CODE_PROJECT_ROOT: input.project.cwd,
-    T3CODE_PROJECT_ROOT: input.project.cwd,
   };
   if (input.worktreePath) {
     env.S3CODE_WORKTREE_PATH = input.worktreePath;
-    env.T3CODE_WORKTREE_PATH = input.worktreePath;
   }
   if (input.extraEnv) {
     return { ...env, ...input.extraEnv };

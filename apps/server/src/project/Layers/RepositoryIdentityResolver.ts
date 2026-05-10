@@ -1,9 +1,9 @@
-import type { RepositoryIdentity } from "@t3tools/contracts";
+import type { RepositoryIdentity } from "@s3tools/contracts";
 import { Cache, Duration, Effect, Exit, Layer } from "effect";
 import {
   detectSourceControlProviderFromGitRemoteUrl,
   normalizeGitRemoteUrl,
-} from "@t3tools/shared/git";
+} from "@s3tools/shared/git";
 
 import { runProcess } from "../../processRunner.ts";
 import {

@@ -7,7 +7,7 @@ import type {
   VcsListRemotesResult,
   VcsListWorkspaceFilesResult,
   VcsRepositoryIdentity,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import * as VcsProcess from "./VcsProcess.ts";
 
 export interface VcsDriverShape {
@@ -28,4 +28,4 @@ export interface VcsDriverShape {
   readonly initRepository: (input: VcsInitInput) => Effect.Effect<void, VcsError>;
 }
 
-export class VcsDriver extends Context.Service<VcsDriver, VcsDriverShape>()("t3/vcs/VcsDriver") {}
+export class VcsDriver extends Context.Service<VcsDriver, VcsDriverShape>()("s3/vcs/VcsDriver") {}

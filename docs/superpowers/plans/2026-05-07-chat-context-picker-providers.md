@@ -4,7 +4,7 @@
 
 **Goal:** Replace the Plan 1 "not implemented" stubs with real GitLab, Bitbucket, and Azure DevOps implementations of `listIssues`, `getIssue`, `searchIssues`, `searchChangeRequests`, and `getChangeRequestDetail`; finish the four follow-up UX gaps left by Plan 1, plus an optional direct-attach `#42`+Enter shortcut.
 
-**Architecture:** Per-provider, three layers. (1) New decoder module per provider (`gitLabIssues.ts`, `bitbucketIssues.ts`, `azureDevOpsWorkItems.ts`) — JSON normalization mirroring `gitHubIssues.ts`. (2) Existing CLI/API wrapper extended with 5 new methods (`<Provider>Cli.ts` or `BitbucketApi.ts`). (3) Existing `<Provider>SourceControlProvider.ts` stubs replaced with real implementations that pipe `Effect.mapError(providerError(...))` and call `truncateSourceControlDetailContent` from `@t3tools/contracts`. UX follow-ups: a small set of focused web-side edits.
+**Architecture:** Per-provider, three layers. (1) New decoder module per provider (`gitLabIssues.ts`, `bitbucketIssues.ts`, `azureDevOpsWorkItems.ts`) — JSON normalization mirroring `gitHubIssues.ts`. (2) Existing CLI/API wrapper extended with 5 new methods (`<Provider>Cli.ts` or `BitbucketApi.ts`). (3) Existing `<Provider>SourceControlProvider.ts` stubs replaced with real implementations that pipe `Effect.mapError(providerError(...))` and call `truncateSourceControlDetailContent` from `@s3tools/contracts`. UX follow-ups: a small set of focused web-side edits.
 
 **Tech Stack:** TypeScript, Effect, Effect Schema, Vitest (Node + browser mode), React + TanStack Query, Bun monorepo, GitLab CLI (`glab`), Bitbucket Cloud REST API, Azure CLI (`az`) with `azure-devops` extension.
 
@@ -20,7 +20,7 @@
 - NEVER include `Co-Authored-By` lines in commits (per `~/.claude/CLAUDE.md`).
 - NEVER `bun test`. Always `bun run test`.
 - Force `LC_ALL: "C"` via the `env` field on `VcsProcess.run` for any new `glab` / `az` invocation so stderr matchers (`.includes("authentication failed")`) don't mis-fire under non-English locales.
-- Use the existing `truncateSourceControlDetailContent` helper from `@t3tools/contracts` for body+comments truncation. Don't reinvent.
+- Use the existing `truncateSourceControlDetailContent` helper from `@s3tools/contracts` for body+comments truncation. Don't reinvent.
 - Stay on the feature branch — don't commit to `main`.
 
 ---
@@ -206,8 +206,8 @@ Create `apps/server/src/sourceControl/gitLabIssues.ts`:
 
 ```ts
 import { Cause, Exit, Option, Result, Schema } from "effect";
-import { PositiveInt, TrimmedNonEmptyString } from "@t3tools/contracts";
-import { decodeJsonResult, formatSchemaError } from "@t3tools/shared/schemaJson";
+import { PositiveInt, TrimmedNonEmptyString } from "@s3tools/contracts";
+import { decodeJsonResult, formatSchemaError } from "@s3tools/shared/schemaJson";
 
 export interface NormalizedGitLabIssueRecord {
   readonly number: number;
@@ -1141,7 +1141,7 @@ import {
   type SourceControlChangeRequestDetail,
   type SourceControlIssueDetail,
   type SourceControlIssueSummary,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 import * as GitLabCli from "./GitLabCli.ts";
 import * as GitLabIssues from "./gitLabIssues.ts";
@@ -1259,7 +1259,7 @@ Replace `apps/server/src/sourceControl/GitLabSourceControlProvider.test.ts`'s co
 
 ```ts
 import { DateTime, Option } from "effect";
-import { SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES } from "@t3tools/contracts";
+import { SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES } from "@s3tools/contracts";
 
 it.effect("listIssues maps GitLab summaries to provider: gitlab", () =>
   Effect.gen(function* () {
@@ -1518,8 +1518,8 @@ Create `apps/server/src/sourceControl/bitbucketIssues.ts`:
 
 ```ts
 import { Cause, Exit, Option, Result, Schema } from "effect";
-import { PositiveInt, TrimmedNonEmptyString } from "@t3tools/contracts";
-import { decodeJsonResult, formatSchemaError } from "@t3tools/shared/schemaJson";
+import { PositiveInt, TrimmedNonEmptyString } from "@s3tools/contracts";
+import { decodeJsonResult, formatSchemaError } from "@s3tools/shared/schemaJson";
 
 export interface NormalizedBitbucketIssueRecord {
   readonly number: number;
@@ -1746,7 +1746,7 @@ export function decodeBitbucketPullRequestDetailJson(
 }
 ```
 
-> **Note:** `BitbucketPullRequestSchema` and `normalizeBitbucketPullRequestRecord` are already in scope in `bitbucketPullRequests.ts` from prior code; reuse them. Add `import { decodeJsonResult } from "@t3tools/shared/schemaJson";` if not already imported (search the file first; do not duplicate). The decoder may need `Cause`, `Result`, `Schema` imports — check the existing import block.
+> **Note:** `BitbucketPullRequestSchema` and `normalizeBitbucketPullRequestRecord` are already in scope in `bitbucketPullRequests.ts` from prior code; reuse them. Add `import { decodeJsonResult } from "@s3tools/shared/schemaJson";` if not already imported (search the file first; do not duplicate). The decoder may need `Cause`, `Result`, `Schema` imports — check the existing import block.
 
 - [ ] **Step 4: Run (expect pass).**
 
@@ -2267,7 +2267,7 @@ import {
   type SourceControlChangeRequestDetail,
   type SourceControlIssueDetail,
   type SourceControlIssueSummary,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 import * as BitbucketApi from "./BitbucketApi.ts";
 import * as BitbucketIssues from "./bitbucketIssues.ts";
@@ -2542,8 +2542,8 @@ Create `apps/server/src/sourceControl/azureDevOpsWorkItems.ts`:
 
 ```ts
 import { Cause, Exit, Option, Result, Schema } from "effect";
-import { PositiveInt } from "@t3tools/contracts";
-import { decodeJsonResult, formatSchemaError } from "@t3tools/shared/schemaJson";
+import { PositiveInt } from "@s3tools/contracts";
+import { decodeJsonResult, formatSchemaError } from "@s3tools/shared/schemaJson";
 
 export interface NormalizedAzureDevOpsWorkItemRecord {
   readonly number: number;
@@ -3483,7 +3483,7 @@ import {
   type SourceControlChangeRequestDetail,
   type SourceControlIssueDetail,
   type SourceControlIssueSummary,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 import * as AzureDevOpsCli from "./AzureDevOpsCli.ts";
 import * as AzureDevOpsPullRequests from "./azureDevOpsPullRequests.ts";
@@ -4057,7 +4057,7 @@ Expected: PASS (all suites).
 Walk through whichever providers are reachable from your dev environment:
 
 - [ ] In a **GitLab** workspace with `glab` installed and authed: open S3Code → click 📎 → see GL issues → attach one → send → verify the agent received the structured context. Same for an MR.
-- [ ] In a **Bitbucket** workspace with `T3CODE_BITBUCKET_*` env vars configured: same flow.
+- [ ] In a **Bitbucket** workspace with `S3CODE_BITBUCKET_*` env vars configured: same flow.
 - [ ] In a **Bitbucket** workspace where issues are disabled: open the picker → tab body shows empty list (not error toast).
 - [ ] In an **Azure DevOps** workspace with `az` + `azure-devops` extension: same flow.
 - [ ] In a workspace **without a recognized source-control remote**: button still opens popup, source-control tabs hidden, file/image attach still works (Task 28 wiring).

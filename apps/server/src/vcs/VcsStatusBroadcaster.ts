@@ -20,8 +20,8 @@ import type {
   VcsStatusRemoteResult,
   VcsStatusResult,
   VcsStatusStreamEvent,
-} from "@t3tools/contracts";
-import { mergeGitStatusParts } from "@t3tools/shared/git";
+} from "@s3tools/contracts";
+import { mergeGitStatusParts } from "@s3tools/shared/git";
 
 import * as GitWorkflowService from "../git/GitWorkflowService.ts";
 
@@ -63,7 +63,7 @@ export interface VcsStatusBroadcasterShape {
 export class VcsStatusBroadcaster extends Context.Service<
   VcsStatusBroadcaster,
   VcsStatusBroadcasterShape
->()("t3/vcs/VcsStatusBroadcaster") {}
+>()("s3/vcs/VcsStatusBroadcaster") {}
 
 function fingerprintStatusPart(status: unknown): string {
   return JSON.stringify(status);

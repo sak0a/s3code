@@ -1,4 +1,4 @@
-import type { SourceControlIssueSummary } from "@t3tools/contracts";
+import type { SourceControlIssueSummary } from "@s3tools/contracts";
 
 export function searchSourceControlSummaries<T extends SourceControlIssueSummary>(
   items: ReadonlyArray<T>,

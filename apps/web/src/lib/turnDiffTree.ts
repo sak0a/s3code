@@ -1,5 +1,5 @@
 import type { TurnDiffFileChange } from "../types";
-import type { ProjectEntry } from "@t3tools/contracts";
+import type { ProjectEntry } from "@s3tools/contracts";
 
 export interface TurnDiffStat {
   additions: number;

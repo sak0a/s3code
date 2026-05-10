@@ -4,8 +4,8 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ServerProvider,
-} from "@t3tools/contracts";
-import { createModelCapabilities } from "@t3tools/shared/model";
+} from "@s3tools/contracts";
+import { createModelCapabilities } from "@s3tools/shared/model";
 import { assert, it } from "@effect/vitest";
 import { Effect, FileSystem } from "effect";
 
@@ -44,7 +44,7 @@ it.layer(NodeServices.layer)("providerStatusCache", (it) => {
   it.effect("writes and reads provider status snapshots", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
-      const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-provider-cache-" });
+      const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "s3-provider-cache-" });
       const codexProvider = makeProvider(CODEX_DRIVER);
       const claudeProvider = makeProvider(CLAUDE_AGENT_DRIVER, {
         status: "warning",
@@ -158,7 +158,7 @@ it.layer(NodeServices.layer)("providerStatusCache", (it) => {
       version: null,
       status: "disabled",
       auth: { status: "unknown" },
-      message: "Codex is disabled in T3 Code settings.",
+      message: "Codex is disabled in S3Code settings.",
     });
 
     assert.deepStrictEqual(

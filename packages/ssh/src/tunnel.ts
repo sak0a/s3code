@@ -1,9 +1,9 @@
 import type {
   DesktopSshEnvironmentBootstrap,
   DesktopSshEnvironmentTarget,
-} from "@t3tools/contracts";
-import { type NetError, NetService } from "@t3tools/shared/Net";
-import { fromLenientJson } from "@t3tools/shared/schemaJson";
+} from "@s3tools/contracts";
+import { type NetError, NetService } from "@s3tools/shared/Net";
+import { fromLenientJson } from "@s3tools/shared/schemaJson";
 import {
   Deferred,
   Context,
@@ -57,14 +57,14 @@ const TUNNEL_SHUTDOWN_TIMEOUT_MS = 2_000;
 const REMOTE_READY_TIMEOUT_MS = 15_000;
 const REMOTE_REUSE_READY_TIMEOUT_MS = 2_000;
 
-export interface RemoteT3RunnerOptions {
+export interface RemoteS3RunnerOptions {
   readonly packageSpec?: string;
   readonly nodeScriptPath?: string | null;
 }
 
 export interface SshEnvironmentManagerOptions {
   readonly resolveCliPackageSpec?: () => string;
-  readonly resolveCliRunner?: () => RemoteT3RunnerOptions;
+  readonly resolveCliRunner?: () => RemoteS3RunnerOptions;
 }
 
 interface SshTunnelEntry {
@@ -114,7 +114,7 @@ function sshTargetLogFields(target: DesktopSshEnvironmentTarget) {
   };
 }
 
-function sshRunnerLogFields(runner: RemoteT3RunnerOptions | undefined) {
+function sshRunnerLogFields(runner: RemoteS3RunnerOptions | undefined) {
   if (runner?.nodeScriptPath?.trim()) {
     return { runner: "node-script", nodeScriptPath: runner.nodeScriptPath.trim() };
   }
@@ -303,45 +303,41 @@ function probe() {
 
 export const REMOTE_RUNNER_SCRIPT = `#!/bin/sh
 set -eu
-T3_NODE_SCRIPT_PATH=@@T3_NODE_SCRIPT_PATH@@
-if [ -n "$T3_NODE_SCRIPT_PATH" ]; then
-  exec node "$T3_NODE_SCRIPT_PATH" "$@"
+S3_NODE_SCRIPT_PATH=@@S3_NODE_SCRIPT_PATH@@
+if [ -n "$S3_NODE_SCRIPT_PATH" ]; then
+  exec node "$S3_NODE_SCRIPT_PATH" "$@"
 fi
-if command -v t3 >/dev/null 2>&1; then
-  exec t3 "$@"
+if command -v s3 >/dev/null 2>&1; then
+  exec s3 "$@"
 fi
 if command -v npx >/dev/null 2>&1; then
-  exec npx --yes @@T3_PACKAGE_SPEC@@ "$@"
+  exec npx --yes @@S3_PACKAGE_SPEC@@ "$@"
 fi
 if command -v npm >/dev/null 2>&1; then
-  exec npm exec --yes @@T3_PACKAGE_SPEC@@ -- "$@"
+  exec npm exec --yes @@S3_PACKAGE_SPEC@@ -- "$@"
 fi
-printf 'Remote host is missing the t3 CLI and could not install @@T3_PACKAGE_SPEC@@ because npx and npm are unavailable on PATH.\\n' >&2
+printf 'Remote host is missing the s3 CLI and could not install @@S3_PACKAGE_SPEC@@ because npx and npm are unavailable on PATH.\\n' >&2
 exit 1
 `;
 
 export const REMOTE_LAUNCH_SCRIPT = `set -eu
 STATE_KEY="$1"
-if [ -d "$HOME/.s3code" ] || [ ! -d "$HOME/.t3" ]; then
-  DEFAULT_SERVER_HOME="$HOME/.s3code"
-else
-  DEFAULT_SERVER_HOME="$HOME/.t3"
-fi
+DEFAULT_SERVER_HOME="$HOME/.s3code"
 STATE_DIR="$DEFAULT_SERVER_HOME/ssh-launch/$STATE_KEY"
 DEFAULT_RUNTIME_FILE="$DEFAULT_SERVER_HOME/userdata/server-runtime.json"
 PORT_FILE="$STATE_DIR/port"
 PID_FILE="$STATE_DIR/pid"
 MANAGED_FILE="$STATE_DIR/managed"
 LOG_FILE="$STATE_DIR/server.log"
-RUNNER_FILE="$STATE_DIR/run-t3.sh"
-RUNNER_NEXT="$STATE_DIR/run-t3.next.$$"
+RUNNER_FILE="$STATE_DIR/run-s3.sh"
+RUNNER_NEXT="$STATE_DIR/run-s3.next.$$"
 mkdir -p "$STATE_DIR"
 cleanup_runner_next() {
   rm -f "$RUNNER_NEXT"
 }
 trap cleanup_runner_next EXIT
 cat >"$RUNNER_NEXT" <<'SH'
-@@T3_RUNNER_SCRIPT@@
+@@S3_RUNNER_SCRIPT@@
 SH
 RUNNER_CHANGED=0
 if [ ! -f "$RUNNER_FILE" ] || ! cmp -s "$RUNNER_NEXT" "$RUNNER_FILE"; then
@@ -350,13 +346,13 @@ fi
 mv "$RUNNER_NEXT" "$RUNNER_FILE"
 chmod 700 "$RUNNER_FILE"
 pick_port() {
-  node - "$PORT_FILE" "@@T3_DEFAULT_REMOTE_PORT@@" "@@T3_REMOTE_PORT_SCAN_WINDOW@@" <<'NODE'
-@@T3_PICK_PORT_SCRIPT@@
+  node - "$PORT_FILE" "@@S3_DEFAULT_REMOTE_PORT@@" "@@S3_REMOTE_PORT_SCAN_WINDOW@@" <<'NODE'
+@@S3_PICK_PORT_SCRIPT@@
 NODE
 }
 wait_ready() {
-  node - "$REMOTE_PORT" "$1" "@@T3_READY_PROBE_TIMEOUT_MS@@" <<'NODE'
-@@T3_WAIT_READY_SCRIPT@@
+  node - "$REMOTE_PORT" "$1" "@@S3_READY_PROBE_TIMEOUT_MS@@" <<'NODE'
+@@S3_WAIT_READY_SCRIPT@@
 NODE
 }
 wait_for_pid_exit() {
@@ -395,7 +391,7 @@ REMOTE_MANAGED="$(cat "$MANAGED_FILE" 2>/dev/null || true)"
 DEFAULT_REMOTE_PORT="$(resolve_default_runtime_port 2>/dev/null || true)"
 if [ -n "$DEFAULT_REMOTE_PORT" ]; then
   REMOTE_PORT="$DEFAULT_REMOTE_PORT"
-  if wait_ready "@@T3_REUSE_READY_TIMEOUT_MS@@"; then
+  if wait_ready "@@S3_REUSE_READY_TIMEOUT_MS@@"; then
     if [ "$REMOTE_MANAGED" = "managed" ] && [ -n "$REMOTE_PID" ] && kill -0 "$REMOTE_PID" 2>/dev/null; then
       kill "$REMOTE_PID" 2>/dev/null || true
       wait_for_pid_exit "$REMOTE_PID"
@@ -411,7 +407,7 @@ if [ -n "$DEFAULT_REMOTE_PORT" ]; then
   fi
 fi
 if [ "$REMOTE_MANAGED" = "external" ]; then
-  if [ -z "$REMOTE_PORT" ] || ! wait_ready "@@T3_REUSE_READY_TIMEOUT_MS@@"; then
+  if [ -z "$REMOTE_PORT" ] || ! wait_ready "@@S3_REUSE_READY_TIMEOUT_MS@@"; then
     REMOTE_PID=""
     REMOTE_PORT=""
     REMOTE_MANAGED=""
@@ -423,7 +419,7 @@ elif [ -n "$REMOTE_PID" ] && [ -n "$REMOTE_PORT" ] && kill -0 "$REMOTE_PID" 2>/d
     REMOTE_PID=""
     REMOTE_PORT=""
     REMOTE_MANAGED=""
-  elif ! wait_ready "@@T3_REUSE_READY_TIMEOUT_MS@@"; then
+  elif ! wait_ready "@@S3_REUSE_READY_TIMEOUT_MS@@"; then
     kill "$REMOTE_PID" 2>/dev/null || true
     wait_for_pid_exit "$REMOTE_PID"
     REMOTE_PID=""
@@ -446,7 +442,7 @@ if [ -z "$REMOTE_PID" ] || [ -z "$REMOTE_PORT" ]; then
   printf '%s\\n' "$REMOTE_PID" >"$PID_FILE"
   printf '%s\\n' "$REMOTE_PORT" >"$PORT_FILE"
   printf 'managed\\n' >"$MANAGED_FILE"
-  if ! wait_ready "@@T3_READY_TIMEOUT_MS@@"; then
+  if ! wait_ready "@@S3_READY_TIMEOUT_MS@@"; then
     printf 'Remote S3Code server did not become ready on 127.0.0.1:%s.\\n' "$REMOTE_PORT" >&2
     tail -n 80 "$LOG_FILE" >&2 2>/dev/null || true
     kill "$REMOTE_PID" 2>/dev/null || true
@@ -459,16 +455,12 @@ printf '{"remotePort":%s,"serverKind":"%s"}\\n' "$REMOTE_PORT" "\${REMOTE_MANAGE
 `;
 
 export const REMOTE_PAIRING_SCRIPT = `set -eu
-if [ -d "$HOME/.s3code" ] || [ ! -d "$HOME/.t3" ]; then
-  DEFAULT_SERVER_HOME="$HOME/.s3code"
-else
-  DEFAULT_SERVER_HOME="$HOME/.t3"
-fi
-STATE_DIR="$DEFAULT_SERVER_HOME/ssh-launch/@@T3_STATE_KEY@@"
-RUNNER_FILE="$STATE_DIR/run-t3.sh"
+DEFAULT_SERVER_HOME="$HOME/.s3code"
+STATE_DIR="$DEFAULT_SERVER_HOME/ssh-launch/@@S3_STATE_KEY@@"
+RUNNER_FILE="$STATE_DIR/run-s3.sh"
 mkdir -p "$STATE_DIR"
 cat >"$RUNNER_FILE" <<'SH'
-@@T3_RUNNER_SCRIPT@@
+@@S3_RUNNER_SCRIPT@@
 SH
 chmod 700 "$RUNNER_FILE"
 PAIRING_BASE_DIR="$DEFAULT_SERVER_HOME"
@@ -476,12 +468,8 @@ PAIRING_BASE_DIR="$DEFAULT_SERVER_HOME"
 `;
 
 export const REMOTE_STOP_SCRIPT = `set -eu
-if [ -d "$HOME/.s3code" ] || [ ! -d "$HOME/.t3" ]; then
-  DEFAULT_SERVER_HOME="$HOME/.s3code"
-else
-  DEFAULT_SERVER_HOME="$HOME/.t3"
-fi
-STATE_DIR="$DEFAULT_SERVER_HOME/ssh-launch/@@T3_STATE_KEY@@"
+DEFAULT_SERVER_HOME="$HOME/.s3code"
+STATE_DIR="$DEFAULT_SERVER_HOME/ssh-launch/@@S3_STATE_KEY@@"
 PID_FILE="$STATE_DIR/pid"
 PORT_FILE="$STATE_DIR/port"
 MANAGED_FILE="$STATE_DIR/managed"
@@ -500,61 +488,57 @@ printf '{"stopped":true}\\n'
 `;
 
 const REMOTE_LOG_TAIL_SCRIPT = `set -eu
-if [ -d "$HOME/.s3code" ] || [ ! -d "$HOME/.t3" ]; then
-  DEFAULT_SERVER_HOME="$HOME/.s3code"
-else
-  DEFAULT_SERVER_HOME="$HOME/.t3"
-fi
-STATE_DIR="$DEFAULT_SERVER_HOME/ssh-launch/@@T3_STATE_KEY@@"
+DEFAULT_SERVER_HOME="$HOME/.s3code"
+STATE_DIR="$DEFAULT_SERVER_HOME/ssh-launch/@@S3_STATE_KEY@@"
 LOG_FILE="$STATE_DIR/server.log"
 if [ -f "$LOG_FILE" ]; then
   tail -n 80 "$LOG_FILE" 2>/dev/null || true
 fi
 `;
 
-export function buildRemoteT3RunnerScript(input?: RemoteT3RunnerOptions): string {
-  const packageSpec = shellSingleQuote(input?.packageSpec?.trim() || "t3@latest");
+export function buildRemoteS3RunnerScript(input?: RemoteS3RunnerOptions): string {
+  const packageSpec = shellSingleQuote(input?.packageSpec?.trim() || "s3@latest");
   const nodeScriptPath = input?.nodeScriptPath?.trim() || "";
   return stripTrailingNewlines(
     applyScriptPlaceholders(REMOTE_RUNNER_SCRIPT, {
-      T3_PACKAGE_SPEC: packageSpec,
-      T3_NODE_SCRIPT_PATH: shellSingleQuote(nodeScriptPath),
+      S3_PACKAGE_SPEC: packageSpec,
+      S3_NODE_SCRIPT_PATH: shellSingleQuote(nodeScriptPath),
     }),
   );
 }
 
-export function buildRemoteLaunchScript(input?: RemoteT3RunnerOptions): string {
+export function buildRemoteLaunchScript(input?: RemoteS3RunnerOptions): string {
   return applyScriptPlaceholders(REMOTE_LAUNCH_SCRIPT, {
-    T3_RUNNER_SCRIPT: stripTrailingNewlines(buildRemoteT3RunnerScript(input)),
-    T3_PICK_PORT_SCRIPT: stripTrailingNewlines(REMOTE_PICK_PORT_SCRIPT),
-    T3_WAIT_READY_SCRIPT: stripTrailingNewlines(REMOTE_WAIT_READY_SCRIPT),
-    T3_DEFAULT_REMOTE_PORT: String(DEFAULT_REMOTE_PORT),
-    T3_REMOTE_PORT_SCAN_WINDOW: String(REMOTE_PORT_SCAN_WINDOW),
-    T3_READY_TIMEOUT_MS: String(REMOTE_READY_TIMEOUT_MS),
-    T3_REUSE_READY_TIMEOUT_MS: String(REMOTE_REUSE_READY_TIMEOUT_MS),
-    T3_READY_PROBE_TIMEOUT_MS: String(SSH_READY_PROBE_TIMEOUT_MS),
+    S3_RUNNER_SCRIPT: stripTrailingNewlines(buildRemoteS3RunnerScript(input)),
+    S3_PICK_PORT_SCRIPT: stripTrailingNewlines(REMOTE_PICK_PORT_SCRIPT),
+    S3_WAIT_READY_SCRIPT: stripTrailingNewlines(REMOTE_WAIT_READY_SCRIPT),
+    S3_DEFAULT_REMOTE_PORT: String(DEFAULT_REMOTE_PORT),
+    S3_REMOTE_PORT_SCAN_WINDOW: String(REMOTE_PORT_SCAN_WINDOW),
+    S3_READY_TIMEOUT_MS: String(REMOTE_READY_TIMEOUT_MS),
+    S3_REUSE_READY_TIMEOUT_MS: String(REMOTE_REUSE_READY_TIMEOUT_MS),
+    S3_READY_PROBE_TIMEOUT_MS: String(SSH_READY_PROBE_TIMEOUT_MS),
   });
 }
 
 export function buildRemotePairingScript(
   target: DesktopSshEnvironmentTarget,
-  input?: RemoteT3RunnerOptions,
+  input?: RemoteS3RunnerOptions,
 ): string {
   return applyScriptPlaceholders(REMOTE_PAIRING_SCRIPT, {
-    T3_STATE_KEY: remoteStateKey(target),
-    T3_RUNNER_SCRIPT: stripTrailingNewlines(buildRemoteT3RunnerScript(input)),
+    S3_STATE_KEY: remoteStateKey(target),
+    S3_RUNNER_SCRIPT: stripTrailingNewlines(buildRemoteS3RunnerScript(input)),
   });
 }
 
 export function buildRemoteStopScript(target: DesktopSshEnvironmentTarget): string {
   return applyScriptPlaceholders(REMOTE_STOP_SCRIPT, {
-    T3_STATE_KEY: remoteStateKey(target),
+    S3_STATE_KEY: remoteStateKey(target),
   });
 }
 
 function buildRemoteLogTailScript(target: DesktopSshEnvironmentTarget): string {
   return applyScriptPlaceholders(REMOTE_LOG_TAIL_SCRIPT, {
-    T3_STATE_KEY: remoteStateKey(target),
+    S3_STATE_KEY: remoteStateKey(target),
   });
 }
 
@@ -562,7 +546,7 @@ export const launchOrReuseRemoteServer = Effect.fn("ssh/tunnel.launchOrReuseRemo
   function* (
     target: DesktopSshEnvironmentTarget,
     input?: SshAuthOptions,
-    runner?: RemoteT3RunnerOptions,
+    runner?: RemoteS3RunnerOptions,
   ): Effect.fn.Return<
     { readonly remotePort: number; readonly remoteServerKind: "external" | "managed" | null },
     SshCommandError | SshInvalidTargetError | SshLaunchError,
@@ -618,7 +602,7 @@ export const launchOrReuseRemoteServer = Effect.fn("ssh/tunnel.launchOrReuseRemo
 export const issueRemotePairingToken = Effect.fn("ssh/tunnel.issueRemotePairingToken")(function* (
   target: DesktopSshEnvironmentTarget,
   input?: SshAuthOptions,
-  runner?: RemoteT3RunnerOptions,
+  runner?: RemoteS3RunnerOptions,
 ): Effect.fn.Return<
   {
     readonly credential: string;
@@ -1313,7 +1297,7 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
   const createTunnelEntry = Effect.fn("ssh/tunnel.ensureTunnelEntry.create")(function* (input: {
     readonly key: string;
     readonly resolvedTarget: DesktopSshEnvironmentTarget;
-    readonly runner?: RemoteT3RunnerOptions;
+    readonly runner?: RemoteS3RunnerOptions;
   }): Effect.fn.Return<SshTunnelEntry, SshEnvironmentEffectError, SshEnvironmentEffectContext> {
     yield* Effect.logDebug("ssh.environment.tunnel.create.start", {
       ...sshTargetLogFields(input.resolvedTarget),
@@ -1426,7 +1410,7 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
   const ensureTunnelEntry = Effect.fn("ssh/tunnel.ensureTunnelEntry")(function* (
     key: string,
     resolvedTarget: DesktopSshEnvironmentTarget,
-    runner?: RemoteT3RunnerOptions,
+    runner?: RemoteS3RunnerOptions,
   ): Effect.fn.Return<SshTunnelEntry, SshEnvironmentEffectError, SshEnvironmentEffectContext> {
     let entry = tunnels.get(key) ?? null;
 
@@ -1596,7 +1580,7 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
 export class SshEnvironmentManager extends Context.Service<
   SshEnvironmentManager,
   SshEnvironmentManagerShape
->()("@t3tools/ssh/SshEnvironmentManager") {
+>()("@s3tools/ssh/SshEnvironmentManager") {
   static readonly layer = (options: SshEnvironmentManagerOptions = {}) =>
     Layer.effect(SshEnvironmentManager, makeSshEnvironmentManager(options));
 }

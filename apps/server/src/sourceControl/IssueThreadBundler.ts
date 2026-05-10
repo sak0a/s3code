@@ -2,7 +2,7 @@ import {
   SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES,
   SOURCE_CONTROL_DETAIL_COMMENT_BODY_MAX_BYTES,
   SOURCE_CONTROL_DETAIL_MAX_COMMENTS,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 export interface IssueThreadCommentInput {
   readonly author: string;

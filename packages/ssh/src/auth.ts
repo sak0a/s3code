@@ -34,7 +34,7 @@ export interface SshPasswordPromptShape {
 }
 
 export class SshPasswordPrompt extends Context.Service<SshPasswordPrompt, SshPasswordPromptShape>()(
-  "@t3tools/ssh/SshPasswordPrompt",
+  "@s3tools/ssh/SshPasswordPrompt",
 ) {
   static readonly disabledLayer = Layer.succeed(
     SshPasswordPrompt,
@@ -65,15 +65,11 @@ function joinSshAskpassPath(
 }
 
 export const ASKPASS_POSIX_SCRIPT = `#!/bin/sh
-# Invoked by ssh via SSH_ASKPASS when T3 Code re-runs ssh with a cached password
+# Invoked by ssh via SSH_ASKPASS when S3Code re-runs ssh with a cached password
 # from the renderer's in-app prompt. We never expose a native dialog here - if
 # S3_SSH_AUTH_SECRET is missing, that's a caller bug and we fail loudly.
 if [ "\${S3_SSH_AUTH_SECRET+x}" = "x" ]; then
   printf "%s\\n" "$S3_SSH_AUTH_SECRET"
-  exit 0
-fi
-if [ "\${T3_SSH_AUTH_SECRET+x}" = "x" ]; then
-  printf "%s\\n" "$T3_SSH_AUTH_SECRET"
   exit 0
 fi
 printf 'S3Code ssh-askpass invoked without S3_SSH_AUTH_SECRET.\\n' >&2
@@ -84,16 +80,12 @@ export const ASKPASS_WINDOWS_LAUNCHER_SCRIPT = `@echo off\r
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0ssh-askpass.ps1" %*\r
 `;
 
-export const ASKPASS_WINDOWS_SCRIPT = `# Invoked by ssh via SSH_ASKPASS (through ssh-askpass.cmd) when T3 Code re-runs\r
+export const ASKPASS_WINDOWS_SCRIPT = `# Invoked by ssh via SSH_ASKPASS (through ssh-askpass.cmd) when S3Code re-runs\r
 # ssh with a cached password from the renderer's in-app prompt. We never expose\r
 # a native dialog here - if S3_SSH_AUTH_SECRET is missing, that's a caller bug\r
 # and we fail loudly.\r
 if ($null -ne $env:S3_SSH_AUTH_SECRET) {\r
   [Console]::Out.WriteLine($env:S3_SSH_AUTH_SECRET)\r
-  exit 0\r
-}\r
-if ($null -ne $env:T3_SSH_AUTH_SECRET) {\r
-  [Console]::Out.WriteLine($env:T3_SSH_AUTH_SECRET)\r
   exit 0\r
 }\r
 [Console]::Error.WriteLine("S3Code ssh-askpass invoked without S3_SSH_AUTH_SECRET.")\r
@@ -199,9 +191,8 @@ export const buildSshChildEnvironment = Effect.fn("ssh/auth.buildSshChildEnviron
       ? {}
       : {
           S3_SSH_AUTH_SECRET: input.authSecret ?? "",
-          T3_SSH_AUTH_SECRET: input.authSecret ?? "",
         }),
-    ...(platform === "win32" || baseEnv.DISPLAY ? {} : { DISPLAY: "t3code" }),
+    ...(platform === "win32" || baseEnv.DISPLAY ? {} : { DISPLAY: "s3code" }),
   };
 });
 

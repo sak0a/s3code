@@ -1,4 +1,4 @@
-import type { SourceControlIssueSummary } from "@t3tools/contracts";
+import type { SourceControlIssueSummary } from "@s3tools/contracts";
 import { DateTime, Option } from "effect";
 import { memo } from "react";
 import { MessageSquareIcon } from "lucide-react";

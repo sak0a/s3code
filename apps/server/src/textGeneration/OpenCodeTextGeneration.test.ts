@@ -1,9 +1,9 @@
-import { OpenCodeSettings, ProviderInstanceId } from "@t3tools/contracts";
+import { OpenCodeSettings, ProviderInstanceId } from "@s3tools/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
 import { Duration, Effect, Layer, Schema } from "effect";
 import { TestClock } from "effect/testing";
-import { NetService } from "@t3tools/shared/Net";
+import { NetService } from "@s3tools/shared/Net";
 import { beforeEach, expect } from "vitest";
 
 import { ServerConfig } from "../config.ts";
@@ -109,7 +109,7 @@ const OpenCodeTextGenerationTestLayer = Layer.succeed(
 ).pipe(
   Layer.provideMerge(
     ServerConfig.layerTest(process.cwd(), {
-      prefix: "t3code-opencode-text-generation-test-",
+      prefix: "s3code-opencode-text-generation-test-",
     }),
   ),
   Layer.provideMerge(NetService.layer),
@@ -122,7 +122,7 @@ const OpenCodeTextGenerationExistingServerTestLayer = Layer.succeed(
 ).pipe(
   Layer.provideMerge(
     ServerConfig.layerTest(process.cwd(), {
-      prefix: "t3code-opencode-text-generation-existing-server-test-",
+      prefix: "s3code-opencode-text-generation-existing-server-test-",
     }),
   ),
   Layer.provideMerge(NetService.layer),

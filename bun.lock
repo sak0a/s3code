@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@t3tools/monorepo",
+      "name": "@s3tools/monorepo",
       "devDependencies": {
         "@effect/language-service": "catalog:",
         "@types/node": "catalog:",
@@ -15,7 +15,7 @@
       },
     },
     "apps/desktop": {
-      "name": "@t3tools/desktop",
+      "name": "@s3tools/desktop",
       "version": "0.0.23",
       "dependencies": {
         "@effect/platform-node": "catalog:",
@@ -24,11 +24,11 @@
         "electron-updater": "^6.6.2",
       },
       "devDependencies": {
-        "@t3tools/client-runtime": "workspace:*",
-        "@t3tools/contracts": "workspace:*",
-        "@t3tools/shared": "workspace:*",
-        "@t3tools/ssh": "workspace:*",
-        "@t3tools/tailscale": "workspace:*",
+        "@s3tools/client-runtime": "workspace:*",
+        "@s3tools/contracts": "workspace:*",
+        "@s3tools/shared": "workspace:*",
+        "@s3tools/ssh": "workspace:*",
+        "@s3tools/tailscale": "workspace:*",
         "@types/node": "catalog:",
         "effect-acp": "workspace:*",
         "tsdown": "catalog:",
@@ -37,7 +37,7 @@
       },
     },
     "apps/marketing": {
-      "name": "@t3tools/marketing",
+      "name": "@s3tools/marketing",
       "version": "0.0.0",
       "dependencies": {
         "astro": "^6.0.4",
@@ -48,10 +48,10 @@
       },
     },
     "apps/server": {
-      "name": "t3",
+      "name": "s3",
       "version": "0.0.23",
       "bin": {
-        "t3": "./dist/bin.mjs",
+        "s3": "./dist/bin.mjs",
       },
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "^0.2.111",
@@ -67,10 +67,10 @@
       "devDependencies": {
         "@effect/language-service": "catalog:",
         "@effect/vitest": "catalog:",
-        "@t3tools/contracts": "workspace:*",
-        "@t3tools/shared": "workspace:*",
-        "@t3tools/tailscale": "workspace:*",
-        "@t3tools/web": "workspace:*",
+        "@s3tools/contracts": "workspace:*",
+        "@s3tools/shared": "workspace:*",
+        "@s3tools/tailscale": "workspace:*",
+        "@s3tools/web": "workspace:*",
         "@types/bun": "catalog:",
         "@types/node": "catalog:",
         "effect-acp": "workspace:*",
@@ -81,7 +81,7 @@
       },
     },
     "apps/web": {
-      "name": "@t3tools/web",
+      "name": "@s3tools/web",
       "version": "0.0.23",
       "dependencies": {
         "@base-ui/react": "^1.2.0",
@@ -94,9 +94,9 @@
         "@legendapp/list": "3.0.0-beta.44",
         "@lexical/react": "^0.41.0",
         "@pierre/diffs": "catalog:",
-        "@t3tools/client-runtime": "workspace:*",
-        "@t3tools/contracts": "workspace:*",
-        "@t3tools/shared": "workspace:*",
+        "@s3tools/client-runtime": "workspace:*",
+        "@s3tools/contracts": "workspace:*",
+        "@s3tools/shared": "workspace:*",
         "@tanstack/react-pacer": "^0.19.4",
         "@tanstack/react-query": "^5.90.0",
         "@tanstack/react-router": "^1.160.2",
@@ -136,10 +136,10 @@
       },
     },
     "packages/client-runtime": {
-      "name": "@t3tools/client-runtime",
+      "name": "@s3tools/client-runtime",
       "version": "0.0.0-alpha.1",
       "dependencies": {
-        "@t3tools/contracts": "workspace:*",
+        "@s3tools/contracts": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -149,7 +149,7 @@
       },
     },
     "packages/contracts": {
-      "name": "@t3tools/contracts",
+      "name": "@s3tools/contracts",
       "version": "0.0.23",
       "dependencies": {
         "effect": "catalog:",
@@ -193,10 +193,10 @@
       },
     },
     "packages/shared": {
-      "name": "@t3tools/shared",
+      "name": "@s3tools/shared",
       "version": "0.0.0-alpha.1",
       "dependencies": {
-        "@t3tools/contracts": "workspace:*",
+        "@s3tools/contracts": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -208,11 +208,11 @@
       },
     },
     "packages/ssh": {
-      "name": "@t3tools/ssh",
+      "name": "@s3tools/ssh",
       "version": "0.0.0-alpha.1",
       "dependencies": {
-        "@t3tools/contracts": "workspace:*",
-        "@t3tools/shared": "workspace:*",
+        "@s3tools/contracts": "workspace:*",
+        "@s3tools/shared": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -225,7 +225,7 @@
       },
     },
     "packages/tailscale": {
-      "name": "@t3tools/tailscale",
+      "name": "@s3tools/tailscale",
       "version": "0.0.0-alpha.1",
       "dependencies": {
         "@effect/platform-node": "catalog:",
@@ -240,12 +240,12 @@
       },
     },
     "scripts": {
-      "name": "@t3tools/scripts",
+      "name": "@s3tools/scripts",
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "^0.2.77",
         "@effect/platform-node": "catalog:",
-        "@t3tools/contracts": "workspace:*",
-        "@t3tools/shared": "workspace:*",
+        "@s3tools/contracts": "workspace:*",
+        "@s3tools/shared": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -774,23 +774,23 @@
 
     "@szmarczak/http-timer": ["@szmarczak/http-timer@4.0.6", "", { "dependencies": { "defer-to-connect": "^2.0.0" } }, "sha512-4BAffykYOgO+5nzBWYwE3W90sBgLJoUPRWWcL8wlyiM8IB8ipJz3UMJ9KXQd1RKQXpKp8Tutn80HZtWsu2u76w=="],
 
-    "@t3tools/client-runtime": ["@t3tools/client-runtime@workspace:packages/client-runtime"],
+    "@s3tools/client-runtime": ["@s3tools/client-runtime@workspace:packages/client-runtime"],
 
-    "@t3tools/contracts": ["@t3tools/contracts@workspace:packages/contracts"],
+    "@s3tools/contracts": ["@s3tools/contracts@workspace:packages/contracts"],
 
-    "@t3tools/desktop": ["@t3tools/desktop@workspace:apps/desktop"],
+    "@s3tools/desktop": ["@s3tools/desktop@workspace:apps/desktop"],
 
-    "@t3tools/marketing": ["@t3tools/marketing@workspace:apps/marketing"],
+    "@s3tools/marketing": ["@s3tools/marketing@workspace:apps/marketing"],
 
-    "@t3tools/scripts": ["@t3tools/scripts@workspace:scripts"],
+    "@s3tools/scripts": ["@s3tools/scripts@workspace:scripts"],
 
-    "@t3tools/shared": ["@t3tools/shared@workspace:packages/shared"],
+    "@s3tools/shared": ["@s3tools/shared@workspace:packages/shared"],
 
-    "@t3tools/ssh": ["@t3tools/ssh@workspace:packages/ssh"],
+    "@s3tools/ssh": ["@s3tools/ssh@workspace:packages/ssh"],
 
-    "@t3tools/tailscale": ["@t3tools/tailscale@workspace:packages/tailscale"],
+    "@s3tools/tailscale": ["@s3tools/tailscale@workspace:packages/tailscale"],
 
-    "@t3tools/web": ["@t3tools/web@workspace:apps/web"],
+    "@s3tools/web": ["@s3tools/web@workspace:apps/web"],
 
     "@tailwindcss/node": ["@tailwindcss/node@4.2.1", "", { "dependencies": { "@jridgewell/remapping": "^2.3.5", "enhanced-resolve": "^5.19.0", "jiti": "^2.6.1", "lightningcss": "1.31.1", "magic-string": "^0.30.21", "source-map-js": "^1.2.1", "tailwindcss": "4.2.1" } }, "sha512-jlx6sLk4EOwO6hHe1oCGm1Q4AN/s0rSrTTPBGPM0/RQ6Uylwq17FuU8IeJJKEjtc6K6O07zsvP+gDO6MMWo7pg=="],
 
@@ -1868,7 +1868,7 @@
 
     "svgo": ["svgo@4.0.1", "", { "dependencies": { "commander": "^11.1.0", "css-select": "^5.1.0", "css-tree": "^3.0.1", "css-what": "^6.1.0", "csso": "^5.0.5", "picocolors": "^1.1.1", "sax": "^1.5.0" }, "bin": "./bin/svgo.js" }, "sha512-XDpWUOPC6FEibaLzjfe0ucaV0YrOjYotGJO1WpF0Zd+n6ZGEQUsSugaoLq9QkEZtAfQIxT42UChcssDVPP3+/w=="],
 
-    "t3": ["t3@workspace:apps/server"],
+    "t3": ["s3@workspace:apps/server"],
 
     "tabbable": ["tabbable@6.4.0", "", {}, "sha512-05PUHKSNE8ou2dwIxTngl4EzcnsCDZGJ/iCLtDflR/SHB/ny14rXc+qU5P4mG9JkusiV7EivzY9Mhm55AzAvCg=="],
 

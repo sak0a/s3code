@@ -3,7 +3,7 @@
 S3Code reads keybindings from:
 
 - `~/.s3code/userdata/keybindings.json`
-- legacy fallback: `~/.t3/userdata/keybindings.json`
+- legacy fallback: `~/.s3/userdata/keybindings.json`
 
 The file must be a JSON array of rules:
 

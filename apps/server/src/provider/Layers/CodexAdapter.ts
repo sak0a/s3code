@@ -23,7 +23,7 @@ import {
   ProviderApprovalDecision,
   ThreadId,
   ProviderSendTurnInput,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { Effect, Exit, Fiber, FileSystem, Queue, Schema, Scope, Stream } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import * as CodexErrors from "effect-codex-app-server/errors";
@@ -32,8 +32,8 @@ import * as EffectCodexSchema from "effect-codex-app-server/schema";
 import {
   getModelSelectionBooleanOptionValue,
   getModelSelectionStringOptionValue,
-} from "@t3tools/shared/model";
-import { formatSourceControlContextsForAgent } from "@t3tools/shared/sourceControlContextFormatter";
+} from "@s3tools/shared/model";
+import { formatSourceControlContextsForAgent } from "@s3tools/shared/sourceControlContextFormatter";
 
 import {
   ProviderAdapterRequestError,

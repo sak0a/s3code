@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId } from "@s3tools/contracts";
 import { useCallback, useState } from "react";
 import { Dialog, DialogPopup, DialogTitle } from "../ui/dialog";
 import { IssueDetail } from "../projectExplorer/IssueDetail";

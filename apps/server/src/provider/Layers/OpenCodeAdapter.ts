@@ -11,11 +11,11 @@ import {
   type ToolLifecycleItemType,
   TurnId,
   type UserInputQuestion,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { Cause, Effect, Exit, Queue, Random, Ref, Scope, Stream } from "effect";
 import type { OpencodeClient, Part, PermissionRequest, QuestionRequest } from "@opencode-ai/sdk/v2";
-import { getModelSelectionStringOptionValue } from "@t3tools/shared/model";
-import { formatSourceControlContextsForAgent } from "@t3tools/shared/sourceControlContextFormatter";
+import { getModelSelectionStringOptionValue } from "@s3tools/shared/model";
+import { formatSourceControlContextsForAgent } from "@s3tools/shared/sourceControlContextFormatter";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import { ServerConfig } from "../../config.ts";
@@ -1045,7 +1045,7 @@ export function makeOpenCodeAdapter(
               });
               const openCodeSession = yield* runOpenCodeSdk("session.create", () =>
                 client.session.create({
-                  title: `T3 Code ${input.threadId}`,
+                  title: `S3Code ${input.threadId}`,
                   permission: buildOpenCodePermissionRules(input.runtimeMode),
                 }),
               );

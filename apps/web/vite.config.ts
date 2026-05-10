@@ -2,7 +2,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import babel from "@rolldown/plugin-babel";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
-import { readEnv } from "@t3tools/shared/runtimeEnv";
+import { readEnv } from "@s3tools/shared/runtimeEnv";
 import { defineConfig } from "vite";
 import pkg from "./package.json" with { type: "json" };
 

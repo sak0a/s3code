@@ -5,18 +5,18 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   createAdvertisedEndpoint,
   type CreateAdvertisedEndpointInput,
-} from "@t3tools/client-runtime";
-import type { AdvertisedEndpoint, AdvertisedEndpointProvider } from "@t3tools/contracts";
+} from "@s3tools/client-runtime";
+import type { AdvertisedEndpoint, AdvertisedEndpointProvider } from "@s3tools/contracts";
 import {
   buildTailscaleHttpsBaseUrl,
   isTailscaleIpv4Address,
   parseTailscaleMagicDnsName,
   probeTailscaleHttpsEndpoint,
   readTailscaleStatus,
-} from "@t3tools/tailscale";
+} from "@s3tools/tailscale";
 import { Effect, Layer } from "effect";
 
-export { isTailscaleIpv4Address, parseTailscaleMagicDnsName } from "@t3tools/tailscale";
+export { isTailscaleIpv4Address, parseTailscaleMagicDnsName } from "@s3tools/tailscale";
 
 const TailscaleDesktopLayer = Layer.mergeAll(NodeServices.layer, NodeHttpClient.layerUndici);
 

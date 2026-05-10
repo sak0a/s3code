@@ -244,7 +244,7 @@ describe("importThemeFromFile", () => {
     const result = await importThemeFromFile(file, { activate: true });
     expect(result.action).toBe("added");
 
-    const style = styleNodes.find((node) => node.id === "t3code-active-theme");
+    const style = styleNodes.find((node) => node.id === "s3code-active-theme");
     expect(style).toBeDefined();
     expect(style?.textContent).toContain("--primary: #abcabc;");
   });

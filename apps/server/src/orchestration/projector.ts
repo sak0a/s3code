@@ -4,14 +4,14 @@ import type {
   OrchestrationWorktreeShell,
   ThreadId,
   WorktreeId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import {
   OrchestrationCheckpointSummary,
   OrchestrationMessage,
   OrchestrationSession,
   OrchestrationThread,
   OrchestrationWorktreeShell as OrchestrationWorktreeShellSchema,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { Effect, Schema } from "effect";
 
 import { toProjectorDecodeError, type OrchestrationProjectorDecodeError } from "./Errors.ts";

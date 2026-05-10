@@ -1,4 +1,4 @@
-import { EDITORS, type EditorId } from "@t3tools/contracts";
+import { EDITORS, type EditorId } from "@s3tools/contracts";
 import { describe, expect, it } from "vitest";
 
 import { EDITOR_ICONS, getEditorLabel } from "./SettingsPanels.editor";

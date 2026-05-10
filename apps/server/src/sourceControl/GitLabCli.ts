@@ -10,7 +10,7 @@ import {
   type DateTime,
 } from "effect";
 
-import { TrimmedNonEmptyString, type SourceControlRepositoryVisibility } from "@t3tools/contracts";
+import { TrimmedNonEmptyString, type SourceControlRepositoryVisibility } from "@s3tools/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as GitLabIssues from "./gitLabIssues.ts";
@@ -131,7 +131,7 @@ export interface GitLabCliShape {
 }
 
 export class GitLabCli extends Context.Service<GitLabCli, GitLabCliShape>()(
-  "t3/source-control/GitLabCli",
+  "s3/source-control/GitLabCli",
 ) {}
 
 function isVcsProcessSpawnError(error: unknown): boolean {

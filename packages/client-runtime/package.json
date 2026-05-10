@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/client-runtime",
+  "name": "@s3tools/client-runtime",
   "version": "0.0.0-alpha.1",
   "private": true,
   "type": "module",
@@ -14,7 +14,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@t3tools/contracts": "workspace:*",
+    "@s3tools/contracts": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

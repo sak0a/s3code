@@ -488,8 +488,8 @@ import {
   ProjectionWorktreeRepository,
   ProjectionWorktreeRepositoryLive,
 } from "./ProjectionWorktrees.ts";
-import { WorktreeId } from "@t3tools/contracts/worktree";
-import { ProjectId } from "@t3tools/contracts";
+import { WorktreeId } from "@s3tools/contracts/worktree";
+import { ProjectId } from "@s3tools/contracts";
 
 const layer = it.layer(
   Layer.mergeAll(NodeSqliteClient.layerMemory(), ProjectionWorktreeRepositoryLive),
@@ -602,8 +602,8 @@ Create `apps/server/src/persistence/Layers/ProjectionWorktrees.ts`:
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import { Context, Effect, Layer, Option, Schema } from "effect";
-import { ProjectId } from "@t3tools/contracts";
-import { Worktree, WorktreeId } from "@t3tools/contracts/worktree";
+import { ProjectId } from "@s3tools/contracts";
+import { Worktree, WorktreeId } from "@s3tools/contracts/worktree";
 
 const WorktreeRow = Schema.Struct({
   worktree_id: Schema.String,
@@ -822,7 +822,7 @@ manualStatusBucket: Schema.NullOr(StatusBucket),
 manualPosition: Schema.Number,
 ```
 
-(Import `StatusBucket` from `@t3tools/contracts/worktree`.)
+(Import `StatusBucket` from `@s3tools/contracts/worktree`.)
 
 - [ ] **Step 3: Update the upsert SQL**
 
@@ -918,8 +918,8 @@ import {
   ProjectionWorktreeRepositoryLive,
 } from "../../persistence/Layers/ProjectionWorktrees.ts";
 import { applyWorktreesProjection } from "./ProjectionPipeline.ts";
-import { WorktreeId } from "@t3tools/contracts/worktree";
-import { ProjectId } from "@t3tools/contracts";
+import { WorktreeId } from "@s3tools/contracts/worktree";
+import { ProjectId } from "@s3tools/contracts";
 
 const layer = it.layer(
   Layer.mergeAll(NodeSqliteClient.layerMemory(), ProjectionWorktreeRepositoryLive),
@@ -1226,7 +1226,7 @@ Read `apps/server/src/git/GitManager.ts` lines 1393-1553 (the `preparePullReques
 ```typescript
 import { describe, expect, it } from "vitest";
 import { bundleIssueThread } from "./IssueThreadBundler.ts";
-import { SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES } from "@t3tools/contracts/sourceControl";
+import { SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES } from "@s3tools/contracts/sourceControl";
 
 describe("bundleIssueThread", () => {
   it("formats issue title + body into seed prompt", () => {
@@ -1286,7 +1286,7 @@ import {
   SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES,
   SOURCE_CONTROL_DETAIL_COMMENT_BODY_MAX_BYTES,
   SOURCE_CONTROL_DETAIL_MAX_COMMENTS,
-} from "@t3tools/contracts/sourceControl";
+} from "@s3tools/contracts/sourceControl";
 
 export interface IssueThreadInput {
   number: number;
@@ -1842,7 +1842,7 @@ import {
   ProjectionWorktreeRepository,
   ProjectionWorktreeRepositoryLive,
 } from "./Layers/ProjectionWorktrees.ts";
-import { ProjectId } from "@t3tools/contracts";
+import { ProjectId } from "@s3tools/contracts";
 
 const layer = it.layer(
   Layer.mergeAll(NodeSqliteClient.layerMemory(), ProjectionWorktreeRepositoryLive),
@@ -1976,8 +1976,8 @@ Create `apps/server/src/persistence/worktreeBackfill.ts`:
 import { Effect } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import { ProjectionWorktreeRepository } from "./Layers/ProjectionWorktrees.ts";
-import { ProjectId } from "@t3tools/contracts";
-import { WorktreeId } from "@t3tools/contracts/worktree";
+import { ProjectId } from "@s3tools/contracts";
+import { WorktreeId } from "@s3tools/contracts/worktree";
 
 interface BackfillOptions {
   detectDefaultBranch: (cwd: string) => Promise<string>;
@@ -2304,7 +2304,7 @@ Expected: FAIL.
 Append to `Sidebar.logic.ts`:
 
 ```typescript
-import type { StatusBucket } from "@t3tools/contracts/worktree";
+import type { StatusBucket } from "@s3tools/contracts/worktree";
 
 export type SidebarStatusBucket = StatusBucket;
 
@@ -2808,7 +2808,7 @@ Create `SidebarWorktreeRow.tsx`:
 
 ```typescript
 import * as React from "react";
-import type { Worktree } from "@t3tools/contracts/worktree";
+import type { Worktree } from "@s3tools/contracts/worktree";
 import type { SidebarStatusBucket } from "../Sidebar.logic.ts";
 import { Plus, MoreHorizontal, GitBranch } from "lucide-react";
 import { DropdownMenu } from "../ui/DropdownMenu"; // match existing menu component path
@@ -3066,7 +3066,7 @@ git commit -m "Extract SidebarSessionRow with bucket reset action"
 
 ```typescript
 import * as React from "react";
-import type { Worktree } from "@t3tools/contracts/worktree";
+import type { Worktree } from "@s3tools/contracts/worktree";
 
 interface Props {
   archivedWorktrees: ReadonlyArray<Worktree>;

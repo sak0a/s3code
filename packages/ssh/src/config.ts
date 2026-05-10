@@ -1,4 +1,4 @@
-import type { DesktopDiscoveredSshHost } from "@t3tools/contracts";
+import type { DesktopDiscoveredSshHost } from "@s3tools/contracts";
 
 import { Effect, FileSystem, Path, PlatformError } from "effect";
 

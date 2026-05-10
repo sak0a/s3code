@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
-import { readEnv } from "@t3tools/shared/runtimeEnv";
+import { readEnv } from "@s3tools/shared/runtimeEnv";
 
 import * as EffectAcpAgent from "effect-acp/agent";
 import * as AcpError from "effect-acp/errors";
@@ -410,7 +410,7 @@ const program = Effect.gen(function* () {
             status: "completed",
             rawOutput: {
               exitCode: 0,
-              stdout: '{ "name": "t3" }',
+              stdout: '{ "name": "s3" }',
               stderr: "",
             },
           },

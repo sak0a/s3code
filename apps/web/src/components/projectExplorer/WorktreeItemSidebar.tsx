@@ -1,4 +1,4 @@
-import type { SourceControlLabel } from "@t3tools/contracts";
+import type { SourceControlLabel } from "@s3tools/contracts";
 import { CircleDotIcon, GitPullRequestIcon, UsersIcon } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { avatarUrlForAuthor, hashAuthorToHue } from "./CommentThread.logic";

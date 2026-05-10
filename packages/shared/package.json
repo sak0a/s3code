@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/shared",
+  "name": "@s3tools/shared",
   "version": "0.0.0-alpha.1",
   "private": true,
   "type": "module",
@@ -94,7 +94,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@t3tools/contracts": "workspace:*",
+    "@s3tools/contracts": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

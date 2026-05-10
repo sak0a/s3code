@@ -12,7 +12,7 @@ import {
   type ServerProviderModel,
   type ServerProviderRateLimits,
   type ServerProviderRateLimitWindow,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 
 import { cn } from "../../lib/utils";
 import { normalizeProviderAccentColor } from "../../providerInstances";

@@ -7,7 +7,7 @@ import type {
   ProjectId,
   ThreadId,
   WorktreeId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { Effect } from "effect";
 
 import { OrchestrationCommandInvariantError } from "./Errors.ts";

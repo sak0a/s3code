@@ -1,4 +1,3 @@
-import * as FS from "node:fs";
 import * as OS from "node:os";
 import { Effect, Path } from "effect";
 import {
@@ -10,7 +9,7 @@ import {
   listLoginShellCandidates,
   mergePathEntries,
   readPathFromLaunchctl,
-} from "@t3tools/shared/shell";
+} from "@s3tools/shared/shell";
 
 type WindowsCommandAvailabilityChecker = (
   command: string,
@@ -96,9 +95,7 @@ export const expandHomePath = Effect.fn(function* (input: string) {
 export const resolveBaseDir = Effect.fn(function* (raw: string | undefined) {
   const { join, resolve } = yield* Path.Path;
   if (!raw || raw.trim().length === 0) {
-    const preferred = join(OS.homedir(), ".s3code");
-    const legacy = join(OS.homedir(), ".t3");
-    return FS.existsSync(preferred) || !FS.existsSync(legacy) ? preferred : legacy;
+    return join(OS.homedir(), ".s3code");
   }
   return resolve(yield* expandHomePath(raw.trim()));
 });

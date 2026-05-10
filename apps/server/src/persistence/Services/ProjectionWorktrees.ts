@@ -6,7 +6,7 @@
  *
  * @module ProjectionWorktreeRepository
  */
-import { IsoDateTime, ProjectId, Worktree, WorktreeId } from "@t3tools/contracts";
+import { IsoDateTime, ProjectId, Worktree, WorktreeId } from "@s3tools/contracts";
 import { Context, Option, Schema } from "effect";
 import type { Effect } from "effect";
 
@@ -98,4 +98,4 @@ export interface ProjectionWorktreeRepositoryShape {
 export class ProjectionWorktreeRepository extends Context.Service<
   ProjectionWorktreeRepository,
   ProjectionWorktreeRepositoryShape
->()("t3/persistence/Services/ProjectionWorktrees/ProjectionWorktreeRepository") {}
+>()("s3/persistence/Services/ProjectionWorktrees/ProjectionWorktreeRepository") {}

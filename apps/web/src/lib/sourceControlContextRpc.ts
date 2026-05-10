@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId } from "@s3tools/contracts";
 import { queryOptions } from "@tanstack/react-query";
 import { requireEnvironmentConnection } from "~/environments/runtime";
 

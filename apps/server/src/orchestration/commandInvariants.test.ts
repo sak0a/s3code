@@ -8,7 +8,7 @@ import {
   type OrchestrationCommand,
   type OrchestrationReadModel,
   ProviderInstanceId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { Effect } from "effect";
 
 import {

@@ -3,7 +3,7 @@ import { Effect, Layer } from "effect";
 import os from "node:os";
 import path from "node:path";
 
-import { GitCommandError, GitManagerError } from "@t3tools/contracts";
+import { GitCommandError, GitManagerError } from "@s3tools/contracts";
 import * as GitManager from "./GitManager.ts";
 import * as GitWorkflowService from "./GitWorkflowService.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
@@ -131,7 +131,7 @@ describe("GitWorkflowService", () => {
     );
     const missingCwd = path.join(
       os.tmpdir(),
-      `t3-missing-status-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      `s3-missing-status-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     );
     const status = vi.fn(() =>
       Effect.fail(

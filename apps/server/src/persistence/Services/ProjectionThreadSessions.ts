@@ -13,7 +13,7 @@ import {
   ProviderInstanceId,
   ThreadId,
   TurnId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { Option, Schema, Context } from "effect";
 import type { Effect } from "effect";
 
@@ -73,4 +73,4 @@ export interface ProjectionThreadSessionRepositoryShape {
 export class ProjectionThreadSessionRepository extends Context.Service<
   ProjectionThreadSessionRepository,
   ProjectionThreadSessionRepositoryShape
->()("t3/persistence/Services/ProjectionThreadSessions/ProjectionThreadSessionRepository") {}
+>()("s3/persistence/Services/ProjectionThreadSessions/ProjectionThreadSessionRepository") {}

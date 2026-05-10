@@ -32,7 +32,7 @@ import {
   ProviderDriverKind,
   type ProviderInstanceConfigMap,
   ProviderInstanceId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { Effect, Layer } from "effect";
 
 import { ServerConfig } from "../../config.ts";

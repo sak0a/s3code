@@ -5,14 +5,14 @@ import { execFile } from "node:child_process";
 
 import { Cache, DateTime, Duration, Effect, Exit, Layer, Path } from "effect";
 
-import { type FilesystemBrowseInput, type ProjectEntry } from "@t3tools/contracts";
-import { isExplicitRelativePath, isWindowsAbsolutePath } from "@t3tools/shared/path";
+import { type FilesystemBrowseInput, type ProjectEntry } from "@s3tools/contracts";
+import { isExplicitRelativePath, isWindowsAbsolutePath } from "@s3tools/shared/path";
 import {
   insertRankedSearchResult,
   normalizeSearchQuery,
   scoreQueryMatch,
   type RankedSearchResult,
-} from "@t3tools/shared/searchRanking";
+} from "@s3tools/shared/searchRanking";
 
 import { VcsDriverRegistry } from "../../vcs/VcsDriverRegistry.ts";
 import {

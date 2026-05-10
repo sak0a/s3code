@@ -85,8 +85,8 @@ import {
   orchestrationDispatchRouteLayer,
   orchestrationSnapshotRouteLayer,
 } from "./orchestration/http.ts";
-import { NetService } from "@t3tools/shared/Net";
-import { disableTailscaleServe, ensureTailscaleServe } from "@t3tools/tailscale";
+import { NetService } from "@s3tools/shared/Net";
+import { disableTailscaleServe, ensureTailscaleServe } from "@s3tools/tailscale";
 
 const PtyAdapterLive = Layer.unwrap(
   Effect.gen(function* () {

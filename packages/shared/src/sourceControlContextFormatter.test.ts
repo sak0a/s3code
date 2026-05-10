@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ComposerSourceControlContext } from "@t3tools/contracts";
+import type { ComposerSourceControlContext } from "@s3tools/contracts";
 import { formatSourceControlContextsForAgent } from "./sourceControlContextFormatter.ts";
 
 // Build minimal fake DateTime-like values that satisfy the type.

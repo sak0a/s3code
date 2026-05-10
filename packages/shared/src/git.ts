@@ -5,13 +5,13 @@ import type {
   VcsStatusRemoteResult,
   VcsStatusResult,
   VcsStatusStreamEvent,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Random from "effect/Random";
 import { detectSourceControlProviderFromRemoteUrl } from "./sourceControl.ts";
 
 export const WORKTREE_BRANCH_PREFIX = "s3code";
-const LEGACY_WORKTREE_BRANCH_PREFIX = "t3code";
+const LEGACY_WORKTREE_BRANCH_PREFIX = "s3code";
 const TEMP_WORKTREE_BRANCH_PATTERN = new RegExp(
   `^(?:${WORKTREE_BRANCH_PREFIX}|${LEGACY_WORKTREE_BRANCH_PREFIX})\\/[0-9a-f]{8}$`,
 );

@@ -5,7 +5,7 @@ import { it } from "@effect/vitest";
 import { Effect, Layer, Schema } from "effect";
 import { beforeEach } from "vitest";
 
-import { OpenCodeSettings } from "@t3tools/contracts";
+import { OpenCodeSettings } from "@s3tools/contracts";
 import { ServerConfig } from "../../config.ts";
 import {
   OpenCodeRuntime,

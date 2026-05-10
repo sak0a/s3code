@@ -1,14 +1,14 @@
 {
-  "name": "t3",
+  "name": "s3",
   "version": "0.0.23",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pingdotgg/t3code",
+    "url": "https://github.com/pingdotgg/s3code",
     "directory": "apps/server"
   },
   "bin": {
-    "t3": "./dist/bin.mjs"
+    "s3": "./dist/bin.mjs"
   },
   "files": [
     "dist"
@@ -37,10 +37,10 @@
   "devDependencies": {
     "@effect/language-service": "catalog:",
     "@effect/vitest": "catalog:",
-    "@t3tools/contracts": "workspace:*",
-    "@t3tools/shared": "workspace:*",
-    "@t3tools/tailscale": "workspace:*",
-    "@t3tools/web": "workspace:*",
+    "@s3tools/contracts": "workspace:*",
+    "@s3tools/shared": "workspace:*",
+    "@s3tools/tailscale": "workspace:*",
+    "@s3tools/web": "workspace:*",
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
     "effect-acp": "workspace:*",

@@ -5,7 +5,7 @@ import type {
   ProjectId,
   SourceControlIssueSummary,
   VcsRef,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { GitBranchIcon, RotateCwIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { readEnvironmentApi } from "../../environmentApi";

@@ -1,12 +1,12 @@
-import { NetService } from "@t3tools/shared/Net";
-import { parsePersistedServerObservabilitySettings } from "@t3tools/shared/serverSettings";
+import { NetService } from "@s3tools/shared/Net";
+import { parsePersistedServerObservabilitySettings } from "@s3tools/shared/serverSettings";
 import {
   AuthSessionId,
   CommandId,
   OrchestrationReadModel,
   ProjectId,
   type ClientOrchestrationCommand,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import {
   Config,
   Console,
@@ -554,7 +554,7 @@ const withProjectCliSessionToken = <A, E, R>(
   Effect.acquireUseRelease(
     authControlPlane.issueSession({
       role: "owner",
-      label: "t3 project cli",
+      label: "s3 project cli",
     }),
     (issued) => run(issued.token),
     (issued) => authControlPlane.revokeSession(issued.sessionId).pipe(Effect.ignore({ log: true })),
@@ -1157,13 +1157,13 @@ const runServerCommand = (
   });
 
 const startCommand = Command.make("start", { ...sharedServerCommandFlags }).pipe(
-  Command.withDescription("Run the T3 Code server."),
+  Command.withDescription("Run the S3Code server."),
   Command.withHandler((flags) => runServerCommand(flags)),
 );
 
 const serveCommand = Command.make("serve", { ...sharedServerCommandFlags }).pipe(
   Command.withDescription(
-    "Run the T3 Code server without opening a browser and print headless pairing details.",
+    "Run the S3Code server without opening a browser and print headless pairing details.",
   ),
   Command.withHandler((flags) =>
     runServerCommand(flags, {
@@ -1173,8 +1173,8 @@ const serveCommand = Command.make("serve", { ...sharedServerCommandFlags }).pipe
   ),
 );
 
-export const cli = Command.make("t3", { ...sharedServerCommandFlags }).pipe(
-  Command.withDescription("Run the T3 Code server."),
+export const cli = Command.make("s3", { ...sharedServerCommandFlags }).pipe(
+  Command.withDescription("Run the S3Code server."),
   Command.withHandler((flags) => runServerCommand(flags)),
   Command.withSubcommands([startCommand, serveCommand, authCommand, projectCommand]),
 );

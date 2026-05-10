@@ -1,5 +1,5 @@
-import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime";
-import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
+import { scopeProjectRef, scopeThreadRef } from "@s3tools/client-runtime";
+import type { EnvironmentId, ThreadId } from "@s3tools/contracts";
 import {
   ChevronDownIcon,
   CloudIcon,

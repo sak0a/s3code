@@ -28,7 +28,7 @@ import {
   WorktreeId,
   WS_METHODS,
   WsRpcGroup,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { clamp } from "effect/Number";
 import { HttpRouter, HttpServerRequest } from "effect/unstable/http";
 import { RpcSerialization, RpcServer } from "effect/unstable/rpc";

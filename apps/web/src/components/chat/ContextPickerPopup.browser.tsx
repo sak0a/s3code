@@ -3,7 +3,7 @@ import "../../index.css";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 import { page, userEvent } from "vitest/browser";
-import type { ChangeRequest, EnvironmentId, SourceControlIssueSummary } from "@t3tools/contracts";
+import type { ChangeRequest, EnvironmentId, SourceControlIssueSummary } from "@s3tools/contracts";
 
 // ---------------------------------------------------------------------------
 // Mock TanStack Query so we can inject test data without a real server

@@ -11,7 +11,7 @@ import {
   ProjectId,
   ThreadId,
   WorktreeId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import { Effect, Layer, Schema, Stream } from "effect";

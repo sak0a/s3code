@@ -30,14 +30,14 @@ import type {
   DesktopUpdateActionResult,
   DesktopUpdateCheckResult,
   DesktopUpdateState,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { autoUpdater } from "electron-updater";
 
-import type { ContextMenuItem } from "@t3tools/contracts";
-import { RotatingFileSink } from "@t3tools/shared/logging";
-import { deleteEnv, readEnv } from "@t3tools/shared/runtimeEnv";
-import { parsePersistedServerObservabilitySettings } from "@t3tools/shared/serverSettings";
-import type { RemoteT3RunnerOptions } from "@t3tools/ssh/tunnel";
+import type { ContextMenuItem } from "@s3tools/contracts";
+import { RotatingFileSink } from "@s3tools/shared/logging";
+import { deleteEnv, readEnv } from "@s3tools/shared/runtimeEnv";
+import { parsePersistedServerObservabilitySettings } from "@s3tools/shared/serverSettings";
+import type { RemoteS3RunnerOptions } from "@s3tools/ssh/tunnel";
 import { DEFAULT_DESKTOP_BACKEND_PORT, resolveDesktopBackendPort } from "./backendPort.ts";
 import {
   type DesktopSettings,
@@ -63,7 +63,7 @@ import {
   resolveDesktopCoreAdvertisedEndpoints,
   resolveDesktopServerExposure,
 } from "./serverExposure.ts";
-import { DesktopSshEnvironmentBridge, resolveRemoteT3CliPackageSpec } from "./sshEnvironment.ts";
+import { DesktopSshEnvironmentBridge, resolveRemoteS3CliPackageSpec } from "./sshEnvironment.ts";
 import { syncShellEnvironment } from "./syncShellEnvironment.ts";
 import { waitForBackendStartupReady } from "./backendStartupReadiness.ts";
 import { getAutoUpdateDisabledReason, shouldBroadcastDownloadProgress } from "./updateState.ts";
@@ -124,8 +124,7 @@ const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
 // Dev-only SSH launcher override. Set this to an absolute path on the SSH host
 // for a built server entry, for example:
 // "/Users/julius/Development/Work/codething-mvp/apps/server/dist/bin.mjs"
-const DEV_REMOTE_SERVER_ENTRY_PATH =
-  readAliasedEnv("S3CODE_DEV_REMOTE_SERVER_ENTRY_PATH")?.trim() ?? "";
+const DEV_REMOTE_SERVER_ENTRY_PATH = readEnv("S3CODE_DEV_REMOTE_SERVER_ENTRY_PATH")?.trim() ?? "";
 const desktopAppBranding: DesktopAppBranding = resolveDesktopAppBranding({
   isDevelopment,
   appVersion: app.getVersion(),
@@ -306,16 +305,16 @@ function resolveDesktopDevServerUrl(): string {
 
 function backendChildEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
-  deleteAliasedEnv(env, "S3CODE_PORT");
-  deleteAliasedEnv(env, "S3CODE_MODE");
-  deleteAliasedEnv(env, "S3CODE_NO_BROWSER");
-  deleteAliasedEnv(env, "S3CODE_HOST");
-  deleteAliasedEnv(env, "S3CODE_DESKTOP_WS_URL");
-  deleteAliasedEnv(env, "S3CODE_DESKTOP_LAN_ACCESS");
-  deleteAliasedEnv(env, "S3CODE_DESKTOP_LAN_HOST");
-  deleteAliasedEnv(env, "S3CODE_DESKTOP_HTTPS_ENDPOINTS");
-  deleteAliasedEnv(env, "S3CODE_TAILSCALE_SERVE");
-  deleteAliasedEnv(env, "S3CODE_TAILSCALE_SERVE_PORT");
+  deleteEnv(env, "S3CODE_PORT");
+  deleteEnv(env, "S3CODE_MODE");
+  deleteEnv(env, "S3CODE_NO_BROWSER");
+  deleteEnv(env, "S3CODE_HOST");
+  deleteEnv(env, "S3CODE_DESKTOP_WS_URL");
+  deleteEnv(env, "S3CODE_DESKTOP_LAN_ACCESS");
+  deleteEnv(env, "S3CODE_DESKTOP_LAN_HOST");
+  deleteEnv(env, "S3CODE_DESKTOP_HTTPS_ENDPOINTS");
+  deleteEnv(env, "S3CODE_TAILSCALE_SERVE");
+  deleteEnv(env, "S3CODE_TAILSCALE_SERVE_PORT");
   return env;
 }
 
@@ -359,12 +358,12 @@ function getDesktopSecretStorage() {
 }
 
 function resolveAdvertisedHostOverride(): string | undefined {
-  const override = readAliasedEnv("S3CODE_DESKTOP_LAN_HOST")?.trim();
+  const override = readEnv("S3CODE_DESKTOP_LAN_HOST")?.trim();
   return override && override.length > 0 ? override : undefined;
 }
 
 function resolveCustomHttpsEndpointUrls(): readonly string[] {
-  return (readAliasedEnv("S3CODE_DESKTOP_HTTPS_ENDPOINTS") ?? "")
+  return (readEnv("S3CODE_DESKTOP_HTTPS_ENDPOINTS") ?? "")
     .split(",")
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
@@ -744,12 +743,12 @@ let updateState: DesktopUpdateState = initialUpdateState();
 
 const desktopSshEnvironmentBridge = new DesktopSshEnvironmentBridge({
   getMainWindow: () => mainWindow,
-  resolveCliRunner: (): RemoteT3RunnerOptions => {
+  resolveCliRunner: (): RemoteS3RunnerOptions => {
     if (isDevelopment && DEV_REMOTE_SERVER_ENTRY_PATH.length > 0) {
       return { nodeScriptPath: DEV_REMOTE_SERVER_ENTRY_PATH };
     }
     return {
-      packageSpec: resolveRemoteT3CliPackageSpec({
+      packageSpec: resolveRemoteS3CliPackageSpec({
         appVersion: app.getVersion(),
         updateChannel: desktopSettings.updateChannel,
         isDevelopment,
@@ -825,8 +824,8 @@ function resolveEmbeddedCommitHash(): string | null {
 
   try {
     const raw = FS.readFileSync(packageJsonPath, "utf8");
-    const parsed = JSON.parse(raw) as { t3codeCommitHash?: unknown };
-    return normalizeCommitHash(parsed.t3codeCommitHash);
+    const parsed = JSON.parse(raw) as { s3codeCommitHash?: unknown };
+    return normalizeCommitHash(parsed.s3codeCommitHash);
   } catch {
     return null;
   }
@@ -837,7 +836,7 @@ function resolveAboutCommitHash(): string | null {
     return aboutCommitHashCache;
   }
 
-  const envCommitHash = normalizeCommitHash(readAliasedEnv("S3CODE_COMMIT_HASH"));
+  const envCommitHash = normalizeCommitHash(readEnv("S3CODE_COMMIT_HASH"));
   if (envCommitHash) {
     aboutCommitHashCache = envCommitHash;
     return aboutCommitHashCache;
@@ -921,7 +920,7 @@ function handleFatalStartupError(stage: string, error: unknown): void {
   console.error(`[desktop] fatal startup error (${stage})`, error);
   if (!isQuitting) {
     isQuitting = true;
-    dialog.showErrorBox("T3 Code failed to start", `Stage: ${stage}\n${message}${detail}`);
+    dialog.showErrorBox("S3Code failed to start", `Stage: ${stage}\n${message}${detail}`);
   }
   stopBackend();
   restoreStdIoCapture?.();
@@ -992,13 +991,13 @@ function dispatchMenuAction(action: string): void {
 
 function handleCheckForUpdatesMenuClick(): void {
   const hasUpdateFeedConfig =
-    readAppUpdateYml() !== null || Boolean(readAliasedEnv("S3CODE_DESKTOP_MOCK_UPDATES"));
+    readAppUpdateYml() !== null || Boolean(readEnv("S3CODE_DESKTOP_MOCK_UPDATES"));
   const disabledReason = getAutoUpdateDisabledReason({
     isDevelopment,
     isPackaged: app.isPackaged,
     platform: process.platform,
     appImage: process.env.APPIMAGE,
-    disabledByEnv: readAliasedEnv("S3CODE_DISABLE_AUTO_UPDATE") === "1",
+    disabledByEnv: readEnv("S3CODE_DISABLE_AUTO_UPDATE") === "1",
     hasUpdateFeedConfig,
   });
   if (disabledReason) {
@@ -1157,7 +1156,7 @@ function resolveIconPath(ext: "ico" | "icns" | "png"): string | null {
  * Electron derives the default userData path from `productName` in
  * package.json. We override it to a clean lowercase `s3code` so the
  * directory is shell-friendly and isolated from any other installs
- * (including upstream T3 Code) on the same machine.
+ * (including upstream S3Code) on the same machine.
  */
 function resolveUserDataPath(): string {
   const appDataBase =
@@ -1260,14 +1259,14 @@ function applyAutoUpdaterChannel(channel: DesktopUpdateChannel): void {
 
 function shouldEnableAutoUpdates(): boolean {
   const hasUpdateFeedConfig =
-    readAppUpdateYml() !== null || Boolean(readAliasedEnv("S3CODE_DESKTOP_MOCK_UPDATES"));
+    readAppUpdateYml() !== null || Boolean(readEnv("S3CODE_DESKTOP_MOCK_UPDATES"));
   return (
     getAutoUpdateDisabledReason({
       isDevelopment,
       isPackaged: app.isPackaged,
       platform: process.platform,
       appImage: process.env.APPIMAGE,
-      disabledByEnv: readAliasedEnv("S3CODE_DISABLE_AUTO_UPDATE") === "1",
+      disabledByEnv: readEnv("S3CODE_DISABLE_AUTO_UPDATE") === "1",
       hasUpdateFeedConfig,
     }) === null
   );
@@ -1359,9 +1358,7 @@ async function installDownloadedUpdate(): Promise<{
 
 function configureAutoUpdater(): void {
   const githubToken =
-    readAliasedEnv("S3CODE_DESKTOP_UPDATE_GITHUB_TOKEN")?.trim() ||
-    process.env.GH_TOKEN?.trim() ||
-    "";
+    readEnv("S3CODE_DESKTOP_UPDATE_GITHUB_TOKEN")?.trim() || process.env.GH_TOKEN?.trim() || "";
   if (githubToken) {
     // When a token is provided, re-configure the feed with `private: true` so
     // electron-updater uses the GitHub API (api.github.com) instead of the
@@ -1377,10 +1374,10 @@ function configureAutoUpdater(): void {
     }
   }
 
-  if (readAliasedEnv("S3CODE_DESKTOP_MOCK_UPDATES")) {
+  if (readEnv("S3CODE_DESKTOP_MOCK_UPDATES")) {
     autoUpdater.setFeedURL({
       provider: "generic",
-      url: `http://localhost:${readAliasedEnv("S3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT") ?? 3000}`,
+      url: `http://localhost:${readEnv("S3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT") ?? 3000}`,
     });
   }
 
@@ -2210,7 +2207,7 @@ configureAppIdentity();
 
 async function bootstrap(): Promise<void> {
   writeDesktopLogHeader("bootstrap start");
-  const configuredBackendPort = resolveConfiguredDesktopBackendPort(readAliasedEnv("S3CODE_PORT"));
+  const configuredBackendPort = resolveConfiguredDesktopBackendPort(readEnv("S3CODE_PORT"));
   if (isDevelopment && configuredBackendPort === undefined) {
     throw new Error("S3CODE_PORT is required in desktop development.");
   }

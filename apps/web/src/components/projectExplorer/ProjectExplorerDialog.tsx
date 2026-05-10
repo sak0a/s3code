@@ -3,7 +3,7 @@ import type {
   EnvironmentId,
   SourceControlIssueSummary,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@s3tools/contracts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { gitPreparePullRequestThreadMutationOptions } from "~/lib/gitReactQuery";
