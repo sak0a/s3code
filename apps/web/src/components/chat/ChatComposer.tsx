@@ -131,20 +131,23 @@ const IMAGE_SIZE_LIMIT_LABEL = `${Math.round(PROVIDER_SEND_TURN_MAX_IMAGE_BYTES 
 
 const runtimeModeConfig: Record<
   RuntimeMode,
-  { label: string; description: string; icon: LucideIcon }
+  { label: string; triggerLabel: string; description: string; icon: LucideIcon }
 > = {
   "approval-required": {
     label: "Supervised",
+    triggerLabel: "Supervised",
     description: "Ask before commands and file changes.",
     icon: LockIcon,
   },
   "auto-accept-edits": {
     label: "Auto-accept edits",
+    triggerLabel: "Auto-accept",
     description: "Auto-approve edits, ask before other actions.",
     icon: PenLineIcon,
   },
   "full-access": {
     label: "Full access",
+    triggerLabel: "Full access",
     description: "Allow commands and edits without prompts.",
     icon: LockOpenIcon,
   },
@@ -215,8 +218,8 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
         <>
           <Button
             variant="ghost"
-            className="shrink-0 whitespace-nowrap px-2 text-muted-foreground/70 hover:text-foreground/80 sm:px-3"
-            size="sm"
+            className="shrink-0 whitespace-nowrap px-1.5 text-muted-foreground/70 hover:text-foreground/80 sm:px-2"
+            size="xs"
             type="button"
             onClick={props.onToggleInteractionMode}
             title={
@@ -241,9 +244,9 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
       >
         <SelectTrigger
           variant="ghost"
-          size="sm"
+          size="xs"
           className={cn(
-            "font-medium",
+            "gap-1 px-1.5 font-medium sm:px-1.5",
             props.runtimeMode === "full-access" &&
               "text-orange-700 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300",
           )}
@@ -251,14 +254,17 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
           title={runtimeModeOption.description}
         >
           <RuntimeModeIcon className="size-4" />
-          <SelectValue>{runtimeModeOption.label}</SelectValue>
+          <SelectValue>{runtimeModeOption.triggerLabel}</SelectValue>
         </SelectTrigger>
-        <SelectPopup alignItemWithTrigger={false}>
+        <SelectPopup
+          alignItemWithTrigger={false}
+          className="w-56 p-0.5 [&_[data-slot=select-item]]:min-h-7"
+        >
           {runtimeModeOptions.map((mode) => {
             const option = runtimeModeConfig[mode];
             const OptionIcon = option.icon;
             return (
-              <SelectItem key={mode} value={mode} className="min-w-64 py-2">
+              <SelectItem key={mode} value={mode} className="min-w-0 py-1.5">
                 <div className="grid min-w-0 gap-0.5">
                   <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
                     <OptionIcon className="size-3.5 shrink-0 text-muted-foreground" />
@@ -280,12 +286,12 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
           <Button
             variant="ghost"
             className={cn(
-              "shrink-0 whitespace-nowrap px-2 sm:px-3",
+              "shrink-0 whitespace-nowrap px-1.5 sm:px-2",
               props.planSidebarOpen
                 ? "text-blue-400 hover:text-blue-300"
                 : "text-muted-foreground/70 hover:text-foreground/80",
             )}
-            size="sm"
+            size="xs"
             type="button"
             onClick={props.onTogglePlanSidebar}
             title={
@@ -1150,6 +1156,7 @@ export const ChatComposer = memo(
       modelOptions: composerModelOptions?.[selectedProvider],
       prompt,
       onPromptChange: setPromptFromTraits,
+      triggerSize: "xs",
     });
     const pendingPrimaryAction = useMemo(
       () =>
@@ -2562,12 +2569,12 @@ export const ChatComposer = memo(
                 data-chat-composer-footer="true"
                 data-chat-composer-footer-compact={isComposerFooterCompact ? "true" : "false"}
                 className={cn(
-                  "flex min-w-0 flex-nowrap items-center justify-between gap-2 overflow-visible px-2.5 pb-2.5 sm:px-3 sm:pb-3",
-                  isComposerFooterCompact ? "gap-1.5" : "gap-2 sm:gap-0",
+                  "flex min-w-0 flex-nowrap items-center justify-between gap-1.5 overflow-visible px-2 pb-2 sm:px-2.5 sm:pb-2.5",
+                  isComposerFooterCompact ? "gap-1.5" : "sm:gap-0",
                   showMobilePendingAnswerActions && "hidden sm:flex",
                 )}
               >
-                <div className="-m-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="-m-0.5 flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   <ContextPickerButton
                     environmentId={environmentId}
                     cwd={gitCwd ?? ""}
@@ -2588,6 +2595,7 @@ export const ChatComposer = memo(
                     modelOptionsByInstance={modelOptionsByInstance}
                     terminalOpen={terminalOpen}
                     open={isComposerModelPickerOpen}
+                    triggerSize="xs"
                     {...(composerProviderState.modelPickerIconClassName
                       ? {
                           activeProviderIconClassName:

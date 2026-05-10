@@ -60,6 +60,7 @@ interface BranchToolbarProps {
   onToggleTerminal: () => void;
   onOpenProjectExplorer?: () => void;
   projectExplorerShortcutLabel?: string | null;
+  terminalCount: number;
 }
 
 interface MobileRunContextSelectorProps {
@@ -217,6 +218,7 @@ export const BranchToolbar = memo(function BranchToolbar({
   onToggleTerminal,
   onOpenProjectExplorer,
   projectExplorerShortcutLabel,
+  terminalCount,
 }: BranchToolbarProps) {
   const threadRef = useMemo(
     () => scopeThreadRef(environmentId, threadId),
@@ -307,6 +309,14 @@ export const BranchToolbar = memo(function BranchToolbar({
                 >
                   <TerminalSquareIcon className="size-3 shrink-0" />
                   <span>{terminalOpen ? "Close Terminal" : "Open Terminal"}</span>
+                  {terminalCount >= 2 && (
+                    <span
+                      className="text-muted-foreground/70 tabular-nums"
+                      aria-label={`${terminalCount} open terminals`}
+                    >
+                      · {terminalCount}
+                    </span>
+                  )}
                 </Button>
               }
             />

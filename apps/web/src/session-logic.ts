@@ -59,6 +59,10 @@ export interface WorkLogEntry {
   toolTitle?: string;
   itemType?: ToolLifecycleItemType;
   requestKind?: PendingApproval["requestKind"];
+  /** Full untruncated output text for the expanded panel. */
+  output?: string;
+  /** Process exit code when the activity reported one. */
+  exitCode?: number;
 }
 
 interface DerivedWorkLogEntry extends WorkLogEntry {
@@ -554,6 +558,8 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
   };
   const itemType = extractWorkLogItemType(payload);
   const requestKind = extractWorkLogRequestKind(payload);
+  const fullOutput = extractToolFullOutput(payload);
+  const exitCode = extractToolExitCode(payload);
   if (detail) {
     entry.detail = detail;
   }
@@ -577,6 +583,12 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
   }
   if (toolCallId) {
     entry.toolCallId = toolCallId;
+  }
+  if (fullOutput) {
+    entry.output = fullOutput;
+  }
+  if (exitCode !== null) {
+    entry.exitCode = exitCode;
   }
   const collapseKey = deriveToolLifecycleCollapseKey(entry);
   if (collapseKey) {
@@ -638,6 +650,8 @@ function mergeDerivedWorkLogEntries(
   const requestKind = next.requestKind ?? previous.requestKind;
   const collapseKey = next.collapseKey ?? previous.collapseKey;
   const toolCallId = next.toolCallId ?? previous.toolCallId;
+  const output = next.output ?? previous.output;
+  const exitCode = next.exitCode ?? previous.exitCode;
   return {
     ...previous,
     ...next,
@@ -650,6 +664,8 @@ function mergeDerivedWorkLogEntries(
     ...(requestKind ? { requestKind } : {}),
     ...(collapseKey ? { collapseKey } : {}),
     ...(toolCallId ? { toolCallId } : {}),
+    ...(output ? { output } : {}),
+    ...(exitCode !== undefined ? { exitCode } : {}),
   };
 }
 
@@ -998,6 +1014,148 @@ function extractToolDetail(
   }
 
   return null;
+}
+
+function extractTextFromContentArray(value: unknown): string | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const chunks: string[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") {
+      continue;
+    }
+    const record = entry as Record<string, unknown>;
+    const directText = asTrimmedString(record.text);
+    if (directText) {
+      chunks.push(directText);
+      continue;
+    }
+    const nested = asRecord(record.content);
+    const nestedText = asTrimmedString(nested?.text);
+    if (nestedText) {
+      chunks.push(nestedText);
+    }
+  }
+  return chunks.length > 0 ? chunks.join("\n") : null;
+}
+
+function extractCodexItemOutput(item: Record<string, unknown> | null): string | null {
+  if (!item) {
+    return null;
+  }
+  const itemType = asTrimmedString(item.type);
+
+  if (itemType === "commandExecution") {
+    return asTrimmedString(item.aggregatedOutput);
+  }
+
+  if (itemType === "mcpToolCall") {
+    const error = asRecord(item.error);
+    const errorMessage = asTrimmedString(error?.message);
+    if (errorMessage) {
+      return errorMessage;
+    }
+    const result = asRecord(item.result);
+    if (result) {
+      const fromContent = extractTextFromContentArray(result.content);
+      if (fromContent) {
+        return fromContent;
+      }
+      const structured = result.structuredContent;
+      if (structured && typeof structured === "object") {
+        try {
+          return JSON.stringify(structured, null, 2);
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
+  }
+
+  if (itemType === "dynamicToolCall") {
+    return extractTextFromContentArray(item.contentItems);
+  }
+
+  if (itemType === "fileChange") {
+    const changes = item.changes;
+    if (Array.isArray(changes)) {
+      const diffs = changes
+        .map((change) => {
+          if (!change || typeof change !== "object") return null;
+          const record = change as Record<string, unknown>;
+          return asTrimmedString(record.diff);
+        })
+        .filter((diff): diff is string => diff !== null);
+      if (diffs.length > 0) {
+        return diffs.join("\n\n");
+      }
+    }
+    return null;
+  }
+
+  return null;
+}
+
+function extractToolFullOutput(payload: Record<string, unknown> | null): string | null {
+  const data = asRecord(payload?.data);
+  if (!data) {
+    return null;
+  }
+
+  const codexItem = asRecord(data.item);
+  const codexOutput = extractCodexItemOutput(codexItem);
+  if (codexOutput) {
+    return codexOutput;
+  }
+
+  const rawOutput = asRecord(data.rawOutput);
+  if (rawOutput) {
+    const stdout = asTrimmedString(rawOutput.stdout);
+    if (stdout) {
+      return stdout;
+    }
+    const content = asTrimmedString(rawOutput.content);
+    if (content) {
+      return content;
+    }
+  }
+
+  const acpContent = extractTextFromContentArray(data.content);
+  if (acpContent) {
+    return acpContent;
+  }
+
+  return null;
+}
+
+function extractToolExitCode(payload: Record<string, unknown> | null): number | null {
+  const data = asRecord(payload?.data);
+  if (!data) {
+    return null;
+  }
+
+  const codexItem = asRecord(data.item);
+  if (codexItem) {
+    const codexExit = asNumber(codexItem.exitCode);
+    if (codexExit !== null && Number.isInteger(codexExit)) {
+      return codexExit;
+    }
+  }
+
+  const rawOutput = asRecord(data.rawOutput);
+  const rawExit = asNumber(rawOutput?.exitCode);
+  if (rawExit !== null && Number.isInteger(rawExit)) {
+    return rawExit;
+  }
+
+  const detail = asTrimmedString(payload?.detail);
+  if (!detail) {
+    return null;
+  }
+  const stripped = stripTrailingExitCode(detail);
+  return stripped.exitCode ?? null;
 }
 
 function stripTrailingExitCode(value: string): {

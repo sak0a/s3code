@@ -13,6 +13,7 @@ import {
   setDefaultAdvertisedEndpointKey,
   setProjectExpanded,
   setThreadChangedFilesExpanded,
+  setThreadWorkEntryExpanded,
   syncProjects,
   syncThreads,
   type UiState,
@@ -24,6 +25,7 @@ function makeUiState(overrides: Partial<UiState> = {}): UiState {
     projectOrder: [],
     threadLastVisitedAtById: {},
     threadChangedFilesExpandedById: {},
+    threadWorkEntryExpandedById: {},
     defaultAdvertisedEndpointKey: null,
     ...overrides,
   };
@@ -442,6 +444,69 @@ describe("uiStateStore pure functions", () => {
     const next = setThreadChangedFilesExpanded(initialState, thread1, "turn-1", true);
 
     expect(next.threadChangedFilesExpandedById).toEqual({});
+  });
+
+  it("setThreadWorkEntryExpanded stores per-entry expand state under the thread key", () => {
+    const thread1 = ThreadId.make("thread-1");
+    const initialState = makeUiState();
+
+    const next = setThreadWorkEntryExpanded(initialState, thread1, "entry-1", true);
+
+    expect(next.threadWorkEntryExpandedById).toEqual({
+      [thread1]: {
+        "entry-1": true,
+      },
+    });
+  });
+
+  it("setThreadWorkEntryExpanded keeps existing entries when toggling another", () => {
+    const thread1 = ThreadId.make("thread-1");
+    const initialState = makeUiState({
+      threadWorkEntryExpandedById: {
+        [thread1]: {
+          "entry-1": true,
+        },
+      },
+    });
+
+    const next = setThreadWorkEntryExpanded(initialState, thread1, "entry-2", false);
+
+    expect(next.threadWorkEntryExpandedById).toEqual({
+      [thread1]: {
+        "entry-1": true,
+        "entry-2": false,
+      },
+    });
+  });
+
+  it("setThreadWorkEntryExpanded keeps state stable across threads", () => {
+    const thread1 = ThreadId.make("thread-1");
+    const thread2 = ThreadId.make("thread-2");
+    const initialState = makeUiState({
+      threadWorkEntryExpandedById: {
+        [thread1]: { "entry-1": true },
+      },
+    });
+
+    const next = setThreadWorkEntryExpanded(initialState, thread2, "entry-9", false);
+
+    expect(next.threadWorkEntryExpandedById).toEqual({
+      [thread1]: { "entry-1": true },
+      [thread2]: { "entry-9": false },
+    });
+  });
+
+  it("setThreadWorkEntryExpanded returns the same state when toggling to current value", () => {
+    const thread1 = ThreadId.make("thread-1");
+    const initialState = makeUiState({
+      threadWorkEntryExpandedById: {
+        [thread1]: { "entry-1": true },
+      },
+    });
+
+    const next = setThreadWorkEntryExpanded(initialState, thread1, "entry-1", true);
+
+    expect(next).toBe(initialState);
   });
 });
 

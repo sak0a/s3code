@@ -18,6 +18,7 @@ import ChatMarkdown from "../ChatMarkdown";
 import {
   BotIcon,
   CheckIcon,
+  ChevronRightIcon,
   CircleAlertIcon,
   EyeIcon,
   GlobeIcon,
@@ -37,6 +38,7 @@ import { DiffStatLabel, hasNonZeroStat } from "./DiffStatLabel";
 import { MessageCopyButton } from "./MessageCopyButton";
 import {
   computeStableMessagesTimelineRows,
+  isErroredWorkEntry,
   MAX_VISIBLE_WORK_LOG_ENTRIES,
   deriveMessagesTimelineRows,
   normalizeCompactToolLabel,
@@ -242,13 +244,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   );
 
   if (rows.length === 0 && !isWorking) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-muted-foreground/30">
-          Send a message to start the conversation.
-        </p>
-      </div>
-    );
+    return <div aria-hidden className="h-full" />;
   }
 
   return (
@@ -565,7 +561,7 @@ const WorkGroupSection = memo(function WorkGroupSection({
       )}
       <div className="space-y-0.5">
         {visibleEntries.map((workEntry) => (
-          <SimpleWorkEntryRow
+          <ExpandableWorkEntryRow
             key={`work-row:${workEntry.id}`}
             workEntry={workEntry}
             workspaceRoot={workspaceRoot}
@@ -1050,6 +1046,129 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
           )}
         </div>
       )}
+    </div>
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Expandable wrapper — renders a SimpleWorkEntryRow as a click target with
+// a leading chevron, conditionally mounting WorkEntryExpandedPanel below.
+// ---------------------------------------------------------------------------
+
+const ANSI_SGR_RE = /\u001b\[[0-9;]*m/g;
+
+function workEntryExpandPanelId(entryId: string): string {
+  return `work-entry-panel:${entryId}`;
+}
+
+const ExpandableWorkEntryRow = memo(function ExpandableWorkEntryRow(props: {
+  workEntry: TimelineWorkEntry;
+  workspaceRoot: string | undefined;
+}) {
+  const { workEntry, workspaceRoot } = props;
+  const { routeThreadKey } = use(TimelineRowCtx);
+  const stored = useUiStateStore(
+    (store) => store.threadWorkEntryExpandedById[routeThreadKey]?.[workEntry.id],
+  );
+  const setExpanded = useUiStateStore((store) => store.setThreadWorkEntryExpanded);
+  const isOpen = stored ?? isErroredWorkEntry(workEntry);
+  const panelId = workEntryExpandPanelId(workEntry.id);
+  const heading = toolWorkEntryHeading(workEntry);
+  const toggle = () => {
+    setExpanded(routeThreadKey, workEntry.id, !isOpen);
+  };
+
+  return (
+    <div>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={isOpen}
+        aria-controls={panelId}
+        onClick={toggle}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            toggle();
+          }
+        }}
+        className="flex cursor-pointer items-start gap-1 rounded-lg pr-1 transition-colors duration-150 hover:bg-foreground/5 focus-visible:bg-foreground/5 focus-visible:outline-none"
+      >
+        <ChevronRightIcon
+          aria-hidden
+          className={cn(
+            "mt-1.5 size-3 shrink-0 text-muted-foreground/55 transition-transform duration-150",
+            isOpen ? "rotate-90" : "",
+          )}
+        />
+        <div className="min-w-0 flex-1">
+          <SimpleWorkEntryRow workEntry={workEntry} workspaceRoot={workspaceRoot} />
+        </div>
+      </div>
+      {isOpen && (
+        <WorkEntryExpandedPanel workEntry={workEntry} panelId={panelId} headingLabel={heading} />
+      )}
+    </div>
+  );
+});
+
+const WorkEntryExpandedPanel = memo(function WorkEntryExpandedPanel(props: {
+  workEntry: TimelineWorkEntry;
+  panelId: string;
+  headingLabel: string;
+}) {
+  const { workEntry, panelId, headingLabel } = props;
+  const inputLine = workEntry.rawCommand?.trim() || workEntry.command?.trim() || null;
+  const cleanedOutput = workEntry.output ? workEntry.output.replace(ANSI_SGR_RE, "") : "";
+  const hasOutput = cleanedOutput.length > 0;
+  const showExitChip = workEntry.exitCode !== undefined && workEntry.exitCode !== 0;
+
+  return (
+    <div
+      id={panelId}
+      role="region"
+      aria-label={`${headingLabel} details`}
+      className="mt-1 border-t border-border/40 pt-1.5 pl-7"
+    >
+      {inputLine && (
+        <div className="flex items-start gap-1.5 overflow-x-auto">
+          <span className="mt-0.5 shrink-0 font-mono text-[10px] text-muted-foreground/55">
+            {">_"}
+          </span>
+          <pre className="font-mono text-[11px] leading-4 text-foreground/85 whitespace-nowrap">
+            {inputLine}
+          </pre>
+        </div>
+      )}
+      <div className={cn("flex flex-col gap-1", inputLine ? "mt-1.5" : "")}>
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground/60">
+          Output:
+        </span>
+        {hasOutput ? (
+          <pre className="max-h-[400px] overflow-auto rounded-md border border-border/40 bg-background/40 p-1.5 font-mono text-[11px] leading-4 whitespace-pre text-foreground/85">
+            {cleanedOutput}
+          </pre>
+        ) : (
+          <span className="italic text-muted-foreground/40">(no output)</span>
+        )}
+      </div>
+      <div className="mt-1.5 flex items-center justify-between">
+        {showExitChip ? (
+          <span className="rounded-md border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 font-mono text-[10px] text-rose-300">
+            exit {workEntry.exitCode}
+          </span>
+        ) : (
+          <span />
+        )}
+        {hasOutput && (
+          <MessageCopyButton
+            text={cleanedOutput}
+            size="icon-xs"
+            ariaLabel="Copy output"
+            className="border-border/40 bg-background/40 text-muted-foreground/60 shadow-none hover:text-foreground/80"
+          />
+        )}
+      </div>
     </div>
   );
 });

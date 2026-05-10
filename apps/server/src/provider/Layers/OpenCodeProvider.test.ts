@@ -198,6 +198,48 @@ it.layer(testLayer)("checkOpenCodeProviderStatus", (it) => {
       assert.equal(runtimeMock.state.closeCalls, 1);
     }),
   );
+
+  it.effect(
+    "derives a shortName by stripping the redundant subProvider prefix from the model name",
+    () =>
+      Effect.gen(function* () {
+        runtimeMock.state.inventory = {
+          providerList: {
+            connected: ["deepseek", "openai"],
+            all: [
+              {
+                id: "deepseek",
+                name: "DeepSeek",
+                models: {
+                  "v4-pro": { id: "v4-pro", name: "DeepSeek V4 Pro" },
+                },
+              },
+              {
+                id: "openai",
+                name: "OpenAI",
+                models: {
+                  "gpt-5": { id: "gpt-5", name: "GPT-5" },
+                },
+              },
+            ],
+            default: {},
+          },
+          agents: [{ name: "build", hidden: false, mode: "primary" }],
+        };
+
+        const snapshot = yield* checkOpenCodeProviderStatus(makeOpenCodeSettings(), process.cwd());
+
+        const deepseek = snapshot.models.find((entry) => entry.slug === "deepseek/v4-pro");
+        assert.ok(deepseek);
+        assert.equal(deepseek.name, "DeepSeek V4 Pro");
+        assert.equal(deepseek.shortName, "V4 Pro");
+
+        const openai = snapshot.models.find((entry) => entry.slug === "openai/gpt-5");
+        assert.ok(openai);
+        assert.equal(openai.name, "GPT-5");
+        assert.equal(openai.shortName, undefined);
+      }),
+  );
 });
 
 it.layer(testLayer)("checkOpenCodeProviderStatus with configured server URL", (it) => {
