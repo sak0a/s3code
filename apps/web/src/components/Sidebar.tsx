@@ -2656,27 +2656,16 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         }
         const worktreeIdRaw = worktreeNode.worktree.worktreeId;
 
+        const threadIds = [
+          ...worktreeNode.sessions.map((thread) => thread.id),
+          ...worktreeNode.archivedSessions.map((thread) => thread.id),
+        ];
+        for (const threadId of threadIds) {
+          const threadRef = scopeThreadRef(project.environmentId, threadId);
+          await deleteThread(threadRef, { optimistic: true });
+        }
+
         if (isSyntheticWorktreeId(worktreeIdRaw)) {
-          const threadIds = [
-            ...worktreeNode.sessions.map((thread) => thread.id),
-            ...worktreeNode.archivedSessions.map((thread) => thread.id),
-          ];
-          for (const threadId of threadIds) {
-            const threadRef = scopeThreadRef(project.environmentId, threadId);
-            try {
-              await api.orchestration.dispatchCommand({
-                type: "thread.delete",
-                commandId: newCommandId(),
-                threadId,
-              });
-            } catch (error: unknown) {
-              const message = error instanceof Error ? error.message : "";
-              if (!message.includes("does not exist")) {
-                throw error;
-              }
-              useStore.getState().removeThread(threadRef);
-            }
-          }
           return;
         }
 
@@ -2739,7 +2728,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         );
       });
     },
-    [project.environmentId],
+    [deleteThread, project.environmentId],
   );
 
   const restoreWorktree = useCallback(
