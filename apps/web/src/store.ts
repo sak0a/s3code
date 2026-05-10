@@ -76,6 +76,7 @@ export interface EnvironmentState {
   // ---------------------------------------------------------------------------
   messageIdsByThreadId: Record<ThreadId, MessageId[]>;
   messageByThreadId: Record<ThreadId, Record<MessageId, ChatMessage>>;
+  pendingMessagesByThreadId: Record<ThreadId, ChatMessage[]>;
   activityIdsByThreadId: Record<ThreadId, string[]>;
   activityByThreadId: Record<ThreadId, Record<string, OrchestrationThreadActivity>>;
   proposedPlanIdsByThreadId: Record<ThreadId, string[]>;
@@ -113,6 +114,7 @@ const initialEnvironmentState: EnvironmentState = {
   threadTurnStateById: {},
   messageIdsByThreadId: {},
   messageByThreadId: {},
+  pendingMessagesByThreadId: {},
   activityIdsByThreadId: {},
   activityByThreadId: {},
   proposedPlanIdsByThreadId: {},
@@ -651,6 +653,16 @@ function writeThreadState(
   nextThread: Thread,
   previousThread?: Thread,
 ): EnvironmentState {
+  const pendingMessages = state.pendingMessagesByThreadId[nextThread.id] ?? [];
+  const resolvedThread =
+    pendingMessages.length === 0
+      ? nextThread
+      : {
+          ...nextThread,
+          messages: [...nextThread.messages, ...pendingMessages].toSorted(
+            (left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id),
+          ),
+        };
   const nextShell = toThreadShell(nextThread);
   const nextTurnState = toThreadTurnState(nextThread);
   const previousShell = state.threadShellById[nextThread.id];
@@ -693,18 +705,25 @@ function writeThreadState(
     };
   }
 
-  if (previousThread?.messages !== nextThread.messages) {
-    const nextMessageSlice = buildMessageSlice(nextThread);
+  if (previousThread?.messages !== resolvedThread.messages) {
+    const nextMessageSlice = buildMessageSlice(resolvedThread);
     nextState = {
       ...nextState,
       messageIdsByThreadId: {
         ...nextState.messageIdsByThreadId,
-        [nextThread.id]: nextMessageSlice.ids,
+        [resolvedThread.id]: nextMessageSlice.ids,
       },
       messageByThreadId: {
         ...nextState.messageByThreadId,
-        [nextThread.id]: nextMessageSlice.byId,
+        [resolvedThread.id]: nextMessageSlice.byId,
       },
+    };
+  }
+  if (pendingMessages.length > 0) {
+    const { [resolvedThread.id]: _removed, ...rest } = nextState.pendingMessagesByThreadId;
+    nextState = {
+      ...nextState,
+      pendingMessagesByThreadId: rest,
     };
   }
 
@@ -873,6 +892,8 @@ function removeThreadState(state: EnvironmentState, threadId: ThreadId): Environ
   const { [threadId]: _removedTurnState, ...threadTurnStateById } = state.threadTurnStateById;
   const { [threadId]: _removedMessageIds, ...messageIdsByThreadId } = state.messageIdsByThreadId;
   const { [threadId]: _removedMessages, ...messageByThreadId } = state.messageByThreadId;
+  const { [threadId]: _removedPendingMessages, ...pendingMessagesByThreadId } =
+    state.pendingMessagesByThreadId;
   const { [threadId]: _removedActivityIds, ...activityIdsByThreadId } = state.activityIdsByThreadId;
   const { [threadId]: _removedActivities, ...activityByThreadId } = state.activityByThreadId;
   const { [threadId]: _removedPlanIds, ...proposedPlanIdsByThreadId } =
@@ -893,6 +914,7 @@ function removeThreadState(state: EnvironmentState, threadId: ThreadId): Environ
     threadTurnStateById,
     messageIdsByThreadId,
     messageByThreadId,
+    pendingMessagesByThreadId,
     activityIdsByThreadId,
     activityByThreadId,
     proposedPlanIdsByThreadId,
@@ -1295,6 +1317,7 @@ function syncEnvironmentShellSnapshot(
     sidebarThreadSummaryById: {},
     messageIdsByThreadId: retainThreadScopedRecord(state.messageIdsByThreadId, nextThreadIds),
     messageByThreadId: retainThreadScopedRecord(state.messageByThreadId, nextThreadIds),
+    pendingMessagesByThreadId: retainThreadScopedRecord(state.pendingMessagesByThreadId, nextThreadIds),
     activityIdsByThreadId: retainThreadScopedRecord(state.activityIdsByThreadId, nextThreadIds),
     activityByThreadId: retainThreadScopedRecord(state.activityByThreadId, nextThreadIds),
     proposedPlanIdsByThreadId: retainThreadScopedRecord(
@@ -1567,19 +1590,33 @@ function applyEnvironmentOrchestrationEvent(
     }
 
     case "thread.message-sent":
-      return updateThreadState(state, event.payload.threadId, (thread) => {
-        const message = mapMessage(thread.environmentId, {
+      {
+        const message = mapMessage(environmentId, {
           id: event.payload.messageId,
           role: event.payload.role,
           text: event.payload.text,
-          ...(event.payload.attachments !== undefined
-            ? { attachments: event.payload.attachments }
-            : {}),
+          ...(event.payload.attachments !== undefined ? { attachments: event.payload.attachments } : {}),
           turnId: event.payload.turnId,
           streaming: event.payload.streaming,
           createdAt: event.payload.createdAt,
           updatedAt: event.payload.updatedAt,
         });
+        const threadExists = getThreadFromEnvironmentState(state, event.payload.threadId);
+        if (!threadExists) {
+          const pending = state.pendingMessagesByThreadId[event.payload.threadId] ?? [];
+          const existing = pending.find((entry) => entry.id === message.id);
+          const nextPending = existing
+            ? pending.map((entry) => (entry.id === message.id ? { ...entry, ...message } : entry))
+            : [...pending, message];
+          return {
+            ...state,
+            pendingMessagesByThreadId: {
+              ...state.pendingMessagesByThreadId,
+              [event.payload.threadId]: nextPending,
+            },
+          };
+        }
+        return updateThreadState(state, event.payload.threadId, (thread) => {
         const existingMessage = thread.messages.find((entry) => entry.id === message.id);
         const messages = existingMessage
           ? thread.messages.map((entry) =>
@@ -1655,6 +1692,7 @@ function applyEnvironmentOrchestrationEvent(
           updatedAt: event.occurredAt,
         };
       });
+      }
 
     case "thread.session-set":
       return updateThreadState(state, event.payload.threadId, (thread) => ({
