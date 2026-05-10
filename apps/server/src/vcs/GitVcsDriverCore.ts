@@ -1,3 +1,7 @@
+import type { Dirent } from "node:fs";
+import fsPromises from "node:fs/promises";
+import nodePath from "node:path";
+
 import {
   Cache,
   Data,
@@ -44,6 +48,8 @@ const STATUS_UPSTREAM_REFRESH_FAILURE_COOLDOWN = Duration.seconds(5);
 const STATUS_UPSTREAM_REFRESH_CACHE_CAPACITY = 2_048;
 const DEFAULT_BASE_BRANCH_CANDIDATES = ["main", "master"] as const;
 const GIT_LIST_BRANCHES_DEFAULT_LIMIT = 100;
+const DEPENDENCY_INSTALL_DIR_NAME = "node_modules";
+const DEPENDENCY_INSTALL_DIR_SCAN_SKIP_DIRS = new Set([".git", ".s3code"]);
 const NON_REPOSITORY_STATUS_DETAILS = Object.freeze<GitVcsDriver.GitStatusDetails>({
   isRepo: false,
   hasOriginRemote: false,
@@ -601,6 +607,101 @@ const collectOutput = Effect.fn("collectOutput")(function* <E>(
     truncated,
   };
 });
+
+const copyWorktreeDependencyInstallDirs = Effect.fn("copyWorktreeDependencyInstallDirs")(
+  function* (input: {
+    readonly cwd: string;
+    readonly worktreePath: string;
+  }): Effect.fn.Return<void, GitCommandError> {
+    const dependencyInstallDirs = yield* Effect.tryPromise({
+      try: async () => {
+        const dirs: string[] = [];
+
+        const walk = async (dir: string): Promise<void> => {
+          let entries: Dirent[];
+          try {
+            entries = await fsPromises.readdir(dir, { withFileTypes: true });
+          } catch (cause) {
+            if ((cause as NodeJS.ErrnoException).code === "ENOENT") {
+              return;
+            }
+            throw cause;
+          }
+
+          for (const entry of entries) {
+            const entryPath = nodePath.join(dir, entry.name);
+            if (DEPENDENCY_INSTALL_DIR_SCAN_SKIP_DIRS.has(entry.name)) {
+              continue;
+            }
+            if (entry.name === DEPENDENCY_INSTALL_DIR_NAME) {
+              dirs.push(entryPath);
+              continue;
+            }
+            if (entry.isDirectory()) {
+              await walk(entryPath);
+            }
+          }
+        };
+
+        await walk(input.cwd);
+        return dirs.toSorted((left, right) => {
+          const leftRelative = nodePath.relative(input.cwd, left);
+          const rightRelative = nodePath.relative(input.cwd, right);
+          const leftDepth = leftRelative.split(nodePath.sep).length;
+          const rightDepth = rightRelative.split(nodePath.sep).length;
+          return leftDepth - rightDepth || leftRelative.localeCompare(rightRelative);
+        });
+      },
+      catch: (cause) =>
+        new GitCommandError({
+          operation: "GitVcsDriver.createWorktree",
+          command: `find ${DEPENDENCY_INSTALL_DIR_NAME}`,
+          cwd: input.cwd,
+          detail: `Failed to find dependency install directories to copy into ${input.worktreePath}.`,
+          cause,
+        }),
+    });
+
+    yield* Effect.forEach(
+      dependencyInstallDirs,
+      (sourceDir) => {
+        const relativeDir = nodePath.relative(input.cwd, sourceDir);
+        const targetDir = nodePath.join(input.worktreePath, relativeDir);
+
+        return Effect.tryPromise({
+          try: async () => {
+            try {
+              await fsPromises.lstat(targetDir);
+              return;
+            } catch (cause) {
+              if ((cause as NodeJS.ErrnoException).code !== "ENOENT") {
+                throw cause;
+              }
+            }
+
+            await fsPromises.mkdir(nodePath.dirname(targetDir), { recursive: true });
+            await fsPromises.cp(sourceDir, targetDir, {
+              dereference: false,
+              errorOnExist: false,
+              force: false,
+              recursive: true,
+              verbatimSymlinks: true,
+            });
+          },
+          catch: (cause) =>
+            new GitCommandError({
+              operation: "GitVcsDriver.createWorktree",
+              command: `copy ${DEPENDENCY_INSTALL_DIR_NAME}`,
+              cwd: input.cwd,
+              detail: `Failed to copy ${relativeDir} into ${input.worktreePath}.`,
+              cause,
+            }),
+        });
+      },
+      { concurrency: 1 },
+    ).pipe(Effect.asVoid);
+  },
+);
 
 export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* (options?: {
   executeOverride?: GitVcsDriver.GitVcsDriverShape["execute"];
@@ -1893,6 +1994,8 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     yield* executeGit("GitVcsDriver.createWorktree", input.cwd, args, {
       fallbackErrorMessage: "git worktree add failed",
     });
+
+    yield* copyWorktreeDependencyInstallDirs({ cwd: input.cwd, worktreePath });
 
     return {
       worktree: {

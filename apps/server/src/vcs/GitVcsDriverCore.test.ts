@@ -1,3 +1,5 @@
+import fsPromises from "node:fs/promises";
+
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it, describe } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Path, PlatformError, Scope } from "effect";
@@ -219,6 +221,85 @@ it.layer(TestLayer)("GitVcsDriver core integration", (it) => {
         yield* driver.removeWorktree({ cwd, path: worktreePath });
         const fileSystem = yield* FileSystem.FileSystem;
         assert.equal(yield* fileSystem.exists(worktreePath), false);
+      }),
+    );
+
+    it.effect("copies dependency install directories into created worktrees", () =>
+      Effect.gen(function* () {
+        const cwd = yield* makeTmpDir();
+        const { initialBranch } = yield* initRepoWithCommit(cwd);
+        const pathService = yield* Path.Path;
+        const worktreePath = pathService.join(
+          yield* makeTmpDir("git-worktrees-"),
+          "dependency-copy-worktree",
+        );
+        const driver = yield* GitVcsDriver.GitVcsDriver;
+
+        yield* writeTextFile(cwd, "apps/web/package.json", '{"name":"web"}\n');
+        yield* git(cwd, ["add", "apps/web/package.json"]);
+        yield* git(cwd, ["commit", "-m", "add workspace package"]);
+        yield* writeTextFile(
+          cwd,
+          "node_modules/.bun/vite@1.0.0/node_modules/vite/index.js",
+          "export const vite = true;\n",
+        );
+        yield* Effect.tryPromise(() =>
+          fsPromises.symlink(
+            ".bun/vite@1.0.0/node_modules/vite",
+            pathService.join(cwd, "node_modules", "vite"),
+          ),
+        );
+        yield* Effect.tryPromise(() =>
+          fsPromises.mkdir(pathService.join(cwd, "apps", "web", "node_modules"), {
+            recursive: true,
+          }),
+        );
+        yield* Effect.tryPromise(() =>
+          fsPromises.symlink(
+            "../../../node_modules/.bun/vite@1.0.0/node_modules/vite",
+            pathService.join(cwd, "apps", "web", "node_modules", "vite"),
+          ),
+        );
+
+        yield* driver.createWorktree({
+          cwd,
+          path: worktreePath,
+          refName: initialBranch,
+          newRefName: "feature/dependency-copy",
+        });
+
+        const fileSystem = yield* FileSystem.FileSystem;
+        assert.equal(
+          yield* fileSystem.exists(
+            pathService.join(
+              worktreePath,
+              "node_modules",
+              ".bun",
+              "vite@1.0.0",
+              "node_modules",
+              "vite",
+              "index.js",
+            ),
+          ),
+          true,
+        );
+
+        const rootLink = yield* Effect.tryPromise(() =>
+          fsPromises.lstat(pathService.join(worktreePath, "node_modules", "vite")),
+        );
+        const workspaceLink = yield* Effect.tryPromise(() =>
+          fsPromises.lstat(pathService.join(worktreePath, "apps", "web", "node_modules", "vite")),
+        );
+        assert.equal(rootLink.isSymbolicLink(), true);
+        assert.equal(workspaceLink.isSymbolicLink(), true);
+        assert.equal(
+          yield* Effect.tryPromise(() =>
+            fsPromises.readlink(
+              pathService.join(worktreePath, "apps", "web", "node_modules", "vite"),
+            ),
+          ),
+          "../../../node_modules/.bun/vite@1.0.0/node_modules/vite",
+        );
       }),
     );
   });
