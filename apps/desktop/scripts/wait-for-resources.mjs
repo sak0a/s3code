@@ -79,6 +79,7 @@ export async function waitForResources({
   tcpHost,
   tcpPort,
   connectTimeoutMs = 500,
+  onStatus,
 }) {
   if (!Number.isInteger(tcpPort) || tcpPort <= 0) {
     throw new TypeError("waitForResources requires a positive integer tcpPort");
@@ -86,6 +87,7 @@ export async function waitForResources({
 
   const startedAt = Date.now();
   const tcpHosts = tcpHost ? [tcpHost] : defaultTcpHosts;
+  let lastStatus = "";
 
   while (true) {
     const { pendingFiles, tcpReady } = await resolvePendingResources({
@@ -98,6 +100,22 @@ export async function waitForResources({
 
     if (pendingFiles.length === 0 && tcpReady) {
       return;
+    }
+
+    if (onStatus) {
+      const pendingResources = [];
+      if (!tcpReady) {
+        pendingResources.push(tcpHost ? `tcp:${tcpHost}:${tcpPort}` : `tcp:${tcpPort}`);
+      }
+      for (const filePath of pendingFiles) {
+        pendingResources.push(`file:${filePath}`);
+      }
+
+      const status = pendingResources.join(", ");
+      if (status !== lastStatus) {
+        lastStatus = status;
+        onStatus(pendingResources);
+      }
     }
 
     if (Date.now() - startedAt >= timeoutMs) {

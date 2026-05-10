@@ -2155,12 +2155,11 @@ function createWindow(): BrowserWindow {
 
   // On Linux/Wayland with `show: false`, Electron's `ready-to-show` only
   // fires after `show()` is called, deadlocking the standard "wait for
-  // ready, then show" pattern. Add `did-finish-load` as a Linux-only
-  // fallback so the window still surfaces once the renderer has loaded
-  // the page. Other platforms keep the no-flash `ready-to-show` path,
-  // since `did-finish-load` typically fires before the first paint there.
+  // ready, then show" pattern. In dev, also fall back to `did-finish-load`
+  // so startup remains visible even if Vite/Electron misses ready-to-show.
+  // Packaged non-Linux builds keep the no-flash `ready-to-show` path.
   const revealSubscribers: RevealSubscription[] = [(fire) => window.once("ready-to-show", fire)];
-  if (process.platform === "linux") {
+  if (process.platform === "linux" || isDevelopment) {
     revealSubscribers.push((fire) => window.webContents.once("did-finish-load", fire));
   }
   bindFirstRevealTrigger(revealSubscribers, () => revealWindow(window));

@@ -29,12 +29,17 @@ const forcedShutdownTimeoutMs = 1_500;
 const restartDebounceMs = 120;
 const childTreeGracePeriodMs = 1_200;
 
+console.log(`[desktop-dev] waiting for renderer=${devServerUrl} files=${requiredFiles.join(", ")}`);
 await waitForResources({
   baseDir: desktopDir,
   files: requiredFiles,
   tcpHost: devServer.hostname,
   tcpPort: port,
+  onStatus: (pendingResources) => {
+    console.log(`[desktop-dev] still waiting for ${pendingResources.join(", ")}`);
+  },
 });
+console.log("[desktop-dev] resources ready");
 
 const childEnv = { ...process.env };
 delete childEnv.ELECTRON_RUN_AS_NODE;
@@ -67,22 +72,27 @@ function startApp() {
     return;
   }
 
-  const app = spawn(
-    resolveElectronPath(),
-    [`--s3code-dev-root=${desktopDir}`, "dist-electron/main.cjs"],
-    {
-      cwd: desktopDir,
-      env: childEnv,
-      stdio: "inherit",
-    },
-  );
+  const electronPath = resolveElectronPath();
+  console.log(`[desktop-dev] launching electron path=${electronPath}`);
+
+  const app = spawn(electronPath, [`--s3code-dev-root=${desktopDir}`, "dist-electron/main.cjs"], {
+    cwd: desktopDir,
+    env: childEnv,
+    stdio: "inherit",
+  });
 
   currentApp = app;
 
-  app.once("error", () => {
+  app.once("spawn", () => {
+    console.log(`[desktop-dev] electron started pid=${app.pid ?? "unknown"}`);
+  });
+
+  app.once("error", (error) => {
     if (currentApp === app) {
       currentApp = null;
     }
+
+    console.error(`[desktop-dev] electron failed to start: ${error.message}`);
 
     if (!shuttingDown) {
       scheduleRestart();
@@ -95,6 +105,13 @@ function startApp() {
     }
 
     const exitedAbnormally = signal !== null || code !== 0;
+    if (!shuttingDown && !expectedExits.has(app)) {
+      const level = exitedAbnormally ? "error" : "log";
+      console[level](
+        `[desktop-dev] electron exited code=${code ?? "null"} signal=${signal ?? "null"}`,
+      );
+    }
+
     if (!shuttingDown && !expectedExits.has(app) && exitedAbnormally) {
       scheduleRestart();
     }
