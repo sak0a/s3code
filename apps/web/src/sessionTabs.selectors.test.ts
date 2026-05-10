@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createSessionTabsSelector } from "./sessionTabs.selectors";
+import type { DraftThreadState } from "./composerDraftStore";
+import { createSessionTabsSelector, draftThreadToSidebarSummary } from "./sessionTabs.selectors";
 import type { SidebarThreadSummary } from "./types";
 
 function makeThread(overrides: Partial<SidebarThreadSummary>): SidebarThreadSummary {
@@ -93,6 +94,37 @@ describe("createSessionTabsSelector", () => {
     ];
     const result = select(threads, { worktreeId: "wt-1", worktreePath: "/tmp/match" });
     expect(result.map((item) => item.key.split(":").at(-1))).toEqual(["x"]);
+  });
+
+  it("includes draft threads adapted via draftThreadToSidebarSummary", () => {
+    // Drafts ('empty sessions') live in composerDraftStore. Once converted
+    // to a SidebarThreadSummary they should pass the selector and appear
+    // alongside server threads.
+    const select = createSessionTabsSelector();
+    const serverThread = makeThread({
+      id: "server-a" as never,
+      worktreeId: "wt-1",
+      worktreePath: "/tmp/wt",
+    });
+    const draft: DraftThreadState = {
+      threadId: "draft-1" as DraftThreadState["threadId"],
+      environmentId: "env-1" as DraftThreadState["environmentId"],
+      projectId: "p-1" as DraftThreadState["projectId"],
+      logicalProjectKey: "p-1",
+      createdAt: "2026-01-02T00:00:00Z",
+      runtimeMode: "local" as DraftThreadState["runtimeMode"],
+      interactionMode: "default",
+      branch: "main",
+      worktreePath: "/tmp/wt",
+      envMode: "local",
+    };
+    const draftSummary = draftThreadToSidebarSummary(draft);
+    const result = select([serverThread, draftSummary], {
+      worktreeId: "wt-1",
+      worktreePath: "/tmp/wt",
+    });
+    const titles = result.map((item) => item.title).sort();
+    expect(titles).toEqual(["Empty Session", "Thread"]);
   });
 
   it("matches by worktreePath even when both sides have differing worktreeIds", () => {

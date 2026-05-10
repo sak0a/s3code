@@ -160,7 +160,8 @@ import { MessagesTimeline } from "./chat/MessagesTimeline";
 import { ChatHeader } from "./chat/ChatHeader";
 import { type ChatSessionTabsItem } from "./chat/ChatSessionTabs";
 import { createTabPrefetchController } from "./chat/ChatSessionTabsPrefetch";
-import { createSessionTabsSelector } from "../sessionTabs.selectors";
+import { createSessionTabsSelector, draftThreadToSidebarSummary } from "../sessionTabs.selectors";
+import type { SidebarThreadSummary } from "../types";
 import { markTabSwitchClick, markTabSwitchFirstPaint } from "../perf/tabSwitchInstrumentation";
 import { type ExpandedImagePreview } from "./chat/ExpandedImagePreview";
 import { NoActiveThreadState } from "./NoActiveThreadState";
@@ -908,13 +909,28 @@ export default function ChatView(props: ChatViewProps) {
   const sessionTabsSelector = useMemo(() => createSessionTabsSelector(), []);
   const tabsWorktreeId = activeThread?.worktreeId;
   const tabsWorktreePath = activeThread?.worktreePath;
+  const draftThreadSummariesForProject = useMemo<SidebarThreadSummary[]>(() => {
+    if (!activeProjectRef) return [];
+    const drafts: SidebarThreadSummary[] = [];
+    for (const draft of Object.values(draftThreadsByThreadKey)) {
+      if (draft.promotedTo != null) continue;
+      if (draft.environmentId !== activeProjectRef.environmentId) continue;
+      if (draft.projectId !== activeProjectRef.projectId) continue;
+      drafts.push(draftThreadToSidebarSummary(draft));
+    }
+    return drafts;
+  }, [draftThreadsByThreadKey, activeProjectRef]);
   const activeWorktreeSessionTabs = useStore((state) => {
     if (!activeProjectRef) return EMPTY_SESSION_TABS;
     if (tabsWorktreeId === undefined && tabsWorktreePath === undefined) {
       return EMPTY_SESSION_TABS;
     }
-    const threads = selectSidebarThreadsForProjectRef(state, activeProjectRef);
-    return sessionTabsSelector(threads, {
+    const serverThreads = selectSidebarThreadsForProjectRef(state, activeProjectRef);
+    const allThreads =
+      draftThreadSummariesForProject.length > 0
+        ? [...serverThreads, ...draftThreadSummariesForProject]
+        : serverThreads;
+    return sessionTabsSelector(allThreads, {
       worktreeId: tabsWorktreeId ?? null,
       worktreePath: tabsWorktreePath ?? null,
     });

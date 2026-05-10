@@ -1,4 +1,5 @@
 import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime";
+import type { DraftThreadState } from "./composerDraftStore";
 import type { ChatSessionTabsItem } from "./components/chat/ChatSessionTabs";
 import {
   deriveStatusBucket,
@@ -10,6 +11,32 @@ import type { SidebarThreadSummary } from "./types";
 export interface SessionTabsFilter {
   worktreeId: string | null | undefined;
   worktreePath: string | null | undefined;
+}
+
+// Adapt a composerDraftStore draft thread into the SidebarThreadSummary
+// shape so the session-tabs selector can treat drafts and server threads
+// uniformly. Mirrors adaptDraftThreadForSidebarTree in
+// components/sidebar/sidebarTreeAdapters.ts.
+export function draftThreadToSidebarSummary(draft: DraftThreadState): SidebarThreadSummary {
+  return {
+    id: draft.threadId,
+    environmentId: draft.environmentId,
+    projectId: draft.projectId,
+    title: "Empty Session",
+    interactionMode: draft.interactionMode,
+    session: null,
+    createdAt: draft.createdAt,
+    archivedAt: null,
+    updatedAt: draft.createdAt,
+    latestTurn: null,
+    branch: draft.branch,
+    worktreePath: draft.worktreePath,
+    manualStatusBucket: null,
+    latestUserMessageAt: null,
+    hasPendingApprovals: false,
+    hasPendingUserInput: false,
+    hasActionableProposedPlan: false,
+  };
 }
 
 interface CachedItem {
