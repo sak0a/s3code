@@ -2241,6 +2241,25 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       ),
     );
 
+  const listWorktreePaths: GitVcsDriver.GitVcsDriverShape["listWorktreePaths"] = (cwd) =>
+    executeGit("GitVcsDriver.listWorktreePaths", cwd, ["worktree", "list", "--porcelain"], {
+      timeoutMs: 5_000,
+      allowNonZeroExit: true,
+    }).pipe(
+      Effect.map((result) => {
+        if (result.exitCode !== 0) {
+          return [] as string[];
+        }
+        const paths: string[] = [];
+        for (const line of result.stdout.split("\n")) {
+          if (line.startsWith("worktree ")) {
+            paths.push(line.slice("worktree ".length));
+          }
+        }
+        return paths;
+      }),
+    );
+
   return GitVcsDriver.GitVcsDriver.of({
     execute,
     status,
@@ -2267,5 +2286,6 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     switchRef,
     initRepo,
     listLocalBranchNames,
+    listWorktreePaths,
   });
 });

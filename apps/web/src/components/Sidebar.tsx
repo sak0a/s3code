@@ -2654,10 +2654,44 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
           );
           return;
         }
-        await deleteRpc({
-          worktreeId: WorktreeId.make(worktreeNode.worktree.worktreeId),
-          deleteBranch: false,
-        });
+        try {
+          await deleteRpc({
+            worktreeId: WorktreeId.make(worktreeNode.worktree.worktreeId),
+            deleteBranch: false,
+          });
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : "An error occurred.";
+          const fallbackToastId = toastManager.add(
+            stackedThreadToast({
+              type: "error",
+              title: "Failed to delete worktree",
+              description: `${message}\n\nIf the worktree no longer exists on disk and isn't tracked by git, force-remove it from the list.`,
+              actionVariant: "destructive",
+              actionProps: {
+                children: "Force delete from list",
+                onClick: () => {
+                  toastManager.close(fallbackToastId);
+                  void (async () => {
+                    await deleteRpc({
+                      worktreeId: WorktreeId.make(worktreeNode.worktree.worktreeId),
+                      deleteBranch: false,
+                      force: true,
+                    });
+                  })().catch((forceError: unknown) => {
+                    toastManager.add(
+                      stackedThreadToast({
+                        type: "error",
+                        title: "Failed to force delete worktree",
+                        description:
+                          forceError instanceof Error ? forceError.message : "An error occurred.",
+                      }),
+                    );
+                  });
+                },
+              },
+            }),
+          );
+        }
       })().catch((error: unknown) => {
         toastManager.add(
           stackedThreadToast({

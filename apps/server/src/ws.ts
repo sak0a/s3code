@@ -910,20 +910,18 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
           }
           const project = yield* loadProjectForGitWorkflow(operation, worktree.projectId);
           if (worktree.worktreePath !== null) {
-            if (existsSync(worktree.worktreePath)) {
-              yield* ignoreAlreadyMissingGitResource(
-                gitWorkflow.removeWorktree({
-                  cwd: project.workspaceRoot,
-                  path: worktree.worktreePath,
-                  force: true,
-                }),
-                {
-                  operation,
-                  action: "remove-worktree",
-                  target: worktree.worktreePath,
-                },
-              );
-            }
+            yield* ignoreAlreadyMissingGitResource(
+              gitWorkflow.removeWorktree({
+                cwd: project.workspaceRoot,
+                path: worktree.worktreePath,
+                force: true,
+              }),
+              {
+                operation,
+                action: "remove-worktree",
+                target: worktree.worktreePath,
+              },
+            );
           }
           if (input.deleteBranch) {
             yield* ignoreAlreadyMissingGitResource(
@@ -984,6 +982,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
       const deleteWorktree = (input: {
         readonly worktreeId: WorktreeId;
         readonly deleteBranch: boolean;
+        readonly force?: boolean | undefined;
       }) =>
         Effect.gen(function* () {
           const operation = "git.deleteWorktree";
@@ -992,7 +991,29 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             return yield* failGitWorkflow(operation, "Cannot delete the main worktree.");
           }
           const project = yield* loadProjectForGitWorkflow(operation, worktree.projectId);
-          if (worktree.worktreePath !== null) {
+          if (input.force) {
+            if (worktree.worktreePath !== null) {
+              if (existsSync(worktree.worktreePath)) {
+                return yield* failGitWorkflow(
+                  operation,
+                  "Cannot force delete: the worktree path still exists on disk. Use a regular delete instead.",
+                );
+              }
+              const registeredPaths = yield* gitWorkflow
+                .listWorktreePaths(project.workspaceRoot)
+                .pipe(
+                  Effect.mapError((cause) =>
+                    toGitManagerError(operation, "Failed to inspect git worktrees.", cause),
+                  ),
+                );
+              if (registeredPaths.includes(worktree.worktreePath)) {
+                return yield* failGitWorkflow(
+                  operation,
+                  "Cannot force delete: git still tracks this worktree. Use a regular delete instead.",
+                );
+              }
+            }
+          } else if (worktree.worktreePath !== null) {
             if (existsSync(worktree.worktreePath)) {
               yield* ignoreAlreadyMissingGitResource(
                 gitWorkflow.removeWorktree({

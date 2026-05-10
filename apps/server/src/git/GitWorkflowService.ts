@@ -60,6 +60,7 @@ export interface GitWorkflowServiceShape {
     input: VcsCreateWorktreeInput,
   ) => Effect.Effect<VcsCreateWorktreeResult, GitCommandError>;
   readonly removeWorktree: (input: VcsRemoveWorktreeInput) => Effect.Effect<void, GitCommandError>;
+  readonly listWorktreePaths: (cwd: string) => Effect.Effect<readonly string[], GitCommandError>;
   readonly createRef: (
     input: VcsCreateRefInput,
   ) => Effect.Effect<VcsCreateRefResult, GitCommandError>;
@@ -321,6 +322,16 @@ export const make = Effect.fn("makeGitWorkflowService")(function* () {
       ensureGitCommand("GitWorkflowService.removeWorktree", input.cwd).pipe(
         Effect.andThen(git.removeWorktree(input)),
       ),
+    listWorktreePaths: (cwd) => {
+      const empty: readonly string[] = [];
+      return detectGitRepositoryForCommand("GitWorkflowService.listWorktreePaths", cwd).pipe(
+        Effect.flatMap((isGitRepository) =>
+          isGitRepository
+            ? git.listWorktreePaths(cwd).pipe(Effect.catch(recoverMissingCwd(cwd, empty)))
+            : Effect.succeed(empty),
+        ),
+      );
+    },
     createRef: (input) =>
       ensureGitCommand("GitWorkflowService.createRef", input.cwd).pipe(
         Effect.andThen(git.createRef(input)),

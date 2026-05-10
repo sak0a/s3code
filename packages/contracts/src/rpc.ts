@@ -212,7 +212,11 @@ export const GitRestoreWorktreeInput = Schema.Struct({
 });
 export type GitRestoreWorktreeInput = typeof GitRestoreWorktreeInput.Type;
 
-export const GitDeleteWorktreeInput = GitArchiveWorktreeInput;
+export const GitDeleteWorktreeInput = Schema.Struct({
+  worktreeId: WorktreeId,
+  deleteBranch: Schema.Boolean,
+  force: Schema.optional(Schema.Boolean),
+});
 export type GitDeleteWorktreeInput = typeof GitDeleteWorktreeInput.Type;
 
 export const ThreadsSetManualBucketInput = Schema.Struct({
