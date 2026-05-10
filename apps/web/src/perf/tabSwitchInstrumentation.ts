@@ -39,6 +39,29 @@ export function useRenderCounter(label: string): void {
 }
 
 /**
+ * Dev-only: log which prop changed between renders. Use to figure out
+ * why a memoized component is re-rendering. Logs `[memo:<label>] <key>
+ * changed` for each prop whose identity differs from the previous
+ * render. Add at the top of a component's body.
+ */
+export function useDevPropDiff<T extends Record<string, unknown>>(props: T, label: string): void {
+  const prevRef = useRef<T | null>(null);
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (prevRef.current !== null) {
+      const prev = prevRef.current;
+      const keys = new Set([...Object.keys(prev), ...Object.keys(props)]);
+      for (const key of keys) {
+        if (!Object.is(prev[key as keyof T], props[key as keyof T])) {
+          console.debug(`[memo:${label}] ${String(key)} changed`);
+        }
+      }
+    }
+    prevRef.current = props;
+  });
+}
+
+/**
  * Dev-only render-duration mark. Sets a `<prefix><label>:start:N` mark in the
  * render body and a matching `:end:N` in useLayoutEffect (runs synchronously
  * after commit, before paint). The N-suffix avoids the "latest-mark wins"
