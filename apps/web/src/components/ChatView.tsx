@@ -41,7 +41,7 @@ import {
   issueListQueryOptions,
 } from "~/lib/sourceControlContextRpc";
 import { DateTime } from "effect";
-import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useShallow } from "zustand/react/shallow";
 import { useGitStatus } from "~/lib/gitStatusState";
@@ -948,7 +948,11 @@ export default function ChatView(props: ChatViewProps) {
       const target = parseScopedThreadKey(key);
       if (!target) return;
       markTabSwitchClick(key);
-      startTransition(() => {
+      // Defer navigate to the next macrotask so React can commit the
+      // optimistic pendingKey paint in ChatSessionTabs before the heavy
+      // route-driven re-render kicks in. Wrapping in startTransition
+      // composed badly with tanstack-router's internal Transitioner.
+      setTimeout(() => {
         void navigate({
           to: "/$environmentId/$threadId",
           params: {
@@ -956,7 +960,7 @@ export default function ChatView(props: ChatViewProps) {
             threadId: target.threadId,
           },
         });
-      });
+      }, 0);
     },
     [navigate],
   );
