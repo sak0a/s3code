@@ -31,7 +31,12 @@ describe("createSessionTabsSelector", () => {
     const select = createSessionTabsSelector();
     const threads: SidebarThreadSummary[] = [
       makeThread({ id: "a" as never, worktreeId: "wt-1", updatedAt: "2026-01-02T00:00:00Z" }),
-      makeThread({ id: "b" as never, worktreeId: "wt-2", updatedAt: "2026-01-03T00:00:00Z" }),
+      makeThread({
+        id: "b" as never,
+        worktreeId: "wt-2",
+        worktreePath: "/tmp/other-wt",
+        updatedAt: "2026-01-03T00:00:00Z",
+      }),
       makeThread({ id: "c" as never, worktreeId: "wt-1", updatedAt: "2026-01-01T00:00:00Z" }),
       makeThread({
         id: "d" as never,
@@ -88,5 +93,20 @@ describe("createSessionTabsSelector", () => {
     ];
     const result = select(threads, { worktreeId: "wt-1", worktreePath: "/tmp/match" });
     expect(result.map((item) => item.key.split(":").at(-1))).toEqual(["x"]);
+  });
+
+  it("matches by worktreePath even when both sides have differing worktreeIds", () => {
+    // Mirrors sidebar's belongsToWorktree behavior: new server-created
+    // sessions can land with a fresh worktreeId despite sharing a path
+    // with the active session. They must still appear in the tab strip.
+    const select = createSessionTabsSelector();
+    const threads = [
+      makeThread({ id: "a" as never, worktreeId: "wt-1", worktreePath: "/tmp/wt" }),
+      makeThread({ id: "b" as never, worktreeId: "wt-2", worktreePath: "/tmp/wt" }),
+      makeThread({ id: "c" as never, worktreeId: "wt-3", worktreePath: "/tmp/different" }),
+    ];
+    const result = select(threads, { worktreeId: "wt-1", worktreePath: "/tmp/wt" });
+    const ids = result.map((item) => item.key.split(":").at(-1)).sort();
+    expect(ids).toEqual(["a", "b"]);
   });
 });
