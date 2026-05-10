@@ -22,7 +22,7 @@ If you want a log message to show up in the trace file, emit it inside an active
 
 ### Traces
 
-Completed spans are written as NDJSON records to `serverTracePath` (by default, `~/.t3/userdata/logs/server.trace.ndjson`).
+Completed spans are written as NDJSON records to `serverTracePath` (by default, `~/.s3code/userdata/logs/server.trace.ndjson`; legacy installs may still use `~/.t3/userdata/logs/server.trace.ndjson`).
 
 Important fields in each record:
 
@@ -99,16 +99,16 @@ Default Grafana login:
 #### 2. Export OTLP env vars
 
 ```bash
-export T3CODE_OTLP_TRACES_URL=http://localhost:4318/v1/traces
-export T3CODE_OTLP_METRICS_URL=http://localhost:4318/v1/metrics
-export T3CODE_OTLP_SERVICE_NAME=t3-local
+export S3CODE_OTLP_TRACES_URL=http://localhost:4318/v1/traces
+export S3CODE_OTLP_METRICS_URL=http://localhost:4318/v1/metrics
+export S3CODE_OTLP_SERVICE_NAME=s3-local
 ```
 
 Optional:
 
 ```bash
-export T3CODE_TRACE_MIN_LEVEL=Info
-export T3CODE_TRACE_TIMING_ENABLED=true
+export S3CODE_TRACE_MIN_LEVEL=Info
+export S3CODE_TRACE_TIMING_ENABLED=true
 ```
 
 #### 3. Launch the app from that same shell

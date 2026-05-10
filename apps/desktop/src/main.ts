@@ -35,6 +35,7 @@ import { autoUpdater } from "electron-updater";
 
 import type { ContextMenuItem } from "@t3tools/contracts";
 import { RotatingFileSink } from "@t3tools/shared/logging";
+import { deleteEnv, readEnv } from "@t3tools/shared/runtimeEnv";
 import { parsePersistedServerObservabilitySettings } from "@t3tools/shared/serverSettings";
 import type { RemoteT3RunnerOptions } from "@t3tools/ssh/tunnel";
 import { DEFAULT_DESKTOP_BACKEND_PORT, resolveDesktopBackendPort } from "./backendPort.ts";
@@ -112,22 +113,19 @@ const GET_SERVER_EXPOSURE_STATE_CHANNEL = "desktop:get-server-exposure-state";
 const SET_SERVER_EXPOSURE_MODE_CHANNEL = "desktop:set-server-exposure-mode";
 const SET_TAILSCALE_SERVE_ENABLED_CHANNEL = "desktop:set-tailscale-serve-enabled";
 const GET_ADVERTISED_ENDPOINTS_CHANNEL = "desktop:get-advertised-endpoints";
-const BASE_DIR =
-  process.env.S3CODE_HOME?.trim() ||
-  process.env.T3CODE_HOME?.trim() ||
-  Path.join(OS.homedir(), ".s3code");
+const BASE_DIR = readEnv("S3CODE_HOME")?.trim() || Path.join(OS.homedir(), ".s3code");
 const STATE_DIR = Path.join(BASE_DIR, "userdata");
 const DESKTOP_SETTINGS_PATH = Path.join(STATE_DIR, "desktop-settings.json");
 const CLIENT_SETTINGS_PATH = Path.join(STATE_DIR, "client-settings.json");
 const SAVED_ENVIRONMENT_REGISTRY_PATH = Path.join(STATE_DIR, "saved-environments.json");
-const DESKTOP_SCHEME = "t3";
+const DESKTOP_SCHEME = "s3";
 const ROOT_DIR = Path.resolve(__dirname, "../../..");
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
 // Dev-only SSH launcher override. Set this to an absolute path on the SSH host
 // for a built server entry, for example:
 // "/Users/julius/Development/Work/codething-mvp/apps/server/dist/bin.mjs"
-const DEV_REMOTE_T3_SERVER_ENTRY_PATH =
-  process.env.T3CODE_DEV_REMOTE_T3_SERVER_ENTRY_PATH?.trim() ?? "";
+const DEV_REMOTE_SERVER_ENTRY_PATH =
+  readAliasedEnv("S3CODE_DEV_REMOTE_SERVER_ENTRY_PATH")?.trim() ?? "";
 const desktopAppBranding: DesktopAppBranding = resolveDesktopAppBranding({
   isDevelopment,
   appVersion: app.getVersion(),
@@ -308,16 +306,16 @@ function resolveDesktopDevServerUrl(): string {
 
 function backendChildEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
-  delete env.T3CODE_PORT;
-  delete env.T3CODE_MODE;
-  delete env.T3CODE_NO_BROWSER;
-  delete env.T3CODE_HOST;
-  delete env.T3CODE_DESKTOP_WS_URL;
-  delete env.T3CODE_DESKTOP_LAN_ACCESS;
-  delete env.T3CODE_DESKTOP_LAN_HOST;
-  delete env.T3CODE_DESKTOP_HTTPS_ENDPOINTS;
-  delete env.T3CODE_TAILSCALE_SERVE;
-  delete env.T3CODE_TAILSCALE_SERVE_PORT;
+  deleteAliasedEnv(env, "S3CODE_PORT");
+  deleteAliasedEnv(env, "S3CODE_MODE");
+  deleteAliasedEnv(env, "S3CODE_NO_BROWSER");
+  deleteAliasedEnv(env, "S3CODE_HOST");
+  deleteAliasedEnv(env, "S3CODE_DESKTOP_WS_URL");
+  deleteAliasedEnv(env, "S3CODE_DESKTOP_LAN_ACCESS");
+  deleteAliasedEnv(env, "S3CODE_DESKTOP_LAN_HOST");
+  deleteAliasedEnv(env, "S3CODE_DESKTOP_HTTPS_ENDPOINTS");
+  deleteAliasedEnv(env, "S3CODE_TAILSCALE_SERVE");
+  deleteAliasedEnv(env, "S3CODE_TAILSCALE_SERVE_PORT");
   return env;
 }
 
@@ -361,12 +359,12 @@ function getDesktopSecretStorage() {
 }
 
 function resolveAdvertisedHostOverride(): string | undefined {
-  const override = process.env.T3CODE_DESKTOP_LAN_HOST?.trim();
+  const override = readAliasedEnv("S3CODE_DESKTOP_LAN_HOST")?.trim();
   return override && override.length > 0 ? override : undefined;
 }
 
 function resolveCustomHttpsEndpointUrls(): readonly string[] {
-  return (process.env.T3CODE_DESKTOP_HTTPS_ENDPOINTS ?? "")
+  return (readAliasedEnv("S3CODE_DESKTOP_HTTPS_ENDPOINTS") ?? "")
     .split(",")
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
@@ -532,7 +530,7 @@ async function waitForBackendWindowReady(baseUrl: string): Promise<"listening" |
     waitForHttpReady: () =>
       waitForBackendHttpReady(baseUrl, {
         timeoutMs: 60_000,
-        path: "/.well-known/t3/environment",
+        path: "/.well-known/s3/environment",
       }),
     cancelHttpWait: cancelBackendReadinessWait,
   });
@@ -747,8 +745,8 @@ let updateState: DesktopUpdateState = initialUpdateState();
 const desktopSshEnvironmentBridge = new DesktopSshEnvironmentBridge({
   getMainWindow: () => mainWindow,
   resolveCliRunner: (): RemoteT3RunnerOptions => {
-    if (isDevelopment && DEV_REMOTE_T3_SERVER_ENTRY_PATH.length > 0) {
-      return { nodeScriptPath: DEV_REMOTE_T3_SERVER_ENTRY_PATH };
+    if (isDevelopment && DEV_REMOTE_SERVER_ENTRY_PATH.length > 0) {
+      return { nodeScriptPath: DEV_REMOTE_SERVER_ENTRY_PATH };
     }
     return {
       packageSpec: resolveRemoteT3CliPackageSpec({
@@ -839,7 +837,7 @@ function resolveAboutCommitHash(): string | null {
     return aboutCommitHashCache;
   }
 
-  const envCommitHash = normalizeCommitHash(process.env.T3CODE_COMMIT_HASH);
+  const envCommitHash = normalizeCommitHash(readAliasedEnv("S3CODE_COMMIT_HASH"));
   if (envCommitHash) {
     aboutCommitHashCache = envCommitHash;
     return aboutCommitHashCache;
@@ -994,13 +992,13 @@ function dispatchMenuAction(action: string): void {
 
 function handleCheckForUpdatesMenuClick(): void {
   const hasUpdateFeedConfig =
-    readAppUpdateYml() !== null || Boolean(process.env.T3CODE_DESKTOP_MOCK_UPDATES);
+    readAppUpdateYml() !== null || Boolean(readAliasedEnv("S3CODE_DESKTOP_MOCK_UPDATES"));
   const disabledReason = getAutoUpdateDisabledReason({
     isDevelopment,
     isPackaged: app.isPackaged,
     platform: process.platform,
     appImage: process.env.APPIMAGE,
-    disabledByEnv: process.env.T3CODE_DISABLE_AUTO_UPDATE === "1",
+    disabledByEnv: readAliasedEnv("S3CODE_DISABLE_AUTO_UPDATE") === "1",
     hasUpdateFeedConfig,
   });
   if (disabledReason) {
@@ -1028,7 +1026,7 @@ async function checkForUpdatesFromMenu(): Promise<void> {
     void dialog.showMessageBox({
       type: "info",
       title: "You're up to date!",
-      message: `T3 Code ${updateState.currentVersion} is currently the newest version available.`,
+      message: `S3Code ${updateState.currentVersion} is currently the newest version available.`,
       buttons: ["OK"],
     });
   } else if (updateState.status === "error") {
@@ -1262,14 +1260,14 @@ function applyAutoUpdaterChannel(channel: DesktopUpdateChannel): void {
 
 function shouldEnableAutoUpdates(): boolean {
   const hasUpdateFeedConfig =
-    readAppUpdateYml() !== null || Boolean(process.env.T3CODE_DESKTOP_MOCK_UPDATES);
+    readAppUpdateYml() !== null || Boolean(readAliasedEnv("S3CODE_DESKTOP_MOCK_UPDATES"));
   return (
     getAutoUpdateDisabledReason({
       isDevelopment,
       isPackaged: app.isPackaged,
       platform: process.platform,
       appImage: process.env.APPIMAGE,
-      disabledByEnv: process.env.T3CODE_DISABLE_AUTO_UPDATE === "1",
+      disabledByEnv: readAliasedEnv("S3CODE_DISABLE_AUTO_UPDATE") === "1",
       hasUpdateFeedConfig,
     }) === null
   );
@@ -1361,7 +1359,9 @@ async function installDownloadedUpdate(): Promise<{
 
 function configureAutoUpdater(): void {
   const githubToken =
-    process.env.T3CODE_DESKTOP_UPDATE_GITHUB_TOKEN?.trim() || process.env.GH_TOKEN?.trim() || "";
+    readAliasedEnv("S3CODE_DESKTOP_UPDATE_GITHUB_TOKEN")?.trim() ||
+    process.env.GH_TOKEN?.trim() ||
+    "";
   if (githubToken) {
     // When a token is provided, re-configure the feed with `private: true` so
     // electron-updater uses the GitHub API (api.github.com) instead of the
@@ -1377,10 +1377,10 @@ function configureAutoUpdater(): void {
     }
   }
 
-  if (process.env.T3CODE_DESKTOP_MOCK_UPDATES) {
+  if (readAliasedEnv("S3CODE_DESKTOP_MOCK_UPDATES")) {
     autoUpdater.setFeedURL({
       provider: "generic",
-      url: `http://localhost:${process.env.T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT ?? 3000}`,
+      url: `http://localhost:${readAliasedEnv("S3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT") ?? 3000}`,
     });
   }
 
@@ -2210,9 +2210,9 @@ configureAppIdentity();
 
 async function bootstrap(): Promise<void> {
   writeDesktopLogHeader("bootstrap start");
-  const configuredBackendPort = resolveConfiguredDesktopBackendPort(process.env.T3CODE_PORT);
+  const configuredBackendPort = resolveConfiguredDesktopBackendPort(readAliasedEnv("S3CODE_PORT"));
   if (isDevelopment && configuredBackendPort === undefined) {
-    throw new Error("T3CODE_PORT is required in desktop development.");
+    throw new Error("S3CODE_PORT is required in desktop development.");
   }
 
   backendPort =

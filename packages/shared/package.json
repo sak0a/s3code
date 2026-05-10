@@ -60,6 +60,10 @@
       "types": "./src/projectScripts.ts",
       "import": "./src/projectScripts.ts"
     },
+    "./runtimeEnv": {
+      "types": "./src/runtimeEnv.ts",
+      "import": "./src/runtimeEnv.ts"
+    },
     "./searchRanking": {
       "types": "./src/searchRanking.ts",
       "import": "./src/searchRanking.ts"

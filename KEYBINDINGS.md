@@ -1,8 +1,9 @@
 # Keybindings
 
-T3 Code reads keybindings from:
+S3Code reads keybindings from:
 
-- `~/.t3/keybindings.json`
+- `~/.s3code/userdata/keybindings.json`
+- legacy fallback: `~/.t3/userdata/keybindings.json`
 
 The file must be a JSON array of rules:
 

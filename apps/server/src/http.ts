@@ -1,5 +1,5 @@
 import Mime from "@effect/platform-node/Mime";
-import { Data, Effect, FileSystem, Option, Path } from "effect";
+import { Data, Effect, FileSystem, Layer, Option, Path } from "effect";
 import { cast } from "effect/Function";
 import {
   HttpBody,
@@ -58,15 +58,19 @@ const requireAuthenticatedRequest = Effect.gen(function* () {
   yield* serverAuth.authenticateHttpRequest(request);
 });
 
+const serverEnvironmentRouteHandler = Effect.gen(function* () {
+  const descriptor = yield* Effect.service(ServerEnvironment).pipe(
+    Effect.flatMap((serverEnvironment) => serverEnvironment.getDescriptor),
+  );
+  return HttpServerResponse.jsonUnsafe(descriptor, { status: 200 });
+});
+
 export const serverEnvironmentRouteLayer = HttpRouter.add(
   "GET",
-  "/.well-known/t3/environment",
-  Effect.gen(function* () {
-    const descriptor = yield* Effect.service(ServerEnvironment).pipe(
-      Effect.flatMap((serverEnvironment) => serverEnvironment.getDescriptor),
-    );
-    return HttpServerResponse.jsonUnsafe(descriptor, { status: 200 });
-  }),
+  "/.well-known/s3/environment",
+  serverEnvironmentRouteHandler,
+).pipe(
+  Layer.merge(HttpRouter.add("GET", "/.well-known/t3/environment", serverEnvironmentRouteHandler)),
 );
 
 class DecodeOtlpTraceRecordsError extends Data.TaggedError("DecodeOtlpTraceRecordsError")<{

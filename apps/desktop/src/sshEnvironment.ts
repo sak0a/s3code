@@ -283,7 +283,7 @@ export class DesktopSshEnvironmentBridge {
       sshRuntime.runPromise(
         fetchLoopbackSshJson<ExecutionEnvironmentDescriptor>({
           httpBaseUrl: rawHttpBaseUrl,
-          pathname: "/.well-known/t3/environment",
+          pathname: "/.well-known/s3/environment",
         }),
       ),
     );
