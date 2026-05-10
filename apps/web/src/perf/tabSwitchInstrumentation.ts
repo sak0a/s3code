@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 export const TAB_SWITCH_MARK_PREFIX = "s3:tab-switch:";
+export const COMPONENT_RENDER_MARK_PREFIX = "s3:render:";
 
 export type TabSwitchPhase = "click" | "first-paint";
 
@@ -34,5 +35,35 @@ export function useRenderCounter(label: string): void {
     if (!import.meta.env.DEV) return;
     count.current += 1;
     console.debug(`[render] ${label} #${count.current}`);
+  });
+}
+
+/**
+ * Dev-only render-duration mark. Sets a `<prefix><label>:start:N` mark in the
+ * render body and a matching `:end:N` in useLayoutEffect (runs synchronously
+ * after commit, before paint). The N-suffix avoids the "latest-mark wins"
+ * problem when a component re-renders multiple times during a single
+ * interaction. Inspect via:
+ *
+ *   performance.getEntriesByType("measure")
+ *     .filter(m => m.name.startsWith("s3:render:"))
+ */
+export function usePerfMark(label: string): void {
+  const seq = useRef(0);
+  if (import.meta.env.DEV && typeof performance !== "undefined") {
+    seq.current += 1;
+    performance.mark(`${COMPONENT_RENDER_MARK_PREFIX}${label}:start:${seq.current}`);
+  }
+  useLayoutEffect(() => {
+    if (!import.meta.env.DEV || typeof performance === "undefined") return;
+    const i = seq.current;
+    const startName = `${COMPONENT_RENDER_MARK_PREFIX}${label}:start:${i}`;
+    const endName = `${COMPONENT_RENDER_MARK_PREFIX}${label}:end:${i}`;
+    performance.mark(endName);
+    try {
+      performance.measure(`${COMPONENT_RENDER_MARK_PREFIX}${label}#${i}`, startName, endName);
+    } catch {
+      // Ignore — start mark may have been cleared.
+    }
   });
 }

@@ -41,7 +41,7 @@ import {
   issueListQueryOptions,
 } from "~/lib/sourceControlContextRpc";
 import { DateTime } from "effect";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useShallow } from "zustand/react/shallow";
 import { useGitStatus } from "~/lib/gitStatusState";
@@ -162,7 +162,11 @@ import { type ChatSessionTabsItem } from "./chat/ChatSessionTabs";
 import { createTabPrefetchController } from "./chat/ChatSessionTabsPrefetch";
 import { createSessionTabsSelector, draftThreadToSidebarSummary } from "../sessionTabs.selectors";
 import type { SidebarThreadSummary } from "../types";
-import { markTabSwitchClick, markTabSwitchFirstPaint } from "../perf/tabSwitchInstrumentation";
+import {
+  markTabSwitchClick,
+  markTabSwitchFirstPaint,
+  usePerfMark,
+} from "../perf/tabSwitchInstrumentation";
 import { type ExpandedImagePreview } from "./chat/ExpandedImagePreview";
 import { NoActiveThreadState } from "./NoActiveThreadState";
 import { resolveEffectiveEnvMode, resolveEnvironmentOptionLabel } from "./BranchToolbar.logic";
@@ -624,6 +628,7 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
 });
 
 export default function ChatView(props: ChatViewProps) {
+  usePerfMark("ChatView");
   const {
     environmentId,
     threadId,
@@ -830,6 +835,13 @@ export default function ChatView(props: ChatViewProps) {
   );
   const isServerThread = routeKind === "server" && serverThread !== undefined;
   const activeThread = isServerThread ? serverThread : localDraftThread;
+  // Defers heavy MessagesTimeline render to a transition. When threadId
+  // changes, the urgent render paints with the placeholder branch (see
+  // the JSX gate below); React then re-renders in a transition where
+  // the deferred id catches up and the real timeline mounts.
+  const activeThreadIdRaw = activeThread?.id ?? null;
+  const deferredActiveThreadId = useDeferredValue(activeThreadIdRaw);
+  const isActiveThreadIdFresh = deferredActiveThreadId === activeThreadIdRaw;
   const runtimeMode = composerRuntimeMode ?? activeThread?.runtimeMode ?? DEFAULT_RUNTIME_MODE;
   const interactionMode =
     composerInteractionMode ?? activeThread?.interactionMode ?? DEFAULT_INTERACTION_MODE;
@@ -3827,31 +3839,38 @@ export default function ChatView(props: ChatViewProps) {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {/* Messages Wrapper */}
           <div className="relative flex min-h-0 flex-1 flex-col">
-            {/* Messages — LegendList handles virtualization and scrolling internally */}
-            <MessagesTimeline
-              key={activeThread.id}
-              isWorking={isWorking}
-              activeTurnInProgress={isWorking || !latestTurnSettled}
-              activeTurnId={activeLatestTurn?.turnId ?? null}
-              activeTurnStartedAt={activeWorkStartedAt}
-              listRef={legendListRef}
-              timelineEntries={timelineEntries}
-              completionDividerBeforeEntryId={completionDividerBeforeEntryId}
-              completionSummary={completionSummary}
-              turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
-              activeThreadEnvironmentId={activeThread.environmentId}
-              routeThreadKey={routeThreadKey}
-              onOpenTurnDiff={onOpenTurnDiff}
-              revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
-              onRevertUserMessage={onRevertUserMessage}
-              isRevertingCheckpoint={isRevertingCheckpoint}
-              onImageExpand={onExpandTimelineImage}
-              markdownCwd={gitCwd ?? undefined}
-              resolvedTheme={resolvedTheme}
-              timestampFormat={timestampFormat}
-              workspaceRoot={activeWorkspaceRoot}
-              onIsAtEndChange={onIsAtEndChange}
-            />
+            {/* Messages — LegendList handles virtualization and scrolling internally.
+                Gated on useDeferredValue: the urgent render after a tab switch
+                paints the placeholder, then React commits the heavy timeline in
+                a low-priority transition. */}
+            {isActiveThreadIdFresh ? (
+              <MessagesTimeline
+                key={activeThread.id}
+                isWorking={isWorking}
+                activeTurnInProgress={isWorking || !latestTurnSettled}
+                activeTurnId={activeLatestTurn?.turnId ?? null}
+                activeTurnStartedAt={activeWorkStartedAt}
+                listRef={legendListRef}
+                timelineEntries={timelineEntries}
+                completionDividerBeforeEntryId={completionDividerBeforeEntryId}
+                completionSummary={completionSummary}
+                turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
+                activeThreadEnvironmentId={activeThread.environmentId}
+                routeThreadKey={routeThreadKey}
+                onOpenTurnDiff={onOpenTurnDiff}
+                revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
+                onRevertUserMessage={onRevertUserMessage}
+                isRevertingCheckpoint={isRevertingCheckpoint}
+                onImageExpand={onExpandTimelineImage}
+                markdownCwd={gitCwd ?? undefined}
+                resolvedTheme={resolvedTheme}
+                timestampFormat={timestampFormat}
+                workspaceRoot={activeWorkspaceRoot}
+                onIsAtEndChange={onIsAtEndChange}
+              />
+            ) : (
+              <div aria-hidden className="flex min-h-0 flex-1" />
+            )}
 
             {/* scroll to bottom pill — shown when user has scrolled away from the bottom */}
             {showScrollToBottom && (

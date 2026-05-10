@@ -54,6 +54,7 @@ import { cn } from "~/lib/utils";
 import { useUiStateStore } from "~/uiStateStore";
 import { type TimestampFormat } from "@s3tools/contracts/settings";
 import { formatTimestamp } from "../../timestampFormat";
+import { usePerfMark } from "../../perf/tabSwitchInstrumentation";
 
 import {
   buildInlineTerminalContextText,
@@ -145,6 +146,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   workspaceRoot,
   onIsAtEndChange,
 }: MessagesTimelineProps) {
+  usePerfMark("MessagesTimeline");
   const rawRows = useMemo(
     () =>
       deriveMessagesTimelineRows({

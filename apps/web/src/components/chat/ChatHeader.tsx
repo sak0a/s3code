@@ -19,6 +19,7 @@ import { usePrimaryEnvironmentId } from "../../environments/primary";
 import { ChatHeaderBar } from "./ChatHeaderBar";
 import { ChatSessionTabs, type ChatSessionTabsItem } from "./ChatSessionTabs";
 import type { WorktreeOriginLike } from "./ChatSessionTabs.logic";
+import { usePerfMark } from "../../perf/tabSwitchInstrumentation";
 
 interface ChatHeaderProps {
   activeThreadEnvironmentId: EnvironmentId;
@@ -74,6 +75,7 @@ export function shouldShowOpenInPicker(input: {
 }
 
 export const ChatHeader = memo(function ChatHeader(props: ChatHeaderProps) {
+  usePerfMark("ChatHeader");
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const showOpenInPicker = shouldShowOpenInPicker({
     activeProjectName: props.activeProjectName,
