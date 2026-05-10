@@ -1745,24 +1745,6 @@ export default function ChatView(props: ChatViewProps) {
       deriveTimelineEntries(timelineMessages, activeThread?.proposedPlans ?? [], workLogEntries),
     [activeThread?.proposedPlans, timelineMessages, workLogEntries],
   );
-  const assistantTimelineContentSize = useMemo(() => {
-    let total = 0;
-    for (const entry of timelineEntries) {
-      if (entry.kind === "work" || entry.kind === "proposed-plan") {
-        total += 200;
-        continue;
-      }
-      if (entry.kind === "message" && entry.message.role === "assistant") {
-        total += entry.message.text?.length ?? 0;
-      }
-    }
-    return total;
-  }, [timelineEntries]);
-  // Holds the composer in its centered position until the assistant response
-  // has rendered enough characters/work entries that it is visually "close to"
-  // the composer. Beyond the threshold, the composer is pushed down to its
-  // bottom-anchored position.
-  const composerPushedDown = assistantTimelineContentSize > 120;
   const { turnDiffSummaries, inferredCheckpointTurnCountByTurnId } =
     useTurnDiffSummaries(activeThread);
   const turnDiffSummaryByAssistantMessageId = useMemo(() => {
@@ -3911,24 +3893,14 @@ export default function ChatView(props: ChatViewProps) {
             )}
           </div>
 
-          {/* Input bar — sits in a slightly elevated position (above bottom)
-              while the thread has no substantial assistant output yet, so the
-              empty composer feels intentionally placed. Once the assistant's
-              response has streamed enough content to visually approach the
-              composer, the response "pushes" the composer the rest of the way
-              down to its bottom-anchored position. The translate animates on
-              the GPU compositor (no layout reflow) for a fluent slide. */}
+          {/* Input bar */}
           <div
             className={cn(
               "pl-[calc(env(safe-area-inset-left)+0.75rem)] pr-[calc(env(safe-area-inset-right)+0.75rem)] pt-1.5 sm:pl-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)] sm:pt-2",
               isGitRepo
                 ? "pb-[calc(env(safe-area-inset-bottom)+0.25rem)]"
                 : "pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:pb-[calc(env(safe-area-inset-bottom)+1rem)]",
-              "will-change-transform transition-transform duration-[3000ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
             )}
-            style={{
-              transform: composerPushedDown ? "translateY(0)" : "translateY(calc(5rem - 50vh))",
-            }}
           >
             <div className="relative isolate">
               <ComposerBannerStack className="relative z-0" items={composerBannerItems} />
