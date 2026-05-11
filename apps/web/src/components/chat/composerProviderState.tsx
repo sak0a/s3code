@@ -11,12 +11,11 @@ import {
   isClaudeUltrathinkPrompt,
 } from "@s3tools/shared/model";
 import type { ReactNode } from "react";
-import type { VariantProps } from "class-variance-authority";
 
 import type { DraftId } from "../../composerDraftStore";
 import { getProviderModelCapabilities } from "../../providerModels";
-import { shouldRenderTraitsControls, TraitsMenuContent, TraitsPicker } from "./TraitsPicker";
-import { type buttonVariants } from "../ui/button";
+import { shouldRenderTraitsControls, TraitsMenuContent } from "./TraitsPicker";
+import { TraitsChips } from "./TraitsChips";
 
 export type ComposerProviderStateInput = {
   provider: ProviderDriverKind;
@@ -44,7 +43,6 @@ type TraitsRenderInput = {
   modelOptions: ReadonlyArray<ProviderOptionSelection> | undefined;
   prompt: string;
   onPromptChange: (prompt: string) => void;
-  triggerSize?: VariantProps<typeof buttonVariants>["size"];
 };
 
 export function getComposerProviderState(input: ComposerProviderStateInput): ComposerProviderState {
@@ -75,10 +73,7 @@ export function getComposerProviderState(input: ComposerProviderStateInput): Com
   };
 }
 
-function renderTraitsControl(
-  Component: typeof TraitsMenuContent | typeof TraitsPicker,
-  input: TraitsRenderInput,
-): ReactNode {
+export function renderProviderTraitsMenuContent(input: TraitsRenderInput): ReactNode {
   const { provider, threadRef, draftId, model, models, modelOptions, prompt, onPromptChange } =
     input;
   const hasTarget = threadRef !== undefined || draftId !== undefined;
@@ -89,7 +84,7 @@ function renderTraitsControl(
     return null;
   }
   return (
-    <Component
+    <TraitsMenuContent
       provider={provider}
       models={models}
       {...(threadRef ? { threadRef } : {})}
@@ -98,15 +93,30 @@ function renderTraitsControl(
       modelOptions={modelOptions}
       prompt={prompt}
       onPromptChange={onPromptChange}
-      {...(input.triggerSize ? { triggerSize: input.triggerSize } : {})}
     />
   );
 }
 
-export function renderProviderTraitsMenuContent(input: TraitsRenderInput): ReactNode {
-  return renderTraitsControl(TraitsMenuContent, input);
-}
-
-export function renderProviderTraitsPicker(input: TraitsRenderInput): ReactNode {
-  return renderTraitsControl(TraitsPicker, input);
+export function renderProviderTraitsChips(input: TraitsRenderInput): ReactNode {
+  const { provider, threadRef, draftId, model, models, modelOptions, prompt, onPromptChange } =
+    input;
+  const hasTarget = threadRef !== undefined || draftId !== undefined;
+  if (
+    !hasTarget ||
+    !shouldRenderTraitsControls({ provider, models, model, modelOptions, prompt })
+  ) {
+    return null;
+  }
+  return (
+    <TraitsChips
+      provider={provider}
+      models={models}
+      {...(threadRef ? { threadRef } : {})}
+      {...(draftId ? { draftId } : {})}
+      model={model}
+      modelOptions={modelOptions}
+      prompt={prompt}
+      onPromptChange={onPromptChange}
+    />
+  );
 }

@@ -7,8 +7,8 @@ import {
 } from "@s3tools/contracts";
 import {
   getComposerProviderState,
+  renderProviderTraitsChips,
   renderProviderTraitsMenuContent,
-  renderProviderTraitsPicker,
 } from "./composerProviderState";
 
 // Everything in composerProviderState is now data-driven by the model's
@@ -236,7 +236,7 @@ describe("provider traits render guards", () => {
       onPromptChange: () => {},
     };
 
-    expect(renderProviderTraitsPicker(args)).toBeNull();
+    expect(renderProviderTraitsChips(args)).toBeNull();
     expect(renderProviderTraitsMenuContent(args)).toBeNull();
   });
 });

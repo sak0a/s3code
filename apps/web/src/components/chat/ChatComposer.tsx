@@ -86,8 +86,8 @@ import { resolveComposerMenuActiveItemId } from "./composerMenuHighlight";
 import { searchSlashCommandItems } from "./composerSlashCommandSearch";
 import {
   getComposerProviderState,
+  renderProviderTraitsChips,
   renderProviderTraitsMenuContent,
-  renderProviderTraitsPicker,
 } from "./composerProviderState";
 import { ContextWindowMeter } from "./ContextWindowMeter";
 import { buildExpandedImagePreview, type ExpandedImagePreview } from "./ExpandedImagePreview";
@@ -1143,7 +1143,7 @@ export const ChatComposer = memo(
       prompt,
       onPromptChange: setPromptFromTraits,
     });
-    const providerTraitsPicker = renderProviderTraitsPicker({
+    const providerTraitsChips = renderProviderTraitsChips({
       provider: selectedProvider,
       ...(routeKind === "server" ? { threadRef: routeThreadRef } : {}),
       ...(routeKind === "draft" && draftId ? { draftId } : {}),
@@ -1152,7 +1152,6 @@ export const ChatComposer = memo(
       modelOptions: composerModelOptions?.[selectedProvider],
       prompt,
       onPromptChange: setPromptFromTraits,
-      triggerSize: "xs",
     });
     const pendingPrimaryAction = useMemo(
       () =>
@@ -2619,13 +2618,13 @@ export const ChatComposer = memo(
                     />
                   ) : (
                     <>
-                      {providerTraitsPicker ? (
+                      {providerTraitsChips ? (
                         <>
                           <Separator
                             orientation="vertical"
                             className="mx-0.5 hidden h-4 sm:block"
                           />
-                          {providerTraitsPicker}
+                          {providerTraitsChips}
                         </>
                       ) : null}
                       <ComposerFooterModeControls

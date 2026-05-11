@@ -50,7 +50,7 @@ export const TraitsChips = memo(function TraitsChips(props: TraitsChipsProps) {
   );
   const updateModelOptions = useCallback(
     (nextOptions: ProviderOptions | undefined) => {
-      if ("onModelOptionsChange" in props && props.onModelOptionsChange) {
+      if ("onModelOptionsChange" in props && typeof props.onModelOptionsChange === "function") {
         props.onModelOptionsChange(nextOptions);
         return;
       }
