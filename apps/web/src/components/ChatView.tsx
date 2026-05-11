@@ -751,8 +751,6 @@ export default function ChatView(props: ChatViewProps) {
   const [attachmentPreviewHandoffByMessageId, setAttachmentPreviewHandoffByMessageId] = useState<
     Record<string, string[]>
   >({});
-  const [pendingServerThreadEnvMode, setPendingServerThreadEnvMode] =
-    useState<DraftThreadEnvMode | null>(null);
   const [pendingServerThreadBranch, setPendingServerThreadBranch] = useState<string | null>();
   const [lastInvokedScriptByProjectId, setLastInvokedScriptByProjectId] = useLocalStorage(
     LAST_INVOKED_SCRIPT_BY_PROJECT_KEY,
@@ -2526,23 +2524,20 @@ export default function ChatView(props: ChatViewProps) {
   }, []);
 
   const activeWorktreePath = activeThread?.worktreePath ?? null;
-  const derivedEnvMode: DraftThreadEnvMode = resolveEffectiveEnvMode({
+  const envMode: DraftThreadEnvMode = resolveEffectiveEnvMode({
     activeWorktreePath,
     hasServerThread: isServerThread,
     draftThreadEnvMode: isLocalDraftThread ? draftThread?.envMode : undefined,
   });
-  const canOverrideServerThreadEnvMode = Boolean(
+  const canOverrideServerThreadBranch = Boolean(
     isServerThread &&
     activeThread &&
     activeThread.messages.length === 0 &&
     activeThread.worktreePath === null &&
     !envLocked,
   );
-  const envMode: DraftThreadEnvMode = canOverrideServerThreadEnvMode
-    ? (pendingServerThreadEnvMode ?? draftThread?.envMode ?? derivedEnvMode)
-    : derivedEnvMode;
   const activeThreadBranch =
-    canOverrideServerThreadEnvMode && pendingServerThreadBranch !== undefined
+    canOverrideServerThreadBranch && pendingServerThreadBranch !== undefined
       ? pendingServerThreadBranch
       : (activeThread?.branch ?? null);
   const sendEnvMode = resolveSendEnvMode({
@@ -2551,17 +2546,15 @@ export default function ChatView(props: ChatViewProps) {
   });
 
   useEffect(() => {
-    setPendingServerThreadEnvMode(null);
     setPendingServerThreadBranch(undefined);
   }, [activeThread?.id]);
 
   useEffect(() => {
-    if (canOverrideServerThreadEnvMode) {
+    if (canOverrideServerThreadBranch) {
       return;
     }
-    setPendingServerThreadEnvMode(null);
     setPendingServerThreadBranch(undefined);
-  }, [canOverrideServerThreadEnvMode]);
+  }, [canOverrideServerThreadBranch]);
 
   useEffect(() => {
     if (!activeThreadId) {
@@ -3711,32 +3704,6 @@ export default function ChatView(props: ChatViewProps) {
       settings,
     ],
   );
-  const onEnvModeChange = useCallback(
-    (mode: DraftThreadEnvMode) => {
-      if (canOverrideServerThreadEnvMode) {
-        setPendingServerThreadEnvMode(mode);
-        scheduleComposerFocus();
-        return;
-      }
-      if (isLocalDraftThread) {
-        setDraftThreadContext(composerDraftTarget, {
-          envMode: mode,
-          ...(mode === "worktree" && draftThread?.worktreePath ? { worktreePath: null } : {}),
-        });
-      }
-      scheduleComposerFocus();
-    },
-    [
-      canOverrideServerThreadEnvMode,
-      composerDraftTarget,
-      draftThread?.worktreePath,
-      isLocalDraftThread,
-      setPendingServerThreadEnvMode,
-      scheduleComposerFocus,
-      setDraftThreadContext,
-    ],
-  );
-
   const onExpandTimelineImage = useCallback((preview: ExpandedImagePreview) => {
     setExpandedImage(preview);
   }, []);
@@ -3983,9 +3950,7 @@ export default function ChatView(props: ChatViewProps) {
                 environmentId={activeThread.environmentId}
                 threadId={activeThread.id}
                 {...(routeKind === "draft" && draftId ? { draftId } : {})}
-                onEnvModeChange={onEnvModeChange}
-                {...(canOverrideServerThreadEnvMode ? { effectiveEnvModeOverride: envMode } : {})}
-                {...(canOverrideServerThreadEnvMode
+                {...(canOverrideServerThreadBranch
                   ? {
                       activeThreadBranchOverride: activeThreadBranch,
                       onActiveThreadBranchOverrideChange: setPendingServerThreadBranch,
@@ -4002,11 +3967,6 @@ export default function ChatView(props: ChatViewProps) {
                 terminalOpen={terminalState.terminalOpen}
                 terminalToggleShortcutLabel={terminalToggleShortcutLabel}
                 onToggleTerminal={toggleTerminalVisibility}
-                onOpenProjectExplorer={() => {
-                  setProjectExplorerInitialTab("prs");
-                  setProjectExplorerOpen(true);
-                }}
-                projectExplorerShortcutLabel="⇧⌘P"
                 terminalCount={terminalState.terminalIds.length}
               />
             )}

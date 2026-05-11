@@ -52,7 +52,6 @@ interface BranchToolbarBranchSelectorProps {
   threadId: ThreadId;
   draftId?: DraftId;
   envLocked: boolean;
-  effectiveEnvModeOverride?: "local" | "worktree";
   activeThreadBranchOverride?: string | null;
   onActiveThreadBranchOverrideChange?: (refName: string | null) => void;
   onCheckoutPullRequestRequest?: (reference: string) => void;
@@ -84,7 +83,6 @@ export function BranchToolbarBranchSelector({
   threadId,
   draftId,
   envLocked,
-  effectiveEnvModeOverride,
   activeThreadBranchOverride,
   onActiveThreadBranchOverrideChange,
   onCheckoutPullRequestRequest,
@@ -126,13 +124,11 @@ export function BranchToolbarBranchSelector({
   const activeProjectCwd = activeProject?.cwd ?? null;
   const branchCwd = activeWorktreePath ?? activeProjectCwd;
   const hasServerThread = serverThread !== undefined;
-  const effectiveEnvMode =
-    effectiveEnvModeOverride ??
-    resolveEffectiveEnvMode({
-      activeWorktreePath,
-      hasServerThread,
-      draftThreadEnvMode: draftThread?.envMode,
-    });
+  const effectiveEnvMode = resolveEffectiveEnvMode({
+    activeWorktreePath,
+    hasServerThread,
+    draftThreadEnvMode: draftThread?.envMode,
+  });
 
   // ---------------------------------------------------------------------------
   // Thread branch mutation (colocated — only this component calls it)
