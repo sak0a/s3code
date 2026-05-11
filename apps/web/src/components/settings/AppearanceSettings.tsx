@@ -1,4 +1,5 @@
 import {
+  BrainIcon,
   ClipboardCopyIcon,
   CopyIcon,
   DownloadIcon,
@@ -11,6 +12,7 @@ import { type ChangeEvent, Fragment, useCallback, useMemo, useRef, useState } fr
 
 import { useTheme } from "../../hooks/useTheme";
 import { cn } from "../../lib/utils";
+import { type ReasoningIndicatorStyle, useUiStateStore } from "../../uiStateStore";
 import {
   addCustomTheme,
   applyThemeToDocument,
@@ -52,8 +54,29 @@ const VARIANT_OPTIONS = [
   { value: "dark", label: "Dark" },
 ] as const;
 
+const REASONING_INDICATOR_OPTIONS = [
+  {
+    value: "icon-dots" as const,
+    label: "Icon + dots",
+    description: "Brain icon with intensity dots",
+  },
+  {
+    value: "text" as const,
+    label: "Text label",
+    description: "Color-tinted abbreviated text",
+  },
+] satisfies ReadonlyArray<{
+  value: ReasoningIndicatorStyle;
+  label: string;
+  description: string;
+}>;
+
 export function AppearanceSettingsPanel() {
   const { theme, setTheme, resolvedTheme, activeThemeId, setActiveTheme } = useTheme();
+  const reasoningIndicatorStyle = useUiStateStore((state) => state.reasoningIndicatorStyle);
+  const setReasoningIndicatorStyle = useUiStateStore(
+    (state) => state.setReasoningIndicatorStyle,
+  );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ThemeDefinition | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -374,6 +397,83 @@ export function AppearanceSettingsPanel() {
             );
           })}
         </div>
+      </SettingsSection>
+
+      <SettingsSection title="Reasoning indicator">
+        <SettingsRow
+          title="Reasoning chip style"
+          description="How the reasoning effort level appears in the composer bar."
+          resetAction={
+            reasoningIndicatorStyle !== "icon-dots" ? (
+              <SettingResetButton
+                label="reasoning indicator"
+                onClick={() => setReasoningIndicatorStyle("icon-dots")}
+              />
+            ) : null
+          }
+          control={
+            <div className="flex w-full flex-col gap-2 sm:w-80">
+              {REASONING_INDICATOR_OPTIONS.map((option) => {
+                const isSelected = reasoningIndicatorStyle === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    onClick={() => setReasoningIndicatorStyle(option.value)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md border px-3 py-2 text-left",
+                      isSelected
+                        ? "border-primary ring-1 ring-primary/40"
+                        : "border-border hover:border-foreground/30",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "size-3.5 rounded-full border",
+                        isSelected
+                          ? "border-primary bg-primary/80"
+                          : "border-foreground/30",
+                      )}
+                    />
+                    <span className="flex flex-grow flex-col">
+                      <span className="font-medium text-sm">{option.label}</span>
+                      <span className="text-muted-foreground text-xs">
+                        {option.description}
+                      </span>
+                    </span>
+                    <span
+                      className={cn(
+                        "inline-flex h-7 items-center gap-1.5 rounded-md px-2 font-medium text-xs",
+                        "bg-indigo-500/15 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300",
+                      )}
+                    >
+                      {option.value === "icon-dots" ? (
+                        <>
+                          <BrainIcon aria-hidden="true" className="size-3" />
+                          <span className="inline-flex items-center gap-0.5">
+                            {[1, 2, 3, 4, 5].map((position) => (
+                              <span
+                                key={position}
+                                className={cn(
+                                  "size-[5px] rounded-full bg-current",
+                                  position <= 3 ? "opacity-100" : "opacity-30",
+                                )}
+                              />
+                            ))}
+                          </span>
+                        </>
+                      ) : (
+                        <span>High</span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          }
+        />
       </SettingsSection>
 
       <SettingsSection title="Color mode">
