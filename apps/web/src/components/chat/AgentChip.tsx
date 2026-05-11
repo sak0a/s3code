@@ -30,12 +30,12 @@ export const AgentChip = memo(function AgentChip(props: AgentChipProps) {
       <MenuTrigger
         render={
           <Button
-            size="sm"
+            size="xs"
             variant="ghost"
             aria-label={`Agent: ${label}`}
             title="Agent"
             className={cn(
-              "h-7 gap-1.5 rounded-md px-2 font-medium text-xs",
+              "gap-1 rounded-md px-1.5 font-medium",
               "bg-muted/40 text-muted-foreground",
             )}
           />

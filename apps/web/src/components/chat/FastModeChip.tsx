@@ -30,7 +30,7 @@ export const FastModeChip = memo(function FastModeChip(props: FastModeChipProps)
               );
             }}
             className={cn(
-              "inline-flex h-7 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 font-medium text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+              "inline-flex h-7 cursor-pointer items-center justify-center gap-1 rounded-md px-1.5 font-medium text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background sm:h-6 sm:text-[11px]",
               isOn
                 ? "bg-yellow-500/15 text-yellow-800 hover:bg-yellow-500/25 dark:bg-yellow-500/20 dark:text-yellow-300 dark:hover:bg-yellow-500/30"
                 : "text-muted-foreground/60 ring-1 ring-border ring-inset hover:bg-accent hover:text-foreground",

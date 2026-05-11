@@ -86,14 +86,11 @@ export const ReasoningChip = memo(function ReasoningChip(props: ReasoningChipPro
       <MenuTrigger
         render={
           <Button
-            size="sm"
+            size="xs"
             variant="ghost"
             aria-label={`Reasoning: ${abbreviation}`}
             title={`Reasoning: ${abbreviation}`}
-            className={cn(
-              "h-7 gap-1.5 rounded-md px-2 font-medium text-xs",
-              LEVEL_TINT_CLASSES[level],
-            )}
+            className={cn("gap-1 rounded-md px-1.5 font-medium", LEVEL_TINT_CLASSES[level])}
           />
         }
       >
