@@ -25,7 +25,6 @@ import {
   makePendingClaudeProvider,
   probeClaudeCapabilities,
 } from "../Layers/ClaudeProvider.ts";
-import { probeClaudeUsageRateLimits } from "../Layers/ClaudeUsage.ts";
 import { ProviderEventLoggers } from "../Layers/ProviderEventLoggers.ts";
 import { makeManagedServerProvider } from "../makeManagedServerProvider.ts";
 import {
@@ -40,7 +39,6 @@ import { makeClaudeCapabilitiesCacheKey, makeClaudeContinuationGroupKey } from "
 const DRIVER_KIND = ProviderDriverKind.make("claudeAgent");
 const SNAPSHOT_REFRESH_INTERVAL = Duration.minutes(5);
 const CAPABILITIES_PROBE_TTL = Duration.minutes(5);
-const USAGE_PROBE_TTL = Duration.seconds(60);
 
 export type ClaudeDriverEnv =
   | ChildProcessSpawner.ChildProcessSpawner
@@ -111,20 +109,11 @@ export const ClaudeDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv> = {
           ),
       });
       const capabilitiesCacheKey = yield* makeClaudeCapabilitiesCacheKey(effectiveConfig);
-      const usageProbeCache = yield* Cache.make({
-        capacity: 1,
-        timeToLive: USAGE_PROBE_TTL,
-        lookup: (version: string | null) =>
-          probeClaudeUsageRateLimits(effectiveConfig, version).pipe(
-            Effect.provideService(Path.Path, path),
-          ),
-      });
 
       const checkProvider = checkClaudeProviderStatus(
         effectiveConfig,
         () => Cache.get(capabilitiesProbeCache, capabilitiesCacheKey),
         processEnv,
-        (_settings, version) => Cache.get(usageProbeCache, version),
       ).pipe(
         Effect.map(stampIdentity),
         Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),

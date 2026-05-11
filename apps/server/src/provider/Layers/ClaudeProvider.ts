@@ -4,7 +4,6 @@ import {
   type ModelSelection,
   ProviderDriverKind,
   type ServerProviderModel,
-  type ServerProviderRateLimits,
   type ServerProviderSlashCommand,
 } from "@s3tools/contracts";
 import { Effect, Option, Path, Result } from "effect";
@@ -363,15 +362,6 @@ type ClaudeCapabilitiesProbe = {
   readonly slashCommands: ReadonlyArray<ServerProviderSlashCommand>;
 };
 
-type ResolveClaudeCapabilities = (
-  claudeSettings: ClaudeSettings,
-) => Effect.Effect<ClaudeCapabilitiesProbe | undefined>;
-
-type ResolveClaudeRateLimits = (
-  claudeSettings: ClaudeSettings,
-  version: string | null,
-) => Effect.Effect<ServerProviderRateLimits | undefined>;
-
 function parseClaudeInitializationCommands(
   commands: ReadonlyArray<ClaudeSlashCommand> | undefined,
 ): ReadonlyArray<ServerProviderSlashCommand> {
@@ -527,9 +517,10 @@ const runClaudeCommand = Effect.fn("runClaudeCommand")(function* (
 
 export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(function* (
   claudeSettings: ClaudeSettings,
-  resolveCapabilities?: ResolveClaudeCapabilities,
+  resolveCapabilities?: (
+    claudeSettings: ClaudeSettings,
+  ) => Effect.Effect<ClaudeCapabilitiesProbe | undefined>,
   environment: NodeJS.ProcessEnv = process.env,
-  resolveRateLimits?: ResolveClaudeRateLimits,
 ): Effect.fn.Return<
   ServerProviderDraft,
   never,
@@ -636,11 +627,6 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
     : undefined;
   const slashCommands = capabilities?.slashCommands ?? [];
   const dedupedSlashCommands = dedupeSlashCommands(slashCommands);
-  const rateLimits = resolveRateLimits
-    ? yield* resolveRateLimits(claudeSettings, parsedVersion).pipe(
-        Effect.orElseSucceed(() => undefined),
-      )
-    : undefined;
 
   if (!capabilities) {
     return buildServerProvider({
@@ -649,7 +635,6 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
       checkedAt,
       models,
       slashCommands: dedupedSlashCommands,
-      ...(rateLimits ? { rateLimits } : {}),
       probe: {
         installed: true,
         version: parsedVersion,
@@ -670,7 +655,6 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
     checkedAt,
     models,
     slashCommands: dedupedSlashCommands,
-    ...(rateLimits ? { rateLimits } : {}),
     probe: {
       installed: true,
       version: parsedVersion,

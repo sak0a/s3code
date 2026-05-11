@@ -727,7 +727,7 @@ export function ProviderInstanceCard({
       <Collapsible open={isExpanded} onOpenChange={onExpandedChange}>
         <CollapsibleContent>
           <div className="space-y-0">
-            {liveProvider?.rateLimits ? (
+            {driverKind === "codex" && liveProvider?.rateLimits ? (
               <ProviderUsageLimitsSection rateLimits={liveProvider.rateLimits} />
             ) : null}
 
