@@ -1,0 +1,41 @@
+import { type ProviderOptionDescriptor } from "@s3tools/contracts";
+import { memo } from "react";
+import { BrainIcon } from "lucide-react";
+
+import { Button } from "../ui/button";
+import { replaceDescriptorCurrentValue } from "./traitsMenuLogic";
+import { cn } from "~/lib/utils";
+
+type ThinkingDescriptor = Extract<ProviderOptionDescriptor, { type: "boolean" }>;
+
+export interface ThinkingChipProps {
+  descriptor: ThinkingDescriptor;
+  descriptors: ReadonlyArray<ProviderOptionDescriptor>;
+  onChangeDescriptors: (next: ReadonlyArray<ProviderOptionDescriptor>) => void;
+}
+
+export const ThinkingChip = memo(function ThinkingChip(props: ThinkingChipProps) {
+  const isOn = props.descriptor.currentValue === true;
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      aria-label="Thinking"
+      aria-pressed={isOn}
+      title={isOn ? "Thinking: on (click to disable)" : "Thinking: off (click to enable)"}
+      className={cn(
+        "h-7 gap-1.5 rounded-md px-2 font-medium text-xs",
+        isOn
+          ? "bg-sky-500/15 text-sky-800 dark:bg-sky-500/20 dark:text-sky-300"
+          : "text-muted-foreground/60 ring-1 ring-border ring-inset hover:text-foreground",
+      )}
+      onClick={() => {
+        props.onChangeDescriptors(
+          replaceDescriptorCurrentValue(props.descriptors, props.descriptor.id, !isOn),
+        );
+      }}
+    >
+      <BrainIcon aria-hidden="true" className="size-3" />
+    </Button>
+  );
+});
