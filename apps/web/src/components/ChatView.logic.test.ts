@@ -382,6 +382,22 @@ describe("threadIsPromotedAndPersisted", () => {
     ).toBe(false);
   });
 
+  it("does not promote a bare session before any thread messages are visible", () => {
+    expect(
+      threadIsPromotedAndPersisted({
+        ...makeThread({ latestTurn: null }),
+        session: {
+          provider: ProviderDriverKind.make("codex"),
+          status: "running",
+          createdAt: "2026-03-29T00:00:00.000Z",
+          updatedAt: "2026-03-29T00:00:01.000Z",
+          orchestrationStatus: "running",
+          activeTurnId: TurnId.make("turn-1"),
+        },
+      }),
+    ).toBe(false);
+  });
+
   it("returns true once a latest turn is visible", () => {
     expect(
       threadIsPromotedAndPersisted(
@@ -398,18 +414,19 @@ describe("threadIsPromotedAndPersisted", () => {
     ).toBe(true);
   });
 
-  it("returns true once session state is visible", () => {
+  it("returns true once a message is visible", () => {
     expect(
       threadIsPromotedAndPersisted({
         ...makeThread({ latestTurn: null }),
-        session: {
-          provider: ProviderDriverKind.make("codex"),
-          status: "running",
-          createdAt: "2026-03-29T00:00:00.000Z",
-          updatedAt: "2026-03-29T00:00:01.000Z",
-          orchestrationStatus: "running",
-          activeTurnId: TurnId.make("turn-1"),
-        },
+        messages: [
+          {
+            id: MessageId.make("message-1"),
+            role: "user",
+            text: "hello",
+            createdAt: "2026-03-29T00:00:00.000Z",
+            streaming: false,
+          },
+        ],
       }),
     ).toBe(true);
   });

@@ -696,7 +696,19 @@ const copyWorktreeDependencyInstallDirs = Effect.fn("copyWorktreeDependencyInsta
               detail: `Failed to copy ${relativeDir} into ${input.worktreePath}.`,
               cause,
             }),
-        });
+        }).pipe(
+          Effect.catch((error) =>
+            Effect.logWarning(
+              `${error.message} The worktree was created without this dependency directory; run your package manager (e.g. bun install) inside the worktree to populate it.`,
+              {
+                cause:
+                  error.cause instanceof Error
+                    ? `${error.cause.name}: ${error.cause.message}`
+                    : String(error.cause),
+              },
+            ).pipe(Effect.asVoid),
+          ),
+        );
       },
       { concurrency: 1 },
     ).pipe(Effect.asVoid);

@@ -263,7 +263,7 @@ export function threadHasStarted(thread: Thread | null | undefined): boolean {
 // optimistic send state. Wait for runtime state that can independently render
 // "Working for ..." instead of swapping as soon as the user message is persisted.
 export function threadIsPromotedAndPersisted(thread: Thread | null | undefined): boolean {
-  return Boolean(thread && (thread.latestTurn !== null || thread.session !== null));
+  return Boolean(thread && (thread.latestTurn !== null || thread.messages.length > 0));
 }
 
 // `threadProvider` is the open branded driver kind carried by the session.
