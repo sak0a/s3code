@@ -34,6 +34,7 @@ interface RequestOptions {
 
 const DEFAULT_SUBSCRIPTION_RETRY_DELAY_MS = Duration.millis(250);
 const NOOP: () => void = () => undefined;
+const THREAD_NOT_FOUND_ERROR_RE = /^Thread\s.+\swas not found$/u;
 
 interface TransportSession {
   readonly clientPromise: Promise<WsRpcProtocolClient>;
@@ -52,6 +53,13 @@ function formatErrorMessage(error: unknown): string {
     return error.message;
   }
   return String(error);
+}
+
+function isRetryableSubscriptionError(message: string): boolean {
+  return (
+    isTransportConnectionErrorMessage(message) ||
+    THREAD_NOT_FOUND_ERROR_RE.test(message.trim())
+  );
 }
 
 export class WsTransport {
@@ -174,7 +182,7 @@ export class WsTransport {
           }
 
           const formattedError = formatErrorMessage(error);
-          if (!isTransportConnectionErrorMessage(formattedError)) {
+          if (!isRetryableSubscriptionError(formattedError)) {
             console.warn("WebSocket RPC subscription failed", {
               error: formattedError,
             });
