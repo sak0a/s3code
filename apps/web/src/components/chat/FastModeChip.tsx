@@ -2,7 +2,6 @@ import { type ProviderOptionDescriptor } from "@s3tools/contracts";
 import { memo } from "react";
 import { ZapIcon } from "lucide-react";
 
-import { Button } from "../ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { replaceDescriptorCurrentValue } from "./traitsMenuLogic";
 import { cn } from "~/lib/utils";
@@ -21,28 +20,27 @@ export const FastModeChip = memo(function FastModeChip(props: FastModeChipProps)
     <Tooltip>
       <TooltipTrigger
         render={
-          <Button
-            size="sm"
-            variant="ghost"
+          <button
+            type="button"
             aria-label="Fast mode"
             aria-pressed={isOn}
-            className={cn(
-              "h-7 gap-1.5 rounded-md px-2 font-medium text-xs",
-              isOn
-                ? "!bg-yellow-500/15 text-yellow-800 hover:!bg-yellow-500/25 dark:!bg-yellow-500/20 dark:text-yellow-300 dark:hover:!bg-yellow-500/30"
-                : "text-muted-foreground/60 ring-1 ring-border ring-inset hover:text-foreground",
-            )}
             onClick={() => {
               props.onChangeDescriptors(
                 replaceDescriptorCurrentValue(props.descriptors, props.descriptor.id, !isOn),
               );
             }}
+            className={cn(
+              "inline-flex h-7 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 font-medium text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+              isOn
+                ? "bg-yellow-500/15 text-yellow-800 hover:bg-yellow-500/25 dark:bg-yellow-500/20 dark:text-yellow-300 dark:hover:bg-yellow-500/30"
+                : "text-muted-foreground/60 ring-1 ring-border ring-inset hover:bg-accent hover:text-foreground",
+            )}
           >
             <ZapIcon
               aria-hidden="true"
               className={cn("size-3", isOn ? "fill-current" : undefined)}
             />
-          </Button>
+          </button>
         }
       />
       <TooltipPopup side="top">
