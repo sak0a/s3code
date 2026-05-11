@@ -224,7 +224,7 @@ const SidebarWorktreeSection = memo(function SidebarWorktreeSection(props: {
       ),
     [props.visibleThreadKeys, props.worktree.sessions],
   );
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [renaming, setRenaming] = useState(false);
   const [renameTitle, setRenameTitle] = useState(() => getWorktreeDisplayTitle(props.worktree));
   const isCollapsed = props.visibleThreadKeys ? false : collapsed;
