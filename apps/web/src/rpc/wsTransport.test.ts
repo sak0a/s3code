@@ -1020,7 +1020,9 @@ describe("WsTransport", () => {
       () =>
         Stream.suspend(() => {
           attempts += 1;
-          return Stream.fail(new Error("Thread 852b3556-d8b7-471e-ab68-a0f6aed18b6e was not found"));
+          return Stream.fail(
+            new Error("Thread 852b3556-d8b7-471e-ab68-a0f6aed18b6e was not found"),
+          );
         }),
       vi.fn(),
       { retryDelay: 10 },

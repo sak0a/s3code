@@ -2,7 +2,7 @@ import { type TimelineEntry, type WorkLogEntry } from "../../session-logic";
 import { type ChatMessage, type ProposedPlan, type TurnDiffSummary } from "../../types";
 import { type MessageId } from "@s3tools/contracts";
 
-export const MAX_VISIBLE_WORK_LOG_ENTRIES = 6;
+export const MAX_VISIBLE_WORK_LOG_ENTRIES = 1;
 
 export function isErroredWorkEntry(entry: WorkLogEntry): boolean {
   if (entry.tone === "error") return true;

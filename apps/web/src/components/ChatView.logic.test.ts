@@ -1,6 +1,7 @@
 import { scopeThreadRef } from "@s3tools/client-runtime";
 import {
   EnvironmentId,
+  MessageId,
   ProjectId,
   ProviderDriverKind,
   ProviderInstanceId,
@@ -20,6 +21,7 @@ import {
   reconcileMountedTerminalThreadIds,
   resolveSendEnvMode,
   shouldWriteThreadErrorToCurrentServerThread,
+  threadIsPromotedAndPersisted,
   waitForStartedServerThread,
 } from "./ChatView.logic";
 
@@ -314,6 +316,7 @@ function setStoreThreads(threads: ReadonlyArray<ReturnType<typeof makeThread>>) 
         Object.fromEntries(thread.messages.map((message) => [message.id, message])),
       ]),
     ),
+    pendingMessagesByThreadId: {},
     activityIdsByThreadId: Object.fromEntries(
       threads.map((thread) => [thread.id, thread.activities.map((activity) => activity.id)]),
     ),
@@ -359,6 +362,57 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   setStoreThreads([]);
+});
+
+describe("threadIsPromotedAndPersisted", () => {
+  it("waits for runtime state instead of a persisted user message", () => {
+    expect(
+      threadIsPromotedAndPersisted({
+        ...makeThread({ latestTurn: null }),
+        messages: [
+          {
+            id: MessageId.make("message-1"),
+            role: "user",
+            text: "hello",
+            createdAt: "2026-03-29T00:00:00.000Z",
+            streaming: false,
+          },
+        ],
+      }),
+    ).toBe(false);
+  });
+
+  it("returns true once a latest turn is visible", () => {
+    expect(
+      threadIsPromotedAndPersisted(
+        makeThread({
+          latestTurn: {
+            turnId: TurnId.make("turn-1"),
+            state: "running",
+            requestedAt: "2026-03-29T00:00:00.000Z",
+            startedAt: "2026-03-29T00:00:01.000Z",
+            completedAt: null,
+          },
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("returns true once session state is visible", () => {
+    expect(
+      threadIsPromotedAndPersisted({
+        ...makeThread({ latestTurn: null }),
+        session: {
+          provider: ProviderDriverKind.make("codex"),
+          status: "running",
+          createdAt: "2026-03-29T00:00:00.000Z",
+          updatedAt: "2026-03-29T00:00:01.000Z",
+          orchestrationStatus: "running",
+          activeTurnId: TurnId.make("turn-1"),
+        },
+      }),
+    ).toBe(true);
+  });
 });
 
 describe("waitForStartedServerThread", () => {

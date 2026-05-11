@@ -151,6 +151,7 @@ function makeState(thread: Thread): AppState {
         thread.messages.map((message) => [message.id, message] as const),
       ) as EnvironmentState["messageByThreadId"][ThreadId],
     },
+    pendingMessagesByThreadId: {},
     activityIdsByThreadId: {
       [thread.id]: thread.activities.map((activity) => activity.id),
     },
@@ -194,6 +195,7 @@ function makeEmptyState(overrides: Partial<AppState & EnvironmentState> = {}): A
     threadTurnStateById: {},
     messageIdsByThreadId: {},
     messageByThreadId: {},
+    pendingMessagesByThreadId: {},
     activityIdsByThreadId: {},
     activityByThreadId: {},
     proposedPlanIdsByThreadId: {},
@@ -927,7 +929,7 @@ describe("incremental orchestration updates", () => {
   });
 
   it("retains message events that arrive before thread creation and replays them on create", () => {
-    const state = makeState();
+    const state = makeEmptyState();
     const threadId = ThreadId.make("thread-late-create");
     const messageId = MessageId.make("message-early");
     const withEarlyMessage = applyOrchestrationEvent(
@@ -951,10 +953,12 @@ describe("incremental orchestration updates", () => {
         threadId,
         projectId: ProjectId.make("project-1"),
         title: "late create thread",
-        origin: "system",
         branch: "main",
         worktreePath: null,
-        modelSelection: null,
+        modelSelection: {
+          instanceId: ProviderInstanceId.make("codex"),
+          model: "gpt-5-codex",
+        },
         runtimeMode: "full-access",
         interactionMode: "default",
         createdAt: "2026-02-27T00:00:02.000Z",

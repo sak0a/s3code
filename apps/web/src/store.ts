@@ -660,7 +660,8 @@ function writeThreadState(
       : {
           ...nextThread,
           messages: [...nextThread.messages, ...pendingMessages].toSorted(
-            (left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id),
+            (left, right) =>
+              left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id),
           ),
         };
   const nextShell = toThreadShell(nextThread);
@@ -1317,7 +1318,10 @@ function syncEnvironmentShellSnapshot(
     sidebarThreadSummaryById: {},
     messageIdsByThreadId: retainThreadScopedRecord(state.messageIdsByThreadId, nextThreadIds),
     messageByThreadId: retainThreadScopedRecord(state.messageByThreadId, nextThreadIds),
-    pendingMessagesByThreadId: retainThreadScopedRecord(state.pendingMessagesByThreadId, nextThreadIds),
+    pendingMessagesByThreadId: retainThreadScopedRecord(
+      state.pendingMessagesByThreadId,
+      nextThreadIds,
+    ),
     activityIdsByThreadId: retainThreadScopedRecord(state.activityIdsByThreadId, nextThreadIds),
     activityByThreadId: retainThreadScopedRecord(state.activityByThreadId, nextThreadIds),
     proposedPlanIdsByThreadId: retainThreadScopedRecord(
@@ -1589,34 +1593,35 @@ function applyEnvironmentOrchestrationEvent(
       });
     }
 
-    case "thread.message-sent":
-      {
-        const message = mapMessage(environmentId, {
-          id: event.payload.messageId,
-          role: event.payload.role,
-          text: event.payload.text,
-          ...(event.payload.attachments !== undefined ? { attachments: event.payload.attachments } : {}),
-          turnId: event.payload.turnId,
-          streaming: event.payload.streaming,
-          createdAt: event.payload.createdAt,
-          updatedAt: event.payload.updatedAt,
-        });
-        const threadExists = getThreadFromEnvironmentState(state, event.payload.threadId);
-        if (!threadExists) {
-          const pending = state.pendingMessagesByThreadId[event.payload.threadId] ?? [];
-          const existing = pending.find((entry) => entry.id === message.id);
-          const nextPending = existing
-            ? pending.map((entry) => (entry.id === message.id ? { ...entry, ...message } : entry))
-            : [...pending, message];
-          return {
-            ...state,
-            pendingMessagesByThreadId: {
-              ...state.pendingMessagesByThreadId,
-              [event.payload.threadId]: nextPending,
-            },
-          };
-        }
-        return updateThreadState(state, event.payload.threadId, (thread) => {
+    case "thread.message-sent": {
+      const message = mapMessage(environmentId, {
+        id: event.payload.messageId,
+        role: event.payload.role,
+        text: event.payload.text,
+        ...(event.payload.attachments !== undefined
+          ? { attachments: event.payload.attachments }
+          : {}),
+        turnId: event.payload.turnId,
+        streaming: event.payload.streaming,
+        createdAt: event.payload.createdAt,
+        updatedAt: event.payload.updatedAt,
+      });
+      const threadExists = getThreadFromEnvironmentState(state, event.payload.threadId);
+      if (!threadExists) {
+        const pending = state.pendingMessagesByThreadId[event.payload.threadId] ?? [];
+        const existing = pending.find((entry) => entry.id === message.id);
+        const nextPending = existing
+          ? pending.map((entry) => (entry.id === message.id ? { ...entry, ...message } : entry))
+          : [...pending, message];
+        return {
+          ...state,
+          pendingMessagesByThreadId: {
+            ...state.pendingMessagesByThreadId,
+            [event.payload.threadId]: nextPending,
+          },
+        };
+      }
+      return updateThreadState(state, event.payload.threadId, (thread) => {
         const existingMessage = thread.messages.find((entry) => entry.id === message.id);
         const messages = existingMessage
           ? thread.messages.map((entry) =>
@@ -1692,7 +1697,7 @@ function applyEnvironmentOrchestrationEvent(
           updatedAt: event.occurredAt,
         };
       });
-      }
+    }
 
     case "thread.session-set":
       return updateThreadState(state, event.payload.threadId, (thread) => ({
