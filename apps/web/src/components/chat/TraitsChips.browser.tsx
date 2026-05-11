@@ -112,6 +112,32 @@ describe("TraitsChips", () => {
     await expect.element(page.getByRole("button", { name: /fast mode/i })).not.toBeInTheDocument();
   });
 
+  it("renders a generic chip for unknown select descriptors (OpenCode variant)", async () => {
+    mounted = await render(
+      <TraitsChips
+        provider={provider}
+        model="test-model"
+        models={[
+          modelWith([
+            selectDescriptor("variant", "Variant", [
+              { id: "small", label: "Small" },
+              { id: "large", label: "Large", isDefault: true },
+            ]),
+            selectDescriptor("agent", "Agent", [
+              { id: "build", label: "Build", isDefault: true },
+            ]),
+          ]),
+        ]}
+        prompt=""
+        modelOptions={undefined}
+        onPromptChange={() => {}}
+        onModelOptionsChange={() => {}}
+      />,
+    );
+    await expect.element(page.getByRole("button", { name: /variant/i })).toBeInTheDocument();
+    await expect.element(page.getByRole("button", { name: /agent/i })).toBeInTheDocument();
+  });
+
   it("renders only the Thinking chip for Haiku-like capability", async () => {
     mounted = await render(
       <TraitsChips

@@ -18,8 +18,18 @@ import { getProviderModelCapabilities } from "../../providerModels";
 import { AgentChip } from "./AgentChip";
 import { ContextWindowChip } from "./ContextWindowChip";
 import { FastModeChip } from "./FastModeChip";
+import { GenericSelectChip } from "./GenericSelectChip";
 import { ReasoningChip } from "./ReasoningChip";
 import { ThinkingChip } from "./ThinkingChip";
+
+// Descriptor ids that have a dedicated chip component. Any other select
+// descriptor (e.g. OpenCode's "variant") falls back to GenericSelectChip.
+const REASONING_DESCRIPTOR_IDS = new Set(["effort", "reasoningEffort", "reasoning"]);
+const KNOWN_SELECT_IDS = new Set([
+  ...REASONING_DESCRIPTOR_IDS,
+  "contextWindow",
+  "agent",
+]);
 
 type ProviderOptions = ReadonlyArray<ProviderOptionSelection>;
 
@@ -97,12 +107,25 @@ export const TraitsChips = memo(function TraitsChips(props: TraitsChipsProps) {
 
   // Reasoning descriptor id varies by provider:
   //   Claude → "effort", Codex → "reasoningEffort", Cursor → "reasoning"
-  const effort =
-    findSelect("effort") ?? findSelect("reasoningEffort") ?? findSelect("reasoning");
+  const effort = descriptors.find(
+    (descriptor): descriptor is Extract<ProviderOptionDescriptor, { type: "select" }> =>
+      descriptor.type === "select" && REASONING_DESCRIPTOR_IDS.has(descriptor.id),
+  );
   const fastMode = findBoolean("fastMode");
   const contextWindow = findSelect("contextWindow");
   const thinking = findBoolean("thinking");
   const agent = findSelect("agent");
+
+  // Any select descriptor we don't have a dedicated chip for (e.g.
+  // OpenCode's "variant") renders via GenericSelectChip. Booleans without
+  // dedicated chips are intentionally skipped — every known provider's
+  // booleans are already covered above.
+  const extraSelects = descriptors.filter(
+    (descriptor): descriptor is Extract<ProviderOptionDescriptor, { type: "select" }> =>
+      descriptor.type === "select" &&
+      !KNOWN_SELECT_IDS.has(descriptor.id) &&
+      !REASONING_DESCRIPTOR_IDS.has(descriptor.id),
+  );
 
   return (
     <div className="flex flex-wrap items-center gap-1">
@@ -146,6 +169,14 @@ export const TraitsChips = memo(function TraitsChips(props: TraitsChipsProps) {
           onChangeDescriptors={onChangeDescriptors}
         />
       ) : null}
+      {extraSelects.map((descriptor) => (
+        <GenericSelectChip
+          key={descriptor.id}
+          descriptor={descriptor}
+          descriptors={descriptors}
+          onChangeDescriptors={onChangeDescriptors}
+        />
+      ))}
     </div>
   );
 });
