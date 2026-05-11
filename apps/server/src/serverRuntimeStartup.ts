@@ -328,10 +328,13 @@ export const makeServerRuntimeStartup = Effect.gen(function* () {
     yield* Effect.logDebug("startup phase: starting orchestration reactors");
     yield* runStartupPhase(
       "reactors.start",
-      Effect.gen(function* () {
-        yield* orchestrationReactor.start().pipe(Scope.provide(reactorScope));
-        yield* providerSessionReaper.start().pipe(Scope.provide(reactorScope));
-      }),
+      Effect.all(
+        [
+          orchestrationReactor.start().pipe(Scope.provide(reactorScope)),
+          providerSessionReaper.start().pipe(Scope.provide(reactorScope)),
+        ],
+        { concurrency: "unbounded", discard: true },
+      ),
     );
 
     const welcomeBase = yield* resolveWelcomeBase;

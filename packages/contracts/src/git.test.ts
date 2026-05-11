@@ -28,6 +28,17 @@ describe("VcsCreateWorktreeInput", () => {
     expect(parsed.newRefName).toBeUndefined();
     expect(parsed.refName).toBe("feature/existing");
   });
+
+  it("accepts deprecated dependency install directory copying when explicitly requested", () => {
+    const parsed = decodeCreateWorktreeInput({
+      cwd: "/repo",
+      refName: "feature/existing",
+      path: "/tmp/worktree",
+      dependencyHydration: "copyInstallDirs",
+    });
+
+    expect(parsed.dependencyHydration).toBe("copyInstallDirs");
+  });
 });
 
 describe("GitPreparePullRequestThreadInput", () => {
@@ -40,6 +51,17 @@ describe("GitPreparePullRequestThreadInput", () => {
 
     expect(parsed.reference).toBe("#42");
     expect(parsed.mode).toBe("worktree");
+  });
+
+  it("accepts deprecated project metadata worktree locations when explicitly requested", () => {
+    const parsed = decodePreparePullRequestThreadInput({
+      cwd: "/repo",
+      reference: "#42",
+      mode: "worktree",
+      worktreeLocation: "projectMetadata",
+    });
+
+    expect(parsed.worktreeLocation).toBe("projectMetadata");
   });
 });
 

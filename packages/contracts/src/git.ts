@@ -8,6 +8,7 @@ import {
 } from "./baseSchemas.ts";
 import { SourceControlProviderError, SourceControlProviderInfo } from "./sourceControl.ts";
 import { VcsDriverKind } from "./vcs.ts";
+import { WorktreeCheckoutLocation } from "./worktree.ts";
 
 const TrimmedNonEmptyStringSchema = TrimmedNonEmptyString;
 const GIT_LIST_BRANCHES_MAX_LIMIT = 200;
@@ -142,6 +143,9 @@ export const VcsCreateWorktreeInput = Schema.Struct({
   refName: TrimmedNonEmptyStringSchema,
   newRefName: Schema.optional(TrimmedNonEmptyStringSchema),
   path: Schema.NullOr(TrimmedNonEmptyStringSchema),
+  // "copyInstallDirs" preserves the legacy node_modules copy behavior. It is
+  // deprecated because it can dominate worktree creation and deletion time.
+  dependencyHydration: Schema.optional(Schema.Literals(["none", "copyInstallDirs"])),
 });
 export type VcsCreateWorktreeInput = typeof VcsCreateWorktreeInput.Type;
 
@@ -157,6 +161,9 @@ export const GitPreparePullRequestThreadInput = Schema.Struct({
   mode: GitPreparePullRequestThreadMode,
   projectId: Schema.optional(ProjectId),
   worktreesDir: Schema.optional(TrimmedNonEmptyStringSchema),
+  // "projectMetadata" preserves the legacy project-local checkout location.
+  // New worktrees should use the default app-managed location.
+  worktreeLocation: Schema.optional(WorktreeCheckoutLocation),
   threadId: Schema.optional(ThreadId),
 });
 export type GitPreparePullRequestThreadInput = typeof GitPreparePullRequestThreadInput.Type;

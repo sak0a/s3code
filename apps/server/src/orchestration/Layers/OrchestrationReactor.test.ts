@@ -66,12 +66,15 @@ describe("OrchestrationReactor", () => {
     const scope = await Effect.runPromise(Scope.make("sequential"));
     await Effect.runPromise(reactor.start().pipe(Scope.provide(scope)));
 
-    expect(started).toEqual([
-      "provider-runtime-ingestion",
-      "provider-command-reactor",
-      "checkpoint-reactor",
-      "thread-deletion-reactor",
-    ]);
+    expect(started).toHaveLength(4);
+    expect(new Set(started)).toEqual(
+      new Set([
+        "provider-runtime-ingestion",
+        "provider-command-reactor",
+        "checkpoint-reactor",
+        "thread-deletion-reactor",
+      ]),
+    );
 
     await Effect.runPromise(Scope.close(scope, Exit.void));
   });

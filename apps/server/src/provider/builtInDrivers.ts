@@ -10,7 +10,7 @@
  *
  * Adding a new first-party driver means:
  *   1. implement `ProviderDriver` in a sibling `Drivers/<Name>Driver.ts`,
- *   2. add it to this array,
+ *   2. add a lightweight lazy wrapper to this array,
  *   3. ensure the runtime layer satisfies its declared `R`.
  *
  * The aggregated `BuiltInDriversEnv` type is the union of every driver's
@@ -20,11 +20,25 @@
  *
  * @module provider/builtInDrivers
  */
-import { ClaudeDriver, type ClaudeDriverEnv } from "./Drivers/ClaudeDriver.ts";
-import { CodexDriver, type CodexDriverEnv } from "./Drivers/CodexDriver.ts";
-import { CursorDriver, type CursorDriverEnv } from "./Drivers/CursorDriver.ts";
-import { OpenCodeDriver, type OpenCodeDriverEnv } from "./Drivers/OpenCodeDriver.ts";
-import type { AnyProviderDriver } from "./ProviderDriver.ts";
+import {
+  ClaudeSettings,
+  CodexSettings,
+  CursorSettings,
+  OpenCodeSettings,
+  ProviderDriverKind,
+} from "@s3tools/contracts";
+import { Effect, Schema } from "effect";
+
+import type { ClaudeDriverEnv } from "./Drivers/ClaudeDriver.ts";
+import type { CodexDriverEnv } from "./Drivers/CodexDriver.ts";
+import type { CursorDriverEnv } from "./Drivers/CursorDriver.ts";
+import type { OpenCodeDriverEnv } from "./Drivers/OpenCodeDriver.ts";
+import { ProviderDriverError } from "./Errors.ts";
+import type {
+  AnyProviderDriver,
+  ProviderDriver,
+  ProviderDriverCreateInput,
+} from "./ProviderDriver.ts";
 
 /**
  * Union of infrastructure services required to construct any built-in
@@ -37,14 +51,91 @@ export type BuiltInDriversEnv =
   | CursorDriverEnv
   | OpenCodeDriverEnv;
 
+const codexDriverKind = ProviderDriverKind.make("codex");
+const claudeDriverKind = ProviderDriverKind.make("claudeAgent");
+const cursorDriverKind = ProviderDriverKind.make("cursor");
+const openCodeDriverKind = ProviderDriverKind.make("opencode");
+
+const driverImportError = (
+  driver: ProviderDriverKind,
+  input: ProviderDriverCreateInput<unknown>,
+  cause: unknown,
+) =>
+  new ProviderDriverError({
+    driver,
+    instanceId: input.instanceId,
+    detail: `Failed to load ${driver} driver implementation.`,
+    cause,
+  });
+
+const CodexLazyDriver: ProviderDriver<CodexSettings, CodexDriverEnv> = {
+  driverKind: codexDriverKind,
+  metadata: {
+    displayName: "Codex",
+    supportsMultipleInstances: true,
+  },
+  configSchema: CodexSettings,
+  defaultConfig: (): CodexSettings => Schema.decodeSync(CodexSettings)({}),
+  create: (input) =>
+    Effect.tryPromise({
+      try: () => import("./Drivers/CodexDriver.ts"),
+      catch: (cause) => driverImportError(codexDriverKind, input, cause),
+    }).pipe(Effect.flatMap(({ CodexDriver }) => CodexDriver.create(input))),
+};
+
+const ClaudeLazyDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv> = {
+  driverKind: claudeDriverKind,
+  metadata: {
+    displayName: "Claude",
+    supportsMultipleInstances: true,
+  },
+  configSchema: ClaudeSettings,
+  defaultConfig: (): ClaudeSettings => Schema.decodeSync(ClaudeSettings)({}),
+  create: (input) =>
+    Effect.tryPromise({
+      try: () => import("./Drivers/ClaudeDriver.ts"),
+      catch: (cause) => driverImportError(claudeDriverKind, input, cause),
+    }).pipe(Effect.flatMap(({ ClaudeDriver }) => ClaudeDriver.create(input))),
+};
+
+const CursorLazyDriver: ProviderDriver<CursorSettings, CursorDriverEnv> = {
+  driverKind: cursorDriverKind,
+  metadata: {
+    displayName: "Cursor",
+    supportsMultipleInstances: true,
+  },
+  configSchema: CursorSettings,
+  defaultConfig: (): CursorSettings => Schema.decodeSync(CursorSettings)({}),
+  create: (input) =>
+    Effect.tryPromise({
+      try: () => import("./Drivers/CursorDriver.ts"),
+      catch: (cause) => driverImportError(cursorDriverKind, input, cause),
+    }).pipe(Effect.flatMap(({ CursorDriver }) => CursorDriver.create(input))),
+};
+
+const OpenCodeLazyDriver: ProviderDriver<OpenCodeSettings, OpenCodeDriverEnv> = {
+  driverKind: openCodeDriverKind,
+  metadata: {
+    displayName: "OpenCode",
+    supportsMultipleInstances: true,
+  },
+  configSchema: OpenCodeSettings,
+  defaultConfig: (): OpenCodeSettings => Schema.decodeSync(OpenCodeSettings)({}),
+  create: (input) =>
+    Effect.tryPromise({
+      try: () => import("./Drivers/OpenCodeDriver.ts"),
+      catch: (cause) => driverImportError(openCodeDriverKind, input, cause),
+    }).pipe(Effect.flatMap(({ OpenCodeDriver }) => OpenCodeDriver.create(input))),
+};
+
 /**
  * Ordered list of built-in drivers. Order matters only for tie-breaking in
  * UI presentation — the registry itself is keyed by `driverKind`, so
  * iteration order has no functional effect on instance lookup.
  */
 export const BUILT_IN_DRIVERS: ReadonlyArray<AnyProviderDriver<BuiltInDriversEnv>> = [
-  CodexDriver,
-  ClaudeDriver,
-  CursorDriver,
-  OpenCodeDriver,
+  CodexLazyDriver,
+  ClaudeLazyDriver,
+  CursorLazyDriver,
+  OpenCodeLazyDriver,
 ];

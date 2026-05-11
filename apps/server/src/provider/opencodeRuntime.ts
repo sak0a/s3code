@@ -1,15 +1,14 @@
 import { pathToFileURL } from "node:url";
 
 import type { ChatAttachment, ProviderApprovalDecision, RuntimeMode } from "@s3tools/contracts";
-import {
-  createOpencodeClient,
-  type Agent,
-  type FilePartInput,
-  type OpencodeClient,
-  type PermissionRuleset,
-  type ProviderListResponse,
-  type QuestionAnswer,
-  type QuestionRequest,
+import type {
+  Agent,
+  FilePartInput,
+  OpencodeClient,
+  PermissionRuleset,
+  ProviderListResponse,
+  QuestionAnswer,
+  QuestionRequest,
 } from "@opencode-ai/sdk/v2";
 import {
   Cause,
@@ -84,6 +83,29 @@ export const runOpenCodeSdk = <A>(
       new OpenCodeRuntimeError({ operation, detail: openCodeRuntimeErrorDetail(cause), cause }),
   }).pipe(Effect.withSpan(`opencode.${operation}`));
 
+type OpenCodeSdkModule = typeof import("@opencode-ai/sdk/v2");
+
+let openCodeSdkModulePromise: Promise<OpenCodeSdkModule> | undefined;
+
+const loadOpenCodeSdkModule = (): Effect.Effect<OpenCodeSdkModule, OpenCodeRuntimeError> =>
+  Effect.tryPromise({
+    try: async () => {
+      try {
+        openCodeSdkModulePromise ??= import("@opencode-ai/sdk/v2");
+        return await openCodeSdkModulePromise;
+      } catch (cause) {
+        openCodeSdkModulePromise = undefined;
+        throw cause;
+      }
+    },
+    catch: (cause) =>
+      new OpenCodeRuntimeError({
+        operation: "createOpenCodeSdkClient",
+        detail: `Failed to load OpenCode SDK: ${openCodeRuntimeErrorDetail(cause)}`,
+        cause,
+      }),
+  }).pipe(Effect.withSpan("opencode.sdk.load"));
+
 export interface OpenCodeCommandResult {
   readonly stdout: string;
   readonly stderr: string;
@@ -136,7 +158,7 @@ export interface OpenCodeRuntimeShape {
     readonly baseUrl: string;
     readonly directory: string;
     readonly serverPassword?: string;
-  }) => OpencodeClient;
+  }) => Effect.Effect<OpencodeClient, OpenCodeRuntimeError>;
   readonly loadOpenCodeInventory: (
     client: OpencodeClient,
   ) => Effect.Effect<OpenCodeInventory, OpenCodeRuntimeError>;
@@ -490,18 +512,22 @@ const makeOpenCodeRuntime = Effect.gen(function* () {
   };
 
   const createOpenCodeSdkClient: OpenCodeRuntimeShape["createOpenCodeSdkClient"] = (input) =>
-    createOpencodeClient({
-      baseUrl: input.baseUrl,
-      directory: input.directory,
-      ...(input.serverPassword
-        ? {
-            headers: {
-              Authorization: `Basic ${Buffer.from(`opencode:${input.serverPassword}`, "utf8").toString("base64")}`,
-            },
-          }
-        : {}),
-      throwOnError: true,
-    });
+    loadOpenCodeSdkModule().pipe(
+      Effect.map(({ createOpencodeClient }) =>
+        createOpencodeClient({
+          baseUrl: input.baseUrl,
+          directory: input.directory,
+          ...(input.serverPassword
+            ? {
+                headers: {
+                  Authorization: `Basic ${Buffer.from(`opencode:${input.serverPassword}`, "utf8").toString("base64")}`,
+                },
+              }
+            : {}),
+          throwOnError: true,
+        }),
+      ),
+    );
 
   const loadProviders = (client: OpencodeClient) =>
     runOpenCodeSdk("provider.list", () => client.provider.list()).pipe(

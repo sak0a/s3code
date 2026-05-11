@@ -1546,21 +1546,34 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
       );
     });
 
-    const bootstrapProjector = (projector: ProjectorDefinition) =>
-      projectionStateRepository
-        .getByProjector({
-          projector: projector.name,
-        })
-        .pipe(
-          Effect.flatMap((stateRow) =>
-            Stream.runForEach(
-              eventStore.readFromSequence(
-                Option.isSome(stateRow) ? stateRow.value.lastAppliedSequence : 0,
-              ),
-              (event) => runProjectorForEvent(projector, event),
-            ),
-          ),
-        );
+    const bootstrapProjectors = Effect.gen(function* () {
+      const stateRows = yield* projectionStateRepository.listAll();
+      const lastAppliedByProjector = new Map<ProjectorName, number>(
+        projectors.map((projector) => [projector.name, 0] as const),
+      );
+      for (const row of stateRows) {
+        if (lastAppliedByProjector.has(row.projector as ProjectorName)) {
+          lastAppliedByProjector.set(row.projector as ProjectorName, row.lastAppliedSequence);
+        }
+      }
+
+      const replayFromSequence = Math.min(...lastAppliedByProjector.values());
+      yield* Stream.runForEach(eventStore.readFromSequence(replayFromSequence), (event) =>
+        Effect.forEach(
+          projectors,
+          (projector) =>
+            Effect.gen(function* () {
+              const lastApplied = lastAppliedByProjector.get(projector.name) ?? 0;
+              if (event.sequence <= lastApplied) {
+                return;
+              }
+              yield* runProjectorForEvent(projector, event);
+              lastAppliedByProjector.set(projector.name, event.sequence);
+            }),
+          { concurrency: 1, discard: true },
+        ),
+      );
+    });
 
     const projectEvent: OrchestrationProjectionPipelineShape["projectEvent"] = (event) =>
       Effect.forEach(projectors, (projector) => runProjectorForEvent(projector, event), {
@@ -1575,11 +1588,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
         ),
       );
 
-    const bootstrap: OrchestrationProjectionPipelineShape["bootstrap"] = Effect.forEach(
-      projectors,
-      bootstrapProjector,
-      { concurrency: 1 },
-    ).pipe(
+    const bootstrap: OrchestrationProjectionPipelineShape["bootstrap"] = bootstrapProjectors.pipe(
       Effect.provideService(FileSystem.FileSystem, fileSystem),
       Effect.provideService(Path.Path, path),
       Effect.provideService(ServerConfig, serverConfig),

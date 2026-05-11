@@ -6,11 +6,17 @@ import {
 import type { SourceControlProviderKind } from "@s3tools/contracts";
 import { detectSourceControlProviderFromRemoteUrl } from "@s3tools/shared/sourceControl";
 
-import * as AzureDevOpsSourceControlProvider from "./AzureDevOpsSourceControlProvider.ts";
-import * as BitbucketSourceControlProvider from "./BitbucketSourceControlProvider.ts";
-import * as GitHubSourceControlProvider from "./GitHubSourceControlProvider.ts";
-import * as GitLabSourceControlProvider from "./GitLabSourceControlProvider.ts";
+import * as AzureDevOpsCli from "./AzureDevOpsCli.ts";
+import * as BitbucketApi from "./BitbucketApi.ts";
+import * as GitHubCli from "./GitHubCli.ts";
+import * as GitLabCli from "./GitLabCli.ts";
 import * as SourceControlProvider from "./SourceControlProvider.ts";
+import {
+  azureDevOpsDiscovery,
+  githubDiscovery,
+  gitlabDiscovery,
+  makeBitbucketDiscovery,
+} from "./SourceControlProviderDiscoveryCatalog.ts";
 import * as SourceControlProviderDiscovery from "./SourceControlProviderDiscovery.ts";
 import { ServerConfig } from "../config.ts";
 import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
@@ -86,6 +92,49 @@ function providerDetectionError(operation: string, cwd: string, cause: unknown) 
     cause,
   });
 }
+
+function providerLoadError(kind: SourceControlProviderKind, cause: unknown) {
+  return new SourceControlProviderError({
+    provider: kind,
+    operation: "loadProvider",
+    detail: `Failed to load ${kind} source control provider.`,
+    cause,
+  });
+}
+
+const makeLazyProvider = Effect.fn("makeLazySourceControlProvider")(function* (
+  kind: SourceControlProviderKind,
+  load: Effect.Effect<SourceControlProvider.SourceControlProviderShape, SourceControlProviderError>,
+) {
+  const provider = yield* Effect.cached(load);
+
+  return SourceControlProvider.SourceControlProvider.of({
+    kind,
+    listChangeRequests: (input) =>
+      provider.pipe(Effect.flatMap((loaded) => loaded.listChangeRequests(input))),
+    getChangeRequest: (input) =>
+      provider.pipe(Effect.flatMap((loaded) => loaded.getChangeRequest(input))),
+    createChangeRequest: (input) =>
+      provider.pipe(Effect.flatMap((loaded) => loaded.createChangeRequest(input))),
+    getRepositoryCloneUrls: (input) =>
+      provider.pipe(Effect.flatMap((loaded) => loaded.getRepositoryCloneUrls(input))),
+    createRepository: (input) =>
+      provider.pipe(Effect.flatMap((loaded) => loaded.createRepository(input))),
+    getDefaultBranch: (input) =>
+      provider.pipe(Effect.flatMap((loaded) => loaded.getDefaultBranch(input))),
+    checkoutChangeRequest: (input) =>
+      provider.pipe(Effect.flatMap((loaded) => loaded.checkoutChangeRequest(input))),
+    listIssues: (input) => provider.pipe(Effect.flatMap((loaded) => loaded.listIssues(input))),
+    getIssue: (input) => provider.pipe(Effect.flatMap((loaded) => loaded.getIssue(input))),
+    searchIssues: (input) => provider.pipe(Effect.flatMap((loaded) => loaded.searchIssues(input))),
+    searchChangeRequests: (input) =>
+      provider.pipe(Effect.flatMap((loaded) => loaded.searchChangeRequests(input))),
+    getChangeRequestDetail: (input) =>
+      provider.pipe(Effect.flatMap((loaded) => loaded.getChangeRequestDetail(input))),
+    getChangeRequestDiff: (input) =>
+      provider.pipe(Effect.flatMap((loaded) => loaded.getChangeRequestDiff(input))),
+  });
+});
 
 function selectProviderContext(
   remotes: ReadonlyArray<{
@@ -255,26 +304,72 @@ export const makeWithProviders = Effect.fn("makeSourceControlProviderRegistryWit
 );
 
 export const make = Effect.fn("makeSourceControlProviderRegistry")(function* () {
-  const github = yield* GitHubSourceControlProvider.make();
-  const gitlab = yield* GitLabSourceControlProvider.make();
-  const bitbucket = yield* BitbucketSourceControlProvider.make();
-  const bitbucketDiscovery = yield* BitbucketSourceControlProvider.makeDiscovery();
-  const azureDevOps = yield* AzureDevOpsSourceControlProvider.make();
+  const githubCli = yield* GitHubCli.GitHubCli;
+  const gitlabCli = yield* GitLabCli.GitLabCli;
+  const bitbucketApi = yield* BitbucketApi.BitbucketApi;
+  const azureDevOpsCli = yield* AzureDevOpsCli.AzureDevOpsCli;
+
+  const github = yield* makeLazyProvider(
+    "github",
+    Effect.tryPromise({
+      try: () => import("./GitHubSourceControlProvider.ts"),
+      catch: (cause) => providerLoadError("github", cause),
+    }).pipe(
+      Effect.flatMap((module) => module.make()),
+      Effect.provideService(GitHubCli.GitHubCli, githubCli),
+    ),
+  );
+
+  const gitlab = yield* makeLazyProvider(
+    "gitlab",
+    Effect.tryPromise({
+      try: () => import("./GitLabSourceControlProvider.ts"),
+      catch: (cause) => providerLoadError("gitlab", cause),
+    }).pipe(
+      Effect.flatMap((module) => module.make()),
+      Effect.provideService(GitLabCli.GitLabCli, gitlabCli),
+    ),
+  );
+
+  const bitbucket = yield* makeLazyProvider(
+    "bitbucket",
+    Effect.tryPromise({
+      try: () => import("./BitbucketSourceControlProvider.ts"),
+      catch: (cause) => providerLoadError("bitbucket", cause),
+    }).pipe(
+      Effect.flatMap((module) => module.make()),
+      Effect.provideService(BitbucketApi.BitbucketApi, bitbucketApi),
+    ),
+  );
+
+  const azureDevOps = yield* makeLazyProvider(
+    "azure-devops",
+    Effect.tryPromise({
+      try: () => import("./AzureDevOpsSourceControlProvider.ts"),
+      catch: (cause) => providerLoadError("azure-devops", cause),
+    }).pipe(
+      Effect.flatMap((module) => module.make()),
+      Effect.provideService(AzureDevOpsCli.AzureDevOpsCli, azureDevOpsCli),
+    ),
+  );
+
+  const bitbucketDiscovery = makeBitbucketDiscovery(bitbucketApi);
+
   return yield* makeWithProviders([
     {
       kind: "github",
       provider: github,
-      discovery: GitHubSourceControlProvider.discovery,
+      discovery: githubDiscovery,
     },
     {
       kind: "gitlab",
       provider: gitlab,
-      discovery: GitLabSourceControlProvider.discovery,
+      discovery: gitlabDiscovery,
     },
     {
       kind: "azure-devops",
       provider: azureDevOps,
-      discovery: AzureDevOpsSourceControlProvider.discovery,
+      discovery: azureDevOpsDiscovery,
     },
     {
       kind: "bitbucket",

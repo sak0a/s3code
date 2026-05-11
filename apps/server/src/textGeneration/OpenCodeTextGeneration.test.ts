@@ -5,6 +5,7 @@ import { Duration, Effect, Layer, Schema } from "effect";
 import { TestClock } from "effect/testing";
 import { NetService } from "@s3tools/shared/Net";
 import { beforeEach, expect } from "vitest";
+import type { OpencodeClient } from "@opencode-ai/sdk/v2";
 
 import { ServerConfig } from "../config.ts";
 import {
@@ -60,7 +61,7 @@ const OpenCodeRuntimeTestDouble: OpenCodeRuntimeShape = {
     }),
   runOpenCodeCommand: () => Effect.succeed({ stdout: "", stderr: "", code: 0 }),
   createOpenCodeSdkClient: ({ baseUrl, serverPassword }) =>
-    ({
+    Effect.succeed({
       session: {
         create: async () => ({ data: { id: `${baseUrl}/session` } }),
         prompt: async () => {
@@ -85,7 +86,7 @@ const OpenCodeRuntimeTestDouble: OpenCodeRuntimeShape = {
           );
         },
       },
-    }) as unknown as ReturnType<OpenCodeRuntimeShape["createOpenCodeSdkClient"]>,
+    } as unknown as OpencodeClient),
   loadOpenCodeInventory: () =>
     Effect.fail(
       new OpenCodeRuntimeError({

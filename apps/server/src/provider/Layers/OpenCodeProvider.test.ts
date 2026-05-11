@@ -4,6 +4,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
 import { Effect, Layer, Schema } from "effect";
 import { beforeEach } from "vitest";
+import type { OpencodeClient } from "@opencode-ai/sdk/v2";
 
 import { OpenCodeSettings } from "@s3tools/contracts";
 import { ServerConfig } from "../../config.ts";
@@ -80,8 +81,7 @@ const OpenCodeRuntimeTestDouble: OpenCodeRuntimeShape = {
           }),
         )
       : Effect.succeed({ stdout: runtimeMock.state.versionStdout, stderr: "", code: 0 }),
-  createOpenCodeSdkClient: () =>
-    ({}) as unknown as ReturnType<OpenCodeRuntimeShape["createOpenCodeSdkClient"]>,
+  createOpenCodeSdkClient: () => Effect.succeed({} as unknown as OpencodeClient),
   loadOpenCodeInventory: () =>
     runtimeMock.state.inventoryError
       ? Effect.fail(

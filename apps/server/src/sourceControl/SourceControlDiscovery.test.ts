@@ -1,6 +1,7 @@
 import { assert, it } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { Effect, Layer, Option } from "effect";
+import { Duration, Effect, Layer, Option, Ref } from "effect";
+import { TestClock } from "effect/testing";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import { VcsProcessSpawnError } from "@s3tools/contracts";
 
@@ -47,6 +48,23 @@ const processOutput = (
   stdoutTruncated: false,
   stderrTruncated: false,
 });
+
+const sourceControlDiscoveryTestLayer = (input: {
+  readonly bitbucket: Partial<BitbucketApi.BitbucketApiShape>;
+  readonly process: Partial<VcsProcess.VcsProcessShape>;
+  readonly prefix: string;
+}) =>
+  SourceControlDiscovery.layer.pipe(
+    Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: input.prefix })),
+    Layer.provide(Layer.mock(VcsProcess.VcsProcess)(input.process)),
+    Layer.provide(
+      sourceControlProviderRegistryTestLayer({
+        process: input.process,
+        bitbucket: input.bitbucket,
+      }),
+    ),
+    Layer.provideMerge(NodeServices.layer),
+  );
 
 it.effect("reports implemented tools separately from locally available executables", () => {
   const processMock = {
@@ -155,6 +173,103 @@ Logged in to github.com account juliusmarminge (keyring)
     assert.strictEqual(bitbucket.executable, undefined);
   }).pipe(Effect.provide(testLayer));
 });
+
+it.effect("caches repeated discovery requests within the short discovery TTL", () =>
+  Effect.gen(function* () {
+    const processRuns = yield* Ref.make(0);
+    const bitbucketProbes = yield* Ref.make(0);
+    const processMock = {
+      run: (input: VcsProcess.VcsProcessInput) =>
+        Ref.update(processRuns, (count) => count + 1).pipe(
+          Effect.as(processOutput(`${input.command} version test\n`)),
+        ),
+    } satisfies Partial<VcsProcess.VcsProcessShape>;
+    const testLayer = sourceControlDiscoveryTestLayer({
+      process: processMock,
+      bitbucket: {
+        probeAuth: Ref.update(bitbucketProbes, (count) => count + 1).pipe(
+          Effect.as({
+            status: "authenticated" as const,
+            account: Option.some("bitbucket-user"),
+            host: Option.some("bitbucket.org"),
+            detail: Option.none(),
+          }),
+        ),
+      },
+      prefix: "s3-source-control-discovery-cache-test-",
+    });
+
+    const counts = yield* Effect.gen(function* () {
+      const discovery = yield* SourceControlDiscovery.SourceControlDiscovery;
+      yield* discovery.discover;
+      const afterFirstProcessRuns = yield* Ref.get(processRuns);
+      const afterFirstBitbucketProbes = yield* Ref.get(bitbucketProbes);
+
+      yield* discovery.discover;
+
+      return {
+        afterFirstProcessRuns,
+        afterFirstBitbucketProbes,
+        afterSecondProcessRuns: yield* Ref.get(processRuns),
+        afterSecondBitbucketProbes: yield* Ref.get(bitbucketProbes),
+      };
+    }).pipe(Effect.provide(testLayer));
+
+    assert.ok(counts.afterFirstProcessRuns > 0);
+    assert.ok(counts.afterFirstBitbucketProbes > 0);
+    assert.strictEqual(counts.afterSecondProcessRuns, counts.afterFirstProcessRuns);
+    assert.strictEqual(counts.afterSecondBitbucketProbes, counts.afterFirstBitbucketProbes);
+  }),
+);
+
+it.effect("refreshes discovery after the short discovery TTL expires", () =>
+  Effect.gen(function* () {
+    const processRuns = yield* Ref.make(0);
+    const bitbucketProbes = yield* Ref.make(0);
+    const processMock = {
+      run: (input: VcsProcess.VcsProcessInput) =>
+        Ref.update(processRuns, (count) => count + 1).pipe(
+          Effect.as(processOutput(`${input.command} version test\n`)),
+        ),
+    } satisfies Partial<VcsProcess.VcsProcessShape>;
+    const testLayer = sourceControlDiscoveryTestLayer({
+      process: processMock,
+      bitbucket: {
+        probeAuth: Ref.update(bitbucketProbes, (count) => count + 1).pipe(
+          Effect.as({
+            status: "authenticated" as const,
+            account: Option.some("bitbucket-user"),
+            host: Option.some("bitbucket.org"),
+            detail: Option.none(),
+          }),
+        ),
+      },
+      prefix: "s3-source-control-discovery-expiry-test-",
+    });
+
+    const counts = yield* Effect.gen(function* () {
+      const discovery = yield* SourceControlDiscovery.SourceControlDiscovery;
+      yield* discovery.discover;
+      const afterFirstProcessRuns = yield* Ref.get(processRuns);
+      const afterFirstBitbucketProbes = yield* Ref.get(bitbucketProbes);
+
+      yield* TestClock.adjust(
+        Duration.sum(SourceControlDiscovery.SOURCE_CONTROL_DISCOVERY_CACHE_TTL, Duration.millis(1)),
+      );
+      yield* discovery.discover;
+
+      return {
+        afterFirstProcessRuns,
+        afterFirstBitbucketProbes,
+        afterSecondProcessRuns: yield* Ref.get(processRuns),
+        afterSecondBitbucketProbes: yield* Ref.get(bitbucketProbes),
+      };
+    }).pipe(Effect.provide(Layer.merge(testLayer, TestClock.layer())));
+
+    assert.ok(counts.afterSecondProcessRuns > counts.afterFirstProcessRuns);
+    assert.ok(counts.afterSecondBitbucketProbes > counts.afterFirstBitbucketProbes);
+  }),
+);
 
 it.effect("probes provider authentication without exposing token details", () => {
   const processMock = {

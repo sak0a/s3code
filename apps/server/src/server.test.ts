@@ -3874,7 +3874,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
             }),
         );
 
-        yield* buildAppUnderTest({
+        const config = yield* buildAppUnderTest({
           layers: {
             gitVcsDriver: {
               createWorktree,
@@ -3947,12 +3947,16 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
             "thread.turn.start",
           ],
         );
-        assert.deepEqual(createWorktree.mock.calls[0]?.[0], {
-          cwd: "/tmp/project",
-          refName: "main",
-          newRefName: "s3code/bootstrap-refName",
-          path: "/tmp/project/.s3code/worktrees/thread-bootstrap",
-        });
+        const createdWorktreeInput = createWorktree.mock.calls[0]?.[0];
+        assert.equal(createdWorktreeInput?.cwd, "/tmp/project");
+        assert.equal(createdWorktreeInput?.refName, "main");
+        assert.equal(createdWorktreeInput?.newRefName, "s3code/bootstrap-refName");
+        assert.match(
+          createdWorktreeInput?.path ?? "",
+          new RegExp(
+            `^${config.worktreesDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/project-default/s3code-bootstrap-refname__[a-z]{5}$`,
+          ),
+        );
         assert.deepEqual(runForThread.mock.calls[0]?.[0], {
           threadId: ThreadId.make("thread-bootstrap"),
           projectId: defaultProjectId,
