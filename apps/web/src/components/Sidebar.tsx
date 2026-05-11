@@ -1078,17 +1078,28 @@ function ProjectSourceControlBadge(props: {
   const actionLabel = `View ${props.count} ${props.tone === "issues" ? "open issues" : "open pull requests"}`;
 
   if (props.onClick) {
-    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const handleClick = (event: React.MouseEvent<HTMLSpanElement>) => {
       event.preventDefault();
       event.stopPropagation();
       props.onClick?.();
     };
-    const stopPointer = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLSpanElement>) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        event.stopPropagation();
+        props.onClick?.();
+      }
+    };
+    const stopPointer = (event: React.PointerEvent<HTMLSpanElement>) => {
       event.stopPropagation();
     };
+    // Renders as <span role="button"> rather than <button>: this badge is
+    // mounted inside <SidebarMenuButton>, and nesting native <button>
+    // elements is invalid HTML and emits a React hydration warning.
     return (
-      <button
-        type="button"
+      <span
+        role="button"
+        tabIndex={0}
         className={cn(
           baseClassName,
           toneClassName,
@@ -1098,12 +1109,13 @@ function ProjectSourceControlBadge(props: {
         title={summary}
         aria-label={actionLabel}
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
         onPointerDown={stopPointer}
         onPointerDownCapture={stopPointer}
       >
         {props.icon}
         <span>{formatCompactSourceControlCount(props.count)}</span>
-      </button>
+      </span>
     );
   }
 
