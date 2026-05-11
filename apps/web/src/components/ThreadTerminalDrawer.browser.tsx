@@ -119,7 +119,7 @@ vi.mock("~/localApi", () => ({
   readLocalApi: readLocalApiMock,
 }));
 
-import { TerminalViewport } from "./ThreadTerminalDrawer";
+import ThreadTerminalDrawer, { TerminalViewport } from "./ThreadTerminalDrawer";
 
 const THREAD_ID = ThreadId.make("thread-terminal-browser");
 
@@ -315,6 +315,67 @@ describe("TerminalViewport", () => {
       );
     } finally {
       await mounted.cleanup();
+    }
+  });
+});
+
+describe("ThreadTerminalDrawer", () => {
+  afterEach(() => {
+    environmentApiById.clear();
+    readEnvironmentApiMock.mockClear();
+    readLocalApiMock.mockClear();
+    terminalConstructorSpy.mockClear();
+    terminalDisposeSpy.mockClear();
+    fitAddonFitSpy.mockClear();
+    fitAddonLoadSpy.mockClear();
+  });
+
+  it("renders the new terminal button immediately after the last terminal tab", async () => {
+    const environment = createEnvironmentApi();
+    environmentApiById.set("environment-a", environment);
+
+    const screen = await render(
+      <ThreadTerminalDrawer
+        threadRef={scopeThreadRef("environment-a" as never, THREAD_ID)}
+        threadId={THREAD_ID}
+        cwd="/repo/project"
+        height={320}
+        terminalIds={["one", "two"]}
+        runningTerminalIds={[]}
+        activeTerminalId="two"
+        terminalGroups={[
+          { id: "group-one", terminalIds: ["one"] },
+          { id: "group-two", terminalIds: ["two"] },
+        ]}
+        activeTerminalGroupId="group-two"
+        focusRequestId={0}
+        onSplitTerminal={() => undefined}
+        onNewTerminal={() => undefined}
+        onActiveTerminalChange={() => undefined}
+        onCloseTerminal={() => undefined}
+        onHeightChange={() => undefined}
+        onAddTerminalContext={() => undefined}
+        keybindings={[]}
+      />,
+    );
+
+    try {
+      const tablist = document.querySelector<HTMLElement>(
+        '[role="tablist"][aria-label="Terminals"]',
+      );
+      const newTerminalButton = document.querySelector<HTMLButtonElement>(
+        'button[aria-label="New Terminal"]',
+      );
+      const terminalTabs = document.querySelectorAll<HTMLElement>('[role="tab"]');
+      const lastTerminalTab = terminalTabs[terminalTabs.length - 1] ?? null;
+
+      expect(tablist).not.toBeNull();
+      expect(newTerminalButton).not.toBeNull();
+      expect(lastTerminalTab).not.toBeNull();
+      expect(tablist?.firstElementChild?.contains(newTerminalButton)).toBe(true);
+      expect(lastTerminalTab?.nextElementSibling).toBe(newTerminalButton);
+    } finally {
+      await screen.unmount();
     }
   });
 });

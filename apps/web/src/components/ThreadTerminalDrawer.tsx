@@ -1213,6 +1213,13 @@ export default function ThreadTerminalDrawer({
               </div>
             );
           })}
+          <TerminalActionButton
+            className="inline-flex shrink-0 items-center border-r border-border/70 px-2 text-foreground/90 transition-colors hover:bg-accent/70"
+            onClick={onNewTerminalAction}
+            label={newTerminalActionLabel}
+          >
+            <Plus className="size-3.25" />
+          </TerminalActionButton>
         </div>
         <div className="flex shrink-0 items-stretch border-l border-border/70">
           <TerminalActionButton
@@ -1225,13 +1232,6 @@ export default function ThreadTerminalDrawer({
             label={splitTerminalActionLabel}
           >
             <SquareSplitHorizontal className="size-3.25" />
-          </TerminalActionButton>
-          <TerminalActionButton
-            className="inline-flex items-center border-l border-border/70 px-2 text-foreground/90 transition-colors hover:bg-accent/70"
-            onClick={onNewTerminalAction}
-            label={newTerminalActionLabel}
-          >
-            <Plus className="size-3.25" />
           </TerminalActionButton>
           <TerminalActionButton
             className="inline-flex items-center border-l border-border/70 px-2 text-foreground/90 transition-colors hover:bg-accent/70"
