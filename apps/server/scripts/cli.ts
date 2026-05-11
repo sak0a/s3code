@@ -144,6 +144,18 @@ const buildCmd = Command.make(
       const fs = yield* FileSystem.FileSystem;
       const repoRoot = yield* RepoRoot;
       const serverDir = path.join(repoRoot, "apps/server");
+      const codexAppServerPackageDir = path.join(repoRoot, "packages/effect-codex-app-server");
+
+      yield* Effect.log("[cli] Building effect-codex-app-server...");
+      yield* runCommand(
+        ChildProcess.make(process.execPath, ["--run", "build"], {
+          cwd: codexAppServerPackageDir,
+          stdout: config.verbose ? "inherit" : "ignore",
+          stderr: "inherit",
+          // Windows needs shell mode to resolve `.cmd` shims on PATH.
+          shell: process.platform === "win32",
+        }),
+      );
 
       yield* Effect.log("[cli] Running tsdown...");
       yield* runCommand(

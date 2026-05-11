@@ -80,6 +80,15 @@ interface CodexAdapterSessionContext {
   stopped: boolean;
 }
 
+function formatCodexRuntimeErrorDetail(error: Error): string {
+  const serviceTierSchemaMismatch =
+    error.message.includes('Expected "fast" | "flex"') && error.message.includes('["serviceTier"]');
+  if (!serviceTierSchemaMismatch) {
+    return error.message;
+  }
+  return `${error.message}. This usually means the installed Codex CLI returned a newer service tier name than S3Code's generated app-server schema knows about. Rebuild effect-codex-app-server before rebuilding the server bundle.`;
+}
+
 function mapCodexRuntimeError(
   threadId: ThreadId,
   method: string,
@@ -107,7 +116,7 @@ function mapCodexRuntimeError(
   return new ProviderAdapterRequestError({
     provider: PROVIDER,
     method,
-    detail: error.message,
+    detail: formatCodexRuntimeErrorDetail(error),
     cause: error,
   });
 }
@@ -1401,7 +1410,7 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
               new ProviderAdapterProcessError({
                 provider: PROVIDER,
                 threadId: input.threadId,
-                detail: cause.message,
+                detail: formatCodexRuntimeErrorDetail(cause),
                 cause,
               }),
           ),
@@ -1430,7 +1439,7 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
               new ProviderAdapterProcessError({
                 provider: PROVIDER,
                 threadId: input.threadId,
-                detail: cause.message,
+                detail: formatCodexRuntimeErrorDetail(cause),
                 cause,
               }),
           ),
