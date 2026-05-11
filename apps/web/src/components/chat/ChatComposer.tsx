@@ -826,11 +826,7 @@ export const ChatComposer = memo(
       () => deriveLatestContextWindowSnapshot(activeThreadActivities ?? []),
       [activeThreadActivities],
     );
-    // Only Codex providers populate `rateLimits` today; gate explicitly on
-    // the driver kind so a future provider that happens to set the field
-    // doesn't get the Codex-shaped 5h/Weekly labels by accident.
-    const contextWindowRateLimits =
-      selectedProvider === "codex" ? selectedProviderStatus?.rateLimits : undefined;
+    const contextWindowRateLimits = selectedProviderStatus?.rateLimits;
 
     // ------------------------------------------------------------------
     // Composer-local state

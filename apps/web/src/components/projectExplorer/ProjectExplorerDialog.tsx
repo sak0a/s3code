@@ -1,15 +1,18 @@
 import type {
   ChangeRequest,
-  EnvironmentId,
-  ProjectId,
   SourceControlIssueSummary,
-  ThreadId,
 } from "@s3tools/contracts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { gitPreparePullRequestThreadMutationOptions } from "~/lib/gitReactQuery";
+import type { SidebarProjectGroupMember } from "~/sidebarProjectGrouping";
 import { ContextPickerTabs } from "../chat/ContextPickerTabs";
 import { Dialog, DialogPopup, DialogTitle } from "../ui/dialog";
+import {
+  Select,
+  SelectItem,
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { IssueDetail } from "./IssueDetail";
 import { IssuesTab } from "./IssuesTab";
 import { PullRequestDetail } from "./PullRequestDetail";
@@ -22,35 +25,50 @@ type Selection = { kind: "issue"; number: number } | { kind: "pr"; number: numbe
 
 interface ProjectExplorerDialogProps {
   open: boolean;
-  environmentId: EnvironmentId | null;
-  projectId?: ProjectId | null;
-  threadId: ThreadId | null;
-  cwd: string | null;
+  projectName: string;
+  memberProjects: ReadonlyArray<SidebarProjectGroupMember>;
+  initialTab: TabId;
   onOpenChange: (open: boolean) => void;
-  onPullRequestPrepared?: (input: {
-    branch: string;
-    worktreePath: string | null;
-  }) => Promise<void> | void;
 }
 
 export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
-  const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<TabId>("issues");
+  const [activeTab, setActiveTab] = useState<TabId>(props.initialTab);
   const [issueQuery, setIssueQuery] = useState("");
   const [prQuery, setPrQuery] = useState("");
   const [issueStateFilter, setIssueStateFilter] = useState<IssueStateFilter>("open");
   const [prStateFilter, setPrStateFilter] = useState<ChangeRequestStateFilter>("open");
   const [selection, setSelection] = useState<Selection>(null);
-  const [attachInProgress, setAttachInProgress] = useState<"local" | "worktree" | null>(null);
+  const [selectedMemberKey, setSelectedMemberKey] = useState<string>(
+    () => props.memberProjects[0]?.physicalProjectKey ?? "",
+  );
   const issueInputRef = useRef<HTMLInputElement>(null);
   const prInputRef = useRef<HTMLInputElement>(null);
+
+  const selectedMember = useMemo(
+    () =>
+      props.memberProjects.find((m) => m.physicalProjectKey === selectedMemberKey) ??
+      props.memberProjects[0] ??
+      null,
+    [props.memberProjects, selectedMemberKey],
+  );
 
   useEffect(() => {
     if (!props.open) {
       setSelection(null);
-      setAttachInProgress(null);
     }
   }, [props.open]);
+
+  useEffect(() => {
+    if (props.open) {
+      setActiveTab(props.initialTab);
+      setSelection(null);
+      const first = props.memberProjects[0]?.physicalProjectKey ?? "";
+      setSelectedMemberKey((current) => {
+        const stillPresent = props.memberProjects.some((m) => m.physicalProjectKey === current);
+        return stillPresent ? current : first;
+      });
+    }
+  }, [props.open, props.initialTab, props.memberProjects]);
 
   useEffect(() => {
     if (!props.open || selection !== null) return;
@@ -60,43 +78,6 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
     });
     return () => window.cancelAnimationFrame(frame);
   }, [props.open, activeTab, selection]);
-
-  const preparePullRequestThreadMutation = useMutation(
-    gitPreparePullRequestThreadMutationOptions({
-      environmentId: props.environmentId,
-      cwd: props.cwd,
-      projectId: props.projectId ?? null,
-      queryClient,
-    }),
-  );
-
-  const handleAttachPullRequest = useCallback(
-    async (mode: "local" | "worktree") => {
-      if (selection?.kind !== "pr" || !props.cwd || !props.environmentId) {
-        return;
-      }
-      setAttachInProgress(mode);
-      try {
-        const result = await preparePullRequestThreadMutation.mutateAsync({
-          reference: String(selection.number),
-          mode,
-          ...(mode === "worktree" && props.threadId ? { threadId: props.threadId } : {}),
-        });
-        if (props.onPullRequestPrepared) {
-          await props.onPullRequestPrepared({
-            branch: result.branch,
-            worktreePath: result.worktreePath,
-          });
-        }
-        props.onOpenChange(false);
-      } catch {
-        // Error surfaces via the mutation's `error` field; nothing to do here.
-      } finally {
-        setAttachInProgress(null);
-      }
-    },
-    [preparePullRequestThreadMutation, props, selection],
-  );
 
   const handleSelectIssue = useCallback((issue: SourceControlIssueSummary) => {
     setSelection({ kind: "issue", number: issue.number });
@@ -144,12 +125,11 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
     [],
   );
 
-  const errorMessage =
-    preparePullRequestThreadMutation.error instanceof Error
-      ? preparePullRequestThreadMutation.error.message
-      : preparePullRequestThreadMutation.error
-        ? "Failed to prepare pull request thread."
-        : null;
+  const tabLabel = activeTab === "issues" ? "Issues" : "Pull requests";
+  const dialogTitle = `${props.projectName} · ${tabLabel}`;
+  const showRepoPicker = props.memberProjects.length > 1 && selectedMember !== null;
+  const environmentId = selectedMember?.environmentId ?? null;
+  const cwd = selectedMember?.cwd ?? null;
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -158,11 +138,39 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
         onKeyDown={handleKeyDown}
       >
         <header className="flex items-center justify-between border-border/60 border-b px-5 py-3">
-          <DialogTitle className="text-base">Project explorer</DialogTitle>
-          <span className="text-muted-foreground text-xs">
+          <DialogTitle className="truncate text-base">{dialogTitle}</DialogTitle>
+          <span className="shrink-0 text-muted-foreground text-xs">
             ⌘1 issues · ⌘2 PRs · / focus search · Esc close
           </span>
         </header>
+
+        {showRepoPicker ? (
+          <div className="flex items-center gap-2 border-border/60 border-b px-5 py-2">
+            <span className="text-muted-foreground text-xs">Repository</span>
+            <Select
+              value={selectedMemberKey}
+              onValueChange={(v) => {
+                if (typeof v === "string") setSelectedMemberKey(v);
+              }}
+            >
+              <SelectTrigger size="sm" className="min-w-56">
+                <SelectValue placeholder="Select a repository" />
+              </SelectTrigger>
+              <SelectPopup>
+                {props.memberProjects.map((member) => (
+                  <SelectItem key={member.physicalProjectKey} value={member.physicalProjectKey}>
+                    <span className="truncate">
+                      {member.name}
+                      <span className="ml-1 text-muted-foreground">
+                        · {member.environmentLabel ?? "Local"}
+                      </span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
+          </div>
+        ) : null}
 
         {selection === null ? (
           <>
@@ -174,8 +182,8 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
             <div className="min-h-0 flex-1">
               {activeTab === "issues" ? (
                 <IssuesTab
-                  environmentId={props.environmentId}
-                  cwd={props.cwd}
+                  environmentId={environmentId}
+                  cwd={cwd}
                   searchInputRef={issueInputRef}
                   query={issueQuery}
                   onQueryChange={setIssueQuery}
@@ -185,8 +193,8 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
                 />
               ) : (
                 <PullRequestsTab
-                  environmentId={props.environmentId}
-                  cwd={props.cwd}
+                  environmentId={environmentId}
+                  cwd={cwd}
                   searchInputRef={prInputRef}
                   query={prQuery}
                   onQueryChange={setPrQuery}
@@ -199,28 +207,20 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
           </>
         ) : selection.kind === "issue" ? (
           <IssueDetail
-            environmentId={props.environmentId}
-            cwd={props.cwd}
+            environmentId={environmentId}
+            cwd={cwd}
             issueNumber={selection.number}
             onBack={handleBack}
           />
         ) : (
           <PullRequestDetail
-            environmentId={props.environmentId}
-            cwd={props.cwd}
+            environmentId={environmentId}
+            cwd={cwd}
             pullRequestNumber={selection.number}
             onBack={handleBack}
             onSelectLinkedIssue={handleSelectLinkedIssue}
-            onAttach={props.onPullRequestPrepared ? handleAttachPullRequest : undefined}
-            attachInProgress={attachInProgress}
           />
         )}
-
-        {errorMessage ? (
-          <p className="border-border/60 border-t bg-destructive/10 px-5 py-2 text-destructive text-xs">
-            {errorMessage}
-          </p>
-        ) : null}
       </DialogPopup>
     </Dialog>
   );

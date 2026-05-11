@@ -1133,6 +1133,52 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest()))(
         ),
       );
 
+      it.effect("includes Claude OAuth usage limits when the usage probe succeeds", () =>
+        Effect.gen(function* () {
+          const status = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities(),
+            process.env,
+            () =>
+              Effect.succeed({
+                limitId: "claude-oauth",
+                limitName: "Claude Max Subscription",
+                planType: "Claude Max Subscription",
+                primary: {
+                  usedPercent: 42,
+                  windowDurationMins: 300,
+                },
+                secondary: {
+                  usedPercent: 7,
+                  windowDurationMins: 10_080,
+                },
+              }),
+          );
+
+          assert.deepStrictEqual(status.rateLimits, {
+            limitId: "claude-oauth",
+            limitName: "Claude Max Subscription",
+            planType: "Claude Max Subscription",
+            primary: {
+              usedPercent: 42,
+              windowDurationMins: 300,
+            },
+            secondary: {
+              usedPercent: 7,
+              windowDurationMins: 10_080,
+            },
+          });
+        }).pipe(
+          Effect.provide(
+            mockSpawnerLayer((args) => {
+              const joined = args.join(" ");
+              if (joined === "--version") return { stdout: "1.0.0\n", stderr: "", code: 0 };
+              throw new Error(`Unexpected args: ${joined}`);
+            }),
+          ),
+        ),
+      );
+
       it.effect(
         "includes Claude Opus 4.7 with xhigh as the default effort on supported versions",
         () =>

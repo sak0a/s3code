@@ -215,6 +215,7 @@ import { openInPreferredEditor } from "../editorPreferences";
 import { CommandDialogTrigger } from "./ui/command";
 import { readEnvironmentApi } from "../environmentApi";
 import { useSettings, useUpdateSettings } from "~/hooks/useSettings";
+import { ProjectExplorerDialog } from "./projectExplorer/ProjectExplorerDialog";
 import { NewWorktreeDialog, type NewWorktreeDialogTab } from "./worktrees/NewWorktreeDialog";
 import {
   changeRequestListQueryOptions,
@@ -1023,7 +1024,12 @@ interface SidebarProjectItemProps {
   dragHandleProps: SortableProjectHandleProps | null;
 }
 
-function ProjectSourceControlBadges(props: { issueCount: number; pullRequestCount: number }) {
+function ProjectSourceControlBadges(props: {
+  issueCount: number;
+  pullRequestCount: number;
+  onIssuesClick?: (() => void) | undefined;
+  onPullRequestsClick?: (() => void) | undefined;
+}) {
   if (props.issueCount === 0 && props.pullRequestCount === 0) {
     return null;
   }
@@ -1036,6 +1042,7 @@ function ProjectSourceControlBadges(props: { issueCount: number; pullRequestCoun
           label="Open issues"
           tone="issues"
           icon={<CircleDotIcon className="size-2.5" />}
+          onClick={props.onIssuesClick}
         />
       ) : null}
       {props.pullRequestCount > 0 ? (
@@ -1044,6 +1051,7 @@ function ProjectSourceControlBadges(props: { issueCount: number; pullRequestCoun
           label="Open pull requests"
           tone="pullRequests"
           icon={<GitPullRequestIcon className="size-2.5" />}
+          onClick={props.onPullRequestsClick}
         />
       ) : null}
     </span>
@@ -1055,21 +1063,52 @@ function ProjectSourceControlBadge(props: {
   icon: React.ReactNode;
   label: string;
   tone: "issues" | "pullRequests";
+  onClick?: (() => void) | undefined;
 }) {
-  const className =
+  const toneClassName =
     props.tone === "issues"
       ? "border-emerald-500/16 bg-emerald-500/10 text-emerald-500 dark:text-emerald-400"
       : "border-blue-500/16 bg-blue-500/10 text-blue-500 dark:text-blue-400";
+  const toneHoverClassName =
+    props.tone === "issues" ? "hover:bg-emerald-500/20" : "hover:bg-blue-500/20";
+
+  const baseClassName =
+    "inline-flex h-4 shrink-0 items-center justify-center gap-0.5 rounded-sm border px-1 text-[9px] font-semibold tabular-nums leading-none";
+  const summary = `${props.label}: ${props.count}`;
+  const actionLabel = `View ${props.count} ${props.tone === "issues" ? "open issues" : "open pull requests"}`;
+
+  if (props.onClick) {
+    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      props.onClick?.();
+    };
+    const stopPointer = (event: React.PointerEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+    };
+    return (
+      <button
+        type="button"
+        className={cn(
+          baseClassName,
+          toneClassName,
+          toneHoverClassName,
+          "cursor-pointer transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
+        )}
+        title={summary}
+        aria-label={actionLabel}
+        onClick={handleClick}
+        onPointerDown={stopPointer}
+        onPointerDownCapture={stopPointer}
+      >
+        {props.icon}
+        <span>{formatCompactSourceControlCount(props.count)}</span>
+      </button>
+    );
+  }
 
   return (
-    <span
-      className={cn(
-        "inline-flex h-4 shrink-0 items-center justify-center gap-0.5 rounded-sm border px-1 text-[9px] font-semibold tabular-nums leading-none",
-        className,
-      )}
-      title={`${props.label}: ${props.count}`}
-      aria-label={`${props.label}: ${props.count}`}
-    >
+    <span className={cn(baseClassName, toneClassName)} title={summary} aria-label={summary}>
       {props.icon}
       <span>{formatCompactSourceControlCount(props.count)}</span>
     </span>
@@ -1681,6 +1720,10 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   const [newWorktreeDialogOpen, setNewWorktreeDialogOpen] = useState(false);
   const [newWorktreeInitialTab, setNewWorktreeInitialTab] =
     useState<NewWorktreeDialogTab>("branches");
+  const [explorerDialog, setExplorerDialog] = useState<{
+    open: boolean;
+    initialTab: "issues" | "prs";
+  }>({ open: false, initialTab: "issues" });
   const [projectRenameTarget, setProjectRenameTarget] = useState<SidebarProjectGroupMember | null>(
     null,
   );
@@ -3226,12 +3269,14 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
           )}
           <ProjectFavicon environmentId={project.environmentId} cwd={project.cwd} />
           <span className="flex min-w-0 flex-1 items-center gap-2">
-            <span className="truncate text-xs font-medium text-foreground/90">
+            <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground/90">
               {project.displayName}
             </span>
             <ProjectSourceControlBadges
               issueCount={sourceControlCounts.issues}
               pullRequestCount={sourceControlCounts.pullRequests}
+              onIssuesClick={() => setExplorerDialog({ open: true, initialTab: "issues" })}
+              onPullRequestsClick={() => setExplorerDialog({ open: true, initialTab: "prs" })}
             />
             {project.groupedProjectCount > 1 ? (
               <span className="shrink-0 text-[10px] text-muted-foreground/60">
@@ -3413,6 +3458,14 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
           navigateToThread(scopeThreadRef(project.environmentId, result.sessionId));
         }}
         onOpenChange={setNewWorktreeDialogOpen}
+      />
+
+      <ProjectExplorerDialog
+        open={explorerDialog.open}
+        projectName={project.displayName}
+        memberProjects={project.memberProjects}
+        initialTab={explorerDialog.initialTab}
+        onOpenChange={(open) => setExplorerDialog((prev) => ({ ...prev, open }))}
       />
 
       <ProjectSettingsDialog
