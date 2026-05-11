@@ -4,6 +4,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
 import { Context, Effect, Exit, Fiber, Layer, Option, Schema, Scope, Stream } from "effect";
 import { beforeEach } from "vitest";
+import type { OpencodeClient } from "@opencode-ai/sdk/v2";
 
 import {
   OpenCodeSettings,
@@ -112,7 +113,7 @@ const OpenCodeRuntimeTestDouble: OpenCodeRuntimeShape = {
     }),
   runOpenCodeCommand: () => Effect.succeed({ stdout: "", stderr: "", code: 0 }),
   createOpenCodeSdkClient: ({ baseUrl, serverPassword }) =>
-    ({
+    Effect.succeed({
       session: {
         create: async () => {
           runtimeMock.state.sessionCreateUrls.push(baseUrl);
@@ -159,7 +160,7 @@ const OpenCodeRuntimeTestDouble: OpenCodeRuntimeShape = {
           })(),
         }),
       },
-    }) as unknown as ReturnType<OpenCodeRuntimeShape["createOpenCodeSdkClient"]>,
+    } as unknown as OpencodeClient),
   loadOpenCodeInventory: () =>
     Effect.fail(
       new OpenCodeRuntimeError({

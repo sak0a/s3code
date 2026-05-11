@@ -224,7 +224,32 @@ it.layer(TestLayer)("GitVcsDriver core integration", (it) => {
       }),
     );
 
-    it.effect("copies dependency install directories into created worktrees", () =>
+    it.effect("does not copy dependency install directories by default", () =>
+      Effect.gen(function* () {
+        const cwd = yield* makeTmpDir();
+        const { initialBranch } = yield* initRepoWithCommit(cwd);
+        const pathService = yield* Path.Path;
+        const worktreePath = pathService.join(yield* makeTmpDir("git-worktrees-"), "fast-worktree");
+        const driver = yield* GitVcsDriver.GitVcsDriver;
+
+        yield* writeTextFile(cwd, "node_modules/vite/index.js", "export const vite = true;\n");
+
+        yield* driver.createWorktree({
+          cwd,
+          path: worktreePath,
+          refName: initialBranch,
+          newRefName: "feature/no-dependency-copy",
+        });
+
+        const fileSystem = yield* FileSystem.FileSystem;
+        assert.equal(
+          yield* fileSystem.exists(pathService.join(worktreePath, "node_modules")),
+          false,
+        );
+      }),
+    );
+
+    it.effect("copies dependency install directories when deprecated hydration is requested", () =>
       Effect.gen(function* () {
         const cwd = yield* makeTmpDir();
         const { initialBranch } = yield* initRepoWithCommit(cwd);
@@ -266,6 +291,7 @@ it.layer(TestLayer)("GitVcsDriver core integration", (it) => {
           path: worktreePath,
           refName: initialBranch,
           newRefName: "feature/dependency-copy",
+          dependencyHydration: "copyInstallDirs",
         });
 
         const fileSystem = yield* FileSystem.FileSystem;

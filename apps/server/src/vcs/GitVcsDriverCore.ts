@@ -2007,7 +2007,9 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       fallbackErrorMessage: "git worktree add failed",
     });
 
-    yield* copyWorktreeDependencyInstallDirs({ cwd: input.cwd, worktreePath });
+    if (input.dependencyHydration === "copyInstallDirs") {
+      yield* copyWorktreeDependencyInstallDirs({ cwd: input.cwd, worktreePath });
+    }
 
     return {
       worktree: {

@@ -7,7 +7,10 @@ vi.mock("../../processRunner.ts", () => ({
 }));
 
 import { runProcess } from "../../processRunner.ts";
-import { resolveServerEnvironmentLabel } from "./ServerEnvironmentLabel.ts";
+import {
+  FRIENDLY_LABEL_COMMAND_TIMEOUT_MS,
+  resolveServerEnvironmentLabel,
+} from "./ServerEnvironmentLabel.ts";
 
 const mockedRunProcess = vi.mocked(runProcess);
 const NoopFileSystemLayer = FileSystem.layerNoop({});
@@ -49,7 +52,10 @@ describe("resolveServerEnvironmentLabel", () => {
       expect(mockedRunProcess).toHaveBeenCalledWith(
         "scutil",
         ["--get", "ComputerName"],
-        expect.objectContaining({ allowNonZeroExit: true }),
+        expect.objectContaining({
+          allowNonZeroExit: true,
+          timeoutMs: FRIENDLY_LABEL_COMMAND_TIMEOUT_MS,
+        }),
       );
     }),
   );
@@ -97,7 +103,10 @@ describe("resolveServerEnvironmentLabel", () => {
       expect(mockedRunProcess).toHaveBeenCalledWith(
         "hostnamectl",
         ["--pretty"],
-        expect.objectContaining({ allowNonZeroExit: true }),
+        expect.objectContaining({
+          allowNonZeroExit: true,
+          timeoutMs: FRIENDLY_LABEL_COMMAND_TIMEOUT_MS,
+        }),
       );
     }),
   );
@@ -125,6 +134,34 @@ describe("resolveServerEnvironmentLabel", () => {
       }).pipe(Effect.provide(NoopFileSystemLayer));
 
       expect(result).toBe("macbook-pro");
+    }),
+  );
+
+  it.effect("falls back to the hostname when the friendly-label command times out", () =>
+    Effect.gen(function* () {
+      mockedRunProcess.mockResolvedValueOnce({
+        stdout: "",
+        stderr: "",
+        code: null,
+        signal: "SIGTERM",
+        timedOut: true,
+      });
+
+      const result = yield* resolveServerEnvironmentLabel({
+        cwdBaseName: "s3code",
+        platform: "darwin",
+        hostname: "macbook-pro",
+      }).pipe(Effect.provide(NoopFileSystemLayer));
+
+      expect(result).toBe("macbook-pro");
+      expect(mockedRunProcess).toHaveBeenCalledWith(
+        "scutil",
+        ["--get", "ComputerName"],
+        expect.objectContaining({
+          allowNonZeroExit: true,
+          timeoutMs: FRIENDLY_LABEL_COMMAND_TIMEOUT_MS,
+        }),
+      );
     }),
   );
 

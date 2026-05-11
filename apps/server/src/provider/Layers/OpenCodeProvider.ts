@@ -436,16 +436,22 @@ export const checkOpenCodeProviderStatus = Effect.fn("checkOpenCodeProviderStatu
                 new OpenCodeProbeError({ cause, detail: openCodeRuntimeErrorDetail(cause) }),
             ),
           );
+        const client = yield* openCodeRuntime
+          .createOpenCodeSdkClient({
+            baseUrl: server.url,
+            directory: cwd,
+            ...(isExternalServer && openCodeSettings.serverPassword
+              ? { serverPassword: openCodeSettings.serverPassword }
+              : {}),
+          })
+          .pipe(
+            Effect.mapError(
+              (cause) =>
+                new OpenCodeProbeError({ cause, detail: openCodeRuntimeErrorDetail(cause) }),
+            ),
+          );
         return yield* openCodeRuntime
-          .loadOpenCodeInventory(
-            openCodeRuntime.createOpenCodeSdkClient({
-              baseUrl: server.url,
-              directory: cwd,
-              ...(isExternalServer && openCodeSettings.serverPassword
-                ? { serverPassword: openCodeSettings.serverPassword }
-                : {}),
-            }),
-          )
+          .loadOpenCodeInventory(client)
           .pipe(
             Effect.mapError(
               (cause) =>

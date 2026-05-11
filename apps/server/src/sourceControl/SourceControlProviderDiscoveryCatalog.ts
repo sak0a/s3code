@@ -1,0 +1,142 @@
+import type * as BitbucketApi from "./BitbucketApi.ts";
+import * as SourceControlProviderDiscovery from "./SourceControlProviderDiscovery.ts";
+
+function parseGitHubAuth(input: SourceControlProviderDiscovery.SourceControlAuthProbeInput) {
+  const output = SourceControlProviderDiscovery.combinedAuthOutput(input);
+  const account = SourceControlProviderDiscovery.matchFirst(output, [
+    /Logged in to .* account\s+([^\s(]+)/iu,
+    /Logged in to .* as\s+([^\s(]+)/iu,
+  ]);
+  const host = SourceControlProviderDiscovery.parseCliHost(output);
+
+  if (input.exitCode !== 0) {
+    return SourceControlProviderDiscovery.providerAuth({
+      status: "unauthenticated",
+      host,
+      detail:
+        SourceControlProviderDiscovery.firstSafeAuthLine(output) ??
+        "Run `gh auth login` to authenticate GitHub CLI.",
+    });
+  }
+
+  if (account) {
+    return SourceControlProviderDiscovery.providerAuth({ status: "authenticated", account, host });
+  }
+
+  return SourceControlProviderDiscovery.providerAuth({
+    status: "unknown",
+    host,
+    detail:
+      SourceControlProviderDiscovery.firstSafeAuthLine(output) ??
+      "GitHub CLI auth status could not be parsed.",
+  });
+}
+
+function parseGitLabAuth(input: SourceControlProviderDiscovery.SourceControlAuthProbeInput) {
+  const output = SourceControlProviderDiscovery.combinedAuthOutput(input);
+  const account = SourceControlProviderDiscovery.matchFirst(output, [
+    /Logged in to .* as\s+([^\s(]+)/iu,
+    /Logged in to .* account\s+([^\s(]+)/iu,
+    /account:\s*([^\s(]+)/iu,
+  ]);
+  const host = SourceControlProviderDiscovery.parseCliHost(output);
+
+  if (input.exitCode !== 0) {
+    return SourceControlProviderDiscovery.providerAuth({
+      status: "unauthenticated",
+      host,
+      detail:
+        SourceControlProviderDiscovery.firstSafeAuthLine(output) ??
+        "Run `glab auth login` to authenticate GitLab CLI.",
+    });
+  }
+
+  if (account) {
+    return SourceControlProviderDiscovery.providerAuth({ status: "authenticated", account, host });
+  }
+
+  return SourceControlProviderDiscovery.providerAuth({
+    status: "unknown",
+    host,
+    detail:
+      SourceControlProviderDiscovery.firstSafeAuthLine(output) ??
+      "GitLab CLI auth status could not be parsed.",
+  });
+}
+
+function parseAzureAuth(input: SourceControlProviderDiscovery.SourceControlAuthProbeInput) {
+  const account = input.stdout.trim().split(/\r?\n/)[0]?.trim();
+
+  if (input.exitCode !== 0) {
+    return SourceControlProviderDiscovery.providerAuth({
+      status: "unauthenticated",
+      detail:
+        SourceControlProviderDiscovery.firstSafeAuthLine(
+          SourceControlProviderDiscovery.combinedAuthOutput(input),
+        ) ?? "Run `az login` to authenticate Azure CLI.",
+    });
+  }
+
+  if (account && account.length > 0) {
+    return SourceControlProviderDiscovery.providerAuth({
+      status: "authenticated",
+      account,
+      host: "dev.azure.com",
+    });
+  }
+
+  return SourceControlProviderDiscovery.providerAuth({
+    status: "unknown",
+    host: "dev.azure.com",
+    detail: "Azure CLI account status could not be parsed.",
+  });
+}
+
+export const githubDiscovery = {
+  type: "cli",
+  kind: "github",
+  label: "GitHub",
+  executable: "gh",
+  versionArgs: ["--version"],
+  authArgs: ["auth", "status"],
+  parseAuth: parseGitHubAuth,
+  installHint:
+    "Install the GitHub command-line tool (`gh`) via https://cli.github.com/ or your package manager (for example `brew install gh`).",
+} satisfies SourceControlProviderDiscovery.SourceControlCliDiscoverySpec;
+
+export const gitlabDiscovery = {
+  type: "cli",
+  kind: "gitlab",
+  label: "GitLab",
+  executable: "glab",
+  versionArgs: ["--version"],
+  authArgs: ["auth", "status"],
+  parseAuth: parseGitLabAuth,
+  installHint:
+    "Install the GitLab command-line tool (`glab`) from https://gitlab.com/gitlab-org/cli or your package manager (for example `brew install glab`).",
+} satisfies SourceControlProviderDiscovery.SourceControlCliDiscoverySpec;
+
+export const azureDevOpsDiscovery = {
+  type: "cli",
+  kind: "azure-devops",
+  label: "Azure DevOps",
+  executable: "az",
+  versionArgs: ["--version"],
+  authArgs: ["account", "show", "--query", "user.name", "-o", "tsv"],
+  parseAuth: parseAzureAuth,
+  installHint:
+    "Install the Azure command-line tools (`az`), then enable Azure DevOps support with `az extension add --name azure-devops`.",
+} satisfies SourceControlProviderDiscovery.SourceControlCliDiscoverySpec;
+
+export function makeBitbucketDiscovery(
+  bitbucket: BitbucketApi.BitbucketApiShape,
+): SourceControlProviderDiscovery.SourceControlApiDiscoverySpec {
+  return {
+    type: "api",
+    kind: "bitbucket",
+    label: "Bitbucket",
+    installHint:
+      "Set S3CODE_BITBUCKET_EMAIL and S3CODE_BITBUCKET_API_TOKEN on the server (use a Bitbucket API token with pull request and repository scopes).",
+    probeAuth: bitbucket.probeAuth,
+  };
+}

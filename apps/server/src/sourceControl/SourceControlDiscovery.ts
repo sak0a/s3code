@@ -3,7 +3,7 @@ import {
   type VcsDiscoveryItem,
   type VcsDriverKind,
 } from "@s3tools/contracts";
-import { Context, Effect, Layer, Option } from "effect";
+import { Cache, Context, Duration, Effect, Layer, Option } from "effect";
 
 import { ServerConfig } from "../config.ts";
 import * as VcsProcess from "../vcs/VcsProcess.ts";
@@ -53,6 +53,9 @@ const VCS_PROBES: ReadonlyArray<VcsProbe> = [
     installHint: "Install Jujutsu with `brew install jj` or from https://github.com/jj-vcs/jj.",
   },
 ];
+
+const DISCOVERY_CACHE_KEY = "source-control-discovery" as const;
+export const SOURCE_CONTROL_DISCOVERY_CACHE_TTL = Duration.seconds(5);
 
 export interface SourceControlDiscoveryShape {
   readonly discover: Effect.Effect<SourceControlDiscoveryResult>;
@@ -131,14 +134,25 @@ export const layer = Layer.effect(
         );
     };
 
+    const discoverOnce = Effect.all({
+      versionControlSystems: Effect.all(
+        VCS_PROBES.map((entry) => probe(entry)) as ReadonlyArray<Effect.Effect<VcsDiscoveryItem>>,
+        { concurrency: "unbounded" },
+      ),
+      sourceControlProviders: sourceControlProviders.discover,
+    });
+
+    const discoveryCache = yield* Cache.make<
+      typeof DISCOVERY_CACHE_KEY,
+      SourceControlDiscoveryResult
+    >({
+      capacity: 1,
+      timeToLive: SOURCE_CONTROL_DISCOVERY_CACHE_TTL,
+      lookup: () => discoverOnce,
+    });
+
     return SourceControlDiscovery.of({
-      discover: Effect.all({
-        versionControlSystems: Effect.all(
-          VCS_PROBES.map((entry) => probe(entry)) as ReadonlyArray<Effect.Effect<VcsDiscoveryItem>>,
-          { concurrency: "unbounded" },
-        ),
-        sourceControlProviders: sourceControlProviders.discover,
-      }),
+      discover: Cache.get(discoveryCache, DISCOVERY_CACHE_KEY),
     });
   }),
 );

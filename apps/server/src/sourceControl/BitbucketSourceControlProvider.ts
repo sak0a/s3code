@@ -12,7 +12,7 @@ import * as BitbucketApi from "./BitbucketApi.ts";
 import * as BitbucketIssues from "./bitbucketIssues.ts";
 import * as BitbucketPullRequests from "./bitbucketPullRequests.ts";
 import * as SourceControlProvider from "./SourceControlProvider.ts";
-import type * as SourceControlProviderDiscovery from "./SourceControlProviderDiscovery.ts";
+import { makeBitbucketDiscovery } from "./SourceControlProviderDiscoveryCatalog.ts";
 
 function providerError(
   operation: string,
@@ -237,12 +237,5 @@ export const layer = Layer.effect(SourceControlProvider.SourceControlProvider, m
 export const makeDiscovery = Effect.fn("makeBitbucketSourceControlProviderDiscovery")(function* () {
   const bitbucket = yield* BitbucketApi.BitbucketApi;
 
-  return {
-    type: "api",
-    kind: "bitbucket",
-    label: "Bitbucket",
-    installHint:
-      "Set S3CODE_BITBUCKET_EMAIL and S3CODE_BITBUCKET_API_TOKEN on the server (use a Bitbucket API token with pull request and repository scopes).",
-    probeAuth: bitbucket.probeAuth,
-  } satisfies SourceControlProviderDiscovery.SourceControlApiDiscoverySpec;
+  return makeBitbucketDiscovery(bitbucket);
 });

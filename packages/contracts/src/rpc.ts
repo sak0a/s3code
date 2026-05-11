@@ -100,7 +100,12 @@ import {
   SourceControlProviderError,
 } from "./sourceControl.ts";
 import { VcsError } from "./vcs.ts";
-import { CreateWorktreeIntent, StatusBucket, WorktreeId } from "./worktree.ts";
+import {
+  CreateWorktreeIntent,
+  StatusBucket,
+  WorktreeCheckoutLocation,
+  WorktreeId,
+} from "./worktree.ts";
 
 export const WS_METHODS = {
   // Project registry methods
@@ -182,6 +187,9 @@ export const WS_METHODS = {
 export const GitCreateWorktreeForProjectInput = Schema.Struct({
   projectId: ProjectId,
   intent: CreateWorktreeIntent,
+  // "projectMetadata" preserves the legacy project-local checkout location.
+  // New worktrees should use the default app-managed location.
+  worktreeLocation: Schema.optional(WorktreeCheckoutLocation),
 });
 export type GitCreateWorktreeForProjectInput = typeof GitCreateWorktreeForProjectInput.Type;
 
