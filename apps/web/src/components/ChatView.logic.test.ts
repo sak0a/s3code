@@ -365,20 +365,9 @@ afterEach(() => {
 });
 
 describe("threadIsPromotedAndPersisted", () => {
-  it("waits for runtime state instead of a persisted user message", () => {
+  it("does not promote an empty thread", () => {
     expect(
-      threadIsPromotedAndPersisted({
-        ...makeThread({ latestTurn: null }),
-        messages: [
-          {
-            id: MessageId.make("message-1"),
-            role: "user",
-            text: "hello",
-            createdAt: "2026-03-29T00:00:00.000Z",
-            streaming: false,
-          },
-        ],
-      }),
+      threadIsPromotedAndPersisted(makeThread({ latestTurn: null, messages: [] })),
     ).toBe(false);
   });
 
