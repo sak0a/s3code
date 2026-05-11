@@ -95,7 +95,10 @@ export const TraitsChips = memo(function TraitsChips(props: TraitsChipsProps) {
         descriptor.id === id && descriptor.type === "boolean",
     );
 
-  const effort = findSelect("effort") ?? findSelect("reasoningEffort");
+  // Reasoning descriptor id varies by provider:
+  //   Claude → "effort", Codex → "reasoningEffort", Cursor → "reasoning"
+  const effort =
+    findSelect("effort") ?? findSelect("reasoningEffort") ?? findSelect("reasoning");
   const fastMode = findBoolean("fastMode");
   const contextWindow = findSelect("contextWindow");
   const thinking = findBoolean("thinking");
