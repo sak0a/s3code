@@ -920,8 +920,8 @@ export const ClientRequest__SandboxMode = Schema.Literals([
   "danger-full-access",
 ]);
 
-export type ClientRequest__ServiceTier = "fast" | "flex";
-export const ClientRequest__ServiceTier = Schema.Literals(["fast", "flex"]);
+export type ClientRequest__ServiceTier = "fast" | "flex" | "priority";
+export const ClientRequest__ServiceTier = Schema.Literals(["fast", "flex", "priority"]);
 
 export type ClientRequest__SkillsListExtraRootsForCwd = {
   readonly cwd: string;
@@ -3122,8 +3122,8 @@ export const V2ConfigReadResponse__SandboxWorkspaceWrite = Schema.Struct({
   writable_roots: Schema.optionalKey(Schema.Array(Schema.String).annotate({ default: [] })),
 });
 
-export type V2ConfigReadResponse__ServiceTier = "fast" | "flex";
-export const V2ConfigReadResponse__ServiceTier = Schema.Literals(["fast", "flex"]);
+export type V2ConfigReadResponse__ServiceTier = "fast" | "flex" | "priority";
+export const V2ConfigReadResponse__ServiceTier = Schema.Literals(["fast", "flex", "priority"]);
 
 export type V2ConfigReadResponse__Verbosity = "low" | "medium" | "high";
 export const V2ConfigReadResponse__Verbosity = Schema.Literals(["low", "medium", "high"]).annotate({
@@ -5175,8 +5175,8 @@ export const V2ThreadForkParams__SandboxMode = Schema.Literals([
   "danger-full-access",
 ]);
 
-export type V2ThreadForkParams__ServiceTier = "fast" | "flex";
-export const V2ThreadForkParams__ServiceTier = Schema.Literals(["fast", "flex"]);
+export type V2ThreadForkParams__ServiceTier = "fast" | "flex" | "priority";
+export const V2ThreadForkParams__ServiceTier = Schema.Literals(["fast", "flex", "priority"]);
 
 export type V2ThreadForkResponse__AbsolutePathBuf = string;
 export const V2ThreadForkResponse__AbsolutePathBuf = Schema.String.annotate({
@@ -5396,8 +5396,8 @@ export const V2ThreadForkResponse__ReasoningEffort = Schema.Literals([
     "See https://platform.openai.com/docs/guides/reasoning?api-mode=responses#get-started-with-reasoning",
 });
 
-export type V2ThreadForkResponse__ServiceTier = "fast" | "flex";
-export const V2ThreadForkResponse__ServiceTier = Schema.Literals(["fast", "flex"]);
+export type V2ThreadForkResponse__ServiceTier = "fast" | "flex" | "priority";
+export const V2ThreadForkResponse__ServiceTier = Schema.Literals(["fast", "flex", "priority"]);
 
 export type V2ThreadForkResponse__TextElement = {
   readonly byteRange: { readonly end: number; readonly start: number };
@@ -6582,8 +6582,8 @@ export const V2ThreadResumeParams__SandboxMode = Schema.Literals([
   "danger-full-access",
 ]);
 
-export type V2ThreadResumeParams__ServiceTier = "fast" | "flex";
-export const V2ThreadResumeParams__ServiceTier = Schema.Literals(["fast", "flex"]);
+export type V2ThreadResumeParams__ServiceTier = "fast" | "flex" | "priority";
+export const V2ThreadResumeParams__ServiceTier = Schema.Literals(["fast", "flex", "priority"]);
 
 export type V2ThreadResumeResponse__AbsolutePathBuf = string;
 export const V2ThreadResumeResponse__AbsolutePathBuf = Schema.String.annotate({
@@ -6803,8 +6803,8 @@ export const V2ThreadResumeResponse__ReasoningEffort = Schema.Literals([
     "See https://platform.openai.com/docs/guides/reasoning?api-mode=responses#get-started-with-reasoning",
 });
 
-export type V2ThreadResumeResponse__ServiceTier = "fast" | "flex";
-export const V2ThreadResumeResponse__ServiceTier = Schema.Literals(["fast", "flex"]);
+export type V2ThreadResumeResponse__ServiceTier = "fast" | "flex" | "priority";
+export const V2ThreadResumeResponse__ServiceTier = Schema.Literals(["fast", "flex", "priority"]);
 
 export type V2ThreadResumeResponse__TextElement = {
   readonly byteRange: { readonly end: number; readonly start: number };
@@ -7481,8 +7481,8 @@ export const V2ThreadStartParams__SandboxMode = Schema.Literals([
   "danger-full-access",
 ]);
 
-export type V2ThreadStartParams__ServiceTier = "fast" | "flex";
-export const V2ThreadStartParams__ServiceTier = Schema.Literals(["fast", "flex"]);
+export type V2ThreadStartParams__ServiceTier = "fast" | "flex" | "priority";
+export const V2ThreadStartParams__ServiceTier = Schema.Literals(["fast", "flex", "priority"]);
 
 export type V2ThreadStartParams__ThreadStartSource = "startup" | "clear";
 export const V2ThreadStartParams__ThreadStartSource = Schema.Literals(["startup", "clear"]);
@@ -7705,8 +7705,8 @@ export const V2ThreadStartResponse__ReasoningEffort = Schema.Literals([
     "See https://platform.openai.com/docs/guides/reasoning?api-mode=responses#get-started-with-reasoning",
 });
 
-export type V2ThreadStartResponse__ServiceTier = "fast" | "flex";
-export const V2ThreadStartResponse__ServiceTier = Schema.Literals(["fast", "flex"]);
+export type V2ThreadStartResponse__ServiceTier = "fast" | "flex" | "priority";
+export const V2ThreadStartResponse__ServiceTier = Schema.Literals(["fast", "flex", "priority"]);
 
 export type V2ThreadStartResponse__TextElement = {
   readonly byteRange: { readonly end: number; readonly start: number };
@@ -8945,8 +8945,8 @@ export const V2TurnStartParams__ReasoningSummary = Schema.Union(
     "A summary of the reasoning performed by the model. This can be useful for debugging and understanding the model's reasoning process. See https://platform.openai.com/docs/guides/reasoning?api-mode=responses#reasoning-summaries",
 });
 
-export type V2TurnStartParams__ServiceTier = "fast" | "flex";
-export const V2TurnStartParams__ServiceTier = Schema.Literals(["fast", "flex"]);
+export type V2TurnStartParams__ServiceTier = "fast" | "flex" | "priority";
+export const V2TurnStartParams__ServiceTier = Schema.Literals(["fast", "flex", "priority"]);
 
 export type V2TurnStartParams__TextElement = {
   readonly byteRange: { readonly end: number; readonly start: number };
