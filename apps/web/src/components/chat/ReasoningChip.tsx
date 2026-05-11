@@ -26,16 +26,6 @@ type LevelKey =
   | "max"
   | "ultrathink";
 
-const LEVEL_ORDINAL: Record<Exclude<LevelKey, "ultrathink">, number> = {
-  none: 1,
-  minimal: 1,
-  low: 1,
-  medium: 2,
-  high: 3,
-  xhigh: 4,
-  max: 5,
-};
-
 const LEVEL_ABBREVIATION: Record<LevelKey, string> = {
   none: "None",
   minimal: "Min",
@@ -100,6 +90,19 @@ export const ReasoningChip = memo(function ReasoningChip(props: ReasoningChipPro
   const isUltra = level === "ultrathink";
   const abbreviation = LEVEL_ABBREVIATION[level];
 
+  // Dot scale is derived from the model's actual options so the chip shows
+  // exactly as many dots as the model supports. Prompt-injected values
+  // (ultrathink) sit outside the linear scale — they get the sparkle.
+  const promptInjectedSet = new Set(props.descriptor.promptInjectedValues ?? []);
+  const scaleOptions = props.descriptor.options.filter(
+    (option) => !promptInjectedSet.has(option.id),
+  );
+  const totalDots = scaleOptions.length;
+  const currentScaleIndex = effectiveValue
+    ? scaleOptions.findIndex((option) => option.id === effectiveValue)
+    : -1;
+  const ordinal = currentScaleIndex >= 0 ? currentScaleIndex + 1 : 0;
+
   return (
     <Menu>
       <MenuTrigger
@@ -124,11 +127,11 @@ export const ReasoningChip = memo(function ReasoningChip(props: ReasoningChipPro
           <>
             <BrainIcon aria-hidden="true" className="size-3" />
             <span className="inline-flex items-center gap-0.5">
-              {[1, 2, 3, 4, 5].map((position) => {
-                const on = position <= LEVEL_ORDINAL[level];
+              {Array.from({ length: totalDots }, (_, index) => {
+                const on = index + 1 <= ordinal;
                 return (
                   <span
-                    key={position}
+                    key={index}
                     data-testid={on ? "reasoning-dot-on" : "reasoning-dot-off"}
                     className={cn(
                       "size-[5px] rounded-full bg-current",

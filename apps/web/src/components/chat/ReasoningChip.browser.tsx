@@ -39,7 +39,9 @@ describe("ReasoningChip", () => {
     useUiStateStore.getState().setReasoningIndicatorStyle("icon-dots");
   });
 
-  it("renders 3 filled dots for high in icon-dots style", async () => {
+  it("renders dots matching the model's available levels for high", async () => {
+    // Descriptor has 4 options total; one is prompt-injected (ultrathink).
+    // Effective scale: 3 dots. "high" is the 3rd option → 3/3 filled.
     useUiStateStore.getState().setReasoningIndicatorStyle("icon-dots");
     mounted = await render(
       <ReasoningChip
@@ -57,7 +59,43 @@ describe("ReasoningChip", () => {
       const dotsOn = document.querySelectorAll('[data-testid="reasoning-dot-on"]');
       expect(dotsOn.length).toBe(3);
       const dotsOff = document.querySelectorAll('[data-testid="reasoning-dot-off"]');
-      expect(dotsOff.length).toBe(2);
+      expect(dotsOff.length).toBe(0);
+    });
+  });
+
+  it("scales dot count to the model's available levels (Codex GPT-5)", async () => {
+    // A Codex-like descriptor with 4 non-injected levels: minimal/low/medium/high.
+    // "medium" is the 3rd option → 3/4 filled, 1 off.
+    useUiStateStore.getState().setReasoningIndicatorStyle("icon-dots");
+    const codexDescriptor = {
+      id: "reasoningEffort",
+      label: "Reasoning",
+      type: "select" as const,
+      options: [
+        { id: "minimal", label: "Minimal" },
+        { id: "low", label: "Low" },
+        { id: "medium", label: "Medium", isDefault: true },
+        { id: "high", label: "High" },
+      ],
+      currentValue: "medium",
+    };
+    mounted = await render(
+      <ReasoningChip
+        descriptor={codexDescriptor}
+        descriptors={[codexDescriptor]}
+        prompt=""
+        primarySelectDescriptorId="reasoningEffort"
+        ultrathinkInBodyText={false}
+        ultrathinkPromptControlled={false}
+        onChangeDescriptors={vi.fn()}
+        onPromptChange={vi.fn()}
+      />,
+    );
+    await vi.waitFor(() => {
+      const dotsOn = document.querySelectorAll('[data-testid="reasoning-dot-on"]');
+      expect(dotsOn.length).toBe(3);
+      const dotsOff = document.querySelectorAll('[data-testid="reasoning-dot-off"]');
+      expect(dotsOff.length).toBe(1);
     });
   });
 
