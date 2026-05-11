@@ -12,6 +12,7 @@ import {
   reorderProjects,
   setDefaultAdvertisedEndpointKey,
   setProjectExpanded,
+  setReasoningIndicatorStyle,
   setThreadChangedFilesExpanded,
   setThreadWorkEntryExpanded,
   syncProjects,
@@ -27,6 +28,7 @@ function makeUiState(overrides: Partial<UiState> = {}): UiState {
     threadChangedFilesExpandedById: {},
     threadWorkEntryExpandedById: {},
     defaultAdvertisedEndpointKey: null,
+    reasoningIndicatorStyle: "icon-dots",
     ...overrides,
   };
 }
@@ -671,5 +673,63 @@ describe("uiStateStore persistence round-trip", () => {
     ]);
 
     expect(rehydrated.projectExpandedById[nextLogicalKey]).toBe(false);
+  });
+});
+
+describe("uiStateStore — reasoningIndicatorStyle", () => {
+  function createLocalStorageStub(): Storage {
+    const store = new Map<string, string>();
+    return {
+      clear: () => {
+        store.clear();
+      },
+      getItem: (key) => store.get(key) ?? null,
+      key: (index) => [...store.keys()][index] ?? null,
+      get length() {
+        return store.size;
+      },
+      removeItem: (key) => {
+        store.delete(key);
+      },
+      setItem: (key, value) => {
+        store.set(key, value);
+      },
+    };
+  }
+
+  let localStorageStub: Storage;
+
+  beforeEach(() => {
+    localStorageStub = createLocalStorageStub();
+    vi.stubGlobal("window", { localStorage: localStorageStub });
+    vi.stubGlobal("localStorage", localStorageStub);
+    hydratePersistedProjectState({ collapsedProjectCwds: [], expandedProjectCwds: [] });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("defaults to icon-dots", () => {
+    expect(makeUiState().reasoningIndicatorStyle).toBe("icon-dots");
+  });
+
+  it("setReasoningIndicatorStyle returns a new state with the chosen style", () => {
+    const next = setReasoningIndicatorStyle(makeUiState(), "text");
+    expect(next.reasoningIndicatorStyle).toBe("text");
+  });
+
+  it("setReasoningIndicatorStyle is a no-op when value is unchanged", () => {
+    const state = makeUiState({ reasoningIndicatorStyle: "text" });
+    expect(setReasoningIndicatorStyle(state, "text")).toBe(state);
+  });
+
+  it("persists the chosen style and reads it back", () => {
+    const state = setReasoningIndicatorStyle(makeUiState(), "text");
+    persistState(state);
+    const raw = localStorageStub.getItem(PERSISTED_STATE_KEY);
+    expect(raw).not.toBeNull();
+    const parsed = JSON.parse(raw!) as PersistedUiState;
+    expect(parsed.reasoningIndicatorStyle).toBe("text");
   });
 });

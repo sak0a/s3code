@@ -15,12 +15,21 @@ const LEGACY_PERSISTED_STATE_KEYS = [
   "codething:renderer-state:v1",
 ] as const;
 
+export type ReasoningIndicatorStyle = "icon-dots" | "text";
+
+const DEFAULT_REASONING_INDICATOR_STYLE: ReasoningIndicatorStyle = "icon-dots";
+
+function sanitizeReasoningIndicatorStyle(value: unknown): ReasoningIndicatorStyle {
+  return value === "text" || value === "icon-dots" ? value : DEFAULT_REASONING_INDICATOR_STYLE;
+}
+
 export interface PersistedUiState {
   collapsedProjectCwds?: string[];
   expandedProjectCwds?: string[];
   projectOrderCwds?: string[];
   defaultAdvertisedEndpointKey?: string | null;
   threadChangedFilesExpandedById?: Record<string, Record<string, boolean>>;
+  reasoningIndicatorStyle?: ReasoningIndicatorStyle;
 }
 
 export interface UiProjectState {
@@ -45,7 +54,9 @@ export interface UiEndpointState {
   defaultAdvertisedEndpointKey: string | null;
 }
 
-export interface UiState extends UiProjectState, UiThreadState, UiEndpointState {}
+export interface UiState extends UiProjectState, UiThreadState, UiEndpointState {
+  reasoningIndicatorStyle: ReasoningIndicatorStyle;
+}
 
 export interface SyncProjectInput {
   /** Physical project key (env + cwd). Used for manual sort order. */
@@ -67,6 +78,7 @@ const initialState: UiState = {
   threadChangedFilesExpandedById: {},
   threadWorkEntryExpandedById: {},
   defaultAdvertisedEndpointKey: null,
+  reasoningIndicatorStyle: DEFAULT_REASONING_INDICATOR_STYLE,
 };
 
 const persistedCollapsedProjectCwds = new Set<string>();
@@ -111,6 +123,7 @@ function readPersistedState(): UiState {
       threadChangedFilesExpandedById: sanitizePersistedThreadChangedFilesExpanded(
         parsed.threadChangedFilesExpandedById,
       ),
+      reasoningIndicatorStyle: sanitizeReasoningIndicatorStyle(parsed.reasoningIndicatorStyle),
     };
   } catch {
     return initialState;
@@ -201,6 +214,7 @@ export function persistState(state: UiState): void {
         projectOrderCwds,
         defaultAdvertisedEndpointKey: state.defaultAdvertisedEndpointKey,
         threadChangedFilesExpandedById,
+        reasoningIndicatorStyle: state.reasoningIndicatorStyle,
       } satisfies PersistedUiState),
     );
     if (!legacyKeysCleanedUp) {
@@ -597,6 +611,19 @@ export function setDefaultAdvertisedEndpointKey(state: UiState, key: string | nu
   };
 }
 
+export function setReasoningIndicatorStyle(
+  state: UiState,
+  style: ReasoningIndicatorStyle,
+): UiState {
+  if (state.reasoningIndicatorStyle === style) {
+    return state;
+  }
+  return {
+    ...state,
+    reasoningIndicatorStyle: style,
+  };
+}
+
 export function toggleProject(state: UiState, projectId: string): UiState {
   const expanded = state.projectExpandedById[projectId] ?? true;
   return {
@@ -673,6 +700,7 @@ interface UiStateStore extends UiState {
   setThreadChangedFilesExpanded: (threadId: string, turnId: string, expanded: boolean) => void;
   setThreadWorkEntryExpanded: (threadId: string, entryId: string, expanded: boolean) => void;
   setDefaultAdvertisedEndpointKey: (key: string | null) => void;
+  setReasoningIndicatorStyle: (style: ReasoningIndicatorStyle) => void;
   toggleProject: (projectId: string) => void;
   setProjectExpanded: (projectId: string, expanded: boolean) => void;
   reorderProjects: (
@@ -696,6 +724,8 @@ export const useUiStateStore = create<UiStateStore>((set) => ({
     set((state) => setThreadWorkEntryExpanded(state, threadId, entryId, expanded)),
   setDefaultAdvertisedEndpointKey: (key) =>
     set((state) => setDefaultAdvertisedEndpointKey(state, key)),
+  setReasoningIndicatorStyle: (style) =>
+    set((state) => setReasoningIndicatorStyle(state, style)),
   toggleProject: (projectId) => set((state) => toggleProject(state, projectId)),
   setProjectExpanded: (projectId, expanded) =>
     set((state) => setProjectExpanded(state, projectId, expanded)),
