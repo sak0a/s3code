@@ -10,7 +10,7 @@ import {
 } from "@s3tools/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type EnvironmentState, useStore } from "../store";
-import { type Thread } from "../types";
+import { type ChatMessage, type Thread } from "../types";
 
 import {
   MAX_HIDDEN_MOUNTED_TERMINAL_THREADS,
@@ -216,6 +216,7 @@ describe("shouldWriteThreadErrorToCurrentServerThread", () => {
 
 const makeThread = (input?: {
   id?: ThreadId;
+  messages?: ChatMessage[];
   latestTurn?: {
     turnId: TurnId;
     state: "running" | "completed";
@@ -233,7 +234,7 @@ const makeThread = (input?: {
   runtimeMode: "full-access" as const,
   interactionMode: "default" as const,
   session: null,
-  messages: [],
+  messages: input?.messages ?? [],
   proposedPlans: [],
   error: null,
   createdAt: "2026-03-29T00:00:00.000Z",
@@ -366,9 +367,9 @@ afterEach(() => {
 
 describe("threadIsPromotedAndPersisted", () => {
   it("does not promote an empty thread", () => {
-    expect(
-      threadIsPromotedAndPersisted(makeThread({ latestTurn: null, messages: [] })),
-    ).toBe(false);
+    expect(threadIsPromotedAndPersisted(makeThread({ latestTurn: null, messages: [] }))).toBe(
+      false,
+    );
   });
 
   it("does not promote a bare session before any thread messages are visible", () => {

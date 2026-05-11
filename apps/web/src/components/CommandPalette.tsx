@@ -75,6 +75,7 @@ import {
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { getLatestThreadForProject } from "../lib/threadSort";
 import { cn, isMacPlatform, isWindowsPlatform, newCommandId, newProjectId } from "../lib/utils";
+import { deriveLogicalProjectKeyFromSettings } from "../logicalProject";
 import {
   selectProjectsAcrossEnvironments,
   selectSidebarThreadsAcrossEnvironments,
@@ -82,6 +83,7 @@ import {
 } from "../store";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
 import { buildThreadRouteParams, resolveThreadRouteTarget } from "../threadRoutes";
+import { useUiStateStore } from "../uiStateStore";
 import {
   ADDON_ICON_CLASS,
   buildBrowseGroups,
@@ -617,6 +619,9 @@ function OpenCommandPaletteDialog() {
 
   const openProjectFromSearch = useMemo(
     () => async (project: (typeof projects)[number]) => {
+      useUiStateStore
+        .getState()
+        .setProjectExpanded(deriveLogicalProjectKeyFromSettings(project, settings), true);
       const latestThread = getLatestThreadForProject(
         threads.filter((thread) => thread.environmentId === project.environmentId),
         project.id,
@@ -640,6 +645,8 @@ function OpenCommandPaletteDialog() {
       handleNewThread,
       navigate,
       settings.defaultThreadEnvMode,
+      settings.sidebarProjectGroupingMode,
+      settings.sidebarProjectGroupingOverrides,
       settings.sidebarThreadSortOrder,
       threads,
     ],
@@ -1116,6 +1123,9 @@ function OpenCommandPaletteDialog() {
         cwd,
       );
       if (existing) {
+        useUiStateStore
+          .getState()
+          .setProjectExpanded(deriveLogicalProjectKeyFromSettings(existing, settings), true);
         const latestThread = getLatestThreadForProject(
           threads.filter((thread) => thread.environmentId === existing.environmentId),
           existing.id,

@@ -90,6 +90,18 @@ const PROJECT_LOGICAL_KEY = deriveLogicalProjectKeyFromSettings(
     sidebarProjectGroupingOverrides: DEFAULT_CLIENT_SETTINGS.sidebarProjectGroupingOverrides,
   },
 );
+const SECOND_PROJECT_LOGICAL_KEY = deriveLogicalProjectKeyFromSettings(
+  {
+    environmentId: LOCAL_ENVIRONMENT_ID,
+    id: SECOND_PROJECT_ID,
+    cwd: "/repo/clients/docs-portal",
+    repositoryIdentity: null,
+  },
+  {
+    sidebarProjectGroupingMode: DEFAULT_CLIENT_SETTINGS.sidebarProjectGroupingMode,
+    sidebarProjectGroupingOverrides: DEFAULT_CLIENT_SETTINGS.sidebarProjectGroupingOverrides,
+  },
+);
 const NOW_ISO = "2026-03-04T12:00:00.000Z";
 const BASE_TIME_MS = Date.parse(NOW_ISO);
 const ATTACHMENT_SVG = "<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'></svg>";
@@ -5382,6 +5394,11 @@ describe("ChatView timeline estimator parity (full app)", () => {
   });
 
   it("searches projects by path and opens the latest thread for that project", async () => {
+    useUiStateStore.setState({
+      projectExpandedById: {
+        [SECOND_PROJECT_LOGICAL_KEY]: false,
+      },
+    });
     const mounted = await mountChatView({
       viewport: DEFAULT_VIEWPORT,
       snapshot: createSnapshotWithSecondaryProject(),
@@ -5433,6 +5450,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
         "Route should have changed to the latest thread for the selected project.",
       );
       expect(nextPath).toBe(serverThreadPath("thread-secondary-project" as ThreadId));
+      expect(useUiStateStore.getState().projectExpandedById[SECOND_PROJECT_LOGICAL_KEY]).toBe(true);
       expect(
         useComposerDraftStore
           .getState()
