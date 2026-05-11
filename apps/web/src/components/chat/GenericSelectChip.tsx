@@ -2,13 +2,7 @@ import { type ProviderOptionDescriptor } from "@s3tools/contracts";
 import { memo } from "react";
 
 import { Button } from "../ui/button";
-import {
-  Menu,
-  MenuPopup,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuTrigger,
-} from "../ui/menu";
+import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../ui/menu";
 import { replaceDescriptorCurrentValue } from "./traitsMenuLogic";
 import { cn } from "~/lib/utils";
 
@@ -23,13 +17,10 @@ export interface GenericSelectChipProps {
 // Fallback chip for any select descriptor that doesn't have a dedicated
 // component (e.g. OpenCode's "variant", future provider-specific selects).
 // Renders the current option's label and opens a radio menu on click.
-export const GenericSelectChip = memo(function GenericSelectChip(
-  props: GenericSelectChipProps,
-) {
+export const GenericSelectChip = memo(function GenericSelectChip(props: GenericSelectChipProps) {
   const value =
     typeof props.descriptor.currentValue === "string" ? props.descriptor.currentValue : "";
-  const label =
-    props.descriptor.options.find((option) => option.id === value)?.label ?? value;
+  const label = props.descriptor.options.find((option) => option.id === value)?.label ?? value;
   const ariaLabel = `${props.descriptor.label}: ${label}`;
   return (
     <Menu>

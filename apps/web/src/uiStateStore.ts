@@ -724,8 +724,7 @@ export const useUiStateStore = create<UiStateStore>((set) => ({
     set((state) => setThreadWorkEntryExpanded(state, threadId, entryId, expanded)),
   setDefaultAdvertisedEndpointKey: (key) =>
     set((state) => setDefaultAdvertisedEndpointKey(state, key)),
-  setReasoningIndicatorStyle: (style) =>
-    set((state) => setReasoningIndicatorStyle(state, style)),
+  setReasoningIndicatorStyle: (style) => set((state) => setReasoningIndicatorStyle(state, style)),
   toggleProject: (projectId) => set((state) => toggleProject(state, projectId)),
   setProjectExpanded: (projectId, expanded) =>
     set((state) => setProjectExpanded(state, projectId, expanded)),

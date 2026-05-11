@@ -13,6 +13,7 @@
 ## File Structure
 
 **Create:**
+
 - `apps/web/src/components/chat/traitsMenuLogic.ts` — pure selection helper (Ultrathink prompt-injection branch + descriptor replacement). Reused by chips and `TraitsMenuContent`.
 - `apps/web/src/components/chat/traitsMenuLogic.test.ts` — unit tests for the helper.
 - `apps/web/src/components/chat/ReasoningChip.tsx` — Reasoning chip with two render styles, opens menu on click.
@@ -25,6 +26,7 @@
 - `apps/web/src/uiStateStore.test.ts` — unit test for the new persisted field (creates the file if absent).
 
 **Modify:**
+
 - `apps/web/src/uiStateStore.ts` — add `reasoningIndicatorStyle` field, hydration, persist, setter.
 - `apps/web/src/components/chat/TraitsPicker.tsx` — `TraitsMenuContent` delegates the Ultrathink branch to `traitsMenuLogic`; remove `TraitsPicker` component export (no remaining wide-layout consumer). Keep `TraitsMenuContent` and `shouldRenderTraitsControls` exported.
 - `apps/web/src/components/chat/composerProviderState.tsx` — `renderProviderTraitsPicker` renamed to `renderProviderTraitsChips` and switches to rendering `<TraitsChips />`.
@@ -36,6 +38,7 @@
 ## Task 1: Add `reasoningIndicatorStyle` to `uiStateStore`
 
 **Files:**
+
 - Modify: `apps/web/src/uiStateStore.ts`
 - Test: `apps/web/src/uiStateStore.test.ts` (create)
 
@@ -45,11 +48,7 @@ Create `apps/web/src/uiStateStore.test.ts`:
 
 ```ts
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  PERSISTED_STATE_KEY,
-  persistState,
-  useUiStateStore,
-} from "./uiStateStore";
+import { PERSISTED_STATE_KEY, persistState, useUiStateStore } from "./uiStateStore";
 
 describe("uiStateStore — reasoningIndicatorStyle", () => {
   afterEach(() => {
@@ -103,12 +102,8 @@ Add the type and default near `PersistedUiState`:
 export type ReasoningIndicatorStyle = "icon-dots" | "text";
 const DEFAULT_REASONING_INDICATOR_STYLE: ReasoningIndicatorStyle = "icon-dots";
 
-function sanitizeReasoningIndicatorStyle(
-  value: unknown,
-): ReasoningIndicatorStyle {
-  return value === "text" || value === "icon-dots"
-    ? value
-    : DEFAULT_REASONING_INDICATOR_STYLE;
+function sanitizeReasoningIndicatorStyle(value: unknown): ReasoningIndicatorStyle {
+  return value === "text" || value === "icon-dots" ? value : DEFAULT_REASONING_INDICATOR_STYLE;
 }
 ```
 
@@ -160,9 +155,7 @@ return {
   threadChangedFilesExpandedById: sanitizePersistedThreadChangedFilesExpanded(
     parsed.threadChangedFilesExpandedById,
   ),
-  reasoningIndicatorStyle: sanitizeReasoningIndicatorStyle(
-    parsed.reasoningIndicatorStyle,
-  ),
+  reasoningIndicatorStyle: sanitizeReasoningIndicatorStyle(parsed.reasoningIndicatorStyle),
 };
 ```
 
@@ -207,8 +200,7 @@ interface UiStateStore extends UiState {
 export const useUiStateStore = create<UiStateStore>((set) => ({
   ...readPersistedState(),
   // ...existing actions...
-  setReasoningIndicatorStyle: (style) =>
-    set((state) => setReasoningIndicatorStyle(state, style)),
+  setReasoningIndicatorStyle: (style) => set((state) => setReasoningIndicatorStyle(state, style)),
 }));
 ```
 
@@ -229,6 +221,7 @@ git commit -m "Add reasoning indicator style to UI state store"
 ## Task 2: Extract `applyDescriptorSelection` helper into `traitsMenuLogic.ts`
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/traitsMenuLogic.ts`
 - Create: `apps/web/src/components/chat/traitsMenuLogic.test.ts`
 - Modify: `apps/web/src/components/chat/TraitsPicker.tsx`
@@ -359,9 +352,7 @@ Expected: FAIL with `Cannot find module './traitsMenuLogic'`.
 Create `apps/web/src/components/chat/traitsMenuLogic.ts`:
 
 ```ts
-import {
-  type ProviderOptionDescriptor,
-} from "@s3tools/contracts";
+import { type ProviderOptionDescriptor } from "@s3tools/contracts";
 import { applyClaudePromptEffortPrefix } from "@s3tools/shared/model";
 
 const ULTRATHINK_PROMPT_PREFIX = "Ultrathink:\n";
@@ -394,9 +385,7 @@ export interface ApplyDescriptorSelectionInput {
   primarySelectDescriptorId: string | undefined;
   ultrathinkInBodyText: boolean;
   ultrathinkPromptControlled: boolean;
-  onChangeDescriptors: (
-    next: ReadonlyArray<ProviderOptionDescriptor>,
-  ) => void;
+  onChangeDescriptors: (next: ReadonlyArray<ProviderOptionDescriptor>) => void;
   onPromptChange: (prompt: string) => void;
 }
 
@@ -471,10 +460,12 @@ Keep the boolean descriptor handler as-is (it already uses `replaceDescriptorCur
 - [ ] **Step 5: Run all related tests**
 
 Run:
+
 ```
 pnpm --filter @s3code/web test traitsMenuLogic
 pnpm --filter @s3code/web test CompactComposerControlsMenu
 ```
+
 Expected: PASS — helper tests pass; compact menu tests still pass (since logic is equivalent).
 
 - [ ] **Step 6: Commit**
@@ -491,6 +482,7 @@ git commit -m "Extract traits selection logic into shared module"
 ## Task 3: Create `ReasoningChip` component
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/ReasoningChip.tsx`
 - Create: `apps/web/src/components/chat/ReasoningChip.browser.tsx`
 
@@ -619,13 +611,7 @@ import type { ProviderOptionDescriptor } from "@s3tools/contracts";
 import { memo } from "react";
 import { BrainIcon, SparklesIcon } from "lucide-react";
 import { Button } from "../ui/button";
-import {
-  Menu,
-  MenuPopup,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuTrigger,
-} from "../ui/menu";
+import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../ui/menu";
 import { applyDescriptorSelection } from "./traitsMenuLogic";
 import { useUiStateStore } from "../../uiStateStore";
 import { cn } from "~/lib/utils";
@@ -707,10 +693,7 @@ export const ReasoningChip = memo(function ReasoningChip(props: ReasoningChipPro
             variant="ghost"
             aria-label={`Reasoning: ${abbreviation}`}
             title={`Reasoning: ${abbreviation}`}
-            className={cn(
-              "h-7 gap-1.5 rounded-md px-2 text-xs font-medium",
-              tintClass,
-            )}
+            className={cn("h-7 gap-1.5 rounded-md px-2 text-xs font-medium", tintClass)}
           />
         }
       >
@@ -726,9 +709,7 @@ export const ReasoningChip = memo(function ReasoningChip(props: ReasoningChipPro
             <BrainIcon aria-hidden="true" className="size-3" />
             <span className="inline-flex items-center gap-0.5">
               {[1, 2, 3, 4, 5].map((position) => {
-                const on =
-                  position <=
-                  (level === "ultrathink" ? 5 : LEVEL_ORDINAL[level]);
+                const on = position <= (level === "ultrathink" ? 5 : LEVEL_ORDINAL[level]);
                 return (
                   <span
                     key={position}
@@ -799,6 +780,7 @@ git commit -m "Add ReasoningChip with icon-dots and text styles"
 ## Task 4: Create `FastModeChip` component
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/FastModeChip.tsx`
 - Create: `apps/web/src/components/chat/FastModeChip.browser.tsx`
 
@@ -902,10 +884,7 @@ export const FastModeChip = memo(function FastModeChip(props: FastModeChipProps)
         );
       }}
     >
-      <ZapIcon
-        aria-hidden="true"
-        className={cn("size-3", isOn ? "fill-current" : undefined)}
-      />
+      <ZapIcon aria-hidden="true" className={cn("size-3", isOn ? "fill-current" : undefined)} />
     </Button>
   );
 });
@@ -929,6 +908,7 @@ git commit -m "Add FastModeChip toggle button"
 ## Task 5: Create `ContextWindowChip` component
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/ContextWindowChip.tsx`
 - Create: `apps/web/src/components/chat/ContextWindowChip.browser.tsx`
 
@@ -964,7 +944,9 @@ describe("ContextWindowChip", () => {
         onChangeDescriptors={onChangeDescriptors}
       />,
     );
-    const chip = page.elementLocator(document.body).getByRole("button", { name: /context window/i });
+    const chip = page
+      .elementLocator(document.body)
+      .getByRole("button", { name: /context window/i });
     await expect.element(chip).toHaveTextContent("200k");
     await chip.click();
     await page.elementLocator(document.body).getByText("1M").click();
@@ -988,13 +970,7 @@ Create `apps/web/src/components/chat/ContextWindowChip.tsx`:
 import type { ProviderOptionDescriptor } from "@s3tools/contracts";
 import { memo } from "react";
 import { Button } from "../ui/button";
-import {
-  Menu,
-  MenuPopup,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuTrigger,
-} from "../ui/menu";
+import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../ui/menu";
 import { replaceDescriptorCurrentValue } from "./traitsMenuLogic";
 import { cn } from "~/lib/utils";
 
@@ -1007,11 +983,9 @@ export interface ContextWindowChipProps {
 }
 
 export const ContextWindowChip = memo(function ContextWindowChip(props: ContextWindowChipProps) {
-  const value = typeof props.descriptor.currentValue === "string"
-    ? props.descriptor.currentValue
-    : "";
-  const label =
-    props.descriptor.options.find((option) => option.id === value)?.label ?? value;
+  const value =
+    typeof props.descriptor.currentValue === "string" ? props.descriptor.currentValue : "";
+  const label = props.descriptor.options.find((option) => option.id === value)?.label ?? value;
   return (
     <Menu>
       <MenuTrigger
@@ -1071,6 +1045,7 @@ git commit -m "Add ContextWindowChip menu trigger"
 ## Task 6: Create `ThinkingChip` component
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/ThinkingChip.tsx`
 - Create: `apps/web/src/components/chat/ThinkingChip.browser.tsx`
 
@@ -1181,6 +1156,7 @@ git commit -m "Add ThinkingChip toggle button"
 ## Task 7: Create `AgentChip` component
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/AgentChip.tsx`
 - Create: `apps/web/src/components/chat/AgentChip.browser.tsx`
 
@@ -1240,13 +1216,7 @@ Create `apps/web/src/components/chat/AgentChip.tsx`:
 import type { ProviderOptionDescriptor } from "@s3tools/contracts";
 import { memo } from "react";
 import { Button } from "../ui/button";
-import {
-  Menu,
-  MenuPopup,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuTrigger,
-} from "../ui/menu";
+import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../ui/menu";
 import { replaceDescriptorCurrentValue } from "./traitsMenuLogic";
 import { cn } from "~/lib/utils";
 
@@ -1259,11 +1229,9 @@ export interface AgentChipProps {
 }
 
 export const AgentChip = memo(function AgentChip(props: AgentChipProps) {
-  const value = typeof props.descriptor.currentValue === "string"
-    ? props.descriptor.currentValue
-    : "";
-  const label =
-    props.descriptor.options.find((option) => option.id === value)?.label ?? value;
+  const value =
+    typeof props.descriptor.currentValue === "string" ? props.descriptor.currentValue : "";
+  const label = props.descriptor.options.find((option) => option.id === value)?.label ?? value;
   return (
     <Menu>
       <MenuTrigger
@@ -1323,6 +1291,7 @@ git commit -m "Add AgentChip menu trigger"
 ## Task 8: Create `TraitsChips` container
 
 **Files:**
+
 - Create: `apps/web/src/components/chat/TraitsChips.tsx`
 - Create: `apps/web/src/components/chat/TraitsChips.browser.tsx`
 
@@ -1658,6 +1627,7 @@ git commit -m "Add TraitsChips container component"
 ## Task 9: Wire `TraitsChips` into `ChatComposer` via `composerProviderState`
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/composerProviderState.tsx`
 - Modify: `apps/web/src/components/chat/ChatComposer.tsx`
 - Modify: `apps/web/src/components/chat/composerProviderState.test.tsx` (if test calls the renamed helper directly)
@@ -1706,6 +1676,7 @@ If `renderTraitsControl` is only used by `renderProviderTraitsMenuContent` now, 
 In `apps/web/src/components/chat/ChatComposer.tsx`:
 
 1. At the top (line ~87-91), change import:
+
    ```tsx
    import {
      getComposerProviderState,
@@ -1715,6 +1686,7 @@ In `apps/web/src/components/chat/ChatComposer.tsx`:
    ```
 
 2. At line ~1146, rename:
+
    ```tsx
    const providerTraitsChips = renderProviderTraitsChips({
      provider: selectedProvider,
@@ -1730,12 +1702,14 @@ In `apps/web/src/components/chat/ChatComposer.tsx`:
 
 3. At line ~2622-2630, replace the `providerTraitsPicker` JSX with `providerTraitsChips`:
    ```tsx
-   {providerTraitsChips ? (
-     <>
-       <Separator orientation="vertical" className="mx-0.5 hidden h-4 sm:block" />
-       {providerTraitsChips}
-     </>
-   ) : null}
+   {
+     providerTraitsChips ? (
+       <>
+         <Separator orientation="vertical" className="mx-0.5 hidden h-4 sm:block" />
+         {providerTraitsChips}
+       </>
+     ) : null;
+   }
    ```
 
 - [ ] **Step 3: Update `composerProviderState.test.tsx` if it references the old name**
@@ -1745,17 +1719,20 @@ Run `grep -n renderProviderTraitsPicker apps/web/src/components/chat/composerPro
 - [ ] **Step 4: Run typecheck + tests**
 
 Run:
+
 ```
 pnpm --filter @s3code/web typecheck
 pnpm --filter @s3code/web test:browser TraitsChips
 pnpm --filter @s3code/web test composerProviderState
 ```
+
 Expected: PASS — no TS errors, chip tests still green, composer state tests pass under the new name.
 
 - [ ] **Step 5: Manual smoke test**
 
 Run: `pnpm --filter @s3code/web dev` and open the chat composer.
 Confirm:
+
 - Reasoning chip appears for Opus 4.6 with current level dots (or text per setting).
 - Fast Mode chip appears for Opus 4.6 (dim when off, yellow when on).
 - Context window chip appears with "200k" or "1M".
@@ -1777,6 +1754,7 @@ git commit -m "Render composer traits as chip row"
 ## Task 10: Add "Reasoning indicator" section to `AppearanceSettings`
 
 **Files:**
+
 - Modify: `apps/web/src/components/settings/AppearanceSettings.tsx`
 
 - [ ] **Step 1: Update `AppearanceSettings.tsx`**
@@ -1850,16 +1828,12 @@ Insert the new section before `<SettingsSection title="Color mode">`:
               <span
                 className={cn(
                   "size-3.5 rounded-full border",
-                  isSelected
-                    ? "border-primary bg-primary/80"
-                    : "border-foreground/30",
+                  isSelected ? "border-primary bg-primary/80" : "border-foreground/30",
                 )}
               />
               <span className="flex flex-grow flex-col">
                 <span className="text-sm font-medium">{option.label}</span>
-                <span className="text-muted-foreground text-xs">
-                  {option.description}
-                </span>
+                <span className="text-muted-foreground text-xs">{option.description}</span>
               </span>
               <span
                 className={cn(
@@ -1900,6 +1874,7 @@ Insert the new section before `<SettingsSection title="Color mode">`:
 - [ ] **Step 2: Manual smoke test**
 
 Run: `pnpm --filter @s3code/web dev`. Open Settings → Appearance. Confirm:
+
 - "Reasoning indicator" section appears above "Color mode".
 - Both radio cards render with previews.
 - Clicking switches the selection and the composer's Reasoning chip updates immediately.
@@ -1922,14 +1897,17 @@ git commit -m "Add reasoning indicator setting to appearance"
 ## Task 11: Cleanup — remove unused `TraitsPicker` component
 
 **Files:**
+
 - Modify: `apps/web/src/components/chat/TraitsPicker.tsx`
 
 - [ ] **Step 1: Confirm no remaining `TraitsPicker` consumers**
 
 Run:
+
 ```
 grep -rn "TraitsPicker[^M]" apps/web/src --include="*.ts*"
 ```
+
 Expected: matches only inside `TraitsPicker.tsx` itself, or no matches.
 
 If anything outside `TraitsPicker.tsx` still imports `TraitsPicker`, stop and address that import first (likely a stale test). Do not delete the export.
@@ -1946,11 +1924,13 @@ Edit `apps/web/src/components/chat/TraitsPicker.tsx`:
 - [ ] **Step 3: Run all related tests**
 
 Run:
+
 ```
 pnpm --filter @s3code/web typecheck
 pnpm --filter @s3code/web test:browser CompactComposerControlsMenu
 pnpm --filter @s3code/web test:browser TraitsChips
 ```
+
 Expected: PASS on all three.
 
 - [ ] **Step 4: Commit**
@@ -1965,6 +1945,7 @@ git commit -m "Remove unused TraitsPicker component"
 ## Self-Review
 
 **Spec coverage check:**
+
 - Goal — replace joined trait label with chip row + Reasoning style setting → Tasks 1, 3-9 ✓
 - New `TraitsChips.tsx` container → Task 8 ✓
 - ReasoningChip with two styles → Task 3 ✓
@@ -1985,6 +1966,7 @@ git commit -m "Remove unused TraitsPicker component"
 **Placeholder scan:** None found — each step contains complete code or exact commands. ✓
 
 **Type consistency:**
+
 - `ReasoningIndicatorStyle = "icon-dots" | "text"` — used consistently in Tasks 1, 3, 10. ✓
 - `applyDescriptorSelection` input shape consistent between Task 2 definition and Task 3 usage. ✓
 - `onChangeDescriptors` signature `(next: ReadonlyArray<ProviderOptionDescriptor>) => void` consistent across Tasks 3-8. ✓

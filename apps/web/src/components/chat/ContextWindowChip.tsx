@@ -2,13 +2,7 @@ import { type ProviderOptionDescriptor } from "@s3tools/contracts";
 import { memo } from "react";
 
 import { Button } from "../ui/button";
-import {
-  Menu,
-  MenuPopup,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuTrigger,
-} from "../ui/menu";
+import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../ui/menu";
 import { replaceDescriptorCurrentValue } from "./traitsMenuLogic";
 import { cn } from "~/lib/utils";
 
@@ -20,13 +14,10 @@ export interface ContextWindowChipProps {
   onChangeDescriptors: (next: ReadonlyArray<ProviderOptionDescriptor>) => void;
 }
 
-export const ContextWindowChip = memo(function ContextWindowChip(
-  props: ContextWindowChipProps,
-) {
+export const ContextWindowChip = memo(function ContextWindowChip(props: ContextWindowChipProps) {
   const value =
     typeof props.descriptor.currentValue === "string" ? props.descriptor.currentValue : "";
-  const label =
-    props.descriptor.options.find((option) => option.id === value)?.label ?? value;
+  const label = props.descriptor.options.find((option) => option.id === value)?.label ?? value;
   return (
     <Menu>
       <MenuTrigger

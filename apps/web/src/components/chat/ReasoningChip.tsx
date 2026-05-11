@@ -3,28 +3,14 @@ import { memo } from "react";
 import { BrainIcon, SparklesIcon } from "lucide-react";
 
 import { Button } from "../ui/button";
-import {
-  Menu,
-  MenuPopup,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuTrigger,
-} from "../ui/menu";
+import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../ui/menu";
 import { applyDescriptorSelection } from "./traitsMenuLogic";
 import { useUiStateStore } from "../../uiStateStore";
 import { cn } from "~/lib/utils";
 
 type EffortDescriptor = Extract<ProviderOptionDescriptor, { type: "select" }>;
 
-type LevelKey =
-  | "none"
-  | "minimal"
-  | "low"
-  | "medium"
-  | "high"
-  | "xhigh"
-  | "max"
-  | "ultrathink";
+type LevelKey = "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max" | "ultrathink";
 
 const LEVEL_ABBREVIATION: Record<LevelKey, string> = {
   none: "None",
@@ -37,8 +23,7 @@ const LEVEL_ABBREVIATION: Record<LevelKey, string> = {
   ultrathink: "Ultra",
 };
 
-const SLATE_TINT =
-  "bg-slate-400/15 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300";
+const SLATE_TINT = "bg-slate-400/15 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300";
 
 const LEVEL_TINT_CLASSES: Record<LevelKey, string> = {
   none: SLATE_TINT,

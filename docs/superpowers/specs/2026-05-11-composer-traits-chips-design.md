@@ -127,7 +127,7 @@ chip:
   prompt-injection path identically to `TraitsMenuContent`'s
   `handleSelectChange`. To avoid duplicating that logic, extract a small
   helper `applyDescriptorSelection(descriptors, descriptor, value, prompt,
-  onPromptChange)` from `TraitsMenuContent` into a shared module
+onPromptChange)` from `TraitsMenuContent` into a shared module
   (`TraitsMenuLogic.ts`) and call it from both places.
 
 The chip ordering in the bar (left to right): **Reasoning → Fast Mode →
@@ -141,7 +141,7 @@ is absent; Sonnet has no `fastMode`, so Fast chip is absent).
 function ReasoningChip({ descriptor, prompt, onPromptChange, onChange }) {
   const style = useUiStateStore((s) => s.reasoningIndicatorStyle);
   const level = currentLevel(descriptor, prompt); // includes "ultrathink"
-                                                    // from prompt detection
+  // from prompt detection
   // style === "icon-dots": render Brain SVG + 1-5 dots, plus sparkle outlier
   //   for ultrathink.
   // style === "text": render abbreviated text (Low/Med/High/XHi/Max/Ultra)
@@ -152,14 +152,14 @@ function ReasoningChip({ descriptor, prompt, onPromptChange, onChange }) {
 
 Color palette (used by both styles for consistency):
 
-| Level       | Background tint           | Text/icon color |
-|-------------|---------------------------|-----------------|
-| low         | `slate-400/18%`           | `slate-600`     |
-| medium      | `blue-500/14%`            | `blue-700`      |
-| high        | `indigo-500/14%`          | `indigo-700`    |
-| xhigh       | `violet-500/16%`          | `violet-700`    |
-| max         | `fuchsia-500/14%`         | `fuchsia-700`   |
-| ultrathink  | linear-gradient(135deg, `pink-500/18%`, `purple-500/20%`) with 1px `fuchsia-500/25%` inset ring | `fuchsia-700` |
+| Level      | Background tint                                                                                 | Text/icon color |
+| ---------- | ----------------------------------------------------------------------------------------------- | --------------- |
+| low        | `slate-400/18%`                                                                                 | `slate-600`     |
+| medium     | `blue-500/14%`                                                                                  | `blue-700`      |
+| high       | `indigo-500/14%`                                                                                | `indigo-700`    |
+| xhigh      | `violet-500/16%`                                                                                | `violet-700`    |
+| max        | `fuchsia-500/14%`                                                                               | `fuchsia-700`   |
+| ultrathink | linear-gradient(135deg, `pink-500/18%`, `purple-500/20%`) with 1px `fuchsia-500/25%` inset ring | `fuchsia-700`   |
 
 (Dark-mode equivalents resolve through the existing theme tokens; we use
 `--accent`-style adjustments where they apply, but the chip palette is
@@ -183,7 +183,7 @@ For `text` style: abbreviated label only (`Low`, `Med`, `High`, `XHi`, `Max`,
   50% opacity, 1px ring at `border` color. Click toggles to on.
 - No menu; click toggles in place.
 - `aria-pressed` reflects current state; `title` is `"Fast mode: on (click
-  to disable)"` / `"Fast mode: off (click to enable)"`.
+to disable)"` / `"Fast mode: off (click to enable)"`.
 
 ### Context Window chip
 
@@ -243,21 +243,21 @@ existing `TraitsMenuContent` menu positioning.
 
 ## Behavior table
 
-| Chip            | Click behavior                       | Visible when                                                          |
-|-----------------|--------------------------------------|-----------------------------------------------------------------------|
-| Reasoning       | Opens small radio menu (4-6 levels)  | Model has `effort` descriptor                                          |
-| Fast Mode       | Toggles boolean in place             | Model has `fastMode` descriptor                                        |
-| Context Window  | Opens small radio menu (2 options)   | Model has `contextWindow` descriptor                                   |
-| Thinking        | Toggles boolean in place             | Model has `thinking` descriptor                                        |
-| Agent           | Opens small radio menu               | Model has `agent` descriptor                                           |
+| Chip           | Click behavior                      | Visible when                         |
+| -------------- | ----------------------------------- | ------------------------------------ |
+| Reasoning      | Opens small radio menu (4-6 levels) | Model has `effort` descriptor        |
+| Fast Mode      | Toggles boolean in place            | Model has `fastMode` descriptor      |
+| Context Window | Opens small radio menu (2 options)  | Model has `contextWindow` descriptor |
+| Thinking       | Toggles boolean in place            | Model has `thinking` descriptor      |
+| Agent          | Opens small radio menu              | Model has `agent` descriptor         |
 
 ## Edge cases
 
 - **Prompt-injected Ultrathink.** When the prompt body contains
   "ultrathink", the Reasoning chip displays the Ultrathink variant (sparkle
-  + gradient) and the menu's other options are disabled, identical to the
-  current `TraitsMenuContent` behavior (lines 292-310 of `TraitsPicker.tsx`).
-  The shared `applyDescriptorSelection` helper carries this branching.
+  - gradient) and the menu's other options are disabled, identical to the
+    current `TraitsMenuContent` behavior (lines 292-310 of `TraitsPicker.tsx`).
+    The shared `applyDescriptorSelection` helper carries this branching.
 - **Custom Claude models.** `selectDescriptor("effort", ...)` may have an
   arbitrary subset of levels for custom models. The chip's color falls back
   to `medium`'s palette if the value doesn't match a known level.

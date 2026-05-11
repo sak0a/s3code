@@ -1,18 +1,9 @@
-import type {
-  ChangeRequest,
-  SourceControlIssueSummary,
-} from "@s3tools/contracts";
+import type { ChangeRequest, SourceControlIssueSummary } from "@s3tools/contracts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SidebarProjectGroupMember } from "~/sidebarProjectGrouping";
 import { ContextPickerTabs } from "../chat/ContextPickerTabs";
 import { Dialog, DialogPopup, DialogTitle } from "../ui/dialog";
-import {
-  Select,
-  SelectItem,
-  SelectPopup,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { IssueDetail } from "./IssueDetail";
 import { IssuesTab } from "./IssuesTab";
 import { PullRequestDetail } from "./PullRequestDetail";

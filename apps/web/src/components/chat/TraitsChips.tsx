@@ -25,11 +25,7 @@ import { ThinkingChip } from "./ThinkingChip";
 // Descriptor ids that have a dedicated chip component. Any other select
 // descriptor (e.g. OpenCode's "variant") falls back to GenericSelectChip.
 const REASONING_DESCRIPTOR_IDS = new Set(["effort", "reasoningEffort", "reasoning"]);
-const KNOWN_SELECT_IDS = new Set([
-  ...REASONING_DESCRIPTOR_IDS,
-  "contextWindow",
-  "agent",
-]);
+const KNOWN_SELECT_IDS = new Set([...REASONING_DESCRIPTOR_IDS, "contextWindow", "agent"]);
 
 type ProviderOptions = ReadonlyArray<ProviderOptionSelection>;
 
@@ -55,9 +51,7 @@ export type TraitsChipsProps = {
 } & Persistence;
 
 export const TraitsChips = memo(function TraitsChips(props: TraitsChipsProps) {
-  const setProviderModelOptions = useComposerDraftStore(
-    (store) => store.setProviderModelOptions,
-  );
+  const setProviderModelOptions = useComposerDraftStore((store) => store.setProviderModelOptions);
   const updateModelOptions = useCallback(
     (nextOptions: ProviderOptions | undefined) => {
       if ("onModelOptionsChange" in props && typeof props.onModelOptionsChange === "function") {

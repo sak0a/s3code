@@ -74,9 +74,7 @@ const REASONING_INDICATOR_OPTIONS = [
 export function AppearanceSettingsPanel() {
   const { theme, setTheme, resolvedTheme, activeThemeId, setActiveTheme } = useTheme();
   const reasoningIndicatorStyle = useUiStateStore((state) => state.reasoningIndicatorStyle);
-  const setReasoningIndicatorStyle = useUiStateStore(
-    (state) => state.setReasoningIndicatorStyle,
-  );
+  const setReasoningIndicatorStyle = useUiStateStore((state) => state.setReasoningIndicatorStyle);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ThemeDefinition | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -432,16 +430,12 @@ export function AppearanceSettingsPanel() {
                     <span
                       className={cn(
                         "size-3.5 rounded-full border",
-                        isSelected
-                          ? "border-primary bg-primary/80"
-                          : "border-foreground/30",
+                        isSelected ? "border-primary bg-primary/80" : "border-foreground/30",
                       )}
                     />
                     <span className="flex flex-grow flex-col">
                       <span className="font-medium text-sm">{option.label}</span>
-                      <span className="text-muted-foreground text-xs">
-                        {option.description}
-                      </span>
+                      <span className="text-muted-foreground text-xs">{option.description}</span>
                     </span>
                     <span
                       className={cn(

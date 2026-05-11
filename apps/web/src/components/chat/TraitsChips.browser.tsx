@@ -28,7 +28,9 @@ function booleanDescriptor(id: string, label: string) {
 }
 
 function modelWith(
-  optionDescriptors: ReadonlyArray<ReturnType<typeof selectDescriptor> | ReturnType<typeof booleanDescriptor>>,
+  optionDescriptors: ReadonlyArray<
+    ReturnType<typeof selectDescriptor> | ReturnType<typeof booleanDescriptor>
+  >,
 ) {
   return {
     slug: "test-model",
@@ -123,9 +125,7 @@ describe("TraitsChips", () => {
               { id: "small", label: "Small" },
               { id: "large", label: "Large", isDefault: true },
             ]),
-            selectDescriptor("agent", "Agent", [
-              { id: "build", label: "Build", isDefault: true },
-            ]),
+            selectDescriptor("agent", "Agent", [{ id: "build", label: "Build", isDefault: true }]),
           ]),
         ]}
         prompt=""
