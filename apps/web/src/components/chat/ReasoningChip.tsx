@@ -16,9 +16,19 @@ import { cn } from "~/lib/utils";
 
 type EffortDescriptor = Extract<ProviderOptionDescriptor, { type: "select" }>;
 
-type LevelKey = "low" | "medium" | "high" | "xhigh" | "max" | "ultrathink";
+type LevelKey =
+  | "none"
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max"
+  | "ultrathink";
 
 const LEVEL_ORDINAL: Record<Exclude<LevelKey, "ultrathink">, number> = {
+  none: 1,
+  minimal: 1,
   low: 1,
   medium: 2,
   high: 3,
@@ -27,6 +37,8 @@ const LEVEL_ORDINAL: Record<Exclude<LevelKey, "ultrathink">, number> = {
 };
 
 const LEVEL_ABBREVIATION: Record<LevelKey, string> = {
+  none: "None",
+  minimal: "Min",
   low: "Low",
   medium: "Med",
   high: "High",
@@ -35,8 +47,13 @@ const LEVEL_ABBREVIATION: Record<LevelKey, string> = {
   ultrathink: "Ultra",
 };
 
+const SLATE_TINT =
+  "bg-slate-400/15 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300";
+
 const LEVEL_TINT_CLASSES: Record<LevelKey, string> = {
-  low: "bg-slate-400/15 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300",
+  none: SLATE_TINT,
+  minimal: SLATE_TINT,
+  low: SLATE_TINT,
   medium: "bg-blue-500/15 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300",
   high: "bg-indigo-500/15 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300",
   xhigh: "bg-violet-500/15 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300",
@@ -47,6 +64,8 @@ const LEVEL_TINT_CLASSES: Record<LevelKey, string> = {
 
 function normalizeLevel(value: string | undefined): LevelKey {
   if (
+    value === "none" ||
+    value === "minimal" ||
     value === "low" ||
     value === "medium" ||
     value === "high" ||
