@@ -155,8 +155,8 @@ const PUBLISH_PROVIDER_OPTIONS = [
   {
     value: "forgejo",
     label: "Forgejo",
-    description: "codeberg.org",
-    host: "codeberg.org",
+    description: "Forgejo instance",
+    host: "configured Forgejo host",
     pathPlaceholder: "owner/repo",
     Icon: ForgejoIcon,
   },

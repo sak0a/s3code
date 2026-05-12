@@ -96,6 +96,8 @@ Bitbucket uses API tokens instead of a CLI tool:
 
 Forgejo uses direct REST API access. Public Codeberg repositories can be read without a token; creating repositories or pull requests requires a token. If you already use the `fj` CLI, S3Code can read the token created by `fj auth login` or `fj auth add-key`; S3Code still calls Forgejo's API directly after it has found that token.
 
+Choose one of the following setup methods.
+
 #### Option A: Use the Forgejo CLI (`fj`)
 
 1. Install `fj` on the machine running S3Code.
@@ -124,17 +126,23 @@ export S3CODE_FORGEJO_CLI_KEYS_FILE="/path/to/keys.json"
 
 #### Option B: Use S3Code environment variables
 
-1. Create an access token on your Forgejo instance with repository and pull request access.
+1. Create an access token on your Forgejo instance with read/write access to repositories and pull requests.
 2. Add these environment variables to the environment running S3Code:
    ```bash
    export S3CODE_FORGEJO_BASE_URL="https://codeberg.org"
    export S3CODE_FORGEJO_TOKEN="your-token"
    ```
-3. For multiple instances without `fj`, set `S3CODE_FORGEJO_INSTANCES` to a JSON array:
-   ```bash
-   export S3CODE_FORGEJO_INSTANCES='[{"baseUrl":"https://codeberg.org","token":"codeberg-token"},{"baseUrl":"https://forge.example.com","token":"self-hosted-token"}]'
-   ```
-4. Restart S3Code and verify the connection in **Source Control settings**
+3. Restart S3Code and verify the connection in **Source Control settings**.
+
+#### Option C: Configure multiple Forgejo instances
+
+Set `S3CODE_FORGEJO_INSTANCES` to a JSON array:
+
+```bash
+export S3CODE_FORGEJO_INSTANCES='[{"baseUrl":"https://codeberg.org","token":"codeberg-token"},{"baseUrl":"https://forge.example.com","token":"self-hosted-token"}]'
+```
+
+Then restart S3Code and verify the connection in **Source Control settings**.
 
 ### For Azure DevOps
 
