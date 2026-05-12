@@ -1234,7 +1234,7 @@ function resolveProjectRemoteLink(
 
   const candidate = (() => {
     if (preferredRemoteName) {
-      const match = repositoryIdentity.remotes.find(
+      const match = (repositoryIdentity.remotes ?? []).find(
         (remote) => remote.name === preferredRemoteName,
       );
       if (match) {

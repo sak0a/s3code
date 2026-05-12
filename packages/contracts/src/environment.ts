@@ -64,8 +64,8 @@ export const RepositoryIdentity = Schema.Struct({
   provider: Schema.optionalKey(TrimmedNonEmptyString),
   owner: Schema.optionalKey(TrimmedNonEmptyString),
   name: Schema.optionalKey(TrimmedNonEmptyString),
-  remotes: Schema.Array(RepositoryRemote).pipe(
-    Schema.withDecodingDefault(() => []),
+  remotes: Schema.optional(Schema.Array(RepositoryRemote)).pipe(
+    Schema.withDecodingDefault(Effect.succeed([] as ReadonlyArray<RepositoryRemote>)),
   ),
 });
 export type RepositoryIdentity = typeof RepositoryIdentity.Type;
