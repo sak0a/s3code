@@ -12,8 +12,7 @@ import { getModelSelectionStringOptionValue } from "@s3tools/shared/model";
 import { CopilotClient, type CopilotClientOptions, type SessionConfig } from "@github/copilot-sdk";
 import { Effect, Schema } from "effect";
 
-import { makeNodeWrapperCliPath } from "../provider/Layers/CopilotAdapter.ts";
-import { DEFAULT_BINARY_PATH } from "../provider/Layers/CopilotAdapter.types.ts";
+import { resolveCopilotCliPath } from "../provider/Layers/CopilotAdapter.ts";
 import { makeCodexTextGeneration } from "./CodexTextGeneration.ts";
 import type { TextGenerationShape } from "./TextGeneration.ts";
 import { buildThreadTitlePrompt } from "./TextGenerationPrompts.ts";
@@ -40,10 +39,8 @@ function makeClientOptions(
   cwd: string | undefined,
   environment: NodeJS.ProcessEnv,
 ): CopilotClientOptions {
-  const useCustomBinary = settings.binaryPath !== DEFAULT_BINARY_PATH;
-  const resolvedCliPath = useCustomBinary ? settings.binaryPath : makeNodeWrapperCliPath();
   return {
-    ...(resolvedCliPath !== undefined ? { cliPath: resolvedCliPath } : {}),
+    cliPath: resolveCopilotCliPath(settings, environment),
     ...(cwd ? { cwd } : {}),
     env: environment,
     logLevel: "error",

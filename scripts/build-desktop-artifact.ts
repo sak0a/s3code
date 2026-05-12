@@ -559,6 +559,52 @@ export function resolveDesktopProductName(version: string): string {
     : (desktopPackageJson.productName ?? "S3Code");
 }
 
+export const DESKTOP_BUILD_FILES = [
+  "**/*",
+  "!node_modules/@github/copilot/**",
+  "!node_modules/@github/copilot-darwin-arm64/**",
+  "!node_modules/@github/copilot-darwin-x64/**",
+  "!node_modules/@github/copilot-linux-arm64/**",
+  "!node_modules/@github/copilot-linux-x64/**",
+  "!node_modules/@github/copilot-win32-arm64/**",
+  "!node_modules/@github/copilot-win32-x64/**",
+] as const;
+
+export const EXTERNALIZED_DESKTOP_DEPENDENCY_PATHS = [
+  "node_modules/@github/copilot",
+  "node_modules/@github/copilot-darwin-arm64",
+  "node_modules/@github/copilot-darwin-x64",
+  "node_modules/@github/copilot-linux-arm64",
+  "node_modules/@github/copilot-linux-x64",
+  "node_modules/@github/copilot-win32-arm64",
+  "node_modules/@github/copilot-win32-x64",
+] as const;
+
+export const COPILOT_SDK_PACKAGE_JSON_PATH = "node_modules/@github/copilot-sdk/package.json";
+
+const pruneExternalizedDesktopDependencies = Effect.fn("pruneExternalizedDesktopDependencies")(
+  function* (stageAppDir: string) {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const sdkPackageJsonPath = path.join(stageAppDir, COPILOT_SDK_PACKAGE_JSON_PATH);
+
+    if (yield* fs.exists(sdkPackageJsonPath)) {
+      const rawPackageJson = yield* fs.readFileString(sdkPackageJsonPath);
+      const packageJson = JSON.parse(rawPackageJson) as {
+        dependencies?: Record<string, string>;
+      };
+      if (packageJson.dependencies) {
+        delete packageJson.dependencies["@github/copilot"];
+        yield* fs.writeFileString(sdkPackageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
+      }
+    }
+
+    for (const dependencyPath of EXTERNALIZED_DESKTOP_DEPENDENCY_PATHS) {
+      yield* fs.remove(path.join(stageAppDir, dependencyPath), { recursive: true, force: true });
+    }
+  },
+);
+
 const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   platform: typeof BuildPlatform.Type,
   target: string,
@@ -574,7 +620,7 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
     directories: {
       buildResources: "apps/desktop/resources",
     },
-    asarUnpack: ["node_modules/@github/copilot/**", "node_modules/@github/copilot-*/**"],
+    files: DESKTOP_BUILD_FILES,
   };
   const updateChannel = resolveDesktopUpdateChannel(version);
   const publishConfig = resolveGitHubPublishConfig(updateChannel);
@@ -818,6 +864,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
       shell: process.platform === "win32",
     })`bun install --production`,
   );
+  yield* pruneExternalizedDesktopDependencies(stageAppDir);
 
   const buildEnv: NodeJS.ProcessEnv = {
     ...process.env,

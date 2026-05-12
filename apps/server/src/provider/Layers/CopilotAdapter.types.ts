@@ -1,9 +1,3 @@
-import { randomUUID } from "node:crypto";
-import { chmodSync, existsSync, unlinkSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-
 import {
   EventId,
   ProviderDriverKind,
@@ -19,6 +13,7 @@ import {
   type ProviderSendTurnInput,
   type ThreadTokenUsageSnapshot,
 } from "@s3tools/contracts";
+import { resolveCommandPath } from "@s3tools/shared/shell";
 import type {
   CopilotClient,
   CopilotClientOptions,
@@ -98,99 +93,13 @@ export interface CopilotAdapterLiveOptions {
   readonly nativeEventLogger?: EventNdjsonLogger;
 }
 
-function unpackedAsarPath(filePath: string): string | undefined {
-  const asarSegment = ".asar/";
-  return filePath.includes(asarSegment)
-    ? filePath.replace(asarSegment, ".asar.unpacked/")
-    : undefined;
-}
-
-function firstExistingPath(candidates: ReadonlyArray<string | undefined>): string | undefined {
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    if (existsSync(candidate)) return candidate;
-    const unpacked = unpackedAsarPath(candidate);
-    if (unpacked && existsSync(unpacked)) return unpacked;
-  }
-  return undefined;
-}
-
-function resolveCopilotCliPath(): string | undefined {
-  const candidates: string[] = [];
-
-  try {
-    const req = createRequire(import.meta.url);
-    try {
-      candidates.push(req.resolve("@github/copilot/index.js"));
-    } catch {
-      // Try resolving relative to the SDK below.
-    }
-    try {
-      const sdkMain = req.resolve("@github/copilot-sdk");
-      const sdkMainDir = dirname(sdkMain);
-      for (const githubDir of [join(sdkMainDir, "..", "..", ".."), join(sdkMainDir, "..", "..")]) {
-        candidates.push(join(githubDir, "copilot", "index.js"));
-      }
-    } catch {
-      // Fall through to packaged resource candidates.
-    }
-  } catch {
-    // Fall through to SDK default CLI resolution.
-  }
-
-  const electronResourcesPath = (process as NodeJS.Process & { resourcesPath?: unknown })
-    .resourcesPath;
-  const resourcesPath =
-    typeof electronResourcesPath === "string" && electronResourcesPath.length > 0
-      ? electronResourcesPath
-      : undefined;
-  if (resourcesPath) {
-    candidates.push(
-      join(resourcesPath, "app.asar.unpacked", "node_modules", "@github", "copilot", "index.js"),
-      join(resourcesPath, "app", "node_modules", "@github", "copilot", "index.js"),
-    );
-  }
-
-  return firstExistingPath(candidates);
-}
-
-let cachedNodeWrapperCliPath: string | undefined;
-let nodeWrapperCleanupRegistered = false;
-
-function cleanupNodeWrapperCliPath(): void {
-  if (!cachedNodeWrapperCliPath) return;
-  try {
-    unlinkSync(cachedNodeWrapperCliPath);
-  } catch {
-    // Best-effort cleanup for a temporary wrapper.
-  } finally {
-    cachedNodeWrapperCliPath = undefined;
-  }
-}
-
-function registerNodeWrapperCleanup(): void {
-  if (nodeWrapperCleanupRegistered) return;
-  nodeWrapperCleanupRegistered = true;
-  process.once("exit", cleanupNodeWrapperCliPath);
-  for (const signal of ["SIGINT", "SIGTERM"] as const) {
-    process.once(signal, () => {
-      cleanupNodeWrapperCliPath();
-      process.kill(process.pid, signal);
-    });
-  }
-}
-
-export function makeNodeWrapperCliPath(): string | undefined {
-  if (!("electron" in process.versions)) return undefined;
-  if (cachedNodeWrapperCliPath) return cachedNodeWrapperCliPath;
-  const cliPath = resolveCopilotCliPath();
-  if (!cliPath) return undefined;
-  const wrapperPath = join(tmpdir(), `copilot-node-wrapper-${randomUUID()}.sh`);
-  writeFileSync(wrapperPath, `#!/bin/sh\nexec node ${JSON.stringify(cliPath)} "$@"\n`, "utf8");
-  chmodSync(wrapperPath, 0o755);
-  cachedNodeWrapperCliPath = wrapperPath;
-  registerNodeWrapperCleanup();
-  return wrapperPath;
+export function resolveCopilotCliPath(
+  settings: { readonly binaryPath: string },
+  environment: NodeJS.ProcessEnv | undefined,
+): string {
+  const binaryPath =
+    settings.binaryPath === DEFAULT_BINARY_PATH ? DEFAULT_BINARY_PATH : settings.binaryPath;
+  return resolveCommandPath(binaryPath, { env: environment ?? process.env }) ?? binaryPath;
 }
 
 export function toMessage(cause: unknown, fallback: string): string {

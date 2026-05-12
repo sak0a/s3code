@@ -30,7 +30,6 @@ import {
 import type { CopilotAdapterShape } from "../Services/CopilotAdapter.ts";
 import {
   COPILOT_DRIVER_KIND,
-  DEFAULT_BINARY_PATH,
   type ActiveCopilotSession,
   type CopilotAdapterLiveOptions,
   type PendingApprovalRequest,
@@ -38,7 +37,7 @@ import {
   type PendingUserInputRequest,
   buildThreadSnapshot,
   isSessionNotFoundError,
-  makeNodeWrapperCliPath,
+  resolveCopilotCliPath,
   selectionTargetsCopilotInstance,
   toMessage,
 } from "./CopilotAdapter.types.ts";
@@ -171,12 +170,9 @@ export const makeStartSession =
         } satisfies ProviderSession;
       }
 
-      const useCustomBinary = deps.copilotSettings.binaryPath !== DEFAULT_BINARY_PATH;
-      const resolvedCliPath = useCustomBinary
-        ? deps.copilotSettings.binaryPath
-        : makeNodeWrapperCliPath();
+      const resolvedCliPath = resolveCopilotCliPath(deps.copilotSettings, deps.environment);
       const clientOptions: CopilotClientOptions = {
-        ...(resolvedCliPath !== undefined ? { cliPath: resolvedCliPath } : {}),
+        cliPath: resolvedCliPath,
         ...(input.cwd ? { cwd: input.cwd } : {}),
         ...(deps.environment ? { env: deps.environment } : {}),
         logLevel: "error",

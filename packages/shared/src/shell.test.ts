@@ -10,6 +10,7 @@ import {
   readEnvironmentFromWindowsShell,
   readPathFromLaunchctl,
   readPathFromLoginShell,
+  resolveCommandPath,
   resolveKnownWindowsCliDirs,
   resolveWindowsEnvironment,
 } from "./shell.ts";
@@ -329,6 +330,21 @@ describe("isCommandAvailable", () => {
         env: { PATH: "", PATHEXT: ".COM;.EXE;.BAT;.CMD" },
       }),
     ).toBe(false);
+  });
+});
+
+describe("resolveCommandPath", () => {
+  it("returns the absolute executable path for commands found on PATH", () => {
+    expect(
+      resolveCommandPath("node", {
+        platform: process.platform,
+        env: { PATH: process.env.PATH ?? "" },
+      }),
+    ).toBeTypeOf("string");
+  });
+
+  it("returns null when a command is not on PATH", () => {
+    expect(resolveCommandPath("definitely-not-installed", { env: { PATH: "" } })).toBeNull();
   });
 });
 

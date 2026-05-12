@@ -3,6 +3,9 @@ import { assert, it } from "@effect/vitest";
 import { ConfigProvider, Effect, Option } from "effect";
 
 import {
+  COPILOT_SDK_PACKAGE_JSON_PATH,
+  DESKTOP_BUILD_FILES,
+  EXTERNALIZED_DESKTOP_DEPENDENCY_PATHS,
   resolveBuildOptions,
   resolveDesktopBuildIconAssets,
   resolveDesktopProductName,
@@ -35,6 +38,29 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       linuxIconPng: BRAND_ASSET_PATHS.nightlyLinuxIconPng,
       windowsIconIco: BRAND_ASSET_PATHS.nightlyWindowsIconIco,
     });
+  });
+
+  it("excludes the bundled GitHub Copilot CLI from desktop artifacts", () => {
+    assert.deepStrictEqual(DESKTOP_BUILD_FILES, [
+      "**/*",
+      "!node_modules/@github/copilot/**",
+      "!node_modules/@github/copilot-darwin-arm64/**",
+      "!node_modules/@github/copilot-darwin-x64/**",
+      "!node_modules/@github/copilot-linux-arm64/**",
+      "!node_modules/@github/copilot-linux-x64/**",
+      "!node_modules/@github/copilot-win32-arm64/**",
+      "!node_modules/@github/copilot-win32-x64/**",
+    ]);
+    assert.deepStrictEqual(EXTERNALIZED_DESKTOP_DEPENDENCY_PATHS, [
+      "node_modules/@github/copilot",
+      "node_modules/@github/copilot-darwin-arm64",
+      "node_modules/@github/copilot-darwin-x64",
+      "node_modules/@github/copilot-linux-arm64",
+      "node_modules/@github/copilot-linux-x64",
+      "node_modules/@github/copilot-win32-arm64",
+      "node_modules/@github/copilot-win32-x64",
+    ]);
+    assert.equal(COPILOT_SDK_PACKAGE_JSON_PATH, "node_modules/@github/copilot-sdk/package.json");
   });
 
   it("falls back to the default mock update port when the configured port is blank", () => {

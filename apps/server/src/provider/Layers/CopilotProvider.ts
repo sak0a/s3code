@@ -13,10 +13,9 @@ import {
   type ServerProviderDraft,
 } from "../providerSnapshot.ts";
 import { ProviderAdapterProcessError } from "../Errors.ts";
-import { makeNodeWrapperCliPath } from "./CopilotAdapter.ts";
+import { resolveCopilotCliPath } from "./CopilotAdapter.ts";
 
 const PROVIDER = ProviderDriverKind.make("copilot");
-const DEFAULT_BINARY_PATH = "copilot";
 const COPILOT_PRESENTATION = {
   displayName: "GitHub Copilot",
   showInteractionModeToggle: true,
@@ -128,10 +127,8 @@ function makeClient(
   settings: Pick<CopilotSettings, "binaryPath">,
   environment: NodeJS.ProcessEnv | undefined,
 ) {
-  const useCustomBinary = settings.binaryPath !== DEFAULT_BINARY_PATH;
-  const resolvedCliPath = useCustomBinary ? settings.binaryPath : makeNodeWrapperCliPath();
   return new CopilotClient({
-    ...(resolvedCliPath !== undefined ? { cliPath: resolvedCliPath } : {}),
+    cliPath: resolveCopilotCliPath(settings, environment),
     ...(environment ? { env: environment } : {}),
     logLevel: "error",
     autoStart: true,
@@ -247,6 +244,7 @@ export const checkCopilotProviderStatus = Effect.fn("checkCopilotProviderStatus"
         ...(formatCopilotAuthLabel(auth.authType)
           ? { label: formatCopilotAuthLabel(auth.authType) }
           : {}),
+        ...(auth.login ? { email: auth.login } : {}),
       },
       ...(auth.statusMessage ? { message: auth.statusMessage } : {}),
     };
