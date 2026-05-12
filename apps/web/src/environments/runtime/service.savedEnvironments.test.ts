@@ -307,6 +307,7 @@ describe("saved environment startup", () => {
 
     registryListener?.();
     finishHydration();
+    await vi.advanceTimersByTimeAsync(2500);
     await vi.waitFor(() => {
       expect(mockReadSavedEnvironmentBearerToken).toHaveBeenCalledTimes(1);
     });

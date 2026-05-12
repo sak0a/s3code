@@ -351,6 +351,7 @@ describe("retainThreadDetailSubscription", () => {
 
     const stop = startEnvironmentConnectionService(new QueryClient());
     savedEnvironmentRegistryListener?.();
+    await vi.advanceTimersByTimeAsync(2500);
     await vi.waitFor(() => {
       expect(mockCreateEnvironmentConnection).toHaveBeenCalledTimes(2);
       expect(
