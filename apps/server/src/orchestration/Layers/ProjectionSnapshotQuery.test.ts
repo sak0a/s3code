@@ -383,6 +383,8 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
             model: "gpt-5-codex",
           },
           customSystemPrompt: null,
+          customAvatarContentHash: null,
+          preferredRemoteName: null,
           scripts: [
             {
               id: "script-1",

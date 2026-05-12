@@ -21,9 +21,16 @@ import {
   OrchestrationEventStore,
   type OrchestrationEventStoreShape,
 } from "../../persistence/Services/OrchestrationEventStore.ts";
+import { ProjectAvatarStore } from "../../project/Services/ProjectAvatarStore.ts";
 import { RepositoryIdentityResolverLive } from "../../project/Layers/RepositoryIdentityResolver.ts";
 import { OrchestrationEngineLive } from "./OrchestrationEngine.ts";
 import { OrchestrationProjectionPipelineLive } from "./ProjectionPipeline.ts";
+
+const MockProjectAvatarStoreLive = Layer.succeed(ProjectAvatarStore, {
+  write: () => Effect.die("ProjectAvatarStore.write not implemented in test"),
+  read: () => Effect.succeed(null),
+  remove: () => Effect.void,
+});
 import { OrchestrationProjectionSnapshotQueryLive } from "./ProjectionSnapshotQuery.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import {
@@ -50,6 +57,7 @@ async function createOrchestrationSystem() {
     ),
     OrchestrationProjectionSnapshotQueryLive,
   ).pipe(
+    Layer.provide(MockProjectAvatarStoreLive),
     Layer.provide(OrchestrationEventStoreLive),
     Layer.provide(OrchestrationCommandReceiptRepositoryLive),
     Layer.provide(RepositoryIdentityResolverLive),
@@ -740,6 +748,7 @@ describe("OrchestrationEngine", () => {
       OrchestrationEngineLive.pipe(
         Layer.provide(OrchestrationProjectionSnapshotQueryLive),
         Layer.provide(OrchestrationProjectionPipelineLive),
+        Layer.provide(MockProjectAvatarStoreLive),
         Layer.provide(Layer.succeed(OrchestrationEventStore, flakyStore)),
         Layer.provide(OrchestrationCommandReceiptRepositoryLive),
         Layer.provide(RepositoryIdentityResolverLive),

@@ -1459,6 +1459,9 @@ function applyEnvironmentOrchestrationEvent(
         ...(event.payload.scripts !== undefined
           ? { scripts: mapProjectScripts(event.payload.scripts) }
           : {}),
+        ...(event.payload.preferredRemoteName !== undefined
+          ? { preferredRemoteName: event.payload.preferredRemoteName ?? null }
+          : {}),
         updatedAt: event.payload.updatedAt,
       };
       return {
@@ -1466,6 +1469,24 @@ function applyEnvironmentOrchestrationEvent(
         projectById: {
           ...state.projectById,
           [event.payload.projectId]: nextProject,
+        },
+      };
+    }
+
+    case "project.avatar-set": {
+      const project = state.projectById[event.payload.projectId];
+      if (!project) {
+        return state;
+      }
+      return {
+        ...state,
+        projectById: {
+          ...state.projectById,
+          [event.payload.projectId]: {
+            ...project,
+            customAvatarContentHash: event.payload.contentHash ?? null,
+            updatedAt: event.payload.updatedAt,
+          },
         },
       };
     }

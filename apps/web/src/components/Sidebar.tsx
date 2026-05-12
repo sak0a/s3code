@@ -1189,6 +1189,25 @@ function stripGitSuffix(path: string): string {
   return path.replace(/\/+$/g, "").replace(/\.git$/i, "");
 }
 
+function rewriteAzureDevOpsBrowserUrl(host: string, pathSegments: string[]): string | null {
+  // Azure DevOps SSH form: ssh://git@ssh.dev.azure.com/v3/<org>/<project>/<repo>
+  // scp form:              git@ssh.dev.azure.com:v3/<org>/<project>/<repo>
+  // Both produce pathSegments starting with "v3". The browse URL is
+  // https://dev.azure.com/<org>/<project>/_git/<repo>.
+  if (host !== "ssh.dev.azure.com") {
+    return null;
+  }
+  const v3Index = pathSegments.indexOf("v3");
+  if (v3Index === -1 || pathSegments.length < v3Index + 4) {
+    return null;
+  }
+  const org = pathSegments[v3Index + 1];
+  const project = pathSegments[v3Index + 2];
+  const repo = pathSegments[v3Index + 3];
+  if (!org || !project || !repo) return null;
+  return `https://dev.azure.com/${org}/${project}/_git/${repo}`;
+}
+
 function resolveRemoteUrlToBrowserUrl(remoteUrl: string): string | null {
   const trimmed = remoteUrl.trim();
   if (trimmed.length === 0) {
@@ -1210,10 +1229,12 @@ function resolveRemoteUrlToBrowserUrl(remoteUrl: string): string | null {
   if (/^(?:ssh|git):\/\//i.test(trimmed)) {
     try {
       const url = new URL(trimmed);
-      const repositoryPath = stripGitSuffix(url.pathname)
+      const segments = stripGitSuffix(url.pathname)
         .split("/")
-        .filter((segment) => segment.length > 0)
-        .join("/");
+        .filter((segment) => segment.length > 0);
+      const azureBrowserUrl = rewriteAzureDevOpsBrowserUrl(url.hostname, segments);
+      if (azureBrowserUrl) return azureBrowserUrl;
+      const repositoryPath = segments.join("/");
       return url.hostname && repositoryPath ? `https://${url.hostname}/${repositoryPath}` : null;
     } catch {
       return null;
@@ -1222,7 +1243,12 @@ function resolveRemoteUrlToBrowserUrl(remoteUrl: string): string | null {
 
   const scpStyleRemote = /^git@([^:/\s]+)[:/]([^#?\s]+)$/i.exec(trimmed);
   if (scpStyleRemote?.[1] && scpStyleRemote[2]) {
-    return `https://${scpStyleRemote[1]}/${stripGitSuffix(scpStyleRemote[2])}`;
+    const host = scpStyleRemote[1];
+    const path = stripGitSuffix(scpStyleRemote[2]);
+    const segments = path.split("/").filter((s) => s.length > 0);
+    const azureBrowserUrl = rewriteAzureDevOpsBrowserUrl(host, segments);
+    if (azureBrowserUrl) return azureBrowserUrl;
+    return `https://${host}/${path}`;
   }
 
   return null;
@@ -1667,6 +1693,9 @@ function ProjectSettingsAiSection(props: {
 
 function ProjectSettingsDialog(props: ProjectSettingsDialogProps) {
   const [section, setSection] = useState<ProjectSettingsSection>("general");
+  useEffect(() => {
+    if (props.open) setSection("general");
+  }, [props.open, props.target?.id]);
   const target = props.target;
   if (!target) return null;
 
@@ -1965,6 +1994,10 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   >("inherit");
   const [projectSettingsTarget, setProjectSettingsTarget] =
     useState<SidebarProjectGroupMember | null>(null);
+  const projectSettingsTargetRef = useRef<SidebarProjectGroupMember | null>(null);
+  useEffect(() => {
+    projectSettingsTargetRef.current = projectSettingsTarget;
+  }, [projectSettingsTarget]);
   const [projectSettingsTitle, setProjectSettingsTitle] = useState("");
   const [projectSettingsWorkspaceRoot, setProjectSettingsWorkspaceRoot] = useState("");
   const [projectSettingsCustomSystemPrompt, setProjectSettingsCustomSystemPrompt] = useState("");
@@ -3344,13 +3377,14 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
 
   const uploadProjectAvatar = useCallback(
     async (file: File) => {
-      if (!projectSettingsTarget) return;
-      const api = readEnvironmentApi(projectSettingsTarget.environmentId);
+      const initiating = projectSettingsTarget;
+      if (!initiating) return;
+      const api = readEnvironmentApi(initiating.environmentId);
       if (!api) return;
       const httpUrl = resolveEnvironmentHttpUrl({
-        environmentId: projectSettingsTarget.environmentId,
+        environmentId: initiating.environmentId,
         pathname: "/api/project-avatar/upload",
-        searchParams: { projectId: projectSettingsTarget.id },
+        searchParams: { projectId: initiating.id },
       });
       const formData = new FormData();
       formData.append("avatar", file);
@@ -3368,11 +3402,14 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         await api.orchestration.dispatchCommand({
           type: "project.avatar.set",
           commandId: newCommandId(),
-          projectId: projectSettingsTarget.id,
+          projectId: initiating.id,
           contentHash,
         });
-        setProjectSettingsCustomAvatarContentHash(contentHash);
+        if (projectSettingsTargetRef.current?.id === initiating.id) {
+          setProjectSettingsCustomAvatarContentHash(contentHash);
+        }
       } catch (error) {
+        if (projectSettingsTargetRef.current?.id !== initiating.id) return;
         toastManager.add(
           stackedThreadToast({
             type: "error",
@@ -3386,18 +3423,22 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   );
 
   const removeProjectAvatar = useCallback(async () => {
-    if (!projectSettingsTarget) return;
-    const api = readEnvironmentApi(projectSettingsTarget.environmentId);
+    const initiating = projectSettingsTarget;
+    if (!initiating) return;
+    const api = readEnvironmentApi(initiating.environmentId);
     if (!api) return;
     try {
       await api.orchestration.dispatchCommand({
         type: "project.avatar.set",
         commandId: newCommandId(),
-        projectId: projectSettingsTarget.id,
+        projectId: initiating.id,
         contentHash: null,
       });
-      setProjectSettingsCustomAvatarContentHash(null);
+      if (projectSettingsTargetRef.current?.id === initiating.id) {
+        setProjectSettingsCustomAvatarContentHash(null);
+      }
     } catch (error) {
+      if (projectSettingsTargetRef.current?.id !== initiating.id) return;
       toastManager.add(
         stackedThreadToast({
           type: "error",

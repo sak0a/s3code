@@ -256,6 +256,8 @@ const AvatarFormSchema = Schema.Struct({
   avatar: Multipart.SingleFileSchema,
 });
 
+const PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+
 export const projectAvatarUploadRouteLayer = HttpRouter.add(
   "POST",
   "/api/project-avatar/upload",
@@ -265,7 +267,9 @@ export const projectAvatarUploadRouteLayer = HttpRouter.add(
     const url = HttpServerRequest.toURL(request);
     if (Option.isNone(url)) return HttpServerResponse.text("Bad Request", { status: 400 });
     const projectId = url.value.searchParams.get("projectId");
-    if (!projectId) return HttpServerResponse.text("Missing projectId", { status: 400 });
+    if (!projectId || !PROJECT_ID_PATTERN.test(projectId)) {
+      return HttpServerResponse.text("Invalid projectId", { status: 400 });
+    }
 
     const contentLength = Number(request.headers["content-length"] ?? "0");
     if (contentLength > PROJECT_AVATAR_MAX_BYTES) {
@@ -308,7 +312,9 @@ export const projectAvatarServeRouteLayer = HttpRouter.add(
     const url = HttpServerRequest.toURL(request);
     if (Option.isNone(url)) return HttpServerResponse.text("Bad Request", { status: 400 });
     const projectId = url.value.searchParams.get("projectId");
-    if (!projectId) return HttpServerResponse.text("Missing projectId", { status: 400 });
+    if (!projectId || !PROJECT_ID_PATTERN.test(projectId)) {
+      return HttpServerResponse.text("Invalid projectId", { status: 400 });
+    }
 
     const store = yield* ProjectAvatarStore;
     const stored = yield* store.read(projectId as ProjectId);
