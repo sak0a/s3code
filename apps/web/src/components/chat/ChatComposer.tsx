@@ -92,7 +92,7 @@ import {
 import { ContextWindowMeter } from "./ContextWindowMeter";
 import { buildExpandedImagePreview, type ExpandedImagePreview } from "./ExpandedImagePreview";
 import { SourceControlContextChip } from "./SourceControlContextChip";
-import { basenameOfPath } from "../../vscode-icons";
+import { basenameOfPath } from "../../pathEntry";
 import { cn, randomUUID } from "~/lib/utils";
 import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";

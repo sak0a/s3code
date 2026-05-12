@@ -1,4 +1,3 @@
-import Mime from "@effect/platform-node/Mime";
 import { Data, Effect, FileSystem, Option, Path } from "effect";
 import { cast } from "effect/Function";
 import {
@@ -26,6 +25,8 @@ import { respondToAuthError } from "./auth/http.ts";
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment.ts";
 
 const PROJECT_FAVICON_CACHE_CONTROL = "public, max-age=3600";
+const STATIC_INDEX_CACHE_CONTROL = "no-cache";
+const STATIC_IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const FALLBACK_PROJECT_FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#6b728080" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-fallback="project-favicon"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/></svg>`;
 const OTLP_TRACES_PROXY_PATH = "/api/observability/v1/traces";
 const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "::1", "localhost"]);
@@ -51,6 +52,29 @@ export function resolveDevRedirectUrl(devUrl: URL, requestUrl: URL): string {
   redirectUrl.hash = requestUrl.hash;
   return redirectUrl.toString();
 }
+
+export function resolveStaticCacheControl(staticRelativePath: string): string {
+  const normalized = staticRelativePath.replace(/\\/g, "/");
+  if (normalized === "index.html" || normalized.endsWith("/index.html")) {
+    return STATIC_INDEX_CACHE_CONTROL;
+  }
+
+  const basename = normalized.split("/").at(-1) ?? normalized;
+  const hasBuildHash = /(?:^|[-.])[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9]+$/u.test(basename);
+  return hasBuildHash ? STATIC_IMMUTABLE_CACHE_CONTROL : STATIC_INDEX_CACHE_CONTROL;
+}
+
+const staticFileResponse = (filePath: string, staticRelativePath: string) =>
+  HttpServerResponse.file(filePath, {
+    status: 200,
+    headers: {
+      "Cache-Control": resolveStaticCacheControl(staticRelativePath),
+    },
+  }).pipe(
+    Effect.catch(() =>
+      Effect.succeed(HttpServerResponse.text("Internal Server Error", { status: 500 })),
+    ),
+  );
 
 const requireAuthenticatedRequest = Effect.gen(function* () {
   const request = yield* HttpServerRequest.HttpServerRequest;
@@ -286,29 +310,15 @@ export const staticAndDevRouteLayer = HttpRouter.add(
       .pipe(Effect.catch(() => Effect.succeed(null)));
     if (!fileInfo || fileInfo.type !== "File") {
       const indexPath = path.resolve(staticRoot, "index.html");
-      const indexData = yield* fileSystem
-        .readFile(indexPath)
+      const indexInfo = yield* fileSystem
+        .stat(indexPath)
         .pipe(Effect.catch(() => Effect.succeed(null)));
-      if (!indexData) {
+      if (!indexInfo || indexInfo.type !== "File") {
         return HttpServerResponse.text("Not Found", { status: 404 });
       }
-      return HttpServerResponse.uint8Array(indexData, {
-        status: 200,
-        contentType: "text/html; charset=utf-8",
-      });
+      return yield* staticFileResponse(indexPath, "index.html");
     }
 
-    const contentType = Mime.getType(filePath) ?? "application/octet-stream";
-    const data = yield* fileSystem
-      .readFile(filePath)
-      .pipe(Effect.catch(() => Effect.succeed(null)));
-    if (!data) {
-      return HttpServerResponse.text("Internal Server Error", { status: 500 });
-    }
-
-    return HttpServerResponse.uint8Array(data, {
-      status: 200,
-      contentType,
-    });
+    return yield* staticFileResponse(filePath, staticRelativePath);
   }),
 );

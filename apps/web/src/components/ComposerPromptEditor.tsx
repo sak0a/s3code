@@ -66,7 +66,7 @@ import {
   type TerminalContextDraft,
 } from "~/lib/terminalContext";
 import { cn } from "~/lib/utils";
-import { basenameOfPath, getVscodeIconUrlForEntry, inferEntryKindFromPath } from "~/vscode-icons";
+import { basenameOfPath, inferEntryKindFromPath } from "~/pathEntry";
 import {
   COMPOSER_INLINE_CHIP_CLASS_NAME,
   COMPOSER_INLINE_CHIP_ICON_CLASS_NAME,
@@ -74,6 +74,7 @@ import {
   COMPOSER_INLINE_SKILL_CHIP_CLASS_NAME,
 } from "./composerInlineChip";
 import { ComposerPendingTerminalContextChip } from "./chat/ComposerPendingTerminalContexts";
+import { VscodeEntryIcon } from "./chat/VscodeEntryIcon";
 import { formatProviderSkillDisplayName } from "~/providerSkillPresentation";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
@@ -138,12 +139,11 @@ function ComposerMentionDecorator(props: { path: string }) {
       spellCheck={false}
       data-composer-mention-chip="true"
     >
-      <img
-        alt=""
-        aria-hidden="true"
+      <VscodeEntryIcon
         className={COMPOSER_INLINE_CHIP_ICON_CLASS_NAME}
-        loading="lazy"
-        src={getVscodeIconUrlForEntry(props.path, inferEntryKindFromPath(props.path), theme)}
+        kind={inferEntryKindFromPath(props.path)}
+        pathValue={props.path}
+        theme={theme}
       />
       <span className={COMPOSER_INLINE_CHIP_LABEL_CLASS_NAME}>{basenameOfPath(props.path)}</span>
     </span>

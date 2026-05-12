@@ -58,6 +58,7 @@ const TEST_EPOCH = DateTime.makeUnsafe("1970-01-01T00:00:00.000Z");
 import type { ServerConfigShape } from "./config.ts";
 import { deriveServerPaths, ServerConfig } from "./config.ts";
 import { makeRoutesLayer } from "./server.ts";
+import { resolveStaticCacheControl } from "./http.ts";
 import { resolveAttachmentRelativePath } from "./attachmentPaths.ts";
 import {
   CheckpointDiffQuery,
@@ -864,6 +865,17 @@ const getWsServerUrl = (
   });
 
 it.layer(NodeServices.layer)("server router seam", (it) => {
+  it.effect("classifies static cache-control headers", () =>
+    Effect.sync(() => {
+      assert.equal(resolveStaticCacheControl("index.html"), "no-cache");
+      assert.equal(
+        resolveStaticCacheControl("assets/index-CkG8a2ff.js"),
+        "public, max-age=31536000, immutable",
+      );
+      assert.equal(resolveStaticCacheControl("favicon.svg"), "no-cache");
+    }),
+  );
+
   it.effect("serves static index content for GET / when staticDir is configured", () =>
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
@@ -876,7 +888,27 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
 
       const response = yield* HttpClient.get("/");
       assert.equal(response.status, 200);
+      assert.equal(response.headers["cache-control"], "no-cache");
       assert.include(yield* response.text, "router-static-ok");
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("serves hashed static assets with immutable cache headers", () =>
+    Effect.gen(function* () {
+      const fileSystem = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const staticDir = yield* fileSystem.makeTempDirectoryScoped({ prefix: "s3-router-static-" });
+      const assetsDir = path.join(staticDir, "assets");
+      yield* fileSystem.makeDirectory(assetsDir);
+      yield* fileSystem.writeFileString(path.join(staticDir, "index.html"), "<html></html>");
+      yield* fileSystem.writeFileString(path.join(assetsDir, "index-CkG8a2ff.js"), "ok");
+
+      yield* buildAppUnderTest({ config: { staticDir } });
+
+      const response = yield* HttpClient.get("/assets/index-CkG8a2ff.js");
+      assert.equal(response.status, 200);
+      assert.equal(response.headers["cache-control"], "public, max-age=31536000, immutable");
+      assert.equal(yield* response.text, "ok");
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 

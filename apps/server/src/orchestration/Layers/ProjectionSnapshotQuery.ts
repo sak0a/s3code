@@ -1486,6 +1486,14 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           }
           return toPersistenceSqlError("ProjectionSnapshotQuery.getShellSnapshot:query")(error);
         }),
+        Effect.tap((snapshot) =>
+          Effect.logDebug("startup shell snapshot query complete", {
+            projectCount: snapshot.projects.length,
+            worktreeCount: snapshot.worktrees?.length ?? 0,
+            threadCount: snapshot.threads.length,
+            snapshotSequence: snapshot.snapshotSequence,
+          }),
+        ),
       );
 
   const getSnapshotSequence: ProjectionSnapshotQueryShape["getSnapshotSequence"] = () =>

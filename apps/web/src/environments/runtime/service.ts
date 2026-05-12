@@ -73,6 +73,11 @@ import {
   derivePhysicalProjectKey,
 } from "../../logicalProject";
 import { getClientSettings } from "~/hooks/useSettings";
+import { markStartupPhase, measureStartupPhase } from "~/perf/startupInstrumentation";
+import {
+  orderSavedEnvironmentConnectionQueue,
+  runSavedEnvironmentConnectionQueue,
+} from "./savedEnvironmentConnectionScheduler";
 
 type EnvironmentServiceState = {
   readonly queryClient: QueryClient;
@@ -140,8 +145,16 @@ const THREAD_DETAIL_SUBSCRIPTION_IDLE_EVICTION_MS = 15 * 60 * 1000;
 const MAX_CACHED_THREAD_DETAIL_SUBSCRIPTIONS = 32;
 const BROWSER_RESUME_RECONNECT_COOLDOWN_MS = 2_000;
 const INITIAL_SERVER_CONFIG_SNAPSHOT_WAIT_MS = 150;
+const SAVED_ENVIRONMENT_STARTUP_DELAY_MS = 2500;
+const SAVED_ENVIRONMENT_CONNECT_CONCURRENCY = 2;
 const NOOP = () => undefined;
 const SSH_HTTP_STATUS_RE = /^\[ssh_http:(\d+)\]\s/u;
+
+let primaryShellSnapshotApplied = false;
+let resolvePrimaryShellSnapshotApplied: (() => void) | null = null;
+let primaryShellSnapshotAppliedPromise = new Promise<void>((resolve) => {
+  resolvePrimaryShellSnapshotApplied = resolve;
+});
 
 function createDeferredPromise<T>() {
   let resolve: ((value: T) => void) | null = null;
@@ -156,6 +169,28 @@ function createDeferredPromise<T>() {
       resolve = null;
     },
   };
+}
+
+function markPrimaryShellSnapshotApplied(): void {
+  if (primaryShellSnapshotApplied) {
+    return;
+  }
+  primaryShellSnapshotApplied = true;
+  resolvePrimaryShellSnapshotApplied?.();
+  resolvePrimaryShellSnapshotApplied = null;
+}
+
+async function waitForPrimaryShellSnapshotApplied(timeoutMs: number): Promise<void> {
+  if (primaryShellSnapshotApplied || !getPrimaryKnownEnvironment()?.environmentId) {
+    return;
+  }
+
+  await Promise.race([
+    primaryShellSnapshotAppliedPromise,
+    new Promise<void>((resolve) => {
+      globalThis.setTimeout(resolve, timeoutMs);
+    }),
+  ]);
 }
 
 async function waitForConfigSnapshot(
@@ -1088,6 +1123,10 @@ function createEnvironmentConnectionHandlers() {
   return {
     applyShellEvent,
     syncShellSnapshot: (snapshot: OrchestrationShellSnapshot, environmentId: EnvironmentId) => {
+      const primaryEnvironmentId = getPrimaryKnownEnvironment()?.environmentId;
+      if (environmentId === primaryEnvironmentId) {
+        markStartupPhase("primary-shell-snapshot-received");
+      }
       if (
         !shouldApplyProjectionSnapshot({
           current: readLastAppliedProjectionVersion(environmentId),
@@ -1098,6 +1137,21 @@ function createEnvironmentConnectionHandlers() {
       }
 
       useStore.getState().syncServerShellSnapshot(snapshot, environmentId);
+      if (environmentId === primaryEnvironmentId) {
+        markStartupPhase("primary-shell-snapshot-applied");
+        measureStartupPhase(
+          "primary-shell-snapshot",
+          "primary-shell-snapshot-received",
+          "primary-shell-snapshot-applied",
+        );
+        markStartupPhase("primary-shell-usable");
+        measureStartupPhase(
+          "primary-shell-ready",
+          "root-before-load-ready",
+          "primary-shell-usable",
+        );
+        markPrimaryShellSnapshotApplied();
+      }
       markAppliedProjectionSnapshot(environmentId, snapshot);
       reconcileThreadDetailSubscriptionsForEnvironment(
         environmentId,
@@ -1140,6 +1194,9 @@ function createPrimaryEnvironmentClient(
       getConnectionLabel: () => connectionLabel,
       getVersionMismatchHint: () =>
         resolveServerConfigVersionMismatch(getServerConfig())?.hint ?? null,
+      onOpen: () => {
+        markStartupPhase("primary-ws-open");
+      },
     }),
   );
 }
@@ -1470,9 +1527,13 @@ async function syncSavedEnvironmentConnections(
   await Promise.all(
     staleEnvironmentIds.map((environmentId) => disconnectSavedEnvironment(environmentId)),
   );
-  await Promise.all(
-    records.map((record) => ensureSavedEnvironmentConnection(record).catch(() => undefined)),
-  );
+  await waitForPrimaryShellSnapshotApplied(SAVED_ENVIRONMENT_STARTUP_DELAY_MS);
+  await runSavedEnvironmentConnectionQueue(orderSavedEnvironmentConnectionQueue(records), {
+    concurrency: SAVED_ENVIRONMENT_CONNECT_CONCURRENCY,
+    connect: async (record) => {
+      await ensureSavedEnvironmentConnection(record).catch(() => undefined);
+    },
+  });
 }
 
 function stopActiveService() {
@@ -1813,6 +1874,10 @@ export async function resetEnvironmentServiceForTests(): Promise<void> {
   stopActiveService();
   lastBrowserHiddenAt = null;
   lastBrowserResumeReconnectAt = Number.NEGATIVE_INFINITY;
+  primaryShellSnapshotApplied = false;
+  primaryShellSnapshotAppliedPromise = new Promise<void>((resolve) => {
+    resolvePrimaryShellSnapshotApplied = resolve;
+  });
   lastAppliedProjectionVersionByEnvironment.clear();
   pendingSavedEnvironmentConnections.clear();
   for (const key of Array.from(threadDetailSubscriptions.keys())) {
