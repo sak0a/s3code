@@ -307,8 +307,8 @@ S3_NODE_SCRIPT_PATH=@@S3_NODE_SCRIPT_PATH@@
 if [ -n "$S3_NODE_SCRIPT_PATH" ]; then
   exec node "$S3_NODE_SCRIPT_PATH" "$@"
 fi
-if command -v s3 >/dev/null 2>&1; then
-  exec s3 "$@"
+if command -v s3code >/dev/null 2>&1; then
+  exec s3code "$@"
 fi
 if command -v npx >/dev/null 2>&1; then
   exec npx --yes @@S3_PACKAGE_SPEC@@ "$@"
@@ -316,7 +316,7 @@ fi
 if command -v npm >/dev/null 2>&1; then
   exec npm exec --yes @@S3_PACKAGE_SPEC@@ -- "$@"
 fi
-printf 'Remote host is missing the s3 CLI and could not install @@S3_PACKAGE_SPEC@@ because npx and npm are unavailable on PATH.\\n' >&2
+printf 'Remote host is missing the s3code CLI and could not install @@S3_PACKAGE_SPEC@@ because npx and npm are unavailable on PATH.\\n' >&2
 exit 1
 `;
 
@@ -497,7 +497,7 @@ fi
 `;
 
 export function buildRemoteS3RunnerScript(input?: RemoteS3RunnerOptions): string {
-  const packageSpec = shellSingleQuote(input?.packageSpec?.trim() || "s3@latest");
+  const packageSpec = shellSingleQuote(input?.packageSpec?.trim() || "s3code@latest");
   const nodeScriptPath = input?.nodeScriptPath?.trim() || "";
   return stripTrailingNewlines(
     applyScriptPlaceholders(REMOTE_RUNNER_SCRIPT, {

@@ -21,7 +21,7 @@ This document covers the unified release workflow for stable and nightly desktop
   - Nightly runs are always GitHub prereleases and never marked latest.
   - Automatically generated release notes are pinned to the previous tag in the same channel, so stable compares to the previous stable tag and nightly compares to the previous nightly tag.
 - Includes Electron auto-update metadata (for example `latest*.yml`, `nightly*.yml`, and `*.blockmap`) in release assets.
-- Publishes the CLI package (`apps/server`, npm package `s3`) with OIDC trusted publishing from the same workflow file:
+- Publishes the CLI package (`apps/server`, npm package `s3code`) with OIDC trusted publishing from the same workflow file:
   - stable releases publish npm dist-tag `latest`
   - nightly releases publish npm dist-tag `nightly`
 - Signing is optional and auto-detected per platform from secrets.
@@ -39,7 +39,7 @@ This document covers the unified release workflow for stable and nightly desktop
   - `make_latest` is always `false`
 - Uses the next stable patch version as the nightly base. For example, `0.0.17` produces nightlies on `0.0.18-nightly.*`.
 - Publishes Electron auto-update metadata to the dedicated `nightly` updater channel, so desktop users can opt into that track independently from stable.
-- Publishes the CLI package (`apps/server`, npm package `s3`) to the `nightly` npm dist-tag using the same nightly version.
+- Publishes the CLI package (`apps/server`, npm package `s3code`) to the `nightly` npm dist-tag using the same nightly version.
 - Does not commit version bumps back to `main`.
 
 ## Desktop auto-update notes
@@ -71,7 +71,7 @@ the package version to the release tag version.
 
 Checklist:
 
-1. Confirm npm org/user owns package `s3` (or rename package first if needed).
+1. Confirm npm org/user owns package `s3code` (or rename package first if needed).
 2. In npm package settings, configure Trusted Publisher:
    - Provider: GitHub Actions
    - Repository: this repo

@@ -1,5 +1,5 @@
 {
-  "name": "s3",
+  "name": "s3code",
   "version": "0.0.24",
   "license": "MIT",
   "repository": {
@@ -8,7 +8,7 @@
     "directory": "apps/server"
   },
   "bin": {
-    "s3": "./dist/bin.mjs"
+    "s3code": "./dist/bin.mjs"
   },
   "files": [
     "dist"

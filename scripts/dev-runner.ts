@@ -28,10 +28,10 @@ const MODE_ARGS = {
     "--ui=tui",
     "--filter=@s3tools/contracts",
     "--filter=@s3tools/web",
-    "--filter=s3",
+    "--filter=s3code",
     "--parallel",
   ],
-  "dev:server": ["run", "dev", "--filter=s3"],
+  "dev:server": ["run", "dev", "--filter=s3code"],
   "dev:web": ["run", "dev", "--filter=@s3tools/web"],
   "dev:desktop": ["run", "dev", "--filter=@s3tools/desktop", "--filter=@s3tools/web", "--parallel"],
 } as const satisfies Record<string, ReadonlyArray<string>>;

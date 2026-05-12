@@ -79,14 +79,14 @@ describe("ssh command", () => {
           appVersion: "0.0.17",
           updateChannel: "latest",
         }),
-        "s3@0.0.17",
+        "s3code@0.0.17",
       );
       assert.equal(
         resolveRemoteS3CliPackageSpec({
           appVersion: "0.0.17-nightly.20260415.44",
           updateChannel: "nightly",
         }),
-        "s3@0.0.17-nightly.20260415.44",
+        "s3code@0.0.17-nightly.20260415.44",
       );
       assert.equal(
         resolveRemoteS3CliPackageSpec({
@@ -94,7 +94,7 @@ describe("ssh command", () => {
           updateChannel: "nightly",
           isDevelopment: true,
         }),
-        "s3@nightly",
+        "s3code@nightly",
       );
       assert.equal(
         resolveRemoteS3CliPackageSpec({
@@ -102,7 +102,7 @@ describe("ssh command", () => {
           updateChannel: "latest",
           isDevelopment: true,
         }),
-        "s3@nightly",
+        "s3code@nightly",
       );
     }),
   );

@@ -84,20 +84,20 @@ describe("ssh tunnel scripts", () => {
     const script = buildRemoteS3RunnerScript();
 
     assert.include(script, "S3_NODE_SCRIPT_PATH=''");
-    assert.include(script, 'exec s3 "$@"');
-    assert.include(script, "exec npx --yes 's3@latest' \"$@\"");
-    assert.include(script, "exec npm exec --yes 's3@latest' -- \"$@\"");
-    assert.include(script, "could not install 's3@latest'");
+    assert.include(script, 'exec s3code "$@"');
+    assert.include(script, "exec npx --yes 's3code@latest' \"$@\"");
+    assert.include(script, "exec npm exec --yes 's3code@latest' -- \"$@\"");
+    assert.include(script, "could not install 's3code@latest'");
   });
 
   it("shell-quotes package specs in the remote s3 runner", () => {
     const script = buildRemoteS3RunnerScript({
-      packageSpec: "s3@nightly; touch /tmp/s3-owned",
+      packageSpec: "s3code@nightly; touch /tmp/s3code-owned",
     });
 
-    assert.include(script, "exec npx --yes 's3@nightly; touch /tmp/s3-owned' \"$@\"");
-    assert.include(script, "exec npm exec --yes 's3@nightly; touch /tmp/s3-owned' -- \"$@\"");
-    assert.notInclude(script, "exec npx --yes s3@nightly; touch /tmp/s3-owned");
+    assert.include(script, "exec npx --yes 's3code@nightly; touch /tmp/s3code-owned' \"$@\"");
+    assert.include(script, "exec npm exec --yes 's3code@nightly; touch /tmp/s3code-owned' -- \"$@\"");
+    assert.notInclude(script, "exec npx --yes s3code@nightly; touch /tmp/s3code-owned");
   });
 
   it("builds the remote s3 runner with a node script override", () => {
@@ -131,14 +131,17 @@ describe("ssh tunnel scripts", () => {
     assert.include(buildRemoteLaunchScript(), '--base-dir "$DEFAULT_SERVER_HOME"');
     assert.notInclude(buildRemoteLaunchScript(), "server-home");
     assert.include(buildRemoteLaunchScript(), "Remote S3Code server did not become ready");
-    assert.include(buildRemoteLaunchScript({ packageSpec: "s3@nightly" }), "s3@nightly");
+    assert.include(buildRemoteLaunchScript({ packageSpec: "s3code@nightly" }), "s3code@nightly");
     assert.include(
       buildRemotePairingScript(target),
       '"$RUNNER_FILE" auth pairing create --base-dir "$PAIRING_BASE_DIR" --json',
     );
     assert.include(buildRemotePairingScript(target), 'PAIRING_BASE_DIR="$DEFAULT_SERVER_HOME"');
     assert.notInclude(buildRemotePairingScript(target), "server-home");
-    assert.include(buildRemotePairingScript(target, { packageSpec: "s3@nightly" }), "s3@nightly");
+    assert.include(
+      buildRemotePairingScript(target, { packageSpec: "s3code@nightly" }),
+      "s3code@nightly",
+    );
     assert.include(
       buildRemoteStopScript(target),
       'if [ "$REMOTE_MANAGED" != "external" ] && [ -n "$REMOTE_PID" ]',
