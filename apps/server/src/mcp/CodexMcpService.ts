@@ -9,6 +9,7 @@ import {
   McpListWorkspacesResult,
   McpOauthLoginInput,
   McpOauthLoginResult,
+  McpProviderSupport,
   McpServer,
   McpServerConfig,
   McpServerEnabledInput,
@@ -21,6 +22,7 @@ import {
   McpStartupStatus,
   McpWorkspace,
   McpWorkspaceId,
+  ProviderDriverKind,
   ProviderInstanceId,
 } from "@s3tools/contracts";
 import { Cause, Duration, Effect, Exit, FileSystem, Layer, Path, Schema } from "effect";
@@ -41,7 +43,11 @@ import { deriveProviderInstanceConfigMap } from "../provider/Layers/ProviderInst
 import { buildCodexInitializeParams } from "../provider/Layers/CodexProvider.ts";
 import { mergeProviderInstanceEnvironment } from "../provider/ProviderInstanceEnvironment.ts";
 
-const CODEX_DRIVER = "codex";
+const CODEX_DRIVER = ProviderDriverKind.make("codex");
+const CLAUDE_DRIVER = ProviderDriverKind.make("claudeAgent");
+const COPILOT_DRIVER = ProviderDriverKind.make("copilot");
+const CURSOR_DRIVER = ProviderDriverKind.make("cursor");
+const OPENCODE_DRIVER = ProviderDriverKind.make("opencode");
 const MCP_APP_SERVER_TIMEOUT = Duration.seconds(25);
 const MCP_STATUS_PAGE_LIMIT = 100;
 const MCP_STATUS_MAX_PAGES = 10;
@@ -56,6 +62,7 @@ interface WorkspaceRuntime {
 
 interface WorkspaceDiscovery {
   readonly runtimes: ReadonlyArray<WorkspaceRuntime>;
+  readonly providers: ReadonlyArray<McpProviderSupport>;
   readonly issues: McpListWorkspacesResult["issues"];
 }
 
@@ -80,6 +87,83 @@ function normalizeUnknownError(cause: unknown, fallback: string): McpSettingsErr
 
 function workspaceIdFor(sharedHomePath: string): McpWorkspaceId {
   return McpWorkspaceId.make(`codex:${Buffer.from(sharedHomePath, "utf8").toString("base64url")}`);
+}
+
+function mcpSupportForDriver(
+  driver: ProviderDriverKind,
+): Pick<McpProviderSupport, "status" | "message"> {
+  switch (driver) {
+    case CODEX_DRIVER:
+      return {
+        status: "managed",
+        message: "S3Code can list, edit, reload, and start OAuth for Codex MCP servers.",
+      };
+    case COPILOT_DRIVER:
+      return {
+        status: "external",
+        message:
+          "GitHub Copilot can emit MCP tool calls, but its MCP server configuration is managed outside this panel.",
+      };
+    case CLAUDE_DRIVER:
+      return {
+        status: "external",
+        message:
+          "Claude MCP tool activity can be displayed, but Claude server configuration is managed outside this panel.",
+      };
+    case OPENCODE_DRIVER:
+      return {
+        status: "external",
+        message:
+          "OpenCode MCP setup is managed by OpenCode; S3Code only displays reported MCP activity.",
+      };
+    case CURSOR_DRIVER:
+      return {
+        status: "unsupported",
+        message: "Cursor ACP sessions are currently started without MCP server bindings in S3Code.",
+      };
+    default:
+      return {
+        status: "unsupported",
+        message: "This driver has no MCP management integration registered in S3Code.",
+      };
+  }
+}
+
+function buildProviderSupport(input: {
+  readonly instanceId: ProviderInstanceId;
+  readonly driver: ProviderDriverKind;
+  readonly displayName: string | undefined;
+  readonly accentColor: string | undefined;
+  readonly enabled: boolean;
+  readonly workspaceId?: McpWorkspaceId | undefined;
+}): McpProviderSupport {
+  const support = mcpSupportForDriver(input.driver);
+  return Schema.decodeSync(McpProviderSupport)({
+    instanceId: input.instanceId,
+    driver: input.driver,
+    ...(input.displayName ? { displayName: input.displayName } : {}),
+    ...(input.accentColor ? { accentColor: input.accentColor } : {}),
+    enabled: input.enabled,
+    status: support.status,
+    ...(input.workspaceId ? { workspaceId: input.workspaceId } : {}),
+    message: input.enabled
+      ? support.message
+      : "This provider instance is disabled. Enable it before using MCP features.",
+  });
+}
+
+function sortProviderSupport(left: McpProviderSupport, right: McpProviderSupport): number {
+  const statusRank: Record<McpProviderSupport["status"], number> = {
+    managed: 0,
+    external: 1,
+    unsupported: 2,
+  };
+  return (
+    statusRank[left.status] - statusRank[right.status] ||
+    Number(right.enabled) - Number(left.enabled) ||
+    left.driver.localeCompare(right.driver) ||
+    left.instanceId.localeCompare(right.instanceId)
+  );
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
@@ -405,13 +489,28 @@ export const makeCodexMcpService = Effect.gen(function* () {
 
   const discoverWorkspaces = Effect.gen(function* () {
     const settings = yield* serverSettings.getSettings;
-    const entries = Object.entries(deriveProviderInstanceConfigMap(settings)).filter(
-      ([, instance]) => String(instance.driver) === CODEX_DRIVER && (instance.enabled ?? true),
+    const entries = Object.entries(deriveProviderInstanceConfigMap(settings));
+    const providerSupport = new Map<string, McpProviderSupport>();
+    for (const [rawInstanceId, instance] of entries) {
+      const instanceId = rawInstanceId as ProviderInstanceId;
+      providerSupport.set(
+        instanceId,
+        buildProviderSupport({
+          instanceId,
+          driver: instance.driver,
+          displayName: instance.displayName,
+          accentColor: instance.accentColor,
+          enabled: instance.enabled ?? true,
+        }),
+      );
+    }
+    const codexEntries = entries.filter(
+      ([, instance]) => instance.driver === CODEX_DRIVER && (instance.enabled ?? true),
     );
     const groups = new Map<string, WorkspaceRuntime>();
     const issues: Array<McpListWorkspacesResult["issues"][number]> = [];
 
-    for (const [rawInstanceId, instance] of entries) {
+    for (const [rawInstanceId, instance] of codexEntries) {
       const instanceId = rawInstanceId as ProviderInstanceId;
       const decoded = Schema.decodeUnknownExit(CodexSettings)(instance.config ?? {});
       if (Exit.isFailure(decoded)) {
@@ -440,6 +539,17 @@ export const makeCodexMcpService = Effect.gen(function* () {
       }
 
       const workspaceId = workspaceIdFor(layout.sharedHomePath);
+      providerSupport.set(
+        instanceId,
+        buildProviderSupport({
+          instanceId,
+          driver: instance.driver,
+          displayName: instance.displayName,
+          accentColor: instance.accentColor,
+          enabled: instance.enabled ?? true,
+          workspaceId,
+        }),
+      );
       const usage = {
         instanceId,
         ...(instance.displayName ? { displayName: instance.displayName } : {}),
@@ -476,7 +586,8 @@ export const makeCodexMcpService = Effect.gen(function* () {
     const runtimes = [...groups.values()].toSorted((left, right) =>
       left.workspace.displayPath.localeCompare(right.workspace.displayPath),
     );
-    return { runtimes, issues };
+    const providers = [...providerSupport.values()].toSorted(sortProviderSupport);
+    return { runtimes, providers, issues };
   }).pipe(
     Effect.mapError((cause) => normalizeUnknownError(cause, "Failed to discover MCP workspaces.")),
   );
@@ -616,8 +727,9 @@ export const makeCodexMcpService = Effect.gen(function* () {
 
   return {
     listWorkspaces: discoverWorkspaces.pipe(
-      Effect.map(({ runtimes, issues }) => ({
+      Effect.map(({ runtimes, providers, issues }) => ({
         workspaces: runtimes.map((runtime) => runtime.workspace),
+        providers,
         issues,
       })),
     ),

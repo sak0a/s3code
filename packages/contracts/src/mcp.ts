@@ -1,7 +1,7 @@
 import { Effect, Schema } from "effect";
 
 import { TrimmedNonEmptyString, TrimmedString } from "./baseSchemas.ts";
-import { ProviderInstanceId } from "./providerInstance.ts";
+import { ProviderDriverKind, ProviderInstanceId } from "./providerInstance.ts";
 
 const MCP_SERVER_NAME_MAX_CHARS = 64;
 const MCP_SERVER_NAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
@@ -39,8 +39,24 @@ export const McpWorkspaceIssue = Schema.Struct({
 });
 export type McpWorkspaceIssue = typeof McpWorkspaceIssue.Type;
 
+export const McpProviderSupportStatus = Schema.Literals(["managed", "external", "unsupported"]);
+export type McpProviderSupportStatus = typeof McpProviderSupportStatus.Type;
+
+export const McpProviderSupport = Schema.Struct({
+  instanceId: ProviderInstanceId,
+  driver: ProviderDriverKind,
+  displayName: Schema.optionalKey(TrimmedNonEmptyString),
+  accentColor: Schema.optionalKey(TrimmedNonEmptyString),
+  enabled: Schema.Boolean,
+  status: McpProviderSupportStatus,
+  workspaceId: Schema.optionalKey(McpWorkspaceId),
+  message: TrimmedNonEmptyString,
+});
+export type McpProviderSupport = typeof McpProviderSupport.Type;
+
 export const McpListWorkspacesResult = Schema.Struct({
   workspaces: Schema.Array(McpWorkspace),
+  providers: Schema.Array(McpProviderSupport).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
   issues: Schema.Array(McpWorkspaceIssue).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
 });
 export type McpListWorkspacesResult = typeof McpListWorkspacesResult.Type;
