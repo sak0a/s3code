@@ -473,6 +473,8 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
             projectMetadataDir: event.payload.projectMetadataDir ?? DEFAULT_PROJECT_METADATA_DIR,
             defaultModelSelection: event.payload.defaultModelSelection,
             customSystemPrompt: event.payload.customSystemPrompt ?? null,
+            customAvatarContentHash: null,
+            preferredRemoteName: null,
             scripts: event.payload.scripts,
             createdAt: event.payload.createdAt,
             updatedAt: event.payload.updatedAt,
@@ -503,6 +505,24 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
               ? { customSystemPrompt: event.payload.customSystemPrompt }
               : {}),
             ...(event.payload.scripts !== undefined ? { scripts: event.payload.scripts } : {}),
+            ...(event.payload.preferredRemoteName !== undefined
+              ? { preferredRemoteName: event.payload.preferredRemoteName }
+              : {}),
+            updatedAt: event.payload.updatedAt,
+          });
+          return;
+        }
+
+        case "project.avatar-set": {
+          const existingAvatarRow = yield* projectionProjectRepository.getById({
+            projectId: event.payload.projectId,
+          });
+          if (Option.isNone(existingAvatarRow)) {
+            return;
+          }
+          yield* projectionProjectRepository.upsert({
+            ...existingAvatarRow.value,
+            customAvatarContentHash: event.payload.contentHash,
             updatedAt: event.payload.updatedAt,
           });
           return;

@@ -214,6 +214,8 @@ export function projectEvent(
             projectMetadataDir: payload.projectMetadataDir,
             defaultModelSelection: payload.defaultModelSelection,
             customSystemPrompt: payload.customSystemPrompt ?? null,
+            customAvatarContentHash: null as string | null,
+            preferredRemoteName: null as string | null,
             scripts: payload.scripts,
             createdAt: payload.createdAt,
             updatedAt: payload.updatedAt,
