@@ -65,6 +65,13 @@ import {
 } from "./serverExposure.ts";
 import { DesktopSshEnvironmentBridge, resolveRemoteS3CliPackageSpec } from "./sshEnvironment.ts";
 import { syncShellEnvironment } from "./syncShellEnvironment.ts";
+import {
+  applyShellEnvironmentCache,
+  createShellEnvironmentCacheRecord,
+  readShellEnvironmentCache,
+  writeShellEnvironmentCache,
+} from "./shellEnvironmentCache.ts";
+import { createStartupTiming, formatStartupTimingEntry } from "./startupTiming.ts";
 import { waitForBackendStartupReady } from "./backendStartupReadiness.ts";
 import { getAutoUpdateDisabledReason, shouldBroadcastDownloadProgress } from "./updateState.ts";
 import { doesVersionMatchDesktopUpdateChannel } from "./updateChannels.ts";
@@ -86,7 +93,8 @@ import { resolveDesktopAppBranding } from "./appBranding.ts";
 import { bindFirstRevealTrigger, type RevealSubscription } from "./windowReveal.ts";
 import { resolveTailscaleAdvertisedEndpoints } from "./tailscaleEndpointProvider.ts";
 
-syncShellEnvironment();
+const desktopStartupTiming = createStartupTiming();
+desktopStartupTiming.mark("desktop.launch");
 
 const PICK_FOLDER_CHANNEL = "desktop:pick-folder";
 const CONFIRM_CHANNEL = "desktop:confirm";
@@ -118,6 +126,7 @@ const STATE_DIR = Path.join(BASE_DIR, "userdata");
 const DESKTOP_SETTINGS_PATH = Path.join(STATE_DIR, "desktop-settings.json");
 const CLIENT_SETTINGS_PATH = Path.join(STATE_DIR, "client-settings.json");
 const SAVED_ENVIRONMENT_REGISTRY_PATH = Path.join(STATE_DIR, "saved-environments.json");
+const SHELL_ENVIRONMENT_CACHE_PATH = Path.join(STATE_DIR, "shell-environment-cache.json");
 const DESKTOP_SCHEME = "s3";
 const ROOT_DIR = Path.resolve(__dirname, "../../..");
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
@@ -318,6 +327,58 @@ function backendChildEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
+function synchronizeDesktopShellEnvironment(reason: string): void {
+  markDesktopStartupPhase("desktop.shell-env.refresh.start", `reason=${reason}`);
+  syncShellEnvironment(process.env, {
+    logWarning: (message, error) => {
+      writeDesktopLogHeader(
+        `shell environment warning message=${sanitizeLogValue(message)} detail=${sanitizeLogValue(formatErrorMessage(error))}`,
+      );
+      console.warn(`[desktop] ${message}`, error instanceof Error ? error.message : (error ?? ""));
+    },
+  });
+  try {
+    writeShellEnvironmentCache(
+      SHELL_ENVIRONMENT_CACHE_PATH,
+      createShellEnvironmentCacheRecord({ env: process.env }),
+    );
+  } catch (error) {
+    writeDesktopLogHeader(
+      `shell environment cache write failed message=${sanitizeLogValue(formatErrorMessage(error))}`,
+    );
+  }
+  markDesktopStartupPhase("desktop.shell-env.refresh.end", `reason=${reason}`);
+}
+
+function prepareDesktopShellEnvironmentForBackend(): "cache-hit" | "cache-miss" {
+  markDesktopStartupPhase("desktop.shell-env.prepare.start");
+  const cached = readShellEnvironmentCache(SHELL_ENVIRONMENT_CACHE_PATH);
+  if (cached.kind === "hit") {
+    applyShellEnvironmentCache(process.env, cached.record);
+    markDesktopStartupPhase(
+      "desktop.shell-env.cache.hit",
+      `capturedAt=${cached.record.capturedAt}`,
+    );
+    return "cache-hit";
+  }
+
+  markDesktopStartupPhase("desktop.shell-env.cache.miss", `reason=${cached.reason}`);
+  synchronizeDesktopShellEnvironment("cache-miss");
+  return "cache-miss";
+}
+
+function scheduleDesktopShellEnvironmentRefresh(reason: string): void {
+  setTimeout(() => {
+    try {
+      synchronizeDesktopShellEnvironment(reason);
+    } catch (error) {
+      writeDesktopLogHeader(
+        `shell environment refresh failed reason=${reason} message=${sanitizeLogValue(formatErrorMessage(error))}`,
+      );
+    }
+  }, 5000);
+}
+
 function getDesktopServerExposureState(): DesktopServerExposureState {
   return {
     mode: desktopServerExposureMode,
@@ -456,6 +517,20 @@ function writeDesktopLogHeader(message: string): void {
   desktopLogSink.write(`[${logTimestamp()}] [${logScope("desktop")}] ${message}\n`);
 }
 
+function writeDesktopStartupTimingEntry(entry: ReturnType<typeof desktopStartupTiming.mark>): void {
+  writeDesktopLogHeader(formatStartupTimingEntry(entry));
+}
+
+function markDesktopStartupPhase(phase: string, detail?: string): void {
+  writeDesktopStartupTimingEntry(desktopStartupTiming.mark(phase, detail));
+}
+
+function flushDesktopStartupTimingEntries(): void {
+  for (const entry of desktopStartupTiming.entries()) {
+    writeDesktopStartupTimingEntry(entry);
+  }
+}
+
 function writeBackendSessionBoundary(phase: "START" | "END", details: string): void {
   if (!backendLogSink) return;
   const normalizedDetails = sanitizeLogValue(details);
@@ -553,6 +628,7 @@ function ensureDevelopmentInitialWindowOpen(): void {
 
   const nextOpen = waitForDevelopmentWindowReady()
     .then((source) => {
+      markDesktopStartupPhase("desktop.backend.listening", `source=${source}`);
       writeDesktopLogHeader(`bootstrap development resources ready backendSource=${source}`);
     })
     .catch((error) => {
@@ -585,6 +661,7 @@ function ensureInitialBackendWindowOpen(): void {
 
   const nextOpen = waitForBackendWindowReady(backendHttpUrl)
     .then((source) => {
+      markDesktopStartupPhase("desktop.backend.listening", `source=${source}`);
       writeDesktopLogHeader(`bootstrap backend ready source=${source}`);
       if (mainWindow ?? BrowserWindow.getAllWindows()[0]) {
         return;
@@ -680,6 +757,7 @@ function initializePackagedLogging(): void {
     });
     installStdIoCapture();
     writeDesktopLogHeader(`runtime log capture enabled logDir=${LOG_DIR}`);
+    flushDesktopStartupTimingEntries();
   } catch (error) {
     // Logging setup should never block app startup.
     console.error("[desktop] failed to initialize packaged logging", error);
@@ -1215,6 +1293,7 @@ function revealWindow(window: BrowserWindow): void {
   }
 
   if (!window.isVisible()) {
+    markDesktopStartupPhase("desktop.window.first-reveal");
     window.show();
   }
 
@@ -1504,6 +1583,7 @@ function startBackend(): void {
     return;
   }
 
+  markDesktopStartupPhase("desktop.backend.spawn", `port=${backendPort}`);
   const child = ChildProcess.spawn(process.execPath, [backendEntry, "--bootstrap-fd", "3"], {
     cwd: resolveBackendCwd(),
     // In Electron main, process.execPath points to the Electron binary.
@@ -1556,6 +1636,7 @@ function startBackend(): void {
   captureBackendOutput(child);
 
   child.once("spawn", () => {
+    markDesktopStartupPhase("desktop.backend.spawned", `pid=${child.pid ?? "unknown"}`);
     restartAttempt = 0;
   });
 
@@ -2070,6 +2151,7 @@ function syncAllWindowAppearance(): void {
 nativeTheme.on("updated", syncAllWindowAppearance);
 
 function createWindow(): BrowserWindow {
+  markDesktopStartupPhase("desktop.window.create");
   const window = new BrowserWindow({
     width: 1100,
     height: 780,
@@ -2205,7 +2287,7 @@ app.setPath("userData", resolveUserDataPath());
 configureAppIdentity();
 
 async function bootstrap(): Promise<void> {
-  writeDesktopLogHeader("bootstrap start");
+  markDesktopStartupPhase("desktop.bootstrap.start");
   const configuredBackendPort = resolveConfiguredDesktopBackendPort(readEnv("S3CODE_PORT"));
   if (isDevelopment && configuredBackendPort === undefined) {
     throw new Error("S3CODE_PORT is required in desktop development.");
@@ -2248,7 +2330,11 @@ async function bootstrap(): Promise<void> {
 
   registerIpcHandlers();
   writeDesktopLogHeader("bootstrap ipc handlers registered");
+  const shellEnvironmentPrepareResult = prepareDesktopShellEnvironmentForBackend();
   startBackend();
+  if (shellEnvironmentPrepareResult === "cache-hit") {
+    scheduleDesktopShellEnvironmentRefresh("deferred-refresh");
+  }
   writeDesktopLogHeader("bootstrap backend start requested");
 
   if (isDevelopment) {
@@ -2273,7 +2359,7 @@ app.on("before-quit", () => {
 app
   .whenReady()
   .then(() => {
-    writeDesktopLogHeader("app ready");
+    markDesktopStartupPhase("desktop.ready");
     configureAppIdentity();
     configureApplicationMenu();
     registerDesktopProtocol();
