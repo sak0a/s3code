@@ -237,6 +237,8 @@ function mapProject(
       ? normalizeModelSelection(project.defaultModelSelection)
       : null,
     customSystemPrompt: project.customSystemPrompt ?? null,
+    customAvatarContentHash: "customAvatarContentHash" in project ? (project.customAvatarContentHash ?? null) : null,
+    preferredRemoteName: "preferredRemoteName" in project ? (project.preferredRemoteName ?? null) : null,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     scripts: mapProjectScripts(project.scripts),
