@@ -252,6 +252,9 @@ export function projectEvent(
                     ? { customSystemPrompt: payload.customSystemPrompt }
                     : {}),
                   ...(payload.scripts !== undefined ? { scripts: payload.scripts } : {}),
+                  ...(payload.preferredRemoteName !== undefined
+                    ? { preferredRemoteName: payload.preferredRemoteName }
+                    : {}),
                   updatedAt: payload.updatedAt,
                 }
               : project,

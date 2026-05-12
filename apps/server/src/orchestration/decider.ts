@@ -154,6 +154,9 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
             ? { customSystemPrompt: command.customSystemPrompt }
             : {}),
           ...(command.scripts !== undefined ? { scripts: command.scripts } : {}),
+          ...(command.preferredRemoteName !== undefined
+            ? { preferredRemoteName: command.preferredRemoteName }
+            : {}),
           updatedAt: occurredAt,
         },
       };
