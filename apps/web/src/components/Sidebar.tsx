@@ -10,12 +10,12 @@ import {
   FolderPlusIcon,
   FolderOpenIcon,
   GitPullRequestIcon,
-  ImageIcon,
-  MapPinIcon,
   MoreHorizontalIcon,
   PlusIcon,
   SearchIcon,
+  Settings2Icon,
   SettingsIcon,
+  SparklesIcon,
   TerminalIcon,
   Trash2Icon,
   TriangleAlertIcon,
@@ -149,6 +149,7 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { Input } from "./ui/input";
+import { ScrollArea } from "./ui/scroll-area";
 import { Textarea } from "./ui/textarea";
 import {
   Menu,
@@ -230,6 +231,7 @@ import {
 import {
   useSavedEnvironmentRegistryStore,
   useSavedEnvironmentRuntimeStore,
+  resolveEnvironmentHttpUrl,
 } from "../environments/runtime";
 import type { SidebarThreadSummary, SidebarWorktreeSummary } from "../types";
 import {
@@ -1332,240 +1334,438 @@ function ProjectSettingsMenu(props: {
   );
 }
 
-function ProjectSettingsDialog(props: {
-  onClose: () => void;
-  onCopyPath: (path: string) => void;
-  onPickWorkspaceRoot: () => void;
-  onOpenRemote: (member: SidebarProjectGroupMember) => void;
-  onSave: () => void;
+type ProjectSettingsSection = "general" | "location" | "ai";
+
+interface ProjectSettingsDialogProps {
   open: boolean;
   saving: boolean;
   target: SidebarProjectGroupMember | null;
+  // General section
   title: string;
-  customSystemPrompt: string;
+  customAvatarContentHash: string | null;
+  preferredRemoteName: string | null;
+  // Location section
   workspaceRoot: string;
   projectMetadataDir: string;
-  worktrees: readonly SidebarWorktreeSummary[];
-  onCustomSystemPromptChange: (value: string) => void;
-  onProjectMetadataDirChange: (value: string) => void;
+  // AI section
+  customSystemPrompt: string;
+  // Handlers
+  onClose: () => void;
+  onSave: () => void;
   onTitleChange: (value: string) => void;
   onWorkspaceRootChange: (value: string) => void;
+  onProjectMetadataDirChange: (value: string) => void;
+  onCustomSystemPromptChange: (value: string) => void;
+  onPreferredRemoteChange: (value: string | null) => void;
+  onPickWorkspaceRoot: () => void;
+  onOpenRemote: (member: SidebarProjectGroupMember, remoteName: string) => void;
+  onUploadAvatar: (file: File) => Promise<void>;
+  onRemoveAvatar: () => Promise<void>;
+}
+
+function ProjectSettingsGeneralSection(props: {
+  target: SidebarProjectGroupMember;
+  title: string;
+  customAvatarContentHash: string | null;
+  preferredRemoteName: string | null;
+  onTitleChange: (value: string) => void;
+  onPreferredRemoteChange: (value: string | null) => void;
+  onUploadAvatar: (file: File) => Promise<void>;
+  onRemoveAvatar: () => Promise<void>;
+  onOpenRemote: (member: SidebarProjectGroupMember, remoteName: string) => void;
 }) {
+  const remotes = props.target.repositoryIdentity?.remotes ?? [];
+  const autoRemoteName = props.target.repositoryIdentity?.locator.remoteName ?? null;
+  const selectedRemoteName =
+    props.preferredRemoteName && remotes.some((r) => r.name === props.preferredRemoteName)
+      ? props.preferredRemoteName
+      : null; // null means auto
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const triggerUpload = () => fileInputRef.current?.click();
+  const handleFile = async (file: File) => {
+    setUploading(true);
+    try {
+      await props.onUploadAvatar(file);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <section className="flex items-start gap-4">
+        <div className="relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-secondary text-muted-foreground shadow-xs">
+          <ProjectFavicon
+            environmentId={props.target.environmentId}
+            cwd={props.target.cwd}
+            projectId={props.target.id}
+            customAvatarContentHash={props.customAvatarContentHash}
+            className="size-12"
+          />
+          {uploading ? (
+            <div className="absolute inset-0 grid place-items-center bg-background/60 text-xs">…</div>
+          ) : null}
+        </div>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="text-xs font-medium text-foreground">Project image</div>
+          <p className="text-[11px] text-muted-foreground">
+            {props.customAvatarContentHash
+              ? "PNG, JPG, or WebP · up to 2 MB"
+              : "Using auto-detected favicon · upload to override"}
+          </p>
+          <div className="flex gap-2 pt-1">
+            <Button size="xs" variant="outline" onClick={triggerUpload} disabled={uploading}>
+              Upload
+            </Button>
+            <Button
+              size="xs"
+              variant="ghost"
+              onClick={() => void props.onRemoveAvatar()}
+              disabled={!props.customAvatarContentHash || uploading}
+            >
+              Remove
+            </Button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void handleFile(file);
+              event.target.value = "";
+            }}
+          />
+        </div>
+      </section>
+
+      <section className="space-y-1.5">
+        <label htmlFor="project-display-name" className="text-xs font-medium text-foreground">
+          Display name
+        </label>
+        <Input
+          id="project-display-name"
+          aria-label="Project display name"
+          value={props.title}
+          onChange={(event) => props.onTitleChange(event.target.value)}
+        />
+      </section>
+
+      {remotes.length > 0 ? (
+        <section className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-medium text-foreground">Linked repositories</div>
+            {remotes.length > 1 ? (
+              <span className="text-[11px] text-muted-foreground">{remotes.length} remotes</span>
+            ) : null}
+          </div>
+          {remotes.length > 1 ? (
+            <p className="text-[11px] text-muted-foreground">
+              Pick which remote the sidebar "Open remote" uses.
+            </p>
+          ) : null}
+          <div className="overflow-hidden rounded-lg border border-border/70">
+            {remotes.length > 1 ? (
+              <button
+                type="button"
+                onClick={() => props.onPreferredRemoteChange(null)}
+                className={cn(
+                  "flex w-full items-center gap-3 border-b border-border/70 px-3 py-2 text-left",
+                  selectedRemoteName === null && "bg-accent/50",
+                )}
+              >
+                <span
+                  className={cn(
+                    "grid size-4 shrink-0 place-items-center rounded-full border",
+                    selectedRemoteName === null ? "border-foreground" : "border-muted-foreground/40",
+                  )}
+                  aria-hidden="true"
+                >
+                  {selectedRemoteName === null ? (
+                    <span className="size-2 rounded-full bg-foreground" />
+                  ) : null}
+                </span>
+                <span className="text-xs">
+                  Auto-detect{autoRemoteName ? ` (currently: ${autoRemoteName})` : ""}
+                </span>
+              </button>
+            ) : null}
+            {remotes.map((remote, index) => {
+              const isSelected =
+                selectedRemoteName === remote.name ||
+                (selectedRemoteName === null && remote.name === autoRemoteName && remotes.length === 1);
+              const ProviderIcon = resolveRepositoryProviderIcon(remote.provider ?? undefined);
+              return (
+                <div
+                  key={remote.name}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2",
+                    index > 0 || remotes.length > 1 ? "border-t border-border/70" : "",
+                    isSelected && "bg-accent/50",
+                  )}
+                >
+                  {remotes.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => props.onPreferredRemoteChange(remote.name)}
+                      className="shrink-0"
+                      aria-label={`Use ${remote.name} as primary`}
+                    >
+                      <span
+                        className={cn(
+                          "grid size-4 place-items-center rounded-full border",
+                          isSelected ? "border-foreground" : "border-muted-foreground/40",
+                        )}
+                      >
+                        {isSelected ? <span className="size-2 rounded-full bg-foreground" /> : null}
+                      </span>
+                    </button>
+                  ) : null}
+                  <ProviderIcon className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium">{remote.name}</span>
+                      {isSelected && remotes.length > 1 ? (
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                          primary
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="truncate font-mono text-[11px] text-muted-foreground">
+                      {remote.ownerRepo ?? remote.url}
+                    </div>
+                  </div>
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => props.onOpenRemote(props.target, remote.name)}
+                  >
+                    <ExternalLinkIcon className="size-3.5" />
+                    Open
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function ProjectSettingsLocationSection(props: {
+  workspaceRoot: string;
+  projectMetadataDir: string;
+  onWorkspaceRootChange: (value: string) => void;
+  onProjectMetadataDirChange: (value: string) => void;
+  onPickWorkspaceRoot: () => void;
+  onSave: () => void;
+}) {
+  const preview = `${props.workspaceRoot || "<project-root>"}/${
+    props.projectMetadataDir || ".s3code"
+  }/worktrees`;
+  return (
+    <div className="space-y-6">
+      <section className="space-y-1.5">
+        <label htmlFor="project-root" className="text-xs font-medium text-foreground">
+          Project root
+        </label>
+        <p className="text-[11px] text-muted-foreground">
+          The absolute path the project is anchored to.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            id="project-root"
+            aria-label="Project root"
+            value={props.workspaceRoot}
+            onChange={(event) => props.onWorkspaceRootChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                props.onSave();
+              }
+            }}
+          />
+          <Button variant="outline" onClick={props.onPickWorkspaceRoot}>
+            <FolderOpenIcon className="size-4" />
+            Browse
+          </Button>
+        </div>
+      </section>
+
+      <section className="space-y-1.5">
+        <label htmlFor="project-metadata-dir" className="text-xs font-medium text-foreground">
+          Metadata folder
+        </label>
+        <p className="text-[11px] text-muted-foreground">
+          Where worktrees and project data are stored.
+        </p>
+        <Input
+          id="project-metadata-dir"
+          aria-label="Metadata folder"
+          value={props.projectMetadataDir}
+          placeholder=".s3code"
+          onChange={(event) => props.onProjectMetadataDirChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              props.onSave();
+            }
+          }}
+        />
+      </section>
+
+      <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-3 py-2">
+        <div className="text-[11px] text-muted-foreground">Worktrees will be created under</div>
+        <div className="truncate font-mono text-xs">{preview}</div>
+      </div>
+    </div>
+  );
+}
+
+function ProjectSettingsAiSection(props: {
+  customSystemPrompt: string;
+  onCustomSystemPromptChange: (value: string) => void;
+}) {
+  const length = props.customSystemPrompt.length;
+  const limit = PROJECT_CUSTOM_SYSTEM_PROMPT_MAX_CHARS;
+  const warnThreshold = Math.floor(limit * 0.9);
+  const counterClass =
+    length >= limit
+      ? "text-destructive"
+      : length >= warnThreshold
+      ? "text-amber-600 dark:text-amber-400"
+      : "text-muted-foreground";
+  return (
+    <div className="space-y-2">
+      <label htmlFor="project-custom-system-prompt" className="text-xs font-medium text-foreground">
+        Custom system prompt
+      </label>
+      <p className="text-[11px] text-muted-foreground">
+        Appended to every assistant prompt for this project.
+      </p>
+      <div className="relative">
+        <Textarea
+          id="project-custom-system-prompt"
+          aria-label="Custom system prompt"
+          value={props.customSystemPrompt}
+          maxLength={limit}
+          placeholder="Always use TypeScript."
+          className="min-h-32 resize-y pr-20"
+          onChange={(event) => props.onCustomSystemPromptChange(event.target.value)}
+        />
+        <span className={cn("pointer-events-none absolute bottom-2 right-3 text-[11px]", counterClass)}>
+          {length} / {limit}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ProjectSettingsDialog(props: ProjectSettingsDialogProps) {
+  const [section, setSection] = useState<ProjectSettingsSection>("general");
   const target = props.target;
-  const visibleWorktrees = props.worktrees.slice(0, 5);
-  const archivedWorktreeCount = props.worktrees.filter((worktree) => worktree.archivedAt).length;
-  const activeWorktreeCount = props.worktrees.length - archivedWorktreeCount;
-  const remoteLink = resolveProjectRemoteLink(target?.repositoryIdentity, target?.preferredRemoteName);
+  if (!target) return null;
+
+  const headerSubtitle = target.environmentLabel
+    ? `${target.name} · ${target.environmentLabel}`
+    : target.name;
 
   return (
     <Dialog
       open={props.open}
       onOpenChange={(open) => {
-        if (!open) {
-          props.onClose();
-        }
+        if (!open) props.onClose();
       }}
     >
-      <DialogPopup className="max-w-5xl">
-        <DialogHeader className="border-border/70 border-b px-6 py-5">
-          <div className="flex min-w-0 items-start gap-4">
-            <div className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-secondary text-muted-foreground shadow-xs">
-              <ImageIcon className="size-6" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <DialogTitle className="truncate text-base">Project settings</DialogTitle>
-              <DialogDescription className="mt-1 truncate">
-                {target?.environmentLabel
-                  ? `${target.environmentLabel} · ${target.cwd}`
-                  : target?.cwd}
-              </DialogDescription>
-            </div>
+      <DialogPopup
+        className="h-[min(70vh,620px)] max-w-[760px] overflow-hidden p-0"
+        bottomStickOnMobile={false}
+        showCloseButton={true}
+      >
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-5">
+          <div className="min-w-0">
+            <DialogTitle className="text-base font-semibold">Project settings</DialogTitle>
+            <p className="truncate text-xs text-muted-foreground">{headerSubtitle}</p>
           </div>
-        </DialogHeader>
-        <DialogPanel className="px-6 py-5">
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
-            <section className="space-y-4">
-              <div className="grid gap-1.5">
-                <span className="text-xs font-medium text-foreground">Display name</span>
-                <Input
-                  aria-label="Project display name"
-                  value={props.title}
-                  onChange={(event) => props.onTitleChange(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      props.onSave();
-                    }
-                  }}
+        </header>
+
+        <div className="flex min-h-0 flex-1 flex-row">
+          <nav className="flex w-12 shrink-0 flex-col gap-1 border-r border-border p-2 sm:w-48">
+            {(
+              [
+                { id: "general", label: "General", Icon: Settings2Icon },
+                { id: "location", label: "Location", Icon: FolderOpenIcon },
+                { id: "ai", label: "AI", Icon: SparklesIcon },
+              ] as const
+            ).map(({ id, label, Icon }) => {
+              const isActive = section === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setSection(id)}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-md px-2 py-2 text-left text-[13px] outline-hidden ring-ring transition-colors focus-visible:ring-2",
+                    isActive
+                      ? "bg-accent font-medium text-foreground"
+                      : "text-muted-foreground/70 hover:text-foreground/80",
+                  )}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <Icon className={cn("size-4 shrink-0", isActive ? "text-foreground" : "text-muted-foreground/60")} />
+                  <span className="hidden truncate sm:inline">{label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <ScrollArea className="min-h-0 flex-1 min-w-0">
+            <div className="mx-auto max-w-[520px] px-6 py-6">
+              {section === "general" ? (
+                <ProjectSettingsGeneralSection
+                  target={target}
+                  title={props.title}
+                  customAvatarContentHash={props.customAvatarContentHash}
+                  preferredRemoteName={props.preferredRemoteName}
+                  onTitleChange={props.onTitleChange}
+                  onPreferredRemoteChange={props.onPreferredRemoteChange}
+                  onUploadAvatar={props.onUploadAvatar}
+                  onRemoveAvatar={props.onRemoveAvatar}
+                  onOpenRemote={props.onOpenRemote}
                 />
-              </div>
-              <div className="grid gap-1.5">
-                <span className="text-xs font-medium text-foreground">Active project root</span>
-                <div className="flex min-w-0 gap-2">
-                  <Input
-                    aria-label="Active project root"
-                    value={props.workspaceRoot}
-                    onChange={(event) => props.onWorkspaceRootChange(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        props.onSave();
-                      }
-                    }}
-                  />
-                  <Button variant="outline" onClick={props.onPickWorkspaceRoot}>
-                    <FolderOpenIcon className="size-4" />
-                    Browse
-                  </Button>
-                </div>
-              </div>
-              <div className="grid gap-1.5">
-                <span className="text-xs font-medium text-foreground">Custom system prompt</span>
-                <Textarea
-                  aria-label="Custom system prompt"
-                  value={props.customSystemPrompt}
-                  maxLength={PROJECT_CUSTOM_SYSTEM_PROMPT_MAX_CHARS}
-                  placeholder="Always use TypeScript."
-                  className="min-h-28 resize-y"
-                  onChange={(event) => props.onCustomSystemPromptChange(event.target.value)}
+              ) : section === "location" ? (
+                <ProjectSettingsLocationSection
+                  workspaceRoot={props.workspaceRoot}
+                  projectMetadataDir={props.projectMetadataDir}
+                  onWorkspaceRootChange={props.onWorkspaceRootChange}
+                  onProjectMetadataDirChange={props.onProjectMetadataDirChange}
+                  onPickWorkspaceRoot={props.onPickWorkspaceRoot}
+                  onSave={props.onSave}
                 />
-              </div>
-              <div className="grid gap-1.5">
-                <span className="text-xs font-medium text-foreground">Project metadata folder</span>
-                <Input
-                  aria-label="Project metadata folder"
-                  value={props.projectMetadataDir}
-                  placeholder=".s3code"
-                  onChange={(event) => props.onProjectMetadataDirChange(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      props.onSave();
-                    }
-                  }}
+              ) : (
+                <ProjectSettingsAiSection
+                  customSystemPrompt={props.customSystemPrompt}
+                  onCustomSystemPromptChange={props.onCustomSystemPromptChange}
                 />
-                <p className="text-[11px] text-muted-foreground">
-                  Worktrees will be created under{" "}
-                  <code>
-                    {props.workspaceRoot || "project-root"}/{props.projectMetadataDir || ".s3code"}
-                    /worktrees
-                  </code>
-                </p>
-              </div>
-            </section>
-            <aside className="space-y-4">
-              <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex size-14 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-background text-muted-foreground">
-                    <ImageIcon className="size-6" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium text-foreground">Project image</div>
-                    <div className="mt-1 truncate text-[11px] text-muted-foreground">
-                      Default project image
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {target && remoteLink ? (
-                <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-                  <div className="flex min-w-0 items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <ProjectRemoteProviderMark provider={remoteLink.provider} />
-                      <div className="min-w-0">
-                        <div className="flex min-w-0 items-center gap-2 text-xs font-medium text-foreground">
-                          <span className="truncate">{remoteLink.providerLabel} repository</span>
-                        </div>
-                        <div className="mt-1 truncate text-[11px] text-muted-foreground">
-                          {remoteLink.label}
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      className="shrink-0"
-                      onClick={() => props.onOpenRemote(target)}
-                    >
-                      <ExternalLinkIcon className="size-3.5" />
-                      Open
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-              <div className="rounded-lg border border-border/70 bg-muted/20">
-                <div className="flex items-center justify-between gap-3 border-border/70 border-b px-3 py-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <MapPinIcon className="size-4 shrink-0 text-muted-foreground" />
-                    <span className="truncate text-xs font-medium text-foreground">
-                      Worktree location
-                    </span>
-                  </div>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">
-                    {activeWorktreeCount} active
-                  </span>
-                </div>
-                <div className="space-y-2 p-3">
-                  <ProjectPathRow
-                    label="Base workspace"
-                    path={target?.cwd ?? ""}
-                    onCopy={props.onCopyPath}
-                  />
-                  {visibleWorktrees.map((worktree) => (
-                    <ProjectPathRow
-                      key={`${worktree.environmentId}:${worktree.id}`}
-                      label={worktree.title?.trim() || worktree.branch}
-                      path={worktree.worktreePath ?? target?.cwd ?? ""}
-                      muted={worktree.archivedAt !== null}
-                      onCopy={props.onCopyPath}
-                    />
-                  ))}
-                  {props.worktrees.length > visibleWorktrees.length ? (
-                    <div className="px-2 text-[11px] text-muted-foreground">
-                      {props.worktrees.length - visibleWorktrees.length} more worktrees
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </aside>
-          </div>
-        </DialogPanel>
-        <DialogFooter className="border-border/70 border-t px-6 py-4">
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+
+        <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-5 py-3">
           <Button variant="outline" onClick={props.onClose}>
             Cancel
           </Button>
           <Button onClick={props.onSave} disabled={props.saving}>
-            {props.saving ? "Saving..." : "Save changes"}
+            {props.saving ? "Saving…" : "Save changes"}
           </Button>
-        </DialogFooter>
+        </footer>
       </DialogPopup>
     </Dialog>
-  );
-}
-
-function ProjectPathRow(props: {
-  label: string;
-  path: string;
-  muted?: boolean | undefined;
-  onCopy: (path: string) => void;
-}) {
-  return (
-    <div className="flex min-w-0 items-center gap-2 rounded-md bg-background px-2 py-1.5">
-      <div className="min-w-0 flex-1">
-        <div className={cn("truncate text-xs font-medium", props.muted && "text-muted-foreground")}>
-          {props.label}
-        </div>
-        <div className="truncate font-mono text-[11px] text-muted-foreground">{props.path}</div>
-      </div>
-      <Button
-        size="icon-xs"
-        variant="ghost"
-        aria-label={`Copy path for ${props.label}`}
-        onClick={() => props.onCopy(props.path)}
-      >
-        <CopyIcon className="size-3.5" />
-      </Button>
-    </div>
   );
 }
 
