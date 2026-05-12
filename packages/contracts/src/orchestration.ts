@@ -523,6 +523,13 @@ const ProjectMetaUpdateCommand = Schema.Struct({
   preferredRemoteName: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
 });
 
+const ProjectAvatarSetCommand = Schema.Struct({
+  type: Schema.Literal("project.avatar.set"),
+  commandId: CommandId,
+  projectId: ProjectId,
+  contentHash: Schema.NullOr(TrimmedNonEmptyString),
+});
+
 const ProjectDeleteCommand = Schema.Struct({
   type: Schema.Literal("project.delete"),
   commandId: CommandId,
@@ -780,6 +787,7 @@ const WorktreeManualPositionSetCommand = Schema.Struct({
 const DispatchableClientOrchestrationCommand = Schema.Union([
   ProjectCreateCommand,
   ProjectMetaUpdateCommand,
+  ProjectAvatarSetCommand,
   ProjectDeleteCommand,
   ThreadCreateCommand,
   ThreadDeleteCommand,
@@ -982,6 +990,12 @@ export const ProjectMetaUpdatedPayload = Schema.Struct({
   customSystemPrompt: Schema.optional(Schema.NullOr(ProjectCustomSystemPrompt)),
   scripts: Schema.optional(Schema.Array(ProjectScript)),
   preferredRemoteName: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
+  updatedAt: IsoDateTime,
+});
+
+export const ProjectAvatarSetPayload = Schema.Struct({
+  projectId: ProjectId,
+  contentHash: Schema.NullOr(TrimmedNonEmptyString),
   updatedAt: IsoDateTime,
 });
 
@@ -1229,6 +1243,11 @@ export const OrchestrationEvent = Schema.Union([
     ...EventBaseFields,
     type: Schema.Literal("project.deleted"),
     payload: ProjectDeletedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("project.avatar-set"),
+    payload: ProjectAvatarSetPayload,
   }),
   Schema.Struct({
     ...EventBaseFields,
