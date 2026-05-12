@@ -17,6 +17,7 @@ import { Effect, Schema } from "effect";
 import { toProjectorDecodeError, type OrchestrationProjectorDecodeError } from "./Errors.ts";
 import {
   MessageSentPayloadSchema,
+  ProjectAvatarSetPayload,
   ProjectCreatedPayload,
   ProjectDeletedPayload,
   ProjectMetaUpdatedPayload,
@@ -213,6 +214,8 @@ export function projectEvent(
             projectMetadataDir: payload.projectMetadataDir,
             defaultModelSelection: payload.defaultModelSelection,
             customSystemPrompt: payload.customSystemPrompt ?? null,
+            customAvatarContentHash: null as string | null,
+            preferredRemoteName: null as string | null,
             scripts: payload.scripts,
             createdAt: payload.createdAt,
             updatedAt: payload.updatedAt,
@@ -252,6 +255,25 @@ export function projectEvent(
                     ? { customSystemPrompt: payload.customSystemPrompt }
                     : {}),
                   ...(payload.scripts !== undefined ? { scripts: payload.scripts } : {}),
+                  ...(payload.preferredRemoteName !== undefined
+                    ? { preferredRemoteName: payload.preferredRemoteName }
+                    : {}),
+                  updatedAt: payload.updatedAt,
+                }
+              : project,
+          ),
+        })),
+      );
+
+    case "project.avatar-set":
+      return decodeForEvent(ProjectAvatarSetPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          projects: nextBase.projects.map((project) =>
+            project.id === payload.projectId
+              ? {
+                  ...project,
+                  customAvatarContentHash: payload.contentHash,
                   updatedAt: payload.updatedAt,
                 }
               : project,

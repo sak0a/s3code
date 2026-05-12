@@ -103,6 +103,7 @@ import {
   RepositoryIdentityResolver,
   type RepositoryIdentityResolverShape,
 } from "./project/Services/RepositoryIdentityResolver.ts";
+import { ProjectAvatarStore } from "./project/Services/ProjectAvatarStore.ts";
 import {
   ServerEnvironment,
   type ServerEnvironmentShape,
@@ -671,6 +672,13 @@ const buildAppUnderTest = (options?: {
         Layer.mock(RepositoryIdentityResolver)({
           resolve: () => Effect.succeed(null),
           ...options?.layers?.repositoryIdentityResolver,
+        }),
+      ),
+      Layer.provide(
+        Layer.succeed(ProjectAvatarStore, {
+          write: () => Effect.die("ProjectAvatarStore.write not implemented in test"),
+          read: () => Effect.succeed(null),
+          remove: () => Effect.void,
         }),
       ),
       Layer.provideMerge(makeAuthTestLayer()),
@@ -3392,6 +3400,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         provider: "github",
         owner: "S3Tools",
         name: "s3code",
+        remotes: [],
       };
 
       yield* buildAppUnderTest({

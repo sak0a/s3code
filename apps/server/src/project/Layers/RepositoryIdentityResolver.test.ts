@@ -46,11 +46,11 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       const identity = yield* resolver.resolve(cwd);
 
       expect(identity).not.toBeNull();
-      expect(identity?.canonicalKey).toBe("github.com/t3tools/s3code");
+      expect(identity?.canonicalKey).toBe("github.com/s3tools/s3code");
       expect(normalizeResolvedPath(identity?.rootPath ?? "")).toBe(normalizeResolvedPath(cwd));
-      expect(identity?.displayName).toBe("t3tools/s3code");
+      expect(identity?.displayName).toBe("s3tools/s3code");
       expect(identity?.provider).toBe("github");
-      expect(identity?.owner).toBe("t3tools");
+      expect(identity?.owner).toBe("s3tools");
       expect(identity?.name).toBe("s3code");
     }).pipe(Effect.provide(RepositoryIdentityResolverLive)),
   );
@@ -71,7 +71,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       const identity = yield* resolver.resolve(nestedWorkspace);
 
       expect(identity).not.toBeNull();
-      expect(identity?.canonicalKey).toBe("github.com/t3tools/s3code");
+      expect(identity?.canonicalKey).toBe("github.com/s3tools/s3code");
       expect(normalizeResolvedPath(identity?.rootPath ?? "")).toBe(normalizeResolvedPath(repoRoot));
     }).pipe(Effect.provide(RepositoryIdentityResolverLive)),
   );
@@ -113,8 +113,8 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
 
       expect(identity).not.toBeNull();
       expect(identity?.locator.remoteName).toBe("upstream");
-      expect(identity?.canonicalKey).toBe("github.com/t3tools/s3code");
-      expect(identity?.displayName).toBe("t3tools/s3code");
+      expect(identity?.canonicalKey).toBe("github.com/s3tools/s3code");
+      expect(identity?.displayName).toBe("s3tools/s3code");
     }).pipe(Effect.provide(RepositoryIdentityResolverLive)),
   );
 
@@ -132,9 +132,9 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       const identity = yield* resolver.resolve(cwd);
 
       expect(identity).not.toBeNull();
-      expect(identity?.canonicalKey).toBe("gitlab.com/t3tools/platform/s3code");
-      expect(identity?.displayName).toBe("t3tools/platform/s3code");
-      expect(identity?.owner).toBe("t3tools");
+      expect(identity?.canonicalKey).toBe("gitlab.com/s3tools/platform/s3code");
+      expect(identity?.displayName).toBe("s3tools/platform/s3code");
+      expect(identity?.owner).toBe("s3tools");
       expect(identity?.name).toBe("s3code");
     }).pipe(Effect.provide(RepositoryIdentityResolverLive)),
   );
@@ -165,7 +165,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
 
         const refreshedIdentity = yield* resolver.resolve(cwd);
         expect(refreshedIdentity).not.toBeNull();
-        expect(refreshedIdentity?.canonicalKey).toBe("github.com/t3tools/s3code");
+        expect(refreshedIdentity?.canonicalKey).toBe("github.com/s3tools/s3code");
         expect(refreshedIdentity?.name).toBe("s3code");
       }).pipe(
         Effect.provide(
@@ -193,20 +193,20 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       const resolver = yield* RepositoryIdentityResolver;
       const initialIdentity = yield* resolver.resolve(cwd);
       expect(initialIdentity).not.toBeNull();
-      expect(initialIdentity?.canonicalKey).toBe("github.com/t3tools/s3code");
+      expect(initialIdentity?.canonicalKey).toBe("github.com/s3tools/s3code");
 
       yield* git(cwd, ["remote", "set-url", "origin", "git@github.com:S3Tools/s3code-next.git"]);
 
       const cachedIdentity = yield* resolver.resolve(cwd);
       expect(cachedIdentity).not.toBeNull();
-      expect(cachedIdentity?.canonicalKey).toBe("github.com/t3tools/s3code");
+      expect(cachedIdentity?.canonicalKey).toBe("github.com/s3tools/s3code");
 
       yield* TestClock.adjust(Duration.millis(180));
 
       const refreshedIdentity = yield* resolver.resolve(cwd);
       expect(refreshedIdentity).not.toBeNull();
-      expect(refreshedIdentity?.canonicalKey).toBe("github.com/t3tools/s3code-next");
-      expect(refreshedIdentity?.displayName).toBe("t3tools/s3code-next");
+      expect(refreshedIdentity?.canonicalKey).toBe("github.com/s3tools/s3code-next");
+      expect(refreshedIdentity?.displayName).toBe("s3tools/s3code-next");
       expect(refreshedIdentity?.name).toBe("s3code-next");
     }).pipe(
       Effect.provide(
@@ -219,5 +219,30 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
         ),
       ),
     ),
+  );
+
+  it.effect("populates all remotes in addition to the auto-picked locator", () =>
+    Effect.gen(function* () {
+      const fileSystem = yield* FileSystem.FileSystem;
+      const cwd = yield* fileSystem.makeTempDirectoryScoped({
+        prefix: "s3-repository-identity-remotes-test-",
+      });
+
+      yield* git(cwd, ["init"]);
+      yield* git(cwd, ["remote", "add", "origin", "git@github.com:sak0a/s3code.git"]);
+      yield* git(cwd, ["remote", "add", "upstream", "git@github.com:S3Tools/s3code.git"]);
+
+      const resolver = yield* RepositoryIdentityResolver;
+      const identity = yield* resolver.resolve(cwd);
+
+      expect(identity).not.toBeNull();
+      // Auto-pick prefers upstream over origin.
+      expect(identity?.locator.remoteName).toBe("upstream");
+      const remoteNames = (identity?.remotes ?? []).map((remote) => remote.name).toSorted();
+      expect(remoteNames).toEqual(["origin", "upstream"]);
+      const origin = identity?.remotes.find((remote) => remote.name === "origin");
+      expect(origin?.ownerRepo).toBe("sak0a/s3code");
+      expect(origin?.provider).toBe("github");
+    }).pipe(Effect.provide(RepositoryIdentityResolverLive)),
   );
 });

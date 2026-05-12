@@ -40,6 +40,7 @@ import { ProjectionThreadSessionRepositoryLive } from "../../persistence/Layers/
 import { ProjectionTurnRepositoryLive } from "../../persistence/Layers/ProjectionTurns.ts";
 import { ProjectionThreadRepositoryLive } from "../../persistence/Layers/ProjectionThreads.ts";
 import { ProjectionWorktreeRepositoryLive } from "../../persistence/Layers/ProjectionWorktrees.ts";
+import { ProjectAvatarStore } from "../../project/Services/ProjectAvatarStore.ts";
 import { ServerConfig } from "../../config.ts";
 import {
   OrchestrationProjectionPipeline,
@@ -460,6 +461,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
     const serverConfig = yield* ServerConfig;
+    const projectAvatarStore = yield* ProjectAvatarStore;
 
     const applyProjectsProjection: ProjectorDefinition["apply"] = Effect.fn(
       "applyProjectsProjection",
@@ -473,6 +475,8 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
             projectMetadataDir: event.payload.projectMetadataDir ?? DEFAULT_PROJECT_METADATA_DIR,
             defaultModelSelection: event.payload.defaultModelSelection,
             customSystemPrompt: event.payload.customSystemPrompt ?? null,
+            customAvatarContentHash: null,
+            preferredRemoteName: null,
             scripts: event.payload.scripts,
             createdAt: event.payload.createdAt,
             updatedAt: event.payload.updatedAt,
@@ -503,8 +507,29 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
               ? { customSystemPrompt: event.payload.customSystemPrompt }
               : {}),
             ...(event.payload.scripts !== undefined ? { scripts: event.payload.scripts } : {}),
+            ...(event.payload.preferredRemoteName !== undefined
+              ? { preferredRemoteName: event.payload.preferredRemoteName }
+              : {}),
             updatedAt: event.payload.updatedAt,
           });
+          return;
+        }
+
+        case "project.avatar-set": {
+          const existingAvatarRow = yield* projectionProjectRepository.getById({
+            projectId: event.payload.projectId,
+          });
+          if (Option.isNone(existingAvatarRow)) {
+            return;
+          }
+          yield* projectionProjectRepository.upsert({
+            ...existingAvatarRow.value,
+            customAvatarContentHash: event.payload.contentHash,
+            updatedAt: event.payload.updatedAt,
+          });
+          if (event.payload.contentHash === null) {
+            yield* projectAvatarStore.remove(event.payload.projectId);
+          }
           return;
         }
 
@@ -520,6 +545,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
             deletedAt: event.payload.deletedAt,
             updatedAt: event.payload.deletedAt,
           });
+          yield* projectAvatarStore.remove(event.payload.projectId);
           return;
         }
 

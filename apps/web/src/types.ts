@@ -93,6 +93,8 @@ export interface Project {
   repositoryIdentity?: RepositoryIdentity | null;
   defaultModelSelection: ModelSelection | null;
   customSystemPrompt?: string | null;
+  customAvatarContentHash?: string | null;
+  preferredRemoteName?: string | null;
   createdAt?: string | undefined;
   updatedAt?: string | undefined;
   scripts: ProjectScript[];

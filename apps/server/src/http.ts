@@ -7,7 +7,9 @@ import {
   HttpRouter,
   HttpServerResponse,
   HttpServerRequest,
+  Multipart,
 } from "effect/unstable/http";
+import * as Schema from "effect/Schema";
 import { OtlpTracer } from "effect/unstable/observability";
 
 import {
@@ -20,11 +22,15 @@ import { resolveStaticDir, ServerConfig } from "./config.ts";
 import { decodeOtlpTraceRecords } from "./observability/TraceRecord.ts";
 import { BrowserTraceCollector } from "./observability/Services/BrowserTraceCollector.ts";
 import { ProjectFaviconResolver } from "./project/Services/ProjectFaviconResolver.ts";
+import { ProjectAvatarStore } from "./project/Services/ProjectAvatarStore.ts";
+import type { ProjectId } from "@s3tools/contracts";
 import { ServerAuth } from "./auth/Services/ServerAuth.ts";
 import { respondToAuthError } from "./auth/http.ts";
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment.ts";
 
 const PROJECT_FAVICON_CACHE_CONTROL = "public, max-age=3600";
+const PROJECT_AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+const PROJECT_AVATAR_CACHE_CONTROL = "private, max-age=0, must-revalidate";
 const STATIC_INDEX_CACHE_CONTROL = "no-cache";
 const STATIC_IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const FALLBACK_PROJECT_FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#6b728080" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-fallback="project-favicon"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/></svg>`;
@@ -243,6 +249,84 @@ export const projectFaviconRouteLayer = HttpRouter.add(
         Effect.succeed(HttpServerResponse.text("Internal Server Error", { status: 500 })),
       ),
     );
+  }).pipe(Effect.catchTag("AuthError", respondToAuthError)),
+);
+
+const AvatarFormSchema = Schema.Struct({
+  avatar: Multipart.SingleFileSchema,
+});
+
+const PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+export const projectAvatarUploadRouteLayer = HttpRouter.add(
+  "POST",
+  "/api/project-avatar/upload",
+  Effect.gen(function* () {
+    yield* requireAuthenticatedRequest;
+    const request = yield* HttpServerRequest.HttpServerRequest;
+    const url = HttpServerRequest.toURL(request);
+    if (Option.isNone(url)) return HttpServerResponse.text("Bad Request", { status: 400 });
+    const projectId = url.value.searchParams.get("projectId");
+    if (!projectId || !PROJECT_ID_PATTERN.test(projectId)) {
+      return HttpServerResponse.text("Invalid projectId", { status: 400 });
+    }
+
+    const contentLength = Number(request.headers["content-length"] ?? "0");
+    if (contentLength > PROJECT_AVATAR_MAX_BYTES) {
+      return HttpServerResponse.text("Payload too large", { status: 413 });
+    }
+
+    const form = yield* HttpServerRequest.schemaBodyForm(AvatarFormSchema).pipe(
+      Effect.catch(() => Effect.succeed(null)),
+    );
+    if (!form) return HttpServerResponse.text("Bad Request", { status: 400 });
+
+    const file = form.avatar;
+    const fileSystem = yield* FileSystem.FileSystem;
+    const fileBytes = yield* fileSystem.readFile(file.path);
+    if (fileBytes.length > PROJECT_AVATAR_MAX_BYTES) {
+      return HttpServerResponse.text("Payload too large", { status: 413 });
+    }
+
+    const store = yield* ProjectAvatarStore;
+    const writeResult = yield* Effect.result(
+      store.write({
+        projectId: projectId as ProjectId,
+        bytes: Buffer.from(fileBytes),
+        contentType: file.contentType,
+      }),
+    );
+    if (writeResult._tag === "Failure") {
+      return HttpServerResponse.text(writeResult.failure.message, { status: 400 });
+    }
+    return HttpServerResponse.jsonUnsafe(writeResult.success);
+  }).pipe(Effect.catchTag("AuthError", respondToAuthError)),
+);
+
+export const projectAvatarServeRouteLayer = HttpRouter.add(
+  "GET",
+  "/api/project-avatar",
+  Effect.gen(function* () {
+    yield* requireAuthenticatedRequest;
+    const request = yield* HttpServerRequest.HttpServerRequest;
+    const url = HttpServerRequest.toURL(request);
+    if (Option.isNone(url)) return HttpServerResponse.text("Bad Request", { status: 400 });
+    const projectId = url.value.searchParams.get("projectId");
+    if (!projectId || !PROJECT_ID_PATTERN.test(projectId)) {
+      return HttpServerResponse.text("Invalid projectId", { status: 400 });
+    }
+
+    const store = yield* ProjectAvatarStore;
+    const stored = yield* store.read(projectId as ProjectId);
+    if (!stored) return HttpServerResponse.text("Not Found", { status: 404 });
+    return HttpServerResponse.uint8Array(stored.bytes, {
+      status: 200,
+      contentType: "image/png",
+      headers: {
+        "Cache-Control": PROJECT_AVATAR_CACHE_CONTROL,
+        ETag: `"${stored.contentHash}"`,
+      },
+    });
   }).pipe(Effect.catchTag("AuthError", respondToAuthError)),
 );
 

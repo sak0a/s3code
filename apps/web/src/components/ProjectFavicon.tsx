@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@s3tools/contracts";
+import type { EnvironmentId, ProjectId } from "@s3tools/contracts";
 import { FolderIcon } from "lucide-react";
 import { useState } from "react";
 import { resolveEnvironmentHttpUrl } from "../environments/runtime";
@@ -8,10 +8,20 @@ const loadedProjectFaviconSrcs = new Set<string>();
 export function ProjectFavicon(input: {
   environmentId: EnvironmentId;
   cwd: string;
+  projectId?: ProjectId;
+  customAvatarContentHash?: string | null;
   className?: string;
+  fillContainer?: boolean;
 }) {
   const src = (() => {
     try {
+      if (input.customAvatarContentHash && input.projectId) {
+        return resolveEnvironmentHttpUrl({
+          environmentId: input.environmentId,
+          pathname: "/api/project-avatar",
+          searchParams: { projectId: input.projectId, v: input.customAvatarContentHash },
+        });
+      }
       return resolveEnvironmentHttpUrl({
         environmentId: input.environmentId,
         pathname: "/api/project-favicon",
@@ -25,25 +35,25 @@ export function ProjectFavicon(input: {
     src && loadedProjectFaviconSrcs.has(src) ? "loaded" : "loading",
   );
 
-  if (!src) {
-    return (
-      <FolderIcon
-        className={`size-3.5 shrink-0 text-muted-foreground/50 ${input.className ?? ""}`}
-      />
-    );
+  const fallbackClass = input.fillContainer
+    ? `size-full text-muted-foreground/50 ${input.className ?? ""}`
+    : `size-3.5 shrink-0 text-muted-foreground/50 ${input.className ?? ""}`;
+
+  if (!src || status === "error") {
+    return <FolderIcon className={fallbackClass} />;
   }
+
+  const imgClass = input.fillContainer
+    ? `size-full object-cover ${status === "loaded" ? "" : "hidden"} ${input.className ?? ""}`
+    : `size-3.5 shrink-0 rounded-sm object-contain ${status === "loaded" ? "" : "hidden"} ${input.className ?? ""}`;
 
   return (
     <>
-      {status !== "loaded" ? (
-        <FolderIcon
-          className={`size-3.5 shrink-0 text-muted-foreground/50 ${input.className ?? ""}`}
-        />
-      ) : null}
+      {status !== "loaded" ? <FolderIcon className={fallbackClass} /> : null}
       <img
         src={src}
         alt=""
-        className={`size-3.5 shrink-0 rounded-sm object-contain ${status === "loaded" ? "" : "hidden"} ${input.className ?? ""}`}
+        className={imgClass}
         onLoad={() => {
           loadedProjectFaviconSrcs.add(src);
           setStatus("loaded");
