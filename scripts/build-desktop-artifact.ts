@@ -815,7 +815,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
       ...commandOutputOptions(options.verbose),
       // Windows needs shell mode to resolve .cmd shims (e.g. bun.cmd).
       shell: process.platform === "win32",
-    })`bun install --production --omit optional`,
+    })`bun install --production`,
   );
 
   const buildEnv: NodeJS.ProcessEnv = {

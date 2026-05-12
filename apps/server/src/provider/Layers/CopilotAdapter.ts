@@ -1,0 +1,425 @@
+import { randomUUID } from "node:crypto";
+
+import {
+  EventId,
+  ProviderInstanceId,
+  ThreadId,
+  TurnId,
+  type ProviderRuntimeEvent,
+  type ProviderSendTurnInput,
+  type ProviderSession,
+  type UserInputQuestion,
+} from "@s3tools/contracts";
+import type { PermissionRequestResult, SessionConfig, SessionEvent } from "@github/copilot-sdk";
+import { Effect, Queue, Random, Stream } from "effect";
+
+import { ServerConfig } from "../../config.ts";
+import { getProviderOptionStringSelectionValue } from "@s3tools/shared/model";
+import { makeEventNdjsonLogger } from "./EventNdjsonLogger.ts";
+import { ProviderAdapterRequestError, ProviderAdapterSessionNotFoundError } from "../Errors.ts";
+import type { CopilotAdapterShape } from "../Services/CopilotAdapter.ts";
+import {
+  COPILOT_DRIVER_KIND,
+  USER_INPUT_QUESTION_ID,
+  type ActiveCopilotSession,
+  type CopilotAdapterLiveOptions,
+  type PendingApprovalRequest,
+  type PendingUserInputRequest,
+  approvalDecisionToPermissionResult,
+  eventBase,
+  normalizeUsage,
+  requestDetailFromPermissionRequest,
+  requestTypeFromPermissionRequest,
+  selectionTargetsCopilotInstance,
+} from "./CopilotAdapter.types.ts";
+import { mapEvent, type MapEventDeps } from "./CopilotAdapter.mapEvent.ts";
+import {
+  type SessionOpsDeps,
+  makeHasSession,
+  makeInterruptTurn,
+  makeListSessions,
+  makeReadThread,
+  makeRollbackThread,
+  makeSendTurn,
+  makeStartSession,
+  makeStopAll,
+  makeStopSession,
+} from "./CopilotAdapter.session.ts";
+
+export { makeNodeWrapperCliPath } from "./CopilotAdapter.types.ts";
+export type { CopilotAdapterLiveOptions } from "./CopilotAdapter.types.ts";
+
+const FULL_ACCESS_AUTO_APPROVE_AFTER_MS = 600;
+
+export const makeCopilotAdapter = Effect.fn("makeCopilotAdapter")(function* (
+  copilotSettings: { readonly binaryPath: string },
+  options?: CopilotAdapterLiveOptions,
+) {
+  const serverConfig = yield* ServerConfig;
+  const instanceId = options?.instanceId ?? ProviderInstanceId.make("copilot");
+  const nativeEventLogger =
+    options?.nativeEventLogger ??
+    (options?.nativeEventLogPath !== undefined
+      ? yield* makeEventNdjsonLogger(options.nativeEventLogPath, {
+          stream: "native",
+        })
+      : undefined);
+  const sessions = new Map<ThreadId, ActiveCopilotSession>();
+  const runtimeEventQueue = yield* Queue.unbounded<ProviderRuntimeEvent>();
+
+  const nextEventId = Effect.map(Random.nextUUIDv4, (id) => EventId.make(id));
+  const makeEventStamp = () =>
+    Effect.all({
+      eventId: nextEventId,
+      createdAt: Effect.sync(() => new Date().toISOString()),
+    });
+
+  const requireSession = (
+    threadId: ThreadId,
+  ): Effect.Effect<ActiveCopilotSession, ProviderAdapterSessionNotFoundError> => {
+    const session = sessions.get(threadId);
+    return session
+      ? Effect.succeed(session)
+      : Effect.fail(
+          new ProviderAdapterSessionNotFoundError({ provider: COPILOT_DRIVER_KIND, threadId }),
+        );
+  };
+
+  const emit = (events: ReadonlyArray<ProviderRuntimeEvent>) =>
+    Queue.offerAll(runtimeEventQueue, events).pipe(Effect.asVoid);
+
+  const logNativeEvent = Effect.fn("logCopilotNativeEvent")(function* (
+    threadId: ThreadId,
+    event: SessionEvent,
+  ) {
+    if (!nativeEventLogger) return;
+    yield* nativeEventLogger.write(
+      {
+        observedAt: new Date().toISOString(),
+        event,
+      },
+      threadId,
+    );
+  });
+
+  const makeSyntheticEvent = <TType extends ProviderRuntimeEvent["type"]>(
+    threadId: ThreadId,
+    type: TType,
+    payload: Extract<ProviderRuntimeEvent, { type: TType }>["payload"],
+    extra?: { turnId?: TurnId; itemId?: string; requestId?: string },
+  ): Effect.Effect<Extract<ProviderRuntimeEvent, { type: TType }>> =>
+    Effect.gen(function* () {
+      const stamp = yield* makeEventStamp();
+      return {
+        ...eventBase({
+          eventId: stamp.eventId,
+          createdAt: stamp.createdAt,
+          threadId,
+          providerInstanceId: instanceId,
+          ...(extra?.turnId ? { turnId: extra.turnId } : {}),
+          ...(extra?.itemId ? { itemId: extra.itemId } : {}),
+          ...(extra?.requestId ? { requestId: extra.requestId } : {}),
+          raw: {
+            source: "copilot.sdk.synthetic",
+            payload,
+          },
+        }),
+        type,
+        payload,
+      } as Extract<ProviderRuntimeEvent, { type: TType }>;
+    });
+
+  const mapEventDeps: MapEventDeps = { makeEventStamp, nextEventId };
+
+  const handleEvent = Effect.fn("handleCopilotEvent")(function* (
+    session: ActiveCopilotSession,
+    event: SessionEvent,
+  ) {
+    session.updatedAt = event.timestamp;
+    const clearsActiveTurn = event.type === "session.idle" || event.type === "abort";
+
+    if (event.type === "assistant.turn_start") {
+      const turnId = TurnId.make(event.data.turnId);
+      session.activeTurnId = turnId;
+      session.turns.push({ id: turnId, items: [event] });
+    } else if (event.type === "assistant.message") {
+      session.activeMessageId = event.data.messageId;
+      session.turns.at(-1)?.items.push(event);
+    } else if (
+      event.type === "assistant.message_delta" ||
+      event.type === "assistant.reasoning" ||
+      event.type === "assistant.reasoning_delta" ||
+      event.type === "assistant.usage" ||
+      event.type === "tool.execution_start" ||
+      event.type === "tool.execution_complete" ||
+      event.type === "user_input.requested" ||
+      event.type === "user_input.completed"
+    ) {
+      session.turns.at(-1)?.items.push(event);
+    } else if (
+      event.type === "session.idle" ||
+      event.type === "abort" ||
+      event.type === "assistant.turn_end" ||
+      event.type === "session.error"
+    ) {
+      session.turns.at(-1)?.items.push(event);
+    }
+
+    if (event.type === "assistant.usage") {
+      session.lastUsage = normalizeUsage(event);
+    }
+
+    if (event.type === "session.error") {
+      session.lastError = event.data.message;
+    }
+
+    yield* logNativeEvent(session.threadId, event);
+    const mapped = yield* mapEvent(mapEventDeps, session, event);
+    if (mapped.length > 0) {
+      yield* emit(mapped);
+    }
+
+    if (clearsActiveTurn) {
+      session.activeTurnId = undefined;
+      session.activeMessageId = undefined;
+    }
+  });
+
+  const buildSessionConfig = (
+    input: {
+      threadId: ThreadId;
+      runtimeMode: ProviderSession["runtimeMode"];
+      cwd?: string;
+      modelSelection?: ProviderSendTurnInput["modelSelection"] | ProviderSession["resumeCursor"];
+    },
+    pendingApprovals: Map<string, PendingApprovalRequest>,
+    pendingUserInputs: Map<string, PendingUserInputRequest>,
+    activeTurnId: () => TurnId | undefined,
+    stoppedRef: { stopped: boolean },
+  ): SessionConfig => ({
+    ...(selectionTargetsCopilotInstance(input.modelSelection, instanceId)
+      ? {
+          model: input.modelSelection.model,
+          ...(getProviderOptionStringSelectionValue(input.modelSelection.options, "reasoningEffort")
+            ? {
+                reasoningEffort: getProviderOptionStringSelectionValue(
+                  input.modelSelection.options,
+                  "reasoningEffort",
+                ) as "low" | "medium" | "high" | "xhigh",
+              }
+            : {}),
+        }
+      : {}),
+    ...(input.cwd ? { workingDirectory: input.cwd } : {}),
+    streaming: true,
+    systemMessage: {
+      mode: "append",
+      content:
+        "You have access to a Chromium browser in this environment. " +
+        "Use it when the task requires live web interaction, navigation, UI verification, login flows, repros, scraping, or screenshots. " +
+        "Prefer codebase inspection first when the task is local-only. " +
+        "Summarize what was verified, including URL and important observations. " +
+        "Avoid unnecessary browser use when terminal or file tools are sufficient.",
+    },
+    onPermissionRequest: (request) =>
+      new Promise<PermissionRequestResult>((resolve) => {
+        const requestId = randomUUID();
+        const currentTurnId = activeTurnId();
+        const requestType = requestTypeFromPermissionRequest(request);
+        const requestDetail = requestDetailFromPermissionRequest(request);
+        pendingApprovals.set(requestId, {
+          request,
+          requestType,
+          turnId: currentTurnId,
+          resolve,
+        });
+
+        void makeSyntheticEvent(
+          input.threadId,
+          "request.opened",
+          {
+            requestType,
+            ...(requestDetail ? { detail: requestDetail } : {}),
+            args: request,
+          },
+          {
+            ...(currentTurnId ? { turnId: currentTurnId } : {}),
+            requestId,
+          },
+        )
+          .pipe(
+            Effect.flatMap((event) => emit([event])),
+            Effect.runPromise,
+          )
+          .catch(() => undefined);
+
+        if (input.runtimeMode === "full-access") {
+          void Effect.gen(function* () {
+            yield* Effect.sleep(FULL_ACCESS_AUTO_APPROVE_AFTER_MS);
+            if (stoppedRef.stopped) return;
+            const pending = pendingApprovals.get(requestId);
+            if (!pending) return;
+            pendingApprovals.delete(requestId);
+            pending.resolve({ kind: "approve-once" });
+            const event = yield* makeSyntheticEvent(
+              input.threadId,
+              "request.resolved",
+              {
+                requestType,
+                decision: "accept",
+              },
+              {
+                ...(currentTurnId ? { turnId: currentTurnId } : {}),
+                requestId,
+              },
+            );
+            yield* emit([event]);
+          })
+            .pipe(Effect.runPromise)
+            .catch(() => undefined);
+        }
+      }),
+    onUserInputRequest: (request) =>
+      new Promise((resolve) => {
+        const requestId = randomUUID();
+        const currentTurnId = activeTurnId();
+        pendingUserInputs.set(requestId, {
+          turnId: currentTurnId,
+          choices: request.choices ?? [],
+          resolve,
+        });
+
+        const question: UserInputQuestion = {
+          id: USER_INPUT_QUESTION_ID,
+          header: "Question",
+          question: request.question,
+          options: (request.choices ?? []).map((choice: string) => ({
+            label: choice,
+            description: choice,
+          })),
+        };
+
+        void makeSyntheticEvent(
+          input.threadId,
+          "user-input.requested",
+          { questions: [question] },
+          {
+            ...(currentTurnId ? { turnId: currentTurnId } : {}),
+            requestId,
+          },
+        )
+          .pipe(
+            Effect.flatMap((event) => emit([event])),
+            Effect.runPromise,
+          )
+          .catch(() => undefined);
+      }),
+  });
+
+  const sessionDeps: SessionOpsDeps = {
+    sessions,
+    serverConfig: { attachmentsDir: serverConfig.attachmentsDir },
+    copilotSettings,
+    ...(options?.environment ? { environment: options.environment } : {}),
+    options,
+    instanceId,
+    emit,
+    makeSyntheticEvent: makeSyntheticEvent as SessionOpsDeps["makeSyntheticEvent"],
+    buildSessionConfig,
+    handleEvent,
+    requireSession,
+  };
+
+  const respondToRequest: CopilotAdapterShape["respondToRequest"] = (
+    threadId,
+    requestId,
+    decision,
+  ) =>
+    Effect.gen(function* () {
+      const record = yield* requireSession(threadId);
+      const pending = record.pendingApprovals.get(requestId);
+      if (!pending) {
+        return yield* new ProviderAdapterRequestError({
+          provider: COPILOT_DRIVER_KIND,
+          method: "session.permission.respond",
+          detail: `Unknown pending GitHub Copilot approval request '${requestId}'.`,
+        });
+      }
+
+      record.pendingApprovals.delete(requestId);
+      pending.resolve(approvalDecisionToPermissionResult(decision, pending.request));
+      const event = yield* makeSyntheticEvent(
+        threadId,
+        "request.resolved",
+        {
+          requestType: pending.requestType,
+          decision,
+        },
+        {
+          ...(pending.turnId ? { turnId: pending.turnId } : {}),
+          requestId,
+        },
+      );
+      yield* emit([event]);
+    });
+
+  const respondToUserInput: CopilotAdapterShape["respondToUserInput"] = (
+    threadId,
+    requestId,
+    answers,
+  ) =>
+    Effect.gen(function* () {
+      const record = yield* requireSession(threadId);
+      const pending = record.pendingUserInputs.get(requestId);
+      if (!pending) {
+        return yield* new ProviderAdapterRequestError({
+          provider: COPILOT_DRIVER_KIND,
+          method: "session.userInput.respond",
+          detail: `Unknown pending GitHub Copilot user-input request '${requestId}'.`,
+        });
+      }
+
+      record.pendingUserInputs.delete(requestId);
+      const candidate =
+        typeof answers[USER_INPUT_QUESTION_ID] === "string"
+          ? answers[USER_INPUT_QUESTION_ID]
+          : (Object.values(answers).find((value): value is string => typeof value === "string") ??
+            "");
+      pending.resolve({
+        answer: candidate,
+        wasFreeform: !pending.choices.includes(candidate),
+      });
+
+      const event = yield* makeSyntheticEvent(
+        threadId,
+        "user-input.resolved",
+        { answers },
+        {
+          ...(pending.turnId ? { turnId: pending.turnId } : {}),
+          requestId,
+        },
+      );
+      yield* emit([event]);
+    });
+
+  return {
+    provider: COPILOT_DRIVER_KIND,
+    capabilities: {
+      sessionModelSwitch: "in-session",
+    },
+    startSession: makeStartSession(sessionDeps),
+    sendTurn: makeSendTurn(sessionDeps),
+    interruptTurn: makeInterruptTurn(sessionDeps),
+    respondToRequest,
+    respondToUserInput,
+    stopSession: makeStopSession(sessionDeps),
+    listSessions: makeListSessions(sessionDeps),
+    hasSession: makeHasSession(sessionDeps),
+    readThread: makeReadThread(sessionDeps),
+    rollbackThread: makeRollbackThread(),
+    stopAll: makeStopAll(sessionDeps),
+    get streamEvents() {
+      return Stream.fromQueue(runtimeEventQueue);
+    },
+  } satisfies CopilotAdapterShape;
+});

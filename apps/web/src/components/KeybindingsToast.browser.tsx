@@ -117,6 +117,11 @@ function createBaseServerConfig(): ServerConfig {
           customModels: [],
           launchArgs: "",
         },
+        copilot: {
+          enabled: true,
+          binaryPath: "",
+          customModels: [],
+        },
         cursor: { enabled: true, binaryPath: "", apiEndpoint: "", customModels: [] },
         opencode: {
           enabled: true,
