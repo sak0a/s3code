@@ -11,6 +11,7 @@ export function ProjectFavicon(input: {
   projectId?: ProjectId;
   customAvatarContentHash?: string | null;
   className?: string;
+  fillContainer?: boolean;
 }) {
   const src = (() => {
     try {
@@ -34,25 +35,25 @@ export function ProjectFavicon(input: {
     src && loadedProjectFaviconSrcs.has(src) ? "loaded" : "loading",
   );
 
+  const fallbackClass = input.fillContainer
+    ? `size-full text-muted-foreground/50 ${input.className ?? ""}`
+    : `size-3.5 shrink-0 text-muted-foreground/50 ${input.className ?? ""}`;
+
   if (!src || status === "error") {
-    return (
-      <FolderIcon
-        className={`size-3.5 shrink-0 text-muted-foreground/50 ${input.className ?? ""}`}
-      />
-    );
+    return <FolderIcon className={fallbackClass} />;
   }
+
+  const imgClass = input.fillContainer
+    ? `size-full object-cover ${status === "loaded" ? "" : "hidden"} ${input.className ?? ""}`
+    : `size-3.5 shrink-0 rounded-sm object-contain ${status === "loaded" ? "" : "hidden"} ${input.className ?? ""}`;
 
   return (
     <>
-      {status !== "loaded" ? (
-        <FolderIcon
-          className={`size-3.5 shrink-0 text-muted-foreground/50 ${input.className ?? ""}`}
-        />
-      ) : null}
+      {status !== "loaded" ? <FolderIcon className={fallbackClass} /> : null}
       <img
         src={src}
         alt=""
-        className={`size-3.5 shrink-0 rounded-sm object-contain ${status === "loaded" ? "" : "hidden"} ${input.className ?? ""}`}
+        className={imgClass}
         onLoad={() => {
           loadedProjectFaviconSrcs.add(src);
           setStatus("loaded");

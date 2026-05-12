@@ -1402,7 +1402,7 @@ function ProjectSettingsGeneralSection(props: {
             cwd={props.target.cwd}
             projectId={props.target.id}
             customAvatarContentHash={props.customAvatarContentHash}
-            className="size-12"
+            fillContainer
           />
           {uploading ? (
             <div className="absolute inset-0 grid place-items-center bg-background/60 text-xs">…</div>
