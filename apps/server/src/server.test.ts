@@ -3400,6 +3400,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         provider: "github",
         owner: "S3Tools",
         name: "s3code",
+        remotes: [],
       };
 
       yield* buildAppUnderTest({
