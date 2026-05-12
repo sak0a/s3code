@@ -9,6 +9,8 @@ import {
 import { DateTime, Effect, Layer, Option } from "effect";
 import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest";
 
+import { ServerConfig, type ServerConfigShape } from "../../config.ts";
+import { isLoopbackHost } from "../../startupAccess.ts";
 import { AuthControlPlane } from "../Services/AuthControlPlane.ts";
 import { ServerAuthPolicyLive } from "./ServerAuthPolicy.ts";
 import { BootstrapCredentialService } from "../Services/BootstrapCredentialService.ts";
@@ -33,6 +35,74 @@ type BootstrapExchangeResult = {
 
 const AUTHORIZATION_PREFIX = "Bearer ";
 const WEBSOCKET_TOKEN_QUERY_PARAM = "wsToken";
+
+function normalizeHost(value: string | null | undefined): string | null {
+  const trimmed = value?.trim().toLowerCase();
+  return trimmed && trimmed.length > 0 ? trimmed : null;
+}
+
+function parseOrigin(value: string | undefined): URL | null {
+  if (value === undefined || value.trim().length === 0) {
+    return null;
+  }
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+
+function hostnameFromHostHeader(value: string | undefined): string | null {
+  const host = normalizeHost(value);
+  if (host === null) {
+    return null;
+  }
+  try {
+    return new URL(`http://${host}`).hostname.toLowerCase();
+  } catch {
+    return host.split(":")[0]?.toLowerCase() ?? null;
+  }
+}
+
+function isAcceptedWebSocketOrigin(input: {
+  readonly origin: string | undefined;
+  readonly host: string | undefined;
+  readonly config: ServerConfigShape;
+}): boolean {
+  const origin = parseOrigin(input.origin);
+  if (origin === null) {
+    return input.origin === undefined || input.origin.trim().length === 0;
+  }
+
+  const originHost = normalizeHost(origin.host);
+  if (originHost === null) {
+    return false;
+  }
+
+  const requestHost = normalizeHost(input.host);
+  if (requestHost !== null && originHost === requestHost) {
+    return true;
+  }
+
+  if (input.config.devUrl !== undefined && origin.origin === input.config.devUrl.origin) {
+    return true;
+  }
+
+  const configuredHost = normalizeHost(input.config.host);
+  const configuredPort = String(input.config.port);
+  if (
+    configuredHost !== null &&
+    origin.hostname.toLowerCase() === configuredHost &&
+    (!origin.port || origin.port === configuredPort)
+  ) {
+    return true;
+  }
+
+  const requestHostname = hostnameFromHostHeader(input.host);
+  return (
+    requestHostname !== null && isLoopbackHost(origin.hostname) && isLoopbackHost(requestHostname)
+  );
+}
 
 export function toBootstrapExchangeAuthError(cause: BootstrapCredentialError): AuthError {
   if (cause.status === 500) {
@@ -61,6 +131,7 @@ function parseBearerToken(request: HttpServerRequest.HttpServerRequest): string 
 
 export const makeServerAuth = Effect.gen(function* () {
   const policy = yield* ServerAuthPolicy;
+  const config = yield* ServerConfig;
   const bootstrapCredentials = yield* BootstrapCredentialService;
   const authControlPlane = yield* AuthControlPlane;
   const sessions = yield* SessionCredentialService;
@@ -343,6 +414,23 @@ export const makeServerAuth = Effect.gen(function* () {
 
   const authenticateWebSocketUpgrade: ServerAuthShape["authenticateWebSocketUpgrade"] = (request) =>
     Effect.gen(function* () {
+      if (
+        !isAcceptedWebSocketOrigin({
+          origin: request.headers.origin,
+          host: request.headers.host,
+          config,
+        })
+      ) {
+        yield* Effect.logWarning("Rejected websocket upgrade from unexpected origin.", {
+          origin: request.headers.origin ?? null,
+          host: request.headers.host ?? null,
+        });
+        return yield* new AuthError({
+          message: "WebSocket origin is not allowed.",
+          status: 403,
+        });
+      }
+
       const requestUrl = HttpServerRequest.toURL(request);
       if (Option.isSome(requestUrl)) {
         const websocketToken = requestUrl.value.searchParams.get(WEBSOCKET_TOKEN_QUERY_PARAM);
@@ -367,7 +455,10 @@ export const makeServerAuth = Effect.gen(function* () {
         }
       }
 
-      return yield* authenticateRequest(request);
+      return yield* new AuthError({
+        message: "WebSocket token required.",
+        status: 401,
+      });
     });
 
   return {

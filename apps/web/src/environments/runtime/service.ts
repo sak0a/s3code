@@ -31,6 +31,7 @@ import { deriveOrchestrationBatchEffects } from "~/orchestrationEventEffects";
 import { projectQueryKeys } from "~/lib/projectReactQuery";
 import { providerQueryKeys } from "~/lib/providerReactQuery";
 import { getPrimaryKnownEnvironment } from "../primary";
+import { issuePrimaryWebSocketToken } from "../primary/auth";
 import {
   bootstrapRemoteBearerSession,
   fetchRemoteEnvironmentDescriptor,
@@ -1136,11 +1137,19 @@ function createPrimaryEnvironmentClient(
   const connectionLabel = knownEnvironment?.label ?? null;
 
   return createWsRpcClient(
-    new WsTransport(wsBaseUrl, {
-      getConnectionLabel: () => connectionLabel,
-      getVersionMismatchHint: () =>
-        resolveServerConfigVersionMismatch(getServerConfig())?.hint ?? null,
-    }),
+    new WsTransport(
+      async () => {
+        const issued = await issuePrimaryWebSocketToken();
+        const url = new URL(wsBaseUrl, window.location.origin);
+        url.searchParams.set("wsToken", issued.token);
+        return url.toString();
+      },
+      {
+        getConnectionLabel: () => connectionLabel,
+        getVersionMismatchHint: () =>
+          resolveServerConfigVersionMismatch(getServerConfig())?.hint ?? null,
+      },
+    ),
   );
 }
 
