@@ -4,11 +4,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pingdotgg/s3code",
+    "url": "git+https://github.com/sak0a/s3code.git",
     "directory": "apps/server"
   },
   "bin": {
-    "s3code": "./dist/bin.mjs"
+    "s3code": "dist/bin.mjs"
   },
   "files": [
     "dist"
