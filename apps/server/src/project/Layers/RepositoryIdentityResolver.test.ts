@@ -236,11 +236,15 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       const identity = yield* resolver.resolve(cwd);
 
       expect(identity).not.toBeNull();
+      if (identity === null) {
+        throw new Error("Expected repository identity to resolve.");
+      }
       // Auto-pick prefers upstream over origin.
-      expect(identity?.locator.remoteName).toBe("upstream");
-      const remoteNames = (identity?.remotes ?? []).map((remote) => remote.name).toSorted();
+      expect(identity.locator.remoteName).toBe("upstream");
+      const remotes = identity.remotes ?? [];
+      const remoteNames = remotes.map((remote) => remote.name).toSorted();
       expect(remoteNames).toEqual(["origin", "upstream"]);
-      const origin = identity?.remotes.find((remote) => remote.name === "origin");
+      const origin = remotes.find((remote) => remote.name === "origin");
       expect(origin?.ownerRepo).toBe("sak0a/s3code");
       expect(origin?.provider).toBe("github");
     }).pipe(Effect.provide(RepositoryIdentityResolverLive)),

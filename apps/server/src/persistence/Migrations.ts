@@ -138,33 +138,33 @@ export const repairProjectionWorktreeTitleColumn = Effect.fn("repairProjectionWo
   },
 );
 
-export const repairProjectionProjectAvatarColumns = Effect.fn("repairProjectionProjectAvatarColumns")(
-  function* () {
-    const sql = yield* SqlClient.SqlClient;
-    const tables = yield* sql<{ readonly name: string }>`
+export const repairProjectionProjectAvatarColumns = Effect.fn(
+  "repairProjectionProjectAvatarColumns",
+)(function* () {
+  const sql = yield* SqlClient.SqlClient;
+  const tables = yield* sql<{ readonly name: string }>`
     SELECT name FROM sqlite_master
     WHERE type = 'table' AND name = 'projection_projects'
   `;
-    if (tables.length === 0) {
-      return;
-    }
+  if (tables.length === 0) {
+    return;
+  }
 
-    const columns = yield* sql<{ readonly name: string }>`
+  const columns = yield* sql<{ readonly name: string }>`
     PRAGMA table_info(projection_projects)
   `;
-    const columnNames = new Set(columns.map((column) => column.name));
+  const columnNames = new Set(columns.map((column) => column.name));
 
-    if (!columnNames.has("custom_avatar_content_hash")) {
-      yield* sql`ALTER TABLE projection_projects ADD COLUMN custom_avatar_content_hash TEXT`;
-      yield* Effect.log("Repaired projection_projects.custom_avatar_content_hash column");
-    }
+  if (!columnNames.has("custom_avatar_content_hash")) {
+    yield* sql`ALTER TABLE projection_projects ADD COLUMN custom_avatar_content_hash TEXT`;
+    yield* Effect.log("Repaired projection_projects.custom_avatar_content_hash column");
+  }
 
-    if (!columnNames.has("preferred_remote_name")) {
-      yield* sql`ALTER TABLE projection_projects ADD COLUMN preferred_remote_name TEXT`;
-      yield* Effect.log("Repaired projection_projects.preferred_remote_name column");
-    }
-  },
-);
+  if (!columnNames.has("preferred_remote_name")) {
+    yield* sql`ALTER TABLE projection_projects ADD COLUMN preferred_remote_name TEXT`;
+    yield* Effect.log("Repaired projection_projects.preferred_remote_name column");
+  }
+});
 
 /**
  * Run all pending migrations.

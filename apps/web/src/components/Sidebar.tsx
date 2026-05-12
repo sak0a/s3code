@@ -1301,7 +1301,10 @@ function ProjectSettingsMenu(props: {
   onSettings: (member: SidebarProjectGroupMember) => void;
 }) {
   const renderActions = (member: SidebarProjectGroupMember) => {
-    const remoteLink = resolveProjectRemoteLink(member.repositoryIdentity, member.preferredRemoteName);
+    const remoteLink = resolveProjectRemoteLink(
+      member.repositoryIdentity,
+      member.preferredRemoteName,
+    );
     const RemoteIcon = resolveRepositoryProviderIcon(remoteLink?.provider);
     return (
       <>
@@ -1431,7 +1434,9 @@ function ProjectSettingsGeneralSection(props: {
             fillContainer
           />
           {uploading ? (
-            <div className="absolute inset-0 grid place-items-center bg-background/60 text-xs">…</div>
+            <div className="absolute inset-0 grid place-items-center bg-background/60 text-xs">
+              …
+            </div>
           ) : null}
         </div>
         <div className="min-w-0 flex-1 space-y-1.5">
@@ -1506,7 +1511,9 @@ function ProjectSettingsGeneralSection(props: {
                 <span
                   className={cn(
                     "grid size-4 shrink-0 place-items-center rounded-full border",
-                    selectedRemoteName === null ? "border-foreground" : "border-muted-foreground/40",
+                    selectedRemoteName === null
+                      ? "border-foreground"
+                      : "border-muted-foreground/40",
                   )}
                   aria-hidden="true"
                 >
@@ -1522,7 +1529,9 @@ function ProjectSettingsGeneralSection(props: {
             {remotes.map((remote, index) => {
               const isSelected =
                 selectedRemoteName === remote.name ||
-                (selectedRemoteName === null && remote.name === autoRemoteName && remotes.length === 1);
+                (selectedRemoteName === null &&
+                  remote.name === autoRemoteName &&
+                  remotes.length === 1);
               const ProviderIcon = resolveRepositoryProviderIcon(remote.provider ?? undefined);
               return (
                 <div
@@ -1663,8 +1672,8 @@ function ProjectSettingsAiSection(props: {
     length >= limit
       ? "text-destructive"
       : length >= warnThreshold
-      ? "text-amber-600 dark:text-amber-400"
-      : "text-muted-foreground";
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-muted-foreground";
   return (
     <div className="space-y-2">
       <label htmlFor="project-custom-system-prompt" className="text-xs font-medium text-foreground">
@@ -1683,7 +1692,9 @@ function ProjectSettingsAiSection(props: {
           className="min-h-32 resize-y pr-20"
           onChange={(event) => props.onCustomSystemPromptChange(event.target.value)}
         />
-        <span className={cn("pointer-events-none absolute bottom-2 right-3 text-[11px]", counterClass)}>
+        <span
+          className={cn("pointer-events-none absolute bottom-2 right-3 text-[11px]", counterClass)}
+        >
           {length} / {limit}
         </span>
       </div>
@@ -1745,7 +1756,12 @@ function ProjectSettingsDialog(props: ProjectSettingsDialogProps) {
                   )}
                   aria-current={isActive ? "page" : undefined}
                 >
-                  <Icon className={cn("size-4 shrink-0", isActive ? "text-foreground" : "text-muted-foreground/60")} />
+                  <Icon
+                    className={cn(
+                      "size-4 shrink-0",
+                      isActive ? "text-foreground" : "text-muted-foreground/60",
+                    )}
+                  />
                   <span className="hidden truncate sm:inline">{label}</span>
                 </button>
               );
@@ -2005,8 +2021,9 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   const [projectSettingsSaving, setProjectSettingsSaving] = useState(false);
   const [projectSettingsCustomAvatarContentHash, setProjectSettingsCustomAvatarContentHash] =
     useState<string | null>(null);
-  const [projectSettingsPreferredRemoteName, setProjectSettingsPreferredRemoteName] =
-    useState<string | null>(null);
+  const [projectSettingsPreferredRemoteName, setProjectSettingsPreferredRemoteName] = useState<
+    string | null
+  >(null);
   const renamingCommittedRef = useRef(false);
   const renamingInputRef = useRef<HTMLInputElement | null>(null);
   const confirmArchiveButtonRefs = useRef(new Map<string, HTMLButtonElement>());
@@ -2277,7 +2294,10 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   }, []);
 
   const openProjectRemoteLink = useCallback((member: SidebarProjectGroupMember) => {
-    const remoteLink = resolveProjectRemoteLink(member.repositoryIdentity, member.preferredRemoteName);
+    const remoteLink = resolveProjectRemoteLink(
+      member.repositoryIdentity,
+      member.preferredRemoteName,
+    );
     if (!remoteLink) {
       toastManager.add({
         type: "warning",
@@ -2523,7 +2543,9 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         };
 
         const hasAnyRemoteLink = project.memberProjects.some(
-          (member) => resolveProjectRemoteLink(member.repositoryIdentity, member.preferredRemoteName) !== null,
+          (member) =>
+            resolveProjectRemoteLink(member.repositoryIdentity, member.preferredRemoteName) !==
+            null,
         );
         const menuItems: ContextMenuItem<string>[] = [
           buildTargetedItem("settings", "Project settings"),
@@ -2531,7 +2553,10 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
             ? [
                 buildTargetedItem("open-remote", "Open remote", {
                   isDisabled: (member) =>
-                    resolveProjectRemoteLink(member.repositoryIdentity, member.preferredRemoteName) === null,
+                    resolveProjectRemoteLink(
+                      member.repositoryIdentity,
+                      member.preferredRemoteName,
+                    ) === null,
                 }),
               ]
             : []),
@@ -3262,8 +3287,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     const currentCustomSystemPrompt = projectSettingsTarget.customSystemPrompt?.trim() ?? "";
     const customSystemPromptChanged = customSystemPrompt !== currentCustomSystemPrompt;
     const preferredRemoteNameChanged =
-      projectSettingsPreferredRemoteName !==
-      (projectSettingsTarget.preferredRemoteName ?? null);
+      projectSettingsPreferredRemoteName !== (projectSettingsTarget.preferredRemoteName ?? null);
     if (
       !titleChanged &&
       !workspaceRootChanged &&

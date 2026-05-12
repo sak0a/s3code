@@ -15,10 +15,12 @@
 ## File Structure
 
 **Contracts** (`packages/contracts/src/`)
+
 - Modify `environment.ts` — extend `RepositoryIdentity` with `remotes` array
 - Modify `orchestration.ts` — extend `OrchestrationProject`, `ProjectMetaUpdateCommand`, `ProjectMetaUpdatedPayload`; add `ProjectAvatarSetCommand`, `ProjectAvatarSetPayload`, and a corresponding event entry
 
 **Server** (`apps/server/src/`)
+
 - Modify `project/Layers/RepositoryIdentityResolver.ts` — populate `remotes`
 - Modify `project/Layers/RepositoryIdentityResolver.test.ts` — assertions for `remotes`
 - Create `persistence/Migrations/034_ProjectAvatarAndPreferredRemote.ts` — add two TEXT columns
@@ -33,6 +35,7 @@
 - Modify `server.ts` (or wherever the http router is composed) — wire the new layers
 
 **Web** (`apps/web/src/`)
+
 - Modify `types.ts` — extend the `Project` interface with the two new fields
 - Modify `store.ts` — map the two new fields in `mapProject`
 - Modify `components/ProjectFavicon.tsx` — render custom avatar when set
@@ -49,6 +52,7 @@
 ### Task 1: Extend `RepositoryIdentity` with all remotes
 
 **Files:**
+
 - Modify: `packages/contracts/src/environment.ts:44-60`
 
 - [ ] **Step 1: Add the `RepositoryRemote` schema and `remotes` field**
@@ -72,9 +76,7 @@ export const RepositoryIdentity = Schema.Struct({
   provider: Schema.optionalKey(TrimmedNonEmptyString),
   owner: Schema.optionalKey(TrimmedNonEmptyString),
   name: Schema.optionalKey(TrimmedNonEmptyString),
-  remotes: Schema.Array(RepositoryRemote).pipe(
-    Schema.withDecodingDefault(() => []),
-  ),
+  remotes: Schema.Array(RepositoryRemote).pipe(Schema.withDecodingDefault(() => [])),
 });
 export type RepositoryIdentity = typeof RepositoryIdentity.Type;
 ```
@@ -96,6 +98,7 @@ git commit -m "feat(contracts): extend RepositoryIdentity with all remotes"
 ### Task 2: Extend `OrchestrationProject` with `customAvatarContentHash` and `preferredRemoteName`
 
 **Files:**
+
 - Modify: `packages/contracts/src/orchestration.ts:209-224`
 
 - [ ] **Step 1: Add the two fields**
@@ -141,6 +144,7 @@ git commit -m "feat(contracts): add customAvatarContentHash and preferredRemoteN
 ### Task 3: Extend `ProjectMetaUpdateCommand` and `ProjectMetaUpdatedPayload`
 
 **Files:**
+
 - Modify: `packages/contracts/src/orchestration.ts:507-517` and the `ProjectMetaUpdatedPayload` near line 968
 
 - [ ] **Step 1: Add `preferredRemoteName` to both**
@@ -194,6 +198,7 @@ git commit -m "feat(contracts): allow preferredRemoteName on project.meta.update
 ### Task 4: Add `project.avatar.set` command, event, and payload
 
 **Files:**
+
 - Modify: `packages/contracts/src/orchestration.ts`
 
 - [ ] **Step 1: Define the command schema**
@@ -264,6 +269,7 @@ git commit -m "feat(contracts): add project.avatar.set command and project.avata
 ### Task 5: Populate `remotes` in `RepositoryIdentityResolver`
 
 **Files:**
+
 - Modify: `apps/server/src/project/Layers/RepositoryIdentityResolver.ts`
 - Modify: `apps/server/src/project/Layers/RepositoryIdentityResolver.test.ts`
 
@@ -272,30 +278,30 @@ git commit -m "feat(contracts): add project.avatar.set command and project.avata
 Append to `RepositoryIdentityResolver.test.ts` inside the `it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", ...)` block:
 
 ```typescript
-  it.effect("populates all remotes in addition to the auto-picked locator", () =>
-    Effect.gen(function* () {
-      const fileSystem = yield* FileSystem.FileSystem;
-      const cwd = yield* fileSystem.makeTempDirectoryScoped({
-        prefix: "s3-repository-identity-remotes-test-",
-      });
+it.effect("populates all remotes in addition to the auto-picked locator", () =>
+  Effect.gen(function* () {
+    const fileSystem = yield* FileSystem.FileSystem;
+    const cwd = yield* fileSystem.makeTempDirectoryScoped({
+      prefix: "s3-repository-identity-remotes-test-",
+    });
 
-      yield* git(cwd, ["init"]);
-      yield* git(cwd, ["remote", "add", "origin", "git@github.com:sak0a/s3code.git"]);
-      yield* git(cwd, ["remote", "add", "upstream", "git@github.com:S3Tools/s3code.git"]);
+    yield* git(cwd, ["init"]);
+    yield* git(cwd, ["remote", "add", "origin", "git@github.com:sak0a/s3code.git"]);
+    yield* git(cwd, ["remote", "add", "upstream", "git@github.com:S3Tools/s3code.git"]);
 
-      const resolver = yield* RepositoryIdentityResolver;
-      const identity = yield* resolver.resolve(cwd);
+    const resolver = yield* RepositoryIdentityResolver;
+    const identity = yield* resolver.resolve(cwd);
 
-      expect(identity).not.toBeNull();
-      // Auto-pick prefers upstream over origin.
-      expect(identity?.locator.remoteName).toBe("upstream");
-      const remoteNames = (identity?.remotes ?? []).map((remote) => remote.name).toSorted();
-      expect(remoteNames).toEqual(["origin", "upstream"]);
-      const origin = identity?.remotes.find((remote) => remote.name === "origin");
-      expect(origin?.ownerRepo).toBe("sak0a/s3code");
-      expect(origin?.provider).toBe("github");
-    }).pipe(Effect.provide(RepositoryIdentityResolverLive)),
-  );
+    expect(identity).not.toBeNull();
+    // Auto-pick prefers upstream over origin.
+    expect(identity?.locator.remoteName).toBe("upstream");
+    const remoteNames = (identity?.remotes ?? []).map((remote) => remote.name).toSorted();
+    expect(remoteNames).toEqual(["origin", "upstream"]);
+    const origin = identity?.remotes.find((remote) => remote.name === "origin");
+    expect(origin?.ownerRepo).toBe("sak0a/s3code");
+    expect(origin?.provider).toBe("github");
+  }).pipe(Effect.provide(RepositoryIdentityResolverLive)),
+);
 ```
 
 - [ ] **Step 2: Run the test to confirm it fails**
@@ -362,9 +368,7 @@ async function resolveRepositoryIdentityFromCacheKey(
 
     const allRemotes = parseRemoteFetchUrls(remoteResult.stdout);
     const remote = pickPrimaryRemote(allRemotes);
-    return remote
-      ? buildRepositoryIdentity({ ...remote, rootPath: cacheKey, allRemotes })
-      : null;
+    return remote ? buildRepositoryIdentity({ ...remote, rootPath: cacheKey, allRemotes }) : null;
   } catch {
     return null;
   }
@@ -386,6 +390,7 @@ git commit -m "feat(server): populate RepositoryIdentity.remotes with all git re
 ### Task 6: Add SQL migration for the two new project columns
 
 **Files:**
+
 - Create: `apps/server/src/persistence/Migrations/034_ProjectAvatarAndPreferredRemote.ts`
 
 - [ ] **Step 1: Write the migration**
@@ -446,6 +451,7 @@ git commit -m "feat(server): add migration for project avatar and preferred remo
 ### Task 7: Read/write the two new columns in `ProjectionProjects` persistence layer
 
 **Files:**
+
 - Modify: `apps/server/src/persistence/Layers/ProjectionProjects.ts`
 
 - [ ] **Step 1: Add the new columns to inserts, updates, and selects**
@@ -491,6 +497,7 @@ git commit -m "feat(server): persist project avatar hash and preferred remote na
 ### Task 8: Surface the two new fields in projection snapshot mapping
 
 **Files:**
+
 - Modify: `apps/server/src/orchestration/Layers/ProjectionSnapshotQuery.ts:214-230`
 
 - [ ] **Step 1: Pass the new fields through `mapProjectShellRow`**
@@ -534,6 +541,7 @@ git commit -m "feat(server): surface customAvatarContentHash and preferredRemote
 ### Task 9: Handle `preferredRemoteName` on `project.meta.update` in decider and projector
 
 **Files:**
+
 - Modify: `apps/server/src/orchestration/decider.ts:128-160`
 - Modify: `apps/server/src/orchestration/projector.ts:233-260`
 
@@ -572,6 +580,7 @@ git commit -m "feat(server): apply preferredRemoteName on project.meta.update"
 ### Task 10: Implement `project.avatar.set` in decider and projector
 
 **Files:**
+
 - Modify: `apps/server/src/orchestration/decider.ts`
 - Modify: `apps/server/src/orchestration/projector.ts`
 
@@ -647,6 +656,7 @@ git commit -m "feat(server): handle project.avatar.set command"
 ### Task 11: Create the `ProjectAvatarStore` service interface and implementation
 
 **Files:**
+
 - Create: `apps/server/src/project/Services/ProjectAvatarStore.ts`
 - Create: `apps/server/src/project/Layers/ProjectAvatarStore.ts`
 - Create: `apps/server/src/project/Layers/ProjectAvatarStore.test.ts`
@@ -689,9 +699,7 @@ it.layer(NodeServices.layer)("ProjectAvatarStoreLive", (it) => {
       yield* store.remove("proj_test" as unknown as never);
       const afterDelete = yield* store.read("proj_test" as unknown as never);
       expect(afterDelete).toBeNull();
-    }).pipe(
-      Effect.provide(Layer.merge(ProjectAvatarStoreLive({ dataDir: "<filled-by-test>" }))),
-    ),
+    }).pipe(Effect.provide(Layer.merge(ProjectAvatarStoreLive({ dataDir: "<filled-by-test>" })))),
   );
 });
 ```
@@ -812,6 +820,7 @@ git commit -m "feat(server): add ProjectAvatarStore service backed by sharp + di
 ### Task 12: Add HTTP routes for avatar upload and serving
 
 **Files:**
+
 - Modify: `apps/server/src/http.ts`
 
 - [ ] **Step 1: Add the upload route**
@@ -957,6 +966,7 @@ git commit -m "feat(server): add HTTP routes for project avatar upload and servi
 ### Task 13: Map new project fields in the web store
 
 **Files:**
+
 - Modify: `apps/web/src/types.ts:87-99`
 - Modify: `apps/web/src/store.ts:223-244`
 
@@ -1024,6 +1034,7 @@ git commit -m "feat(web): map customAvatarContentHash and preferredRemoteName on
 ### Task 14: Render custom avatar in `ProjectFavicon` when set
 
 **Files:**
+
 - Modify: `apps/web/src/components/ProjectFavicon.tsx`
 
 - [ ] **Step 1: Extend props and resolution chain**
@@ -1133,6 +1144,7 @@ git commit -m "feat(web): render custom project avatar when set"
 ### Task 15: Honor `preferredRemoteName` in `resolveProjectRemoteLink`
 
 **Files:**
+
 - Modify: `apps/web/src/components/Sidebar.tsx:1229-1246`
 
 - [ ] **Step 1: Update the resolver**
@@ -1197,6 +1209,7 @@ This is the largest UI task. We replace the existing `ProjectSettingsDialog` fun
 ### Task 16: Build the new dialog shell
 
 **Files:**
+
 - Modify: `apps/web/src/components/Sidebar.tsx`
 
 - [ ] **Step 1: Replace the `ProjectSettingsDialog` function**
@@ -1673,6 +1686,7 @@ git commit -m "feat(web): redesign ProjectSettingsDialog with sidebar nav layout
 ### Task 17: Wire the dialog's new props from the parent component state
 
 **Files:**
+
 - Modify: `apps/web/src/components/Sidebar.tsx`
 
 The previous dialog had props for `worktrees`, `onCopyPath`, etc. The new dialog needs new handlers (`onUploadAvatar`, `onRemoveAvatar`, `onPreferredRemoteChange`) and drops several old ones.
@@ -1689,8 +1703,9 @@ Replace them with new state:
 ```typescript
 const [projectSettingsCustomAvatarContentHash, setProjectSettingsCustomAvatarContentHash] =
   useState<string | null>(null);
-const [projectSettingsPreferredRemoteName, setProjectSettingsPreferredRemoteName] =
-  useState<string | null>(null);
+const [projectSettingsPreferredRemoteName, setProjectSettingsPreferredRemoteName] = useState<
+  string | null
+>(null);
 ```
 
 - [ ] **Step 2: Populate the new state when the dialog opens**
@@ -1715,8 +1730,7 @@ In `submitProjectSettings` (around line 2979), after the existing `customSystemP
 
 ```typescript
 const preferredRemoteNameChanged =
-  projectSettingsPreferredRemoteName !==
-  (projectSettingsTarget.preferredRemoteName ?? null);
+  projectSettingsPreferredRemoteName !== (projectSettingsTarget.preferredRemoteName ?? null);
 ```
 
 Add `preferredRemoteNameChanged` to the early-return guard. Add to the dispatched command body:
@@ -1854,6 +1868,7 @@ const openProjectRemoteByName = useCallback(
 - [ ] **Step 7: Drop obsolete state and props**
 
 Search for and delete:
+
 - `projectSettingsWorktrees` memo (it is no longer referenced)
 - Any unused imports introduced for the old layout (e.g., `ImageIcon`, `MapPinIcon`, `CopyIcon` if not used elsewhere)
 
@@ -1890,6 +1905,7 @@ Expected: ALL PASS
 Run: `bun dev`
 
 Open the app, right-click a project in the sidebar, choose "Project settings", and verify:
+
 - Dialog opens at `max-w-[760px]` (narrower than before).
 - Header subtitle shows display name and environment label (no cwd duplication).
 - Left nav has General / Location / AI sections that switch the content panel.
@@ -1925,6 +1941,7 @@ Expected: clean working tree.
 (Run this after completing all tasks; do not commit anything for this section.)
 
 **Spec coverage:**
+
 - Sidebar-nav layout — Task 16
 - Header subtitle (no cwd duplication) — Task 16
 - Functional project image (upload + remove) — Tasks 4, 10, 11, 12, 14, 17
@@ -1936,11 +1953,13 @@ Expected: clean working tree.
 - `ProjectFavicon` chain renders custom > favicon > folder — Task 14
 
 **Placeholder scan:**
+
 - No `TBD`, `TODO`, or "implement later" tokens.
 - "Add appropriate error handling" — not used; specific error paths are described per-task.
 - "Similar to Task N" — not used.
 
 **Type consistency:**
+
 - `customAvatarContentHash`, `preferredRemoteName` — same spelling everywhere (contracts, store, dialog props, projector).
 - `RepositoryRemote` (in contracts) is consumed in `RepositoryIdentityResolver`, `resolveProjectRemoteLink`, and the General section as `repositoryIdentity.remotes[]`.
 - `project.avatar.set` command and `project.avatar-set` event — verified in tasks 4 and 10.

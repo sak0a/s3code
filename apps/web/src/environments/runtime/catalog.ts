@@ -213,7 +213,10 @@ const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "::1", "localhost"]);
 
 function isLoopbackHostname(hostname: string): boolean {
   return LOOPBACK_HOSTNAMES.has(
-    hostname.trim().toLowerCase().replace(/^\[(.*)\]$/, "$1"),
+    hostname
+      .trim()
+      .toLowerCase()
+      .replace(/^\[(.*)\]$/, "$1"),
   );
 }
 

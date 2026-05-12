@@ -53,11 +53,11 @@ Concrete issues observed in `apps/web/src/components/Sidebar.tsx:1317-1526`:
 
 The nav follows the same shape as `SettingsDialog`: `w-12` icon-only on mobile, `sm:w-48` with labels on larger screens. Items:
 
-| Section id | Label | Icon |
-| --- | --- | --- |
-| `general` | General | `Settings2Icon` |
+| Section id | Label    | Icon             |
+| ---------- | -------- | ---------------- |
+| `general`  | General  | `Settings2Icon`  |
 | `location` | Location | `FolderOpenIcon` |
-| `ai` | AI | `SparklesIcon` |
+| `ai`       | AI       | `SparklesIcon`   |
 
 Selection state is local component state (no persistent store) since there is only one dialog instance and it is short-lived. Default section is `general`.
 

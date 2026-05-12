@@ -217,11 +217,13 @@ describe("ProviderRuntimeIngestion", () => {
     const orchestrationLayer = OrchestrationEngineLive.pipe(
       Layer.provide(OrchestrationProjectionSnapshotQueryLive),
       Layer.provide(OrchestrationProjectionPipelineLive),
-      Layer.provide(Layer.succeed(ProjectAvatarStore, {
-        write: () => Effect.die("ProjectAvatarStore.write not implemented in test"),
-        read: () => Effect.succeed(null),
-        remove: () => Effect.void,
-      })),
+      Layer.provide(
+        Layer.succeed(ProjectAvatarStore, {
+          write: () => Effect.die("ProjectAvatarStore.write not implemented in test"),
+          read: () => Effect.succeed(null),
+          remove: () => Effect.void,
+        }),
+      ),
       Layer.provide(OrchestrationEventStoreLive),
       Layer.provide(OrchestrationCommandReceiptRepositoryLive),
       Layer.provide(RepositoryIdentityResolverLive),

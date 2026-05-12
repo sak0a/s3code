@@ -59,6 +59,7 @@ function commandToAggregateRef(command: OrchestrationCommand): {
   switch (command.type) {
     case "project.create":
     case "project.meta.update":
+    case "project.avatar.set":
     case "project.delete":
       return {
         aggregateKind: "project",
@@ -74,7 +75,29 @@ function commandToAggregateRef(command: OrchestrationCommand): {
         aggregateKind: "worktree",
         aggregateId: command.worktreeId,
       };
-    default:
+    case "thread.create":
+    case "thread.delete":
+    case "thread.archive":
+    case "thread.unarchive":
+    case "thread.meta.update":
+    case "thread.runtime-mode.set":
+    case "thread.interaction-mode.set":
+    case "thread.turn.start":
+    case "thread.turn.interrupt":
+    case "thread.approval.respond":
+    case "thread.user-input.respond":
+    case "thread.checkpoint.revert":
+    case "thread.session.stop":
+    case "thread.attach-to-worktree":
+    case "thread.status-bucket.override":
+    case "thread.manual-position.set":
+    case "thread.session.set":
+    case "thread.message.assistant.delta":
+    case "thread.message.assistant.complete":
+    case "thread.proposed-plan.upsert":
+    case "thread.turn.diff.complete":
+    case "thread.activity.append":
+    case "thread.revert.complete":
       return {
         aggregateKind: "thread",
         aggregateId: command.threadId,

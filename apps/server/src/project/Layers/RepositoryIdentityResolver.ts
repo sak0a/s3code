@@ -128,9 +128,7 @@ async function resolveRepositoryIdentityFromCacheKey(
 
     const allRemotes = parseRemoteFetchUrls(remoteResult.stdout);
     const remote = pickPrimaryRemote(allRemotes);
-    return remote
-      ? buildRepositoryIdentity({ ...remote, rootPath: cacheKey, allRemotes })
-      : null;
+    return remote ? buildRepositoryIdentity({ ...remote, rootPath: cacheKey, allRemotes }) : null;
   } catch {
     return null;
   }
