@@ -140,6 +140,19 @@ function createBrowserLocalApi(rpcClient?: WsRpcClient): LocalApi {
           ? rpcClient.server.discoverSourceControl()
           : Promise.reject(unavailableLocalBackendError()),
     },
+    ...(rpcClient
+      ? {
+          mcp: {
+            listWorkspaces: () => rpcClient.mcp.listWorkspaces(),
+            listServers: (input) => rpcClient.mcp.listServers(input),
+            upsertServer: (input) => rpcClient.mcp.upsertServer(input),
+            setServerEnabled: (input) => rpcClient.mcp.setServerEnabled(input),
+            removeServer: (input) => rpcClient.mcp.removeServer(input),
+            reloadServers: (input) => rpcClient.mcp.reloadServers(input),
+            startOauthLogin: (input) => rpcClient.mcp.startOauthLogin(input),
+          },
+        }
+      : {}),
   };
 }
 

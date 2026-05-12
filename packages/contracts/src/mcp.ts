@@ -1,0 +1,215 @@
+import { Effect, Schema } from "effect";
+
+import { TrimmedNonEmptyString, TrimmedString } from "./baseSchemas.ts";
+import { ProviderInstanceId } from "./providerInstance.ts";
+
+const MCP_SERVER_NAME_MAX_CHARS = 64;
+const MCP_SERVER_NAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
+
+export const McpWorkspaceId = TrimmedNonEmptyString.pipe(Schema.brand("McpWorkspaceId"));
+export type McpWorkspaceId = typeof McpWorkspaceId.Type;
+
+export const McpServerName = TrimmedNonEmptyString.check(
+  Schema.isMaxLength(MCP_SERVER_NAME_MAX_CHARS),
+  Schema.isPattern(MCP_SERVER_NAME_PATTERN),
+).pipe(Schema.brand("McpServerName"));
+export type McpServerName = typeof McpServerName.Type;
+
+export const McpProviderInstanceUsage = Schema.Struct({
+  instanceId: ProviderInstanceId,
+  displayName: Schema.optionalKey(TrimmedNonEmptyString),
+  accentColor: Schema.optionalKey(TrimmedNonEmptyString),
+});
+export type McpProviderInstanceUsage = typeof McpProviderInstanceUsage.Type;
+
+export const McpWorkspace = Schema.Struct({
+  id: McpWorkspaceId,
+  displayPath: TrimmedNonEmptyString,
+  sharedHomePath: TrimmedNonEmptyString,
+  effectiveHomePath: Schema.optionalKey(TrimmedNonEmptyString),
+  mode: Schema.Literals(["direct", "authOverlay"]),
+  selectedInstanceId: ProviderInstanceId,
+  providerInstances: Schema.Array(McpProviderInstanceUsage),
+});
+export type McpWorkspace = typeof McpWorkspace.Type;
+
+export const McpWorkspaceIssue = Schema.Struct({
+  instanceId: ProviderInstanceId,
+  message: TrimmedNonEmptyString,
+});
+export type McpWorkspaceIssue = typeof McpWorkspaceIssue.Type;
+
+export const McpListWorkspacesResult = Schema.Struct({
+  workspaces: Schema.Array(McpWorkspace),
+  issues: Schema.Array(McpWorkspaceIssue).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
+});
+export type McpListWorkspacesResult = typeof McpListWorkspacesResult.Type;
+
+export const McpTransport = Schema.Literals(["stdio", "http", "unknown"]);
+export type McpTransport = typeof McpTransport.Type;
+
+export const McpServerSource = Schema.Literals([
+  "user",
+  "project",
+  "system",
+  "managed",
+  "mixed",
+  "unknown",
+]);
+export type McpServerSource = typeof McpServerSource.Type;
+
+export const McpStartupStatus = Schema.Literals([
+  "ready",
+  "starting",
+  "failed",
+  "disabled",
+  "unknown",
+]);
+export type McpStartupStatus = typeof McpStartupStatus.Type;
+
+export const McpAuthStatus = Schema.Literals([
+  "unsupported",
+  "notLoggedIn",
+  "bearerToken",
+  "oAuth",
+  "unknown",
+]);
+export type McpAuthStatus = typeof McpAuthStatus.Type;
+
+export const McpInventoryTool = Schema.Struct({
+  name: TrimmedNonEmptyString,
+  title: Schema.optionalKey(Schema.NullOr(TrimmedNonEmptyString)),
+  description: Schema.optionalKey(Schema.NullOr(TrimmedString)),
+  inputSchema: Schema.Unknown,
+  outputSchema: Schema.optionalKey(Schema.Unknown),
+});
+export type McpInventoryTool = typeof McpInventoryTool.Type;
+
+export const McpInventoryResource = Schema.Struct({
+  name: TrimmedNonEmptyString,
+  title: Schema.optionalKey(Schema.NullOr(TrimmedNonEmptyString)),
+  description: Schema.optionalKey(Schema.NullOr(TrimmedString)),
+  uri: TrimmedNonEmptyString,
+  mimeType: Schema.optionalKey(Schema.NullOr(TrimmedString)),
+  size: Schema.optionalKey(Schema.NullOr(Schema.Number)),
+});
+export type McpInventoryResource = typeof McpInventoryResource.Type;
+
+export const McpInventoryResourceTemplate = Schema.Struct({
+  name: TrimmedNonEmptyString,
+  title: Schema.optionalKey(Schema.NullOr(TrimmedNonEmptyString)),
+  description: Schema.optionalKey(Schema.NullOr(TrimmedString)),
+  uriTemplate: TrimmedNonEmptyString,
+  mimeType: Schema.optionalKey(Schema.NullOr(TrimmedString)),
+});
+export type McpInventoryResourceTemplate = typeof McpInventoryResourceTemplate.Type;
+
+export const McpServerConfig = Schema.Struct({
+  transport: McpTransport,
+  command: Schema.optionalKey(TrimmedString),
+  args: Schema.Array(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
+  cwd: Schema.optionalKey(Schema.NullOr(TrimmedString)),
+  url: Schema.optionalKey(TrimmedString),
+  bearerTokenEnvVar: Schema.optionalKey(Schema.NullOr(TrimmedString)),
+  env: Schema.Record(Schema.String, Schema.String).pipe(
+    Schema.withDecodingDefault(Effect.succeed({})),
+  ),
+  envVars: Schema.Array(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
+  httpHeaders: Schema.Record(Schema.String, Schema.String).pipe(
+    Schema.withDecodingDefault(Effect.succeed({})),
+  ),
+  envHttpHeaders: Schema.Record(Schema.String, Schema.String).pipe(
+    Schema.withDecodingDefault(Effect.succeed({})),
+  ),
+  enabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  required: Schema.optionalKey(Schema.Boolean),
+  startupTimeoutSec: Schema.optionalKey(Schema.Number),
+  toolTimeoutSec: Schema.optionalKey(Schema.Number),
+  enabledTools: Schema.Array(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
+  disabledTools: Schema.Array(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
+  oauthScopes: Schema.Array(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
+  rawConfig: Schema.optionalKey(Schema.Unknown),
+});
+export type McpServerConfig = typeof McpServerConfig.Type;
+
+export const McpServer = Schema.Struct({
+  name: McpServerName,
+  config: McpServerConfig,
+  source: McpServerSource,
+  startupStatus: McpStartupStatus,
+  authStatus: McpAuthStatus,
+  error: Schema.optionalKey(Schema.NullOr(TrimmedString)),
+  tools: Schema.Array(McpInventoryTool).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
+  resources: Schema.Array(McpInventoryResource).pipe(
+    Schema.withDecodingDefault(Effect.succeed([])),
+  ),
+  resourceTemplates: Schema.Array(McpInventoryResourceTemplate).pipe(
+    Schema.withDecodingDefault(Effect.succeed([])),
+  ),
+});
+export type McpServer = typeof McpServer.Type;
+
+export const McpStatusDetail = Schema.Literals(["full", "toolsAndAuthOnly"]);
+export type McpStatusDetail = typeof McpStatusDetail.Type;
+
+export const McpListServersInput = Schema.Struct({
+  workspaceId: McpWorkspaceId,
+  detail: Schema.optionalKey(McpStatusDetail),
+});
+export type McpListServersInput = typeof McpListServersInput.Type;
+
+export const McpListServersResult = Schema.Struct({
+  workspace: McpWorkspace,
+  servers: Schema.Array(McpServer),
+  configPath: Schema.optionalKey(TrimmedNonEmptyString),
+  warnings: Schema.Array(TrimmedNonEmptyString).pipe(
+    Schema.withDecodingDefault(Effect.succeed([])),
+  ),
+});
+export type McpListServersResult = typeof McpListServersResult.Type;
+
+export const McpServerUpsertInput = Schema.Struct({
+  workspaceId: McpWorkspaceId,
+  name: McpServerName,
+  config: McpServerConfig,
+});
+export type McpServerUpsertInput = typeof McpServerUpsertInput.Type;
+
+export const McpServerEnabledInput = Schema.Struct({
+  workspaceId: McpWorkspaceId,
+  name: McpServerName,
+  enabled: Schema.Boolean,
+});
+export type McpServerEnabledInput = typeof McpServerEnabledInput.Type;
+
+export const McpServerRemoveInput = Schema.Struct({
+  workspaceId: McpWorkspaceId,
+  name: McpServerName,
+});
+export type McpServerRemoveInput = typeof McpServerRemoveInput.Type;
+
+export const McpServersReloadInput = Schema.Struct({
+  workspaceId: McpWorkspaceId,
+});
+export type McpServersReloadInput = typeof McpServersReloadInput.Type;
+
+export const McpOauthLoginInput = Schema.Struct({
+  workspaceId: McpWorkspaceId,
+  serverName: McpServerName,
+  scopes: Schema.Array(Schema.String).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
+  timeoutSecs: Schema.optionalKey(Schema.Number),
+});
+export type McpOauthLoginInput = typeof McpOauthLoginInput.Type;
+
+export const McpOauthLoginResult = Schema.Struct({
+  authorizationUrl: TrimmedNonEmptyString,
+});
+export type McpOauthLoginResult = typeof McpOauthLoginResult.Type;
+
+export class McpSettingsError extends Schema.TaggedErrorClass<McpSettingsError>()(
+  "McpSettingsError",
+  {
+    message: TrimmedNonEmptyString,
+    cause: Schema.optional(Schema.Defect),
+  },
+) {}

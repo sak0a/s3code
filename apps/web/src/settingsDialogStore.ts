@@ -3,6 +3,7 @@ import { create } from "zustand";
 export type SettingsSectionId =
   | "general"
   | "providers"
+  | "mcp-servers"
   | "appearance"
   | "source-control"
   | "connections"

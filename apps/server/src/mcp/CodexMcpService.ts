@@ -1,0 +1,668 @@
+import {
+  CodexSettings,
+  McpAuthStatus,
+  McpInventoryResource,
+  McpInventoryResourceTemplate,
+  McpInventoryTool,
+  McpListServersInput,
+  McpListServersResult,
+  McpListWorkspacesResult,
+  McpOauthLoginInput,
+  McpOauthLoginResult,
+  McpServer,
+  McpServerConfig,
+  McpServerEnabledInput,
+  McpServerName,
+  McpServerRemoveInput,
+  McpServerSource,
+  McpServerUpsertInput,
+  McpServersReloadInput,
+  McpSettingsError,
+  McpStartupStatus,
+  McpWorkspace,
+  McpWorkspaceId,
+  ProviderInstanceId,
+} from "@s3tools/contracts";
+import { Cause, Duration, Effect, Exit, FileSystem, Layer, Path, Schema } from "effect";
+import * as CodexClient from "effect-codex-app-server/client";
+import type * as CodexErrors from "effect-codex-app-server/errors";
+import type * as CodexSchema from "effect-codex-app-server/schema";
+import { ChildProcessSpawner } from "effect/unstable/process";
+
+import { ServerConfig } from "../config.ts";
+import { runProcess } from "../processRunner.ts";
+import { ServerSettingsService } from "../serverSettings.ts";
+import {
+  materializeCodexShadowHome,
+  resolveCodexHomeLayout,
+  type CodexHomeLayout,
+} from "../provider/Drivers/CodexHomeLayout.ts";
+import { deriveProviderInstanceConfigMap } from "../provider/Layers/ProviderInstanceRegistryHydration.ts";
+import { buildCodexInitializeParams } from "../provider/Layers/CodexProvider.ts";
+import { mergeProviderInstanceEnvironment } from "../provider/ProviderInstanceEnvironment.ts";
+
+const CODEX_DRIVER = "codex";
+const MCP_APP_SERVER_TIMEOUT = Duration.seconds(25);
+const MCP_STATUS_PAGE_LIMIT = 100;
+const MCP_STATUS_MAX_PAGES = 10;
+const MCP_REMOVE_TIMEOUT_MS = 20_000;
+
+interface WorkspaceRuntime {
+  readonly workspace: McpWorkspace;
+  readonly layout: CodexHomeLayout;
+  readonly codexSettings: CodexSettings;
+  readonly processEnv: NodeJS.ProcessEnv;
+}
+
+interface WorkspaceDiscovery {
+  readonly runtimes: ReadonlyArray<WorkspaceRuntime>;
+  readonly issues: McpListWorkspacesResult["issues"];
+}
+
+type CodexMcpClientError = CodexErrors.CodexAppServerError;
+
+function toMcpError(message: string, cause?: unknown): McpSettingsError {
+  return new McpSettingsError({
+    message,
+    ...(cause === undefined ? {} : { cause }),
+  });
+}
+
+function normalizeUnknownError(cause: unknown, fallback: string): McpSettingsError {
+  if (Schema.is(McpSettingsError)(cause)) {
+    return cause;
+  }
+  if (cause instanceof Error) {
+    return toMcpError(cause.message, cause);
+  }
+  return toMcpError(fallback, cause);
+}
+
+function workspaceIdFor(sharedHomePath: string): McpWorkspaceId {
+  return McpWorkspaceId.make(`codex:${Buffer.from(sharedHomePath, "utf8").toString("base64url")}`);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  return value as Record<string, unknown>;
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
+}
+
+function asStringRecord(value: unknown): Record<string, string> {
+  const record = asRecord(value);
+  if (!record) return {};
+  const entries = Object.entries(record).filter((entry): entry is [string, string] => {
+    const [, entryValue] = entry;
+    return typeof entryValue === "string";
+  });
+  return Object.fromEntries(entries);
+}
+
+function asSpawnEnv(value: NodeJS.ProcessEnv): Record<string, string> {
+  const entries = Object.entries(value).filter((entry): entry is [string, string] => {
+    const [, entryValue] = entry;
+    return typeof entryValue === "string";
+  });
+  return Object.fromEntries(entries);
+}
+
+function asOptionalString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function asOptionalBoolean(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function asOptionalNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function sourceFromOrigin(origin: unknown): McpServerSource {
+  const source = asRecord(asRecord(origin)?.name);
+  const type = source?.type;
+  if (type === "user" || type === "project" || type === "system") {
+    return type;
+  }
+  if (type === "mdm") {
+    return "managed";
+  }
+  return "unknown";
+}
+
+function mergeSources(left: McpServerSource, right: McpServerSource): McpServerSource {
+  if (left === right) return left;
+  if (left === "unknown") return right;
+  if (right === "unknown") return left;
+  return "mixed";
+}
+
+function sourceForServer(
+  name: string,
+  origins: Record<string, unknown>,
+  layerServers: ReadonlyArray<Record<string, unknown>>,
+): McpServerSource {
+  const directOrigin =
+    origins[`mcp_servers.${name}`] ??
+    origins[`mcp_servers.${name}.command`] ??
+    origins[`mcp_servers.${name}.url`];
+  let source = sourceFromOrigin(directOrigin);
+
+  for (const layerServer of layerServers) {
+    if (Object.hasOwn(layerServer, name)) {
+      source = mergeSources(source, "unknown");
+    }
+  }
+
+  return source;
+}
+
+function collectLayerServers(
+  layers: CodexSchema.V2ConfigReadResponse["layers"] | undefined | null,
+): Array<Record<string, unknown>> {
+  if (!layers) return [];
+  const layerServers: Array<Record<string, unknown>> = [];
+  for (const layer of layers) {
+    const config = asRecord(layer.config);
+    const servers = asRecord(config?.mcp_servers);
+    if (servers) {
+      layerServers.push(servers);
+    }
+  }
+  return layerServers;
+}
+
+function normalizeServerConfig(raw: unknown): McpServerConfig {
+  const record = asRecord(raw);
+  if (!record) {
+    return Schema.decodeSync(McpServerConfig)({
+      transport: "unknown",
+      ...(raw === undefined ? {} : { rawConfig: raw }),
+    });
+  }
+
+  const transport =
+    typeof record.url === "string"
+      ? "http"
+      : typeof record.command === "string"
+        ? "stdio"
+        : "unknown";
+  const input: Record<string, unknown> = {
+    transport,
+    args: asStringArray(record.args),
+    cwd: asOptionalString(record.cwd) ?? null,
+    bearerTokenEnvVar: asOptionalString(record.bearer_token_env_var) ?? null,
+    env: asStringRecord(record.env),
+    envVars: asStringArray(record.env_vars),
+    httpHeaders: asStringRecord(record.http_headers),
+    envHttpHeaders: asStringRecord(record.env_http_headers),
+    enabled: asOptionalBoolean(record.enabled) ?? true,
+    enabledTools: asStringArray(record.enabled_tools),
+    disabledTools: asStringArray(record.disabled_tools),
+    oauthScopes: asStringArray(record.oauth_scopes),
+    rawConfig: raw,
+  };
+  const command = asOptionalString(record.command);
+  const url = asOptionalString(record.url);
+  const required = asOptionalBoolean(record.required);
+  const startupTimeoutSec = asOptionalNumber(record.startup_timeout_sec);
+  const toolTimeoutSec = asOptionalNumber(record.tool_timeout_sec);
+  if (command !== undefined) input.command = command;
+  if (url !== undefined) input.url = url;
+  if (required !== undefined) input.required = required;
+  if (startupTimeoutSec !== undefined) input.startupTimeoutSec = startupTimeoutSec;
+  if (toolTimeoutSec !== undefined) input.toolTimeoutSec = toolTimeoutSec;
+  return Schema.decodeUnknownSync(McpServerConfig)(input);
+}
+
+function encodeServerConfig(config: McpServerConfig): Record<string, unknown> {
+  const encoded: Record<string, unknown> = {
+    enabled: config.enabled,
+  };
+
+  if (config.transport === "stdio") {
+    encoded.command = config.command ?? "";
+    if (config.args.length > 0) encoded.args = [...config.args];
+    if (config.cwd && config.cwd.trim().length > 0) encoded.cwd = config.cwd;
+  }
+
+  if (config.transport === "http") {
+    encoded.url = config.url ?? "";
+    if (config.bearerTokenEnvVar && config.bearerTokenEnvVar.trim().length > 0) {
+      encoded.bearer_token_env_var = config.bearerTokenEnvVar;
+    }
+    if (Object.keys(config.httpHeaders).length > 0) encoded.http_headers = config.httpHeaders;
+    if (Object.keys(config.envHttpHeaders).length > 0) {
+      encoded.env_http_headers = config.envHttpHeaders;
+    }
+  }
+
+  if (Object.keys(config.env).length > 0) encoded.env = config.env;
+  if (config.envVars.length > 0) encoded.env_vars = [...config.envVars];
+  if (config.required !== undefined) encoded.required = config.required;
+  if (config.startupTimeoutSec !== undefined)
+    encoded.startup_timeout_sec = config.startupTimeoutSec;
+  if (config.toolTimeoutSec !== undefined) encoded.tool_timeout_sec = config.toolTimeoutSec;
+  if (config.enabledTools.length > 0) encoded.enabled_tools = [...config.enabledTools];
+  if (config.disabledTools.length > 0) encoded.disabled_tools = [...config.disabledTools];
+  if (config.oauthScopes.length > 0) encoded.oauth_scopes = [...config.oauthScopes];
+
+  return encoded;
+}
+
+function normalizeAuthStatus(value: string | undefined): McpAuthStatus {
+  switch (value) {
+    case "unsupported":
+    case "notLoggedIn":
+    case "bearerToken":
+    case "oAuth":
+      return value;
+    default:
+      return "unknown";
+  }
+}
+
+function normalizeTool(tool: CodexSchema.V2ListMcpServerStatusResponse__Tool): McpInventoryTool {
+  return Schema.decodeSync(McpInventoryTool)({
+    name: tool.name,
+    title: tool.title ?? null,
+    description: tool.description ?? null,
+    inputSchema: tool.inputSchema,
+    ...(tool.outputSchema === undefined ? {} : { outputSchema: tool.outputSchema }),
+  });
+}
+
+function normalizeResource(
+  resource: CodexSchema.V2ListMcpServerStatusResponse__Resource,
+): McpInventoryResource {
+  return Schema.decodeSync(McpInventoryResource)({
+    name: resource.name,
+    title: resource.title ?? null,
+    description: resource.description ?? null,
+    uri: resource.uri,
+    mimeType: resource.mimeType ?? null,
+    size: resource.size ?? null,
+  });
+}
+
+function normalizeResourceTemplate(
+  template: CodexSchema.V2ListMcpServerStatusResponse__ResourceTemplate,
+): McpInventoryResourceTemplate {
+  return Schema.decodeSync(McpInventoryResourceTemplate)({
+    name: template.name,
+    title: template.title ?? null,
+    description: template.description ?? null,
+    uriTemplate: template.uriTemplate,
+    mimeType: template.mimeType ?? null,
+  });
+}
+
+function toStartupStatus(
+  config: McpServerConfig,
+  status: CodexSchema.V2ListMcpServerStatusResponse__McpServerStatus | undefined,
+): McpStartupStatus {
+  if (!config.enabled) return "disabled";
+  return status ? "ready" : "unknown";
+}
+
+function extractConfigPath(
+  layers: CodexSchema.V2ConfigReadResponse["layers"] | undefined | null,
+): string | undefined {
+  const userLayer = layers?.find((layer) => {
+    const name = asRecord(layer.name);
+    return name?.type === "user" && typeof name.file === "string";
+  });
+  const file = asRecord(userLayer?.name)?.file;
+  return typeof file === "string" ? file : undefined;
+}
+
+function buildServers(input: {
+  readonly configResponse: CodexSchema.V2ConfigReadResponse;
+  readonly statuses: ReadonlyArray<CodexSchema.V2ListMcpServerStatusResponse__McpServerStatus>;
+}): McpServer[] {
+  const configRecord = input.configResponse.config as Record<string, unknown>;
+  const configuredServers = asRecord(configRecord.mcp_servers) ?? {};
+  const statusByName = new Map(input.statuses.map((status) => [status.name, status]));
+  const names = [...new Set([...Object.keys(configuredServers), ...statusByName.keys()])].toSorted(
+    (left, right) => left.localeCompare(right),
+  );
+  const layerServers = collectLayerServers(input.configResponse.layers);
+
+  return names
+    .filter((name) => Schema.is(McpServerName)(name))
+    .map((name) => {
+      const rawConfig = configuredServers[name];
+      const status = statusByName.get(name);
+      const config = normalizeServerConfig(rawConfig);
+      return Schema.decodeSync(McpServer)({
+        name,
+        config,
+        source: sourceForServer(name, input.configResponse.origins, layerServers),
+        startupStatus: toStartupStatus(config, status),
+        authStatus: normalizeAuthStatus(status?.authStatus),
+        tools: Object.values(status?.tools ?? {}).map(normalizeTool),
+        resources: (status?.resources ?? []).map(normalizeResource),
+        resourceTemplates: (status?.resourceTemplates ?? []).map(normalizeResourceTemplate),
+      });
+    });
+}
+
+function runtimeEnvFor(workspace: WorkspaceRuntime): Record<string, string> {
+  return asSpawnEnv({
+    ...workspace.processEnv,
+    ...(workspace.layout.effectiveHomePath
+      ? { CODEX_HOME: workspace.layout.effectiveHomePath }
+      : {}),
+  });
+}
+
+function chooseWorkspaceRuntime(
+  discovery: WorkspaceDiscovery,
+  workspaceId: McpWorkspaceId,
+): Effect.Effect<WorkspaceRuntime, McpSettingsError> {
+  const runtime = discovery.runtimes.find((entry) => entry.workspace.id === workspaceId);
+  if (!runtime) {
+    return Effect.fail(toMcpError("MCP workspace not found."));
+  }
+  return Effect.succeed(runtime);
+}
+
+export interface CodexMcpServiceShape {
+  readonly listWorkspaces: Effect.Effect<McpListWorkspacesResult, McpSettingsError, never>;
+  readonly listServers: (
+    input: McpListServersInput,
+  ) => Effect.Effect<McpListServersResult, McpSettingsError, never>;
+  readonly upsertServer: (
+    input: McpServerUpsertInput,
+  ) => Effect.Effect<McpListServersResult, McpSettingsError, never>;
+  readonly setServerEnabled: (
+    input: McpServerEnabledInput,
+  ) => Effect.Effect<McpListServersResult, McpSettingsError, never>;
+  readonly removeServer: (
+    input: McpServerRemoveInput,
+  ) => Effect.Effect<McpListServersResult, McpSettingsError, never>;
+  readonly reloadServers: (
+    input: McpServersReloadInput,
+  ) => Effect.Effect<McpListServersResult, McpSettingsError, never>;
+  readonly startOauthLogin: (
+    input: McpOauthLoginInput,
+  ) => Effect.Effect<McpOauthLoginResult, McpSettingsError, never>;
+}
+
+export const makeCodexMcpService = Effect.gen(function* () {
+  const serverSettings = yield* ServerSettingsService;
+  const serverConfig = yield* ServerConfig;
+  const fileSystemService = yield* FileSystem.FileSystem;
+  const pathService = yield* Path.Path;
+  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+
+  const discoverWorkspaces = Effect.gen(function* () {
+    const settings = yield* serverSettings.getSettings;
+    const entries = Object.entries(deriveProviderInstanceConfigMap(settings)).filter(
+      ([, instance]) => String(instance.driver) === CODEX_DRIVER && (instance.enabled ?? true),
+    );
+    const groups = new Map<string, WorkspaceRuntime>();
+    const issues: Array<McpListWorkspacesResult["issues"][number]> = [];
+
+    for (const [rawInstanceId, instance] of entries) {
+      const instanceId = rawInstanceId as ProviderInstanceId;
+      const decoded = Schema.decodeUnknownExit(CodexSettings)(instance.config ?? {});
+      if (Exit.isFailure(decoded)) {
+        issues.push({
+          instanceId,
+          message: "Codex settings for this provider instance could not be decoded.",
+        });
+        continue;
+      }
+
+      const codexSettings = decoded.value;
+      if (!codexSettings.enabled) {
+        continue;
+      }
+      const layout = yield* resolveCodexHomeLayout(codexSettings).pipe(
+        Effect.provideService(Path.Path, pathService),
+      );
+      const materialized = yield* materializeCodexShadowHome(layout).pipe(
+        Effect.provideService(Path.Path, pathService),
+        Effect.provideService(FileSystem.FileSystem, fileSystemService),
+        Effect.exit,
+      );
+      if (Exit.isFailure(materialized)) {
+        issues.push({ instanceId, message: Cause.pretty(materialized.cause) });
+        continue;
+      }
+
+      const workspaceId = workspaceIdFor(layout.sharedHomePath);
+      const usage = {
+        instanceId,
+        ...(instance.displayName ? { displayName: instance.displayName } : {}),
+        ...(instance.accentColor ? { accentColor: instance.accentColor } : {}),
+      };
+      const existing = groups.get(workspaceId);
+      if (existing) {
+        groups.set(workspaceId, {
+          ...existing,
+          workspace: {
+            ...existing.workspace,
+            providerInstances: [...existing.workspace.providerInstances, usage],
+          },
+        });
+        continue;
+      }
+
+      groups.set(workspaceId, {
+        workspace: {
+          id: workspaceId,
+          displayPath: layout.sharedHomePath,
+          sharedHomePath: layout.sharedHomePath,
+          ...(layout.effectiveHomePath ? { effectiveHomePath: layout.effectiveHomePath } : {}),
+          mode: layout.mode,
+          selectedInstanceId: instanceId,
+          providerInstances: [usage],
+        },
+        layout,
+        codexSettings,
+        processEnv: mergeProviderInstanceEnvironment(instance.environment),
+      });
+    }
+
+    const runtimes = [...groups.values()].toSorted((left, right) =>
+      left.workspace.displayPath.localeCompare(right.workspace.displayPath),
+    );
+    return { runtimes, issues };
+  }).pipe(
+    Effect.mapError((cause) => normalizeUnknownError(cause, "Failed to discover MCP workspaces.")),
+  );
+
+  const withClient = <A>(
+    workspace: WorkspaceRuntime,
+    use: (
+      client: CodexClient.CodexAppServerClientShape,
+    ) => Effect.Effect<A, CodexMcpClientError, never>,
+  ): Effect.Effect<A, McpSettingsError, never> =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const clientContext = yield* Layer.build(
+          CodexClient.layerCommand({
+            command: workspace.codexSettings.binaryPath,
+            args: ["app-server"],
+            cwd: serverConfig.cwd,
+            env: runtimeEnvFor(workspace),
+          }),
+        ).pipe(Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner));
+        const client = yield* Effect.service(CodexClient.CodexAppServerClient).pipe(
+          Effect.provide(clientContext),
+        );
+        yield* client.request("initialize", buildCodexInitializeParams());
+        yield* client.notify("initialized", undefined);
+        return yield* use(client);
+      }),
+    ).pipe(
+      Effect.timeout(MCP_APP_SERVER_TIMEOUT),
+      Effect.mapError((cause) => normalizeUnknownError(cause, "Codex app-server MCP call failed.")),
+    );
+
+  const findWorkspace = (workspaceId: McpWorkspaceId) =>
+    discoverWorkspaces.pipe(
+      Effect.flatMap((discovery) => chooseWorkspaceRuntime(discovery, workspaceId)),
+    );
+
+  const readStatuses = (
+    client: CodexClient.CodexAppServerClientShape,
+    detail: McpListServersInput["detail"],
+  ): Effect.Effect<
+    Array<CodexSchema.V2ListMcpServerStatusResponse__McpServerStatus>,
+    CodexMcpClientError,
+    never
+  > =>
+    Effect.gen(function* () {
+      const statuses: Array<CodexSchema.V2ListMcpServerStatusResponse__McpServerStatus> = [];
+      let cursor: string | null | undefined = undefined;
+      let pages = 0;
+      do {
+        const response: CodexSchema.V2ListMcpServerStatusResponse = yield* client.request(
+          "mcpServerStatus/list",
+          {
+            ...(cursor ? { cursor } : {}),
+            detail: detail ?? "full",
+            limit: MCP_STATUS_PAGE_LIMIT,
+          },
+        );
+        statuses.push(...response.data);
+        cursor = response.nextCursor;
+        pages += 1;
+      } while (cursor && pages < MCP_STATUS_MAX_PAGES);
+      return statuses;
+    });
+
+  const listServersForWorkspace = (input: McpListServersInput) =>
+    Effect.gen(function* () {
+      const workspace = yield* findWorkspace(input.workspaceId);
+      return yield* withClient(
+        workspace,
+        Effect.fn(function* (client) {
+          const [configResponse, statuses] = yield* Effect.all(
+            [
+              client.request("config/read", { cwd: serverConfig.cwd, includeLayers: true }),
+              readStatuses(client, input.detail),
+            ],
+            { concurrency: "unbounded" },
+          );
+          const configPath = extractConfigPath(configResponse.layers);
+          return Schema.decodeUnknownSync(McpListServersResult)({
+            workspace: workspace.workspace,
+            servers: buildServers({ configResponse, statuses }),
+            ...(configPath ? { configPath } : {}),
+            warnings: [],
+          });
+        }),
+      );
+    }).pipe(
+      Effect.mapError((cause) => normalizeUnknownError(cause, "Failed to list MCP servers.")),
+    );
+
+  const reloadServers = (input: McpServersReloadInput) =>
+    Effect.gen(function* () {
+      const workspace = yield* findWorkspace(input.workspaceId);
+      yield* withClient(workspace, (client) =>
+        client.request("config/mcpServer/reload", undefined),
+      );
+      return yield* listServersForWorkspace({ workspaceId: input.workspaceId, detail: "full" });
+    });
+
+  const mutateWithAppServer = (
+    workspaceId: McpWorkspaceId,
+    mutate: (
+      client: CodexClient.CodexAppServerClientShape,
+    ) => Effect.Effect<unknown, CodexMcpClientError, never>,
+  ) =>
+    Effect.gen(function* () {
+      const workspace = yield* findWorkspace(workspaceId);
+      yield* withClient(
+        workspace,
+        Effect.fn(function* (client) {
+          yield* mutate(client);
+          yield* client.request("config/mcpServer/reload", undefined);
+        }),
+      );
+      return yield* listServersForWorkspace({ workspaceId, detail: "full" });
+    }).pipe(
+      Effect.mapError((cause) => normalizeUnknownError(cause, "Failed to update MCP servers.")),
+    );
+
+  const removeWithCli = (input: McpServerRemoveInput) =>
+    Effect.gen(function* () {
+      const workspace = yield* findWorkspace(input.workspaceId);
+      yield* Effect.promise(() =>
+        runProcess(workspace.codexSettings.binaryPath, ["mcp", "remove", input.name], {
+          cwd: serverConfig.cwd,
+          env: runtimeEnvFor(workspace),
+          timeoutMs: MCP_REMOVE_TIMEOUT_MS,
+          maxBufferBytes: 256 * 1024,
+          outputMode: "truncate",
+        }),
+      );
+      return yield* reloadServers({ workspaceId: input.workspaceId });
+    }).pipe(
+      Effect.mapError((cause) => normalizeUnknownError(cause, "Failed to remove MCP server.")),
+    );
+
+  return {
+    listWorkspaces: discoverWorkspaces.pipe(
+      Effect.map(({ runtimes, issues }) => ({
+        workspaces: runtimes.map((runtime) => runtime.workspace),
+        issues,
+      })),
+    ),
+    listServers: listServersForWorkspace,
+    upsertServer: (input) =>
+      mutateWithAppServer(input.workspaceId, (client) =>
+        client.request("config/batchWrite", {
+          edits: [
+            {
+              keyPath: `mcp_servers.${input.name}`,
+              mergeStrategy: "replace",
+              value: encodeServerConfig(input.config),
+            },
+          ],
+          reloadUserConfig: true,
+        }),
+      ),
+    setServerEnabled: (input) =>
+      mutateWithAppServer(input.workspaceId, (client) =>
+        client.request("config/value/write", {
+          keyPath: `mcp_servers.${input.name}.enabled`,
+          mergeStrategy: "replace",
+          value: input.enabled,
+        }),
+      ),
+    removeServer: removeWithCli,
+    reloadServers,
+    startOauthLogin: (input) =>
+      Effect.gen(function* () {
+        const workspace = yield* findWorkspace(input.workspaceId);
+        return yield* withClient(
+          workspace,
+          Effect.fn(function* (client) {
+            const result = yield* client.request("mcpServer/oauth/login", {
+              name: input.serverName,
+              ...(input.scopes.length > 0 ? { scopes: input.scopes } : {}),
+              ...(input.timeoutSecs === undefined ? {} : { timeoutSecs: input.timeoutSecs }),
+            });
+            return Schema.decodeSync(McpOauthLoginResult)(result);
+          }),
+        );
+      }).pipe(
+        Effect.mapError((cause) =>
+          normalizeUnknownError(cause, "Failed to start MCP OAuth login."),
+        ),
+      ),
+  } satisfies CodexMcpServiceShape;
+});

@@ -39,6 +39,7 @@ import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
 import { CheckpointDiffQuery } from "./checkpointing/Services/CheckpointDiffQuery.ts";
 import { ServerConfig } from "./config.ts";
 import { Keybindings } from "./keybindings.ts";
+import { makeCodexMcpService } from "./mcp/CodexMcpService.ts";
 import { Open, resolveAvailableEditors } from "./open.ts";
 import { normalizeDispatchCommand } from "./orchestration/Normalizer.ts";
 import { OrchestrationEngineService } from "./orchestration/Services/OrchestrationEngine.ts";
@@ -209,6 +210,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
       const config = yield* ServerConfig;
       const lifecycleEvents = yield* ServerLifecycleEvents;
       const serverSettings = yield* ServerSettingsService;
+      const codexMcp = yield* makeCodexMcpService;
       const startup = yield* ServerRuntimeStartup;
       const workspaceEntries = yield* WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem;
@@ -1459,6 +1461,34 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               "rpc.aggregate": "server",
             },
           ),
+        [WS_METHODS.mcpListWorkspaces]: (_input) =>
+          observeRpcEffect(WS_METHODS.mcpListWorkspaces, codexMcp.listWorkspaces, {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpListServers]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpListServers, codexMcp.listServers(input), {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpUpsertServer]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpUpsertServer, codexMcp.upsertServer(input), {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpSetServerEnabled]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpSetServerEnabled, codexMcp.setServerEnabled(input), {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpRemoveServer]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpRemoveServer, codexMcp.removeServer(input), {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpReloadServers]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpReloadServers, codexMcp.reloadServers(input), {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpStartOauthLogin]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpStartOauthLogin, codexMcp.startOauthLogin(input), {
+            "rpc.aggregate": "mcp",
+          }),
         [WS_METHODS.sourceControlLookupRepository]: (input) =>
           observeRpcEffect(
             WS_METHODS.sourceControlLookupRepository,
