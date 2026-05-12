@@ -930,6 +930,7 @@ export type OrchestrationCommand = typeof OrchestrationCommand.Type;
 export const OrchestrationEventType = Schema.Literals([
   "project.created",
   "project.meta-updated",
+  "project.avatar-set",
   "project.deleted",
   "thread.created",
   "thread.deleted",
