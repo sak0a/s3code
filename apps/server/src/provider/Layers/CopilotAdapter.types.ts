@@ -98,19 +98,60 @@ export interface CopilotAdapterLiveOptions {
   readonly nativeEventLogger?: EventNdjsonLogger;
 }
 
+function unpackedAsarPath(filePath: string): string | undefined {
+  const asarSegment = ".asar/";
+  return filePath.includes(asarSegment)
+    ? filePath.replace(asarSegment, ".asar.unpacked/")
+    : undefined;
+}
+
+function firstExistingPath(candidates: ReadonlyArray<string | undefined>): string | undefined {
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    if (existsSync(candidate)) return candidate;
+    const unpacked = unpackedAsarPath(candidate);
+    if (unpacked && existsSync(unpacked)) return unpacked;
+  }
+  return undefined;
+}
+
 function resolveCopilotCliPath(): string | undefined {
+  const candidates: string[] = [];
+
   try {
     const req = createRequire(import.meta.url);
-    const sdkMain = req.resolve("@github/copilot-sdk");
-    const sdkMainDir = dirname(sdkMain);
-    for (const githubDir of [join(sdkMainDir, "..", "..", ".."), join(sdkMainDir, "..", "..")]) {
-      const candidate = join(githubDir, "copilot", "index.js");
-      if (existsSync(candidate)) return candidate;
+    try {
+      candidates.push(req.resolve("@github/copilot/index.js"));
+    } catch {
+      // Try resolving relative to the SDK below.
+    }
+    try {
+      const sdkMain = req.resolve("@github/copilot-sdk");
+      const sdkMainDir = dirname(sdkMain);
+      for (const githubDir of [join(sdkMainDir, "..", "..", ".."), join(sdkMainDir, "..", "..")]) {
+        candidates.push(join(githubDir, "copilot", "index.js"));
+      }
+    } catch {
+      // Fall through to packaged resource candidates.
     }
   } catch {
     // Fall through to SDK default CLI resolution.
   }
-  return undefined;
+
+  const electronResourcesPath = (process as NodeJS.Process & { resourcesPath?: unknown })
+    .resourcesPath;
+  const resourcesPath =
+    typeof electronResourcesPath === "string" && electronResourcesPath.length > 0
+      ? electronResourcesPath
+      : undefined;
+  if (resourcesPath) {
+    candidates.push(
+      join(resourcesPath, "app.asar.unpacked", "node_modules", "@github", "copilot", "index.js"),
+      join(resourcesPath, "app", "node_modules", "@github", "copilot", "index.js"),
+    );
+  }
+
+  return firstExistingPath(candidates);
 }
 
 let cachedNodeWrapperCliPath: string | undefined;

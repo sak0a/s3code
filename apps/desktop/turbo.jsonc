@@ -7,16 +7,16 @@
       "outputs": ["dist-electron/**"],
     },
     "dev": {
-      "dependsOn": ["s3#build"],
+      "dependsOn": ["sakacode#build"],
       "persistent": true,
     },
     "start": {
-      "dependsOn": ["build", "@s3tools/web#build", "s3#build"],
+      "dependsOn": ["build", "@s3tools/web#build", "sakacode#build"],
       "cache": false,
       "persistent": true,
     },
     "smoke-test": {
-      "dependsOn": ["build", "@s3tools/web#build", "s3#build"],
+      "dependsOn": ["build", "@s3tools/web#build", "sakacode#build"],
       "cache": false,
       "outputs": [],
     },
