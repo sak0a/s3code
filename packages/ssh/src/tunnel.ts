@@ -497,7 +497,7 @@ fi
 `;
 
 export function buildRemoteS3RunnerScript(input?: RemoteS3RunnerOptions): string {
-  const packageSpec = shellSingleQuote(input?.packageSpec?.trim() || "s3code@latest");
+  const packageSpec = shellSingleQuote(input?.packageSpec?.trim() || "sakacode@latest");
   const nodeScriptPath = input?.nodeScriptPath?.trim() || "";
   return stripTrailingNewlines(
     applyScriptPlaceholders(REMOTE_RUNNER_SCRIPT, {

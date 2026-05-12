@@ -64,7 +64,7 @@ Use this when you want to run the server without a GUI, for example on a remote 
 Run the server with `s3code serve`.
 
 ```bash
-npx s3code serve --host "$(tailscale ip -4)"
+npx sakacode serve --host "$(tailscale ip -4)"
 ```
 
 `s3code serve` starts the server without opening a browser and prints:
@@ -86,14 +86,14 @@ Use `s3code serve --help` for the full flag reference. It supports the same gene
 For hosted web pairing over Tailscale HTTPS, opt in to Tailscale Serve:
 
 ```bash
-npx s3code serve --tailscale-serve
+npx sakacode serve --tailscale-serve
 ```
 
 By default this configures Tailscale Serve on HTTPS port 443 and advertises
 `https://machine.tailnet.ts.net/`. Advanced users can choose a different HTTPS port:
 
 ```bash
-npx s3code serve --tailscale-serve --tailscale-serve-port 8443
+npx sakacode serve --tailscale-serve --tailscale-serve-port 8443
 ```
 
 > Note

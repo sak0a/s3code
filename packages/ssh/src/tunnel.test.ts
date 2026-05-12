@@ -85,19 +85,22 @@ describe("ssh tunnel scripts", () => {
 
     assert.include(script, "S3_NODE_SCRIPT_PATH=''");
     assert.include(script, 'exec s3code "$@"');
-    assert.include(script, "exec npx --yes 's3code@latest' \"$@\"");
-    assert.include(script, "exec npm exec --yes 's3code@latest' -- \"$@\"");
-    assert.include(script, "could not install 's3code@latest'");
+    assert.include(script, "exec npx --yes 'sakacode@latest' \"$@\"");
+    assert.include(script, "exec npm exec --yes 'sakacode@latest' -- \"$@\"");
+    assert.include(script, "could not install 'sakacode@latest'");
   });
 
   it("shell-quotes package specs in the remote s3 runner", () => {
     const script = buildRemoteS3RunnerScript({
-      packageSpec: "s3code@nightly; touch /tmp/s3code-owned",
+      packageSpec: "sakacode@nightly; touch /tmp/sakacode-owned",
     });
 
-    assert.include(script, "exec npx --yes 's3code@nightly; touch /tmp/s3code-owned' \"$@\"");
-    assert.include(script, "exec npm exec --yes 's3code@nightly; touch /tmp/s3code-owned' -- \"$@\"");
-    assert.notInclude(script, "exec npx --yes s3code@nightly; touch /tmp/s3code-owned");
+    assert.include(script, "exec npx --yes 'sakacode@nightly; touch /tmp/sakacode-owned' \"$@\"");
+    assert.include(
+      script,
+      "exec npm exec --yes 'sakacode@nightly; touch /tmp/sakacode-owned' -- \"$@\"",
+    );
+    assert.notInclude(script, "exec npx --yes sakacode@nightly; touch /tmp/sakacode-owned");
   });
 
   it("builds the remote s3 runner with a node script override", () => {
@@ -131,7 +134,10 @@ describe("ssh tunnel scripts", () => {
     assert.include(buildRemoteLaunchScript(), '--base-dir "$DEFAULT_SERVER_HOME"');
     assert.notInclude(buildRemoteLaunchScript(), "server-home");
     assert.include(buildRemoteLaunchScript(), "Remote S3Code server did not become ready");
-    assert.include(buildRemoteLaunchScript({ packageSpec: "s3code@nightly" }), "s3code@nightly");
+    assert.include(
+      buildRemoteLaunchScript({ packageSpec: "sakacode@nightly" }),
+      "sakacode@nightly",
+    );
     assert.include(
       buildRemotePairingScript(target),
       '"$RUNNER_FILE" auth pairing create --base-dir "$PAIRING_BASE_DIR" --json',
@@ -139,8 +145,8 @@ describe("ssh tunnel scripts", () => {
     assert.include(buildRemotePairingScript(target), 'PAIRING_BASE_DIR="$DEFAULT_SERVER_HOME"');
     assert.notInclude(buildRemotePairingScript(target), "server-home");
     assert.include(
-      buildRemotePairingScript(target, { packageSpec: "s3code@nightly" }),
-      "s3code@nightly",
+      buildRemotePairingScript(target, { packageSpec: "sakacode@nightly" }),
+      "sakacode@nightly",
     );
     assert.include(
       buildRemoteStopScript(target),

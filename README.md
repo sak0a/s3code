@@ -46,7 +46,7 @@ Implemented fork improvements include:
 ### Run without installing
 
 ```bash
-npx s3code
+npx sakacode
 ```
 
 ### Desktop app

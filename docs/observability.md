@@ -65,7 +65,7 @@ You do not need any extra env vars. Just run the app normally and inspect `serve
 Examples:
 
 ```bash
-npx s3code
+npx sakacode
 ```
 
 ```bash
@@ -116,7 +116,7 @@ export S3CODE_TRACE_TIMING_ENABLED=true
 CLI:
 
 ```bash
-npx s3code
+npx sakacode
 ```
 
 Monorepo web/server dev:
