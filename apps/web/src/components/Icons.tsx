@@ -89,6 +89,14 @@ export const GitLabIcon: Icon = (props) => (
   </svg>
 );
 
+export const ForgejoIcon: Icon = (props) => (
+  <svg {...props} viewBox="0 0 32 32" fill="none">
+    <rect width="32" height="32" rx="7" fill="#FB923C" />
+    <path d="M9 22.5V8.8h14.4v3.4H13.2v3h8.4v3.2h-8.4v4.1H9Z" fill="#111827" />
+    <path d="M21.8 22.5h-4.1l5.2-6.6h4.1l-5.2 6.6Z" fill="#111827" opacity=".82" />
+  </svg>
+);
+
 export const AzureDevOpsIcon: Icon = (props) => {
   const id = useId().replaceAll(":", "");
   const gradientA = `${id}-azure-a`;

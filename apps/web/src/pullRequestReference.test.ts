@@ -21,6 +21,12 @@ describe("parsePullRequestReference", () => {
     );
   });
 
+  it("accepts Forgejo pull request URLs", () => {
+    expect(parsePullRequestReference("https://codeberg.org/owner/repo/pulls/42")).toBe(
+      "https://codeberg.org/owner/repo/pulls/42",
+    );
+  });
+
   it("accepts legacy Azure DevOps pull request URLs", () => {
     expect(
       parsePullRequestReference("https://acme.visualstudio.com/project/_git/s3code/pullrequest/42"),

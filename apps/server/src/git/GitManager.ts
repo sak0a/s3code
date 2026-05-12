@@ -33,7 +33,6 @@ import {
   ModelSelection,
 } from "@s3tools/contracts";
 import {
-  detectSourceControlProviderFromGitRemoteUrl,
   mergeGitStatusParts,
   resolveAutoFeatureBranchName,
   sanitizeBranchFragment,
@@ -799,7 +798,7 @@ export const makeGitManager = Effect.fn("makeGitManager")(function* () {
       (yield* readConfigValueNullable(cwd, `remote.${preferredRemoteName}.url`)) ??
       (yield* readConfigValueNullable(cwd, "remote.origin.url"));
 
-    return remoteUrl ? detectSourceControlProviderFromGitRemoteUrl(remoteUrl) : null;
+    return remoteUrl ? sourceControlProviders.detectProviderFromRemoteUrl(remoteUrl) : null;
   });
 
   const resolveRemoteRepositoryContext = Effect.fn("resolveRemoteRepositoryContext")(function* (

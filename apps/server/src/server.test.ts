@@ -557,6 +557,7 @@ const buildAppUnderTest = (options?: {
       Layer.provide(
         Layer.mock(SourceControlProviderRegistry.SourceControlProviderRegistry)({
           get: () => Effect.die("not implemented in test"),
+          detectProviderFromRemoteUrl: () => null,
           resolveHandle: () => Effect.die("not implemented in test"),
           resolve: () => Effect.die("not implemented in test"),
           discover: Effect.die("not implemented in test"),

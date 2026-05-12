@@ -2,12 +2,14 @@ import { Cache, Context, Duration, Effect, Exit, Layer } from "effect";
 import {
   SourceControlProviderError,
   type SourceControlProviderDiscoveryItem,
+  type SourceControlProviderInfo,
 } from "@s3tools/contracts";
 import type { SourceControlProviderKind } from "@s3tools/contracts";
 import { detectSourceControlProviderFromRemoteUrl } from "@s3tools/shared/sourceControl";
 
 import * as AzureDevOpsCli from "./AzureDevOpsCli.ts";
 import * as BitbucketApi from "./BitbucketApi.ts";
+import * as ForgejoApi from "./ForgejoApi.ts";
 import * as GitHubCli from "./GitHubCli.ts";
 import * as GitLabCli from "./GitLabCli.ts";
 import * as SourceControlProvider from "./SourceControlProvider.ts";
@@ -16,6 +18,7 @@ import {
   githubDiscovery,
   gitlabDiscovery,
   makeBitbucketDiscovery,
+  makeForgejoDiscovery,
 } from "./SourceControlProviderDiscoveryCatalog.ts";
 import * as SourceControlProviderDiscovery from "./SourceControlProviderDiscovery.ts";
 import { ServerConfig } from "../config.ts";
@@ -29,6 +32,7 @@ export interface SourceControlProviderRegistration {
   readonly kind: SourceControlProviderKind;
   readonly provider: SourceControlProvider.SourceControlProviderShape;
   readonly discovery: SourceControlProviderDiscovery.SourceControlProviderDiscoverySpec;
+  readonly detectProviderFromRemoteUrl?: (remoteUrl: string) => SourceControlProviderInfo | null;
 }
 
 export interface SourceControlProviderHandle {
@@ -47,6 +51,7 @@ export interface SourceControlProviderRegistryShape {
     readonly cwd: string;
   }) => Effect.Effect<SourceControlProvider.SourceControlProviderShape, SourceControlProviderError>;
   readonly discover: Effect.Effect<ReadonlyArray<SourceControlProviderDiscoveryItem>>;
+  readonly detectProviderFromRemoteUrl: (remoteUrl: string) => SourceControlProviderInfo | null;
 }
 
 export class SourceControlProviderRegistry extends Context.Service<
@@ -141,10 +146,11 @@ function selectProviderContext(
     readonly name: string;
     readonly url: string;
   }>,
+  detectProvider: (remoteUrl: string) => SourceControlProviderInfo | null,
 ): SourceControlProvider.SourceControlProviderContext | null {
   const candidates = remotes
     .map((remote) => {
-      const provider = detectSourceControlProviderFromRemoteUrl(remote.url);
+      const provider = detectProvider(remote.url);
       return provider
         ? {
             provider,
@@ -247,9 +253,32 @@ export const makeWithProviders = Effect.fn("makeSourceControlProviderRegistryWit
       SourceControlProvider.SourceControlProviderShape
     >(registrations.map((registration) => [registration.kind, registration.provider]));
     const discoverySpecs = registrations.map((registration) => registration.discovery);
+    const dynamicDetectors = registrations
+      .map((registration) => registration.detectProviderFromRemoteUrl)
+      .filter(
+        (detector): detector is (remoteUrl: string) => SourceControlProviderInfo | null =>
+          detector !== undefined,
+      );
 
     const get: SourceControlProviderRegistryShape["get"] = (kind) =>
       Effect.succeed(providers.get(kind) ?? unsupportedProvider(kind));
+
+    const detectProviderFromRemoteUrl: SourceControlProviderRegistryShape["detectProviderFromRemoteUrl"] =
+      (remoteUrl) => {
+        const staticProvider = detectSourceControlProviderFromRemoteUrl(remoteUrl);
+        if (staticProvider && staticProvider.kind !== "unknown") {
+          return staticProvider;
+        }
+
+        for (const detector of dynamicDetectors) {
+          const provider = detector(remoteUrl);
+          if (provider && provider.kind !== "unknown") {
+            return provider;
+          }
+        }
+
+        return staticProvider;
+      };
 
     const detectProviderContext = Effect.fn("SourceControlProviderRegistry.detectProviderContext")(
       function* (cwd: string) {
@@ -260,7 +289,7 @@ export const makeWithProviders = Effect.fn("makeSourceControlProviderRegistryWit
           .listRemotes(cwd)
           .pipe(Effect.mapError((error) => providerDetectionError("detectProvider", cwd, error)));
 
-        return selectProviderContext(remotes.remotes);
+        return selectProviderContext(remotes.remotes, detectProviderFromRemoteUrl);
       },
     );
 
@@ -287,6 +316,7 @@ export const makeWithProviders = Effect.fn("makeSourceControlProviderRegistryWit
 
     return SourceControlProviderRegistry.of({
       get,
+      detectProviderFromRemoteUrl,
       resolveHandle,
       resolve: (input) => resolveHandle(input).pipe(Effect.map((handle) => handle.provider)),
       discover: Effect.all(
@@ -307,6 +337,7 @@ export const make = Effect.fn("makeSourceControlProviderRegistry")(function* () 
   const githubCli = yield* GitHubCli.GitHubCli;
   const gitlabCli = yield* GitLabCli.GitLabCli;
   const bitbucketApi = yield* BitbucketApi.BitbucketApi;
+  const forgejoApi = yield* ForgejoApi.ForgejoApi;
   const azureDevOpsCli = yield* AzureDevOpsCli.AzureDevOpsCli;
 
   const github = yield* makeLazyProvider(
@@ -342,6 +373,17 @@ export const make = Effect.fn("makeSourceControlProviderRegistry")(function* () 
     ),
   );
 
+  const forgejo = yield* makeLazyProvider(
+    "forgejo",
+    Effect.tryPromise({
+      try: () => import("./ForgejoSourceControlProvider.ts"),
+      catch: (cause) => providerLoadError("forgejo", cause),
+    }).pipe(
+      Effect.flatMap((module) => module.make()),
+      Effect.provideService(ForgejoApi.ForgejoApi, forgejoApi),
+    ),
+  );
+
   const azureDevOps = yield* makeLazyProvider(
     "azure-devops",
     Effect.tryPromise({
@@ -354,6 +396,7 @@ export const make = Effect.fn("makeSourceControlProviderRegistry")(function* () 
   );
 
   const bitbucketDiscovery = makeBitbucketDiscovery(bitbucketApi);
+  const forgejoDiscovery = makeForgejoDiscovery(forgejoApi);
 
   return yield* makeWithProviders([
     {
@@ -375,6 +418,12 @@ export const make = Effect.fn("makeSourceControlProviderRegistry")(function* () 
       kind: "bitbucket",
       provider: bitbucket,
       discovery: bitbucketDiscovery,
+    },
+    {
+      kind: "forgejo",
+      provider: forgejo,
+      discovery: forgejoDiscovery,
+      detectProviderFromRemoteUrl: forgejoApi.detectProviderFromRemoteUrl,
     },
   ]);
 });
