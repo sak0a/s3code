@@ -818,6 +818,7 @@ export type DispatchableClientOrchestrationCommand =
 export const ClientOrchestrationCommand = Schema.Union([
   ProjectCreateCommand,
   ProjectMetaUpdateCommand,
+  ProjectAvatarSetCommand,
   ProjectDeleteCommand,
   ThreadCreateCommand,
   ThreadDeleteCommand,

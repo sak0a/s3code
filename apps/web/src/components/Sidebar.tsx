@@ -1970,6 +1970,10 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   const [projectSettingsCustomSystemPrompt, setProjectSettingsCustomSystemPrompt] = useState("");
   const [projectSettingsProjectMetadataDir, setProjectSettingsProjectMetadataDir] = useState("");
   const [projectSettingsSaving, setProjectSettingsSaving] = useState(false);
+  const [projectSettingsCustomAvatarContentHash, setProjectSettingsCustomAvatarContentHash] =
+    useState<string | null>(null);
+  const [projectSettingsPreferredRemoteName, setProjectSettingsPreferredRemoteName] =
+    useState<string | null>(null);
   const renamingCommittedRef = useRef(false);
   const renamingInputRef = useRef<HTMLInputElement | null>(null);
   const confirmArchiveButtonRefs = useRef(new Map<string, HTMLButtonElement>());
@@ -2147,17 +2151,6 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       ),
     ]);
   }, [pinnedCollapsedThread, projectExpanded]);
-  const projectSettingsWorktrees = useMemo(() => {
-    if (!projectSettingsTarget) {
-      return [];
-    }
-    return sidebarWorktrees.filter(
-      (worktree) =>
-        worktree.environmentId === projectSettingsTarget.environmentId &&
-        worktree.projectId === projectSettingsTarget.id,
-    );
-  }, [projectSettingsTarget, sidebarWorktrees]);
-
   const handleProjectButtonClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       if (suppressProjectClickForContextMenuRef.current) {
@@ -2246,6 +2239,8 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     setProjectSettingsCustomSystemPrompt(member.customSystemPrompt ?? "");
     setProjectSettingsProjectMetadataDir(member.projectMetadataDir ?? ".s3code");
     setProjectSettingsSaving(false);
+    setProjectSettingsCustomAvatarContentHash(member.customAvatarContentHash ?? null);
+    setProjectSettingsPreferredRemoteName(member.preferredRemoteName ?? null);
   }, []);
 
   const openProjectRemoteLink = useCallback((member: SidebarProjectGroupMember) => {
@@ -3174,6 +3169,8 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     setProjectSettingsCustomSystemPrompt("");
     setProjectSettingsProjectMetadataDir("");
     setProjectSettingsSaving(false);
+    setProjectSettingsCustomAvatarContentHash(null);
+    setProjectSettingsPreferredRemoteName(null);
   }, []);
 
   const pickProjectSettingsWorkspaceRoot = useCallback(async () => {
@@ -3231,11 +3228,15 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       projectMetadataDir !== (projectSettingsTarget.projectMetadataDir ?? ".s3code");
     const currentCustomSystemPrompt = projectSettingsTarget.customSystemPrompt?.trim() ?? "";
     const customSystemPromptChanged = customSystemPrompt !== currentCustomSystemPrompt;
+    const preferredRemoteNameChanged =
+      projectSettingsPreferredRemoteName !==
+      (projectSettingsTarget.preferredRemoteName ?? null);
     if (
       !titleChanged &&
       !workspaceRootChanged &&
       !projectMetadataDirChanged &&
-      !customSystemPromptChanged
+      !customSystemPromptChanged &&
+      !preferredRemoteNameChanged
     ) {
       closeProjectSettingsDialog();
       return;
@@ -3265,6 +3266,9 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         ...(customSystemPromptChanged
           ? { customSystemPrompt: customSystemPrompt.length > 0 ? customSystemPrompt : null }
           : {}),
+        ...(preferredRemoteNameChanged
+          ? { preferredRemoteName: projectSettingsPreferredRemoteName }
+          : {}),
       });
       closeProjectSettingsDialog();
     } catch (error) {
@@ -3282,6 +3286,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     projectSettingsSaving,
     projectSettingsCustomSystemPrompt,
     projectSettingsProjectMetadataDir,
+    projectSettingsPreferredRemoteName,
     projectSettingsTarget,
     projectSettingsTitle,
     projectSettingsWorkspaceRoot,
@@ -3336,6 +3341,93 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       );
     }
   }, [closeProjectRenameDialog, projectRenameTarget, projectRenameTitle]);
+
+  const uploadProjectAvatar = useCallback(
+    async (file: File) => {
+      if (!projectSettingsTarget) return;
+      const api = readEnvironmentApi(projectSettingsTarget.environmentId);
+      if (!api) return;
+      const httpUrl = resolveEnvironmentHttpUrl({
+        environmentId: projectSettingsTarget.environmentId,
+        pathname: "/api/project-avatar/upload",
+        searchParams: { projectId: projectSettingsTarget.id },
+      });
+      const formData = new FormData();
+      formData.append("avatar", file);
+      try {
+        const response = await fetch(httpUrl, {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+        if (!response.ok) {
+          const text = await response.text().catch(() => "");
+          throw new Error(text || `Upload failed: ${response.status}`);
+        }
+        const { contentHash } = (await response.json()) as { contentHash: string };
+        await api.orchestration.dispatchCommand({
+          type: "project.avatar.set",
+          commandId: newCommandId(),
+          projectId: projectSettingsTarget.id,
+          contentHash,
+        });
+        setProjectSettingsCustomAvatarContentHash(contentHash);
+      } catch (error) {
+        toastManager.add(
+          stackedThreadToast({
+            type: "error",
+            title: "Failed to upload avatar",
+            description: error instanceof Error ? error.message : "An error occurred.",
+          }),
+        );
+      }
+    },
+    [projectSettingsTarget],
+  );
+
+  const removeProjectAvatar = useCallback(async () => {
+    if (!projectSettingsTarget) return;
+    const api = readEnvironmentApi(projectSettingsTarget.environmentId);
+    if (!api) return;
+    try {
+      await api.orchestration.dispatchCommand({
+        type: "project.avatar.set",
+        commandId: newCommandId(),
+        projectId: projectSettingsTarget.id,
+        contentHash: null,
+      });
+      setProjectSettingsCustomAvatarContentHash(null);
+    } catch (error) {
+      toastManager.add(
+        stackedThreadToast({
+          type: "error",
+          title: "Failed to remove avatar",
+          description: error instanceof Error ? error.message : "An error occurred.",
+        }),
+      );
+    }
+  }, [projectSettingsTarget]);
+
+  const openProjectRemoteByName = useCallback(
+    (member: SidebarProjectGroupMember, remoteName: string) => {
+      const remote = (member.repositoryIdentity?.remotes ?? []).find((r) => r.name === remoteName);
+      if (!remote) return;
+      const url = resolveRemoteUrlToBrowserUrl(remote.url);
+      if (!url) return;
+      const api = readLocalApi();
+      if (!api) return;
+      void api.shell.openExternal(url).catch((error) => {
+        toastManager.add(
+          stackedThreadToast({
+            type: "error",
+            title: "Unable to open remote repository",
+            description: error instanceof Error ? error.message : "An error occurred.",
+          }),
+        );
+      });
+    },
+    [],
+  );
 
   const closeProjectGroupingDialog = useCallback(() => {
     setProjectGroupingTarget(null);
@@ -3707,22 +3799,23 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         open={projectSettingsTarget !== null}
         target={projectSettingsTarget}
         title={projectSettingsTitle}
-        customSystemPrompt={projectSettingsCustomSystemPrompt}
+        customAvatarContentHash={projectSettingsCustomAvatarContentHash}
+        preferredRemoteName={projectSettingsPreferredRemoteName}
         workspaceRoot={projectSettingsWorkspaceRoot}
         projectMetadataDir={projectSettingsProjectMetadataDir}
-        worktrees={projectSettingsWorktrees}
+        customSystemPrompt={projectSettingsCustomSystemPrompt}
         saving={projectSettingsSaving}
-        onCustomSystemPromptChange={setProjectSettingsCustomSystemPrompt}
-        onProjectMetadataDirChange={setProjectSettingsProjectMetadataDir}
-        onOpenRemote={openProjectRemoteLink}
+        onClose={closeProjectSettingsDialog}
+        onSave={() => void submitProjectSettings()}
         onTitleChange={setProjectSettingsTitle}
         onWorkspaceRootChange={setProjectSettingsWorkspaceRoot}
+        onProjectMetadataDirChange={setProjectSettingsProjectMetadataDir}
+        onCustomSystemPromptChange={setProjectSettingsCustomSystemPrompt}
+        onPreferredRemoteChange={setProjectSettingsPreferredRemoteName}
         onPickWorkspaceRoot={() => void pickProjectSettingsWorkspaceRoot()}
-        onCopyPath={(path) => {
-          copyPathToClipboard(path, { path });
-        }}
-        onSave={() => void submitProjectSettings()}
-        onClose={closeProjectSettingsDialog}
+        onOpenRemote={openProjectRemoteByName}
+        onUploadAvatar={uploadProjectAvatar}
+        onRemoveAvatar={removeProjectAvatar}
       />
 
       <Dialog
