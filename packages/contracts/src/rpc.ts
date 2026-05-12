@@ -37,6 +37,18 @@ import {
 } from "./git.ts";
 import { KeybindingsConfigError } from "./keybindings.ts";
 import {
+  McpListServersInput,
+  McpListServersResult,
+  McpListWorkspacesResult,
+  McpOauthLoginInput,
+  McpOauthLoginResult,
+  McpServerEnabledInput,
+  McpServerRemoveInput,
+  McpServerUpsertInput,
+  McpServersReloadInput,
+  McpSettingsError,
+} from "./mcp.ts";
+import {
   ClientOrchestrationCommand,
   ORCHESTRATION_WS_METHODS,
   OrchestrationDispatchCommandError,
@@ -164,6 +176,15 @@ export const WS_METHODS = {
   serverGetSettings: "server.getSettings",
   serverUpdateSettings: "server.updateSettings",
   serverDiscoverSourceControl: "server.discoverSourceControl",
+
+  // MCP settings methods
+  mcpListWorkspaces: "mcp.listWorkspaces",
+  mcpListServers: "mcp.listServers",
+  mcpUpsertServer: "mcp.upsertServer",
+  mcpSetServerEnabled: "mcp.setServerEnabled",
+  mcpRemoveServer: "mcp.removeServer",
+  mcpReloadServers: "mcp.reloadServers",
+  mcpStartOauthLogin: "mcp.startOauthLogin",
 
   // Source control methods
   sourceControlLookupRepository: "sourceControl.lookupRepository",
@@ -293,6 +314,48 @@ export const WsServerUpdateSettingsRpc = Rpc.make(WS_METHODS.serverUpdateSetting
 export const WsServerDiscoverSourceControlRpc = Rpc.make(WS_METHODS.serverDiscoverSourceControl, {
   payload: Schema.Struct({}),
   success: SourceControlDiscoveryResult,
+});
+
+export const WsMcpListWorkspacesRpc = Rpc.make(WS_METHODS.mcpListWorkspaces, {
+  payload: Schema.Struct({}),
+  success: McpListWorkspacesResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpListServersRpc = Rpc.make(WS_METHODS.mcpListServers, {
+  payload: McpListServersInput,
+  success: McpListServersResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpUpsertServerRpc = Rpc.make(WS_METHODS.mcpUpsertServer, {
+  payload: McpServerUpsertInput,
+  success: McpListServersResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpSetServerEnabledRpc = Rpc.make(WS_METHODS.mcpSetServerEnabled, {
+  payload: McpServerEnabledInput,
+  success: McpListServersResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpRemoveServerRpc = Rpc.make(WS_METHODS.mcpRemoveServer, {
+  payload: McpServerRemoveInput,
+  success: McpListServersResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpReloadServersRpc = Rpc.make(WS_METHODS.mcpReloadServers, {
+  payload: McpServersReloadInput,
+  success: McpListServersResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpStartOauthLoginRpc = Rpc.make(WS_METHODS.mcpStartOauthLogin, {
+  payload: McpOauthLoginInput,
+  success: McpOauthLoginResult,
+  error: McpSettingsError,
 });
 
 export const WsSourceControlLookupRepositoryRpc = Rpc.make(
@@ -659,6 +722,13 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerGetSettingsRpc,
   WsServerUpdateSettingsRpc,
   WsServerDiscoverSourceControlRpc,
+  WsMcpListWorkspacesRpc,
+  WsMcpListServersRpc,
+  WsMcpUpsertServerRpc,
+  WsMcpSetServerEnabledRpc,
+  WsMcpRemoveServerRpc,
+  WsMcpReloadServersRpc,
+  WsMcpStartOauthLoginRpc,
   WsSourceControlLookupRepositoryRpc,
   WsSourceControlCloneRepositoryRpc,
   WsSourceControlPublishRepositoryRpc,

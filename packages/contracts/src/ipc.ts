@@ -34,6 +34,17 @@ import type {
 } from "./git.ts";
 import type { FilesystemBrowseInput, FilesystemBrowseResult } from "./filesystem.ts";
 import type {
+  McpListServersInput,
+  McpListServersResult,
+  McpListWorkspacesResult,
+  McpOauthLoginInput,
+  McpOauthLoginResult,
+  McpServerEnabledInput,
+  McpServerRemoveInput,
+  McpServerUpsertInput,
+  McpServersReloadInput,
+} from "./mcp.ts";
+import type {
   ProjectListEntriesInput,
   ProjectListEntriesResult,
   ProjectReadFileInput,
@@ -318,6 +329,15 @@ export interface LocalApi {
     getSettings: () => Promise<ServerSettings>;
     updateSettings: (patch: ServerSettingsPatch) => Promise<ServerSettings>;
     discoverSourceControl: () => Promise<SourceControlDiscoveryResult>;
+  };
+  mcp?: {
+    listWorkspaces: () => Promise<McpListWorkspacesResult>;
+    listServers: (input: McpListServersInput) => Promise<McpListServersResult>;
+    upsertServer: (input: McpServerUpsertInput) => Promise<McpListServersResult>;
+    setServerEnabled: (input: McpServerEnabledInput) => Promise<McpListServersResult>;
+    removeServer: (input: McpServerRemoveInput) => Promise<McpListServersResult>;
+    reloadServers: (input: McpServersReloadInput) => Promise<McpListServersResult>;
+    startOauthLogin: (input: McpOauthLoginInput) => Promise<McpOauthLoginResult>;
   };
 }
 
