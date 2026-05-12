@@ -31,6 +31,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
   AzureDevOpsIcon,
   BitbucketIcon,
+  ForgejoIcon,
   GitHubIcon,
   GitIcon,
   GitLabIcon,
@@ -48,6 +49,7 @@ const EMPTY_DISCOVERY_RESULT: SourceControlDiscoveryResult = {
 const SOURCE_CONTROL_PROVIDER_ICONS: Partial<Record<SourceControlProviderKind, Icon>> = {
   github: GitHubIcon,
   gitlab: GitLabIcon,
+  forgejo: ForgejoIcon,
   "azure-devops": AzureDevOpsIcon,
   bitbucket: BitbucketIcon,
 };

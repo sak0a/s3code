@@ -1,4 +1,5 @@
 import type * as BitbucketApi from "./BitbucketApi.ts";
+import type * as ForgejoApi from "./ForgejoApi.ts";
 import * as SourceControlProviderDiscovery from "./SourceControlProviderDiscovery.ts";
 
 function parseGitHubAuth(input: SourceControlProviderDiscovery.SourceControlAuthProbeInput) {
@@ -138,5 +139,18 @@ export function makeBitbucketDiscovery(
     installHint:
       "Set S3CODE_BITBUCKET_EMAIL and S3CODE_BITBUCKET_API_TOKEN on the server (use a Bitbucket API token with pull request and repository scopes).",
     probeAuth: bitbucket.probeAuth,
+  };
+}
+
+export function makeForgejoDiscovery(
+  forgejo: ForgejoApi.ForgejoApiShape,
+): SourceControlProviderDiscovery.SourceControlApiDiscoverySpec {
+  return {
+    type: "api",
+    kind: "forgejo",
+    label: "Forgejo",
+    installHint:
+      "Set S3CODE_FORGEJO_BASE_URL and S3CODE_FORGEJO_TOKEN on the server, provide S3CODE_FORGEJO_INSTANCES for multiple Forgejo hosts, or authenticate with `fj auth login`.",
+    probeAuth: forgejo.probeAuth,
   };
 }

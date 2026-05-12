@@ -15,7 +15,13 @@ import {
   resolveChangeRequestPresentation,
   type ChangeRequestTerminology,
 } from "@s3tools/shared/sourceControl";
-import { AzureDevOpsIcon, BitbucketIcon, GitHubIcon, GitLabIcon } from "./components/Icons";
+import {
+  AzureDevOpsIcon,
+  BitbucketIcon,
+  ForgejoIcon,
+  GitHubIcon,
+  GitLabIcon,
+} from "./components/Icons";
 
 export interface SourceControlPresentation {
   readonly providerName: string;
@@ -39,6 +45,12 @@ export function getSourceControlPresentation(
         providerName: provider?.name || presentation.providerName,
         terminology: getChangeRequestTerminology(provider),
         Icon: GitLabIcon,
+      };
+    case "forgejo":
+      return {
+        providerName: provider?.name || presentation.providerName,
+        terminology: getChangeRequestTerminology(provider),
+        Icon: ForgejoIcon,
       };
     case "azure-devops":
       return {

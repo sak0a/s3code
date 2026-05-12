@@ -32,6 +32,7 @@ import { ProjectFavicon } from "./ProjectFavicon";
 import {
   AzureDevOpsIcon,
   BitbucketIcon,
+  ForgejoIcon,
   GitHubIcon,
   GitIcon,
   GitLabIcon,
@@ -1150,6 +1151,8 @@ function formatRepositoryProviderLabel(provider: string | undefined): string {
       return "GitHub";
     case "gitlab":
       return "GitLab";
+    case "forgejo":
+      return "Forgejo";
     case "azure-devops":
       return "Azure DevOps";
     case "bitbucket":
@@ -1165,6 +1168,8 @@ function resolveRepositoryProviderIcon(provider: string | undefined): Icon {
       return GitHubIcon;
     case "gitlab":
       return GitLabIcon;
+    case "forgejo":
+      return ForgejoIcon;
     case "azure-devops":
       return AzureDevOpsIcon;
     case "bitbucket":

@@ -27,6 +27,10 @@ describe("source control presentation", () => {
       shortLabel: "PR",
       singular: "pull request",
     });
+    expect(getChangeRequestTerminologyForKind("forgejo")).toEqual({
+      shortLabel: "PR",
+      singular: "pull request",
+    });
   });
 
   it("falls back to generic change request copy for unknown providers", () => {
@@ -55,5 +59,12 @@ describe("detectSourceControlProviderFromRemoteUrl", () => {
     expect(
       detectSourceControlProviderFromRemoteUrl("git@bitbucket.org:workspace/repo.git")?.kind,
     ).toBe("bitbucket");
+    expect(detectSourceControlProviderFromRemoteUrl("git@codeberg.org:owner/repo.git")?.kind).toBe(
+      "forgejo",
+    );
+    expect(
+      detectSourceControlProviderFromRemoteUrl("https://code.forgejo.org/forgejo/forgejo.git")
+        ?.kind,
+    ).toBe("forgejo");
   });
 });

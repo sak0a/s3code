@@ -63,6 +63,7 @@ function makeLayer(input: {
     Layer.provide(
       Layer.mock(SourceControlProviderRegistry.SourceControlProviderRegistry)({
         get: () => Effect.succeed(input.provider ?? makeProvider()),
+        detectProviderFromRemoteUrl: () => null,
       }),
     ),
     Layer.provide(

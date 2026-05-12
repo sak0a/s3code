@@ -25,7 +25,13 @@ import {
   GlobeIcon,
 } from "lucide-react";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
-import { AzureDevOpsIcon, BitbucketIcon, GitHubIcon, GitLabIcon } from "~/components/Icons";
+import {
+  AzureDevOpsIcon,
+  BitbucketIcon,
+  ForgejoIcon,
+  GitHubIcon,
+  GitLabIcon,
+} from "~/components/Icons";
 import { RadioGroup } from "~/components/ui/radio-group";
 import { Spinner } from "~/components/ui/spinner";
 import { cn } from "~/lib/utils";
@@ -99,7 +105,7 @@ interface PendingDefaultBranchAction {
 
 type PublishProviderKind = Extract<
   SourceControlProviderKind,
-  "github" | "gitlab" | "bitbucket" | "azure-devops"
+  "github" | "gitlab" | "forgejo" | "bitbucket" | "azure-devops"
 >;
 
 type GitActionToastId = ReturnType<typeof toastManager.add>;
@@ -145,6 +151,14 @@ const PUBLISH_PROVIDER_OPTIONS = [
     host: "gitlab.com",
     pathPlaceholder: "group/project",
     Icon: GitLabIcon,
+  },
+  {
+    value: "forgejo",
+    label: "Forgejo",
+    description: "codeberg.org",
+    host: "codeberg.org",
+    pathPlaceholder: "owner/repo",
+    Icon: ForgejoIcon,
   },
   {
     value: "bitbucket",
@@ -372,6 +386,7 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
     const accounts: Record<PublishProviderKind, string | null> = {
       github: null,
       gitlab: null,
+      forgejo: null,
       bitbucket: null,
       "azure-devops": null,
     };
