@@ -162,6 +162,29 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
       };
     }
 
+    case "project.avatar.set": {
+      yield* requireProject({
+        readModel,
+        command,
+        projectId: command.projectId,
+      });
+      const occurredAt = nowIso();
+      return {
+        ...withEventBase({
+          aggregateKind: "project",
+          aggregateId: command.projectId,
+          occurredAt,
+          commandId: command.commandId,
+        }),
+        type: "project.avatar-set",
+        payload: {
+          projectId: command.projectId,
+          contentHash: command.contentHash,
+          updatedAt: occurredAt,
+        },
+      };
+    }
+
     case "project.delete": {
       yield* requireProject({
         readModel,
