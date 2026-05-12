@@ -78,6 +78,11 @@ import {
 } from "./auth/http.ts";
 import { ServerSecretStoreLive } from "./auth/Layers/ServerSecretStore.ts";
 import { ServerAuthLive } from "./auth/Layers/ServerAuth.ts";
+import * as AtlassianConnectionService from "./atlassian/AtlassianConnectionService.ts";
+import * as JiraWorkItemService from "./atlassian/JiraWorkItemService.ts";
+import { AtlassianConnectionRepositoryLive } from "./persistence/Layers/AtlassianConnections.ts";
+import { AtlassianResourceRepositoryLive } from "./persistence/Layers/AtlassianResources.ts";
+import { ProjectAtlassianLinkRepositoryLive } from "./persistence/Layers/ProjectAtlassianLinks.ts";
 import { ProjectionWorktreeRepositoryLive } from "./persistence/Layers/ProjectionWorktrees.ts";
 import { OrchestrationLayerLive } from "./orchestration/runtimeLayer.ts";
 import {
@@ -250,12 +255,23 @@ const AuthLayerLive = ServerAuthLive.pipe(
   Layer.provide(ServerSecretStoreLive),
 );
 
+const AtlassianLayerLive = Layer.mergeAll(
+  AtlassianConnectionService.layer,
+  JiraWorkItemService.layer,
+).pipe(
+  Layer.provideMerge(AtlassianConnectionRepositoryLive),
+  Layer.provideMerge(AtlassianResourceRepositoryLive),
+  Layer.provideMerge(ProjectAtlassianLinkRepositoryLive),
+  Layer.provideMerge(PersistenceLayerLive),
+  Layer.provide(ServerSecretStoreLive),
+);
+
 const ProviderRuntimeLayerLive = ProviderSessionReaperLive.pipe(
   Layer.provideMerge(ProviderLayerLive),
   Layer.provideMerge(OrchestrationLayerLive),
 );
 
-const RuntimeCoreDependenciesLive = ReactorLayerLive.pipe(
+const RuntimeCoreBaseDependenciesLive = ReactorLayerLive.pipe(
   // Core Services
   Layer.provideMerge(CheckpointingLayerLive),
   Layer.provideMerge(SourceControlProviderRegistryLayerLive),
@@ -289,9 +305,13 @@ const RuntimeCoreDependenciesLive = ReactorLayerLive.pipe(
   Layer.provideMerge(WorkspaceLayerLive),
   Layer.provideMerge(ProjectFaviconResolverLive),
   Layer.provideMerge(ProjectAvatarStoreLayerLive),
+);
+
+const RuntimeCoreDependenciesLive = RuntimeCoreBaseDependenciesLive.pipe(
   Layer.provideMerge(RepositoryIdentityResolverLive),
   Layer.provideMerge(ServerEnvironmentLive),
   Layer.provideMerge(AuthLayerLive),
+  Layer.provideMerge(AtlassianLayerLive),
 );
 
 const RuntimeDependenciesLive = RuntimeCoreDependenciesLive.pipe(
@@ -306,7 +326,7 @@ const RuntimeServicesLive = ServerRuntimeStartupLive.pipe(
   Layer.provideMerge(RuntimeDependenciesLive),
 );
 
-export const makeRoutesLayer = Layer.mergeAll(
+const authRoutesLayer = Layer.mergeAll(
   authBearerBootstrapRouteLayer,
   authBootstrapRouteLayer,
   authClientsRevokeOthersRouteLayer,
@@ -317,13 +337,21 @@ export const makeRoutesLayer = Layer.mergeAll(
   authPairingCredentialRouteLayer,
   authSessionRouteLayer,
   authWebSocketTokenRouteLayer,
+);
+
+const projectAssetRoutesLayer = Layer.mergeAll(
+  projectFaviconRouteLayer,
+  projectAvatarUploadRouteLayer,
+  projectAvatarServeRouteLayer,
+);
+
+export const makeRoutesLayer = Layer.mergeAll(
+  authRoutesLayer,
   attachmentsRouteLayer,
   orchestrationDispatchRouteLayer,
   orchestrationSnapshotRouteLayer,
   otlpTracesProxyRouteLayer,
-  projectFaviconRouteLayer,
-  projectAvatarUploadRouteLayer,
-  projectAvatarServeRouteLayer,
+  projectAssetRoutesLayer,
   serverEnvironmentRouteLayer,
   staticAndDevRouteLayer,
   websocketRpcRouteLayer,

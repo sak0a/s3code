@@ -38,6 +38,8 @@ function toChangeRequest(
     headRefName: summary.headRefName,
     state: summary.state,
     updatedAt: summary.updatedAt ?? Option.none(),
+    ...(summary.author ? { author: summary.author } : {}),
+    ...(typeof summary.commentsCount === "number" ? { commentsCount: summary.commentsCount } : {}),
     ...(summary.isCrossRepository !== undefined
       ? { isCrossRepository: summary.isCrossRepository }
       : {}),
@@ -100,6 +102,10 @@ function toChangeRequestDetail(
       createdAt: DateTime.fromDateUnsafe(new Date(c.createdAt)),
     })),
     truncated: content.truncated,
+    ...(raw.linkedWorkItemKeys.length > 0 ? { linkedWorkItemKeys: raw.linkedWorkItemKeys } : {}),
+    ...(raw.reviewers.length > 0 ? { reviewers: raw.reviewers } : {}),
+    ...(raw.participants.length > 0 ? { participants: raw.participants } : {}),
+    ...(typeof raw.tasksCount === "number" ? { tasksCount: raw.tasksCount } : {}),
   };
 }
 
@@ -228,7 +234,14 @@ export const make = Effect.fn("makeBitbucketSourceControlProvider")(function* ()
           ),
           Effect.mapError((error) => providerError("getChangeRequestDetail", error)),
         ),
-    getChangeRequestDiff: (_input) => Effect.succeed(""),
+    getChangeRequestDiff: (input) =>
+      bitbucket
+        .getPullRequestDiff({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+          reference: input.reference,
+        })
+        .pipe(Effect.mapError((error) => providerError("getChangeRequestDiff", error))),
   });
 });
 

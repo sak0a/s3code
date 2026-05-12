@@ -88,6 +88,8 @@ import {
   type SessionCredentialChange,
 } from "./auth/Services/SessionCredentialService.ts";
 import { respondToAuthError } from "./auth/http.ts";
+import { AtlassianConnectionService } from "./atlassian/AtlassianConnectionService.ts";
+import { JiraWorkItemService } from "./atlassian/JiraWorkItemService.ts";
 
 function isThreadDetailEvent(event: OrchestrationEvent): event is Extract<
   OrchestrationEvent,
@@ -226,6 +228,8 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
       const bootstrapCredentials = yield* BootstrapCredentialService;
       const sessions = yield* SessionCredentialService;
       const projectionWorktrees = yield* ProjectionWorktreeRepository;
+      const atlassian = yield* AtlassianConnectionService;
+      const workItems = yield* JiraWorkItemService;
       const serverCommandId = (tag: string) =>
         CommandId.make(`server:${tag}:${crypto.randomUUID()}`);
 
@@ -1564,6 +1568,31 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               "rpc.aggregate": "source-control",
             },
           ),
+        [WS_METHODS.sourceControlListChangeRequests]: ({ cwd, state, limit, query }) =>
+          observeRpcEffect(
+            WS_METHODS.sourceControlListChangeRequests,
+            sourceControlRegistry.resolve({ cwd }).pipe(
+              Effect.flatMap((provider) => {
+                const trimmedQuery = query?.trim() ?? "";
+                if (trimmedQuery.length > 0) {
+                  return provider.searchChangeRequests({
+                    cwd,
+                    query: trimmedQuery,
+                    ...(limit !== undefined ? { limit } : {}),
+                  });
+                }
+                return provider.listChangeRequests({
+                  cwd,
+                  headSelector: "",
+                  state,
+                  ...(limit !== undefined ? { limit } : {}),
+                });
+              }),
+            ),
+            {
+              "rpc.aggregate": "source-control",
+            },
+          ),
         [WS_METHODS.sourceControlSearchChangeRequests]: ({ cwd, query, limit }) =>
           observeRpcEffect(
             WS_METHODS.sourceControlSearchChangeRequests,
@@ -1608,6 +1637,78 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               "rpc.aggregate": "source-control",
             },
           ),
+        [WS_METHODS.atlassianListConnections]: (_input) =>
+          observeRpcEffect(WS_METHODS.atlassianListConnections, atlassian.listConnections, {
+            "rpc.aggregate": "atlassian",
+          }),
+        [WS_METHODS.atlassianStartOAuth]: (input) =>
+          observeRpcEffect(WS_METHODS.atlassianStartOAuth, atlassian.startOAuth(input), {
+            "rpc.aggregate": "atlassian",
+          }),
+        [WS_METHODS.atlassianDisconnect]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.atlassianDisconnect,
+            atlassian.disconnect(input).pipe(Effect.as({})),
+            {
+              "rpc.aggregate": "atlassian",
+            },
+          ),
+        [WS_METHODS.atlassianRefresh]: (input) =>
+          observeRpcEffect(WS_METHODS.atlassianRefresh, atlassian.refresh(input), {
+            "rpc.aggregate": "atlassian",
+          }),
+        [WS_METHODS.atlassianListResources]: (input) =>
+          observeRpcEffect(WS_METHODS.atlassianListResources, atlassian.listResources(input), {
+            "rpc.aggregate": "atlassian",
+          }),
+        [WS_METHODS.atlassianGetProjectLink]: (input) =>
+          observeRpcEffect(WS_METHODS.atlassianGetProjectLink, atlassian.getProjectLink(input), {
+            "rpc.aggregate": "atlassian",
+          }),
+        [WS_METHODS.atlassianSaveProjectLink]: (input) =>
+          observeRpcEffect(WS_METHODS.atlassianSaveProjectLink, atlassian.saveProjectLink(input), {
+            "rpc.aggregate": "atlassian",
+          }),
+        [WS_METHODS.atlassianSaveManualBitbucketToken]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.atlassianSaveManualBitbucketToken,
+            atlassian.saveManualBitbucketToken(input),
+            {
+              "rpc.aggregate": "atlassian",
+            },
+          ),
+        [WS_METHODS.atlassianSaveManualJiraToken]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.atlassianSaveManualJiraToken,
+            atlassian.saveManualJiraToken(input),
+            {
+              "rpc.aggregate": "atlassian",
+            },
+          ),
+        [WS_METHODS.workItemsList]: (input) =>
+          observeRpcEffect(WS_METHODS.workItemsList, workItems.list(input), {
+            "rpc.aggregate": "work-items",
+          }),
+        [WS_METHODS.workItemsSearch]: (input) =>
+          observeRpcEffect(WS_METHODS.workItemsSearch, workItems.search(input), {
+            "rpc.aggregate": "work-items",
+          }),
+        [WS_METHODS.workItemsGet]: (input) =>
+          observeRpcEffect(WS_METHODS.workItemsGet, workItems.get(input), {
+            "rpc.aggregate": "work-items",
+          }),
+        [WS_METHODS.workItemsAddComment]: (input) =>
+          observeRpcEffect(WS_METHODS.workItemsAddComment, workItems.addComment(input), {
+            "rpc.aggregate": "work-items",
+          }),
+        [WS_METHODS.workItemsListTransitions]: (input) =>
+          observeRpcEffect(WS_METHODS.workItemsListTransitions, workItems.listTransitions(input), {
+            "rpc.aggregate": "work-items",
+          }),
+        [WS_METHODS.workItemsTransition]: (input) =>
+          observeRpcEffect(WS_METHODS.workItemsTransition, workItems.transition(input), {
+            "rpc.aggregate": "work-items",
+          }),
         [WS_METHODS.projectsSearchEntries]: (input) =>
           observeRpcEffect(
             WS_METHODS.projectsSearchEntries,

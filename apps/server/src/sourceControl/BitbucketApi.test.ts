@@ -253,6 +253,32 @@ it.effect("lists closed pull requests with both closed Bitbucket states", () => 
   }).pipe(Effect.provide(layer));
 });
 
+it.effect("lists repository pull requests without a source-branch filter", () => {
+  const { execute, layer } = makeLayer({
+    response: () =>
+      Response.json({
+        values: [],
+      }),
+  });
+
+  return Effect.gen(function* () {
+    const bitbucket = yield* BitbucketApi.BitbucketApi;
+    yield* bitbucket.listPullRequests({
+      cwd: "/repo",
+      headSelector: "",
+      state: "open",
+      limit: 10,
+    });
+
+    assert.deepStrictEqual(execute.mock.calls[0]?.[0].urlParams.params, [
+      ["pagelen", "10"],
+      ["sort", "-updated_on"],
+      ["q", 'state = "OPEN"'],
+      ["state", "OPEN"],
+    ]);
+  }).pipe(Effect.provide(layer));
+});
+
 it.effect("expands all-state pull request listing instead of relying on Bitbucket defaults", () => {
   const { execute, layer } = makeLayer({
     response: () =>
@@ -744,9 +770,20 @@ it.effect("getPullRequestDetail returns body and comments via two REST calls", (
       }
       return Response.json({
         id: 12,
-        title: "Add feature",
+        title: "S3-123 Add feature",
         state: "OPEN",
-        summary: { raw: "PR body text" },
+        summary: { raw: "PR body text for OPS-9" },
+        author: { display_name: "Alice" },
+        reviewers: [{ display_name: "Reviewer" }],
+        participants: [
+          {
+            user: { display_name: "Reviewer", nickname: "reviewer" },
+            role: "REVIEWER",
+            approved: true,
+          },
+        ],
+        comment_count: 3,
+        task_count: 1,
         links: {
           html: { href: "https://bitbucket.org/pingdotgg/s3code/pull-requests/12" },
         },
@@ -766,11 +803,45 @@ it.effect("getPullRequestDetail returns body and comments via two REST calls", (
     const bitbucket = yield* BitbucketApi.BitbucketApi;
     const detail = yield* bitbucket.getPullRequestDetail({ cwd: "/repo", reference: "12" });
     assert.strictEqual(detail.number, 12);
-    assert.strictEqual(detail.body, "PR body text");
+    assert.strictEqual(detail.body, "PR body text for OPS-9");
     assert.strictEqual(detail.comments.length, 1);
     assert.strictEqual(detail.comments[0]?.author, "reviewer");
+    assert.strictEqual(detail.author, "Alice");
+    assert.strictEqual(detail.commentsCount, 3);
+    assert.strictEqual(detail.tasksCount, 1);
+    assert.deepStrictEqual(detail.reviewers, ["Reviewer"]);
+    assert.deepStrictEqual(detail.linkedWorkItemKeys, ["S3-123", "OPS-9"]);
+    assert.deepStrictEqual(detail.participants[0], {
+      displayName: "Reviewer",
+      username: "reviewer",
+      role: "REVIEWER",
+      approved: true,
+    });
     // Two calls: PR + comments
     assert.strictEqual(execute.mock.calls.length, 2);
+  }).pipe(Effect.provide(layer));
+});
+
+it.effect("getPullRequestDiff returns the raw Bitbucket diff text", () => {
+  const { execute, layer } = makeLayer({
+    response: (request) => {
+      if (request.url.endsWith("/diff")) {
+        return new Response("diff --git a/file.ts b/file.ts\n+added\n", {
+          headers: { "content-type": "text/plain" },
+        });
+      }
+      return Response.json(bitbucketPullRequest);
+    },
+  });
+
+  return Effect.gen(function* () {
+    const bitbucket = yield* BitbucketApi.BitbucketApi;
+    const diff = yield* bitbucket.getPullRequestDiff({ cwd: "/repo", reference: "12" });
+    assert.include(diff, "diff --git");
+    assert.strictEqual(
+      execute.mock.calls[0]?.[0].url,
+      "https://api.test.local/2.0/repositories/pingdotgg/s3code/pullrequests/12/diff",
+    );
   }).pipe(Effect.provide(layer));
 });
 

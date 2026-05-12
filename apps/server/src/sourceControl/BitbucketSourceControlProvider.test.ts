@@ -220,8 +220,14 @@ it.effect("getChangeRequestDetail returns body and comments", () =>
           headRefName: "feature/add",
           state: "open" as const,
           updatedAt: Option.none(),
+          author: "alice",
+          commentsCount: 2,
           body: "PR body text",
           comments: [{ author: "reviewer", body: "looks good", createdAt: "2026-03-01T10:00:00Z" }],
+          reviewers: ["reviewer"],
+          participants: [{ displayName: "reviewer", role: "REVIEWER", approved: true }],
+          tasksCount: 1,
+          linkedWorkItemKeys: ["S3-123"],
         }),
     });
     const detail = yield* provider.getChangeRequestDetail({ cwd: "/repo", reference: "99" });
@@ -231,6 +237,31 @@ it.effect("getChangeRequestDetail returns body and comments", () =>
     assert.strictEqual(detail.comments.length, 1);
     assert.strictEqual(detail.comments[0]?.author, "reviewer");
     assert.strictEqual(detail.comments[0]?.body, "looks good");
+    assert.strictEqual(detail.author, "alice");
+    assert.strictEqual(detail.commentsCount, 2);
+    assert.deepStrictEqual(detail.reviewers, ["reviewer"]);
+    assert.deepStrictEqual(detail.participants?.[0], {
+      displayName: "reviewer",
+      role: "REVIEWER",
+      approved: true,
+    });
+    assert.strictEqual(detail.tasksCount, 1);
+    assert.deepStrictEqual(detail.linkedWorkItemKeys, ["S3-123"]);
     assert.strictEqual(detail.truncated, false);
+  }),
+);
+
+it.effect("getChangeRequestDiff forwards to api.getPullRequestDiff", () =>
+  Effect.gen(function* () {
+    let capturedReference: string | undefined;
+    const provider = yield* makeProvider({
+      getPullRequestDiff: (input) => {
+        capturedReference = input.reference;
+        return Effect.succeed("diff --git a/a b/a");
+      },
+    });
+    const diff = yield* provider.getChangeRequestDiff({ cwd: "/repo", reference: "99" });
+    assert.strictEqual(capturedReference, "99");
+    assert.include(diff, "diff --git");
   }),
 );

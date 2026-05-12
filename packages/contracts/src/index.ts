@@ -15,6 +15,8 @@ export * from "./mcp.ts";
 export * from "./git.ts";
 export * from "./vcs.ts";
 export * from "./sourceControl.ts";
+export * from "./atlassian.ts";
+export * from "./workItems.ts";
 export * from "./orchestration.ts";
 export * from "./editor.ts";
 export * from "./project.ts";

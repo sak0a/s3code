@@ -121,6 +121,14 @@ import * as SourceControlRepositoryService from "./sourceControl/SourceControlRe
 import * as SourceControlProviderRegistry from "./sourceControl/SourceControlProviderRegistry.ts";
 import { ServerSecretStoreLive } from "./auth/Layers/ServerSecretStore.ts";
 import { ServerAuthLive } from "./auth/Layers/ServerAuth.ts";
+import {
+  AtlassianConnectionService,
+  type AtlassianConnectionServiceShape,
+} from "./atlassian/AtlassianConnectionService.ts";
+import {
+  JiraWorkItemService,
+  type JiraWorkItemServiceShape,
+} from "./atlassian/JiraWorkItemService.ts";
 
 const defaultProjectId = ProjectId.make("project-default");
 const defaultThreadId = ThreadId.make("thread-default");
@@ -343,6 +351,8 @@ const buildAppUnderTest = (options?: {
     serverRuntimeStartup?: Partial<ServerRuntimeStartupShape>;
     serverEnvironment?: Partial<ServerEnvironmentShape>;
     repositoryIdentityResolver?: Partial<RepositoryIdentityResolverShape>;
+    atlassianConnectionService?: Partial<AtlassianConnectionServiceShape>;
+    jiraWorkItemService?: Partial<JiraWorkItemServiceShape>;
   };
 }) =>
   Effect.gen(function* () {
@@ -561,6 +571,31 @@ const buildAppUnderTest = (options?: {
           resolveHandle: () => Effect.die("not implemented in test"),
           resolve: () => Effect.die("not implemented in test"),
           discover: Effect.die("not implemented in test"),
+        }),
+      ),
+      Layer.provide(
+        Layer.mock(AtlassianConnectionService)({
+          listConnections: Effect.succeed([]),
+          startOAuth: () => Effect.die("not implemented in test"),
+          saveManualBitbucketToken: () => Effect.die("not implemented in test"),
+          saveManualJiraToken: () => Effect.die("not implemented in test"),
+          disconnect: () => Effect.void,
+          refresh: () => Effect.die("not implemented in test"),
+          listResources: () => Effect.succeed([]),
+          getProjectLink: () => Effect.succeed(null),
+          saveProjectLink: () => Effect.die("not implemented in test"),
+          ...options?.layers?.atlassianConnectionService,
+        }),
+      ),
+      Layer.provide(
+        Layer.mock(JiraWorkItemService)({
+          list: () => Effect.succeed([]),
+          search: () => Effect.succeed([]),
+          get: () => Effect.die("not implemented in test"),
+          addComment: () => Effect.die("not implemented in test"),
+          listTransitions: () => Effect.succeed([]),
+          transition: () => Effect.die("not implemented in test"),
+          ...options?.layers?.jiraWorkItemService,
         }),
       ),
       Layer.provideMerge(vcsStatusBroadcasterLayer),

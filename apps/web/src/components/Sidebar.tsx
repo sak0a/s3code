@@ -16,6 +16,7 @@ import {
   Settings2Icon,
   SettingsIcon,
   SparklesIcon,
+  SlidersHorizontalIcon,
   TerminalIcon,
   Trash2Icon,
   TriangleAlertIcon,
@@ -66,6 +67,9 @@ import {
   type DesktopUpdateState,
   PROJECT_CUSTOM_SYSTEM_PROMPT_MAX_CHARS,
   ProjectId,
+  type AtlassianConnectionId,
+  type AtlassianConnectionSummary,
+  type AtlassianProjectLink,
   type RepositoryIdentity,
   type ScopedThreadRef,
   type SidebarProjectGroupingMode,
@@ -81,7 +85,7 @@ import {
   scopeThreadRef,
 } from "@s3tools/client-runtime";
 import { Link, useNavigate, useParams, useRouter } from "@tanstack/react-router";
-import { useQueries } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type SidebarProjectSortOrder,
   type SidebarThreadSortOrder,
@@ -163,6 +167,7 @@ import {
   MenuTrigger,
 } from "./ui/menu";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "./ui/select";
+import { Switch } from "./ui/switch";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import {
   SidebarContent,
@@ -230,11 +235,12 @@ import {
   getProjectOrderKey,
 } from "../logicalProject";
 import {
+  readEnvironmentConnection,
   useSavedEnvironmentRegistryStore,
   useSavedEnvironmentRuntimeStore,
   resolveEnvironmentHttpUrl,
 } from "../environments/runtime";
-import type { SidebarThreadSummary, SidebarWorktreeSummary } from "../types";
+import type { SidebarThreadSummary } from "../types";
 import {
   buildPhysicalToLogicalProjectKeyMap,
   buildSidebarProjectSnapshots,
@@ -1181,15 +1187,6 @@ function resolveRepositoryProviderIcon(provider: string | undefined): Icon {
   }
 }
 
-function ProjectRemoteProviderMark(props: { readonly provider: string | undefined }) {
-  const ProviderIcon = resolveRepositoryProviderIcon(props.provider);
-  return (
-    <span className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-background text-foreground shadow-xs">
-      <ProviderIcon className="size-5" aria-hidden />
-    </span>
-  );
-}
-
 function stripGitSuffix(path: string): string {
   return path.replace(/\/+$/g, "").replace(/\.git$/i, "");
 }
@@ -1368,7 +1365,7 @@ function ProjectSettingsMenu(props: {
   );
 }
 
-type ProjectSettingsSection = "general" | "location" | "ai";
+type ProjectSettingsSection = "general" | "location" | "atlassian" | "ai";
 
 interface ProjectSettingsDialogProps {
   open: boolean;
@@ -1744,6 +1741,7 @@ function ProjectSettingsDialog(props: ProjectSettingsDialogProps) {
               [
                 { id: "general", label: "General", Icon: Settings2Icon },
                 { id: "location", label: "Location", Icon: FolderOpenIcon },
+                { id: "atlassian", label: "Atlassian", Icon: SlidersHorizontalIcon },
                 { id: "ai", label: "AI", Icon: SparklesIcon },
               ] as const
             ).map(({ id, label, Icon }) => {
@@ -1796,6 +1794,8 @@ function ProjectSettingsDialog(props: ProjectSettingsDialogProps) {
                   onPickWorkspaceRoot={props.onPickWorkspaceRoot}
                   onSave={props.onSave}
                 />
+              ) : section === "atlassian" ? (
+                <ProjectAtlassianSettingsSection target={target} />
               ) : (
                 <ProjectSettingsAiSection
                   customSystemPrompt={props.customSystemPrompt}
@@ -1816,6 +1816,363 @@ function ProjectSettingsDialog(props: ProjectSettingsDialogProps) {
         </footer>
       </DialogPopup>
     </Dialog>
+  );
+}
+
+const ATLASSIAN_NONE_VALUE = "Not configured";
+
+function atlassianConnectionValue(value: AtlassianConnectionId | null | undefined): string {
+  return value ?? ATLASSIAN_NONE_VALUE;
+}
+
+function nullableAtlassianConnectionId(value: string): AtlassianConnectionId | null {
+  return value === ATLASSIAN_NONE_VALUE || value.trim().length === 0
+    ? null
+    : (value as AtlassianConnectionId);
+}
+
+function splitAtlassianProjectKeys(value: string): string[] {
+  return value
+    .split(/[,\s]+/u)
+    .map((part) => part.trim().toUpperCase())
+    .filter(Boolean);
+}
+
+function bitbucketRemoteSuggestion(repositoryIdentity: RepositoryIdentity | null | undefined): {
+  workspace: string;
+  repoSlug: string;
+} {
+  if (repositoryIdentity?.provider?.toLowerCase() !== "bitbucket") {
+    return { workspace: "", repoSlug: "" };
+  }
+  return {
+    workspace: repositoryIdentity.owner ?? "",
+    repoSlug: repositoryIdentity.name ?? "",
+  };
+}
+
+function connectionProductFilter(product: "jira" | "bitbucket") {
+  return (connection: AtlassianConnectionSummary) =>
+    connection.status === "connected" && connection.products.includes(product);
+}
+
+function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMember | null }) {
+  const target = props.target;
+  const queryClient = useQueryClient();
+  const connection = target ? readEnvironmentConnection(target.environmentId) : null;
+  const client = connection?.client ?? null;
+  const [jiraConnectionValue, setJiraConnectionValue] = useState(ATLASSIAN_NONE_VALUE);
+  const [bitbucketConnectionValue, setBitbucketConnectionValue] = useState(ATLASSIAN_NONE_VALUE);
+  const [jiraSiteUrl, setJiraSiteUrl] = useState("");
+  const [jiraProjectKeys, setJiraProjectKeys] = useState("");
+  const [bitbucketWorkspace, setBitbucketWorkspace] = useState("");
+  const [bitbucketRepoSlug, setBitbucketRepoSlug] = useState("");
+  const [defaultIssueTypeName, setDefaultIssueTypeName] = useState("");
+  const [branchNameTemplate, setBranchNameTemplate] = useState("{issueKey}-{titleSlug}");
+  const [commitMessageTemplate, setCommitMessageTemplate] = useState("{issueKey}: {summary}");
+  const [pullRequestTitleTemplate, setPullRequestTitleTemplate] = useState("{issueKey}: {summary}");
+  const [smartLinkingEnabled, setSmartLinkingEnabled] = useState(true);
+  const [autoAttachWorkItems, setAutoAttachWorkItems] = useState(true);
+
+  const projectLinkQuery = useQuery({
+    queryKey: ["atlassian", "project-link", target?.environmentId ?? null, target?.id ?? null],
+    queryFn: async (): Promise<AtlassianProjectLink | null> => {
+      if (!client || !target) return null;
+      return client.atlassian.getProjectLink({ projectId: target.id });
+    },
+    enabled: client !== null && target !== null,
+  });
+
+  const connectionsQuery = useQuery({
+    queryKey: ["atlassian", "connections", target?.environmentId ?? null],
+    queryFn: async () => {
+      if (!client) return [];
+      return client.atlassian.listConnections();
+    },
+    enabled: client !== null,
+  });
+
+  const jiraConnections = useMemo(
+    () => (connectionsQuery.data ?? []).filter(connectionProductFilter("jira")),
+    [connectionsQuery.data],
+  );
+  const bitbucketConnections = useMemo(
+    () => (connectionsQuery.data ?? []).filter(connectionProductFilter("bitbucket")),
+    [connectionsQuery.data],
+  );
+
+  useEffect(() => {
+    if (!target) return;
+    const link = projectLinkQuery.data;
+    const remote = bitbucketRemoteSuggestion(target.repositoryIdentity);
+    setJiraConnectionValue(
+      atlassianConnectionValue(link?.jiraConnectionId ?? jiraConnections[0]?.connectionId),
+    );
+    setBitbucketConnectionValue(
+      atlassianConnectionValue(
+        link?.bitbucketConnectionId ?? bitbucketConnections[0]?.connectionId,
+      ),
+    );
+    setJiraSiteUrl(link?.jiraSiteUrl ?? jiraConnections[0]?.baseUrl ?? "");
+    setJiraProjectKeys(link?.jiraProjectKeys.join(", ") ?? "");
+    setBitbucketWorkspace(link?.bitbucketWorkspace ?? remote.workspace);
+    setBitbucketRepoSlug(link?.bitbucketRepoSlug ?? remote.repoSlug);
+    setDefaultIssueTypeName(link?.defaultIssueTypeName ?? "");
+    setBranchNameTemplate(link?.branchNameTemplate ?? "{issueKey}-{titleSlug}");
+    setCommitMessageTemplate(link?.commitMessageTemplate ?? "{issueKey}: {summary}");
+    setPullRequestTitleTemplate(link?.pullRequestTitleTemplate ?? "{issueKey}: {summary}");
+    setSmartLinkingEnabled(link?.smartLinkingEnabled ?? true);
+    setAutoAttachWorkItems(link?.autoAttachWorkItems ?? true);
+  }, [bitbucketConnections, jiraConnections, projectLinkQuery.data, target]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (!client || !target) throw new Error("Project connection is unavailable.");
+      const branchTemplate = branchNameTemplate.trim();
+      const commitTemplate = commitMessageTemplate.trim();
+      const prTemplate = pullRequestTitleTemplate.trim();
+      if (!branchTemplate || !commitTemplate || !prTemplate) {
+        throw new Error("Branch, commit, and pull request templates cannot be empty.");
+      }
+      return client.atlassian.saveProjectLink({
+        projectId: target.id,
+        jiraConnectionId: nullableAtlassianConnectionId(jiraConnectionValue),
+        bitbucketConnectionId: nullableAtlassianConnectionId(bitbucketConnectionValue),
+        jiraCloudId: projectLinkQuery.data?.jiraCloudId ?? null,
+        jiraSiteUrl: jiraSiteUrl.trim() || null,
+        jiraProjectKeys: splitAtlassianProjectKeys(jiraProjectKeys),
+        bitbucketWorkspace: bitbucketWorkspace.trim() || null,
+        bitbucketRepoSlug: bitbucketRepoSlug.trim() || null,
+        defaultIssueTypeName: defaultIssueTypeName.trim() || null,
+        branchNameTemplate: branchTemplate,
+        commitMessageTemplate: commitTemplate,
+        pullRequestTitleTemplate: prTemplate,
+        smartLinkingEnabled,
+        autoAttachWorkItems,
+      });
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["atlassian"] });
+      void queryClient.invalidateQueries({ queryKey: ["workItems"] });
+      toastManager.add(
+        stackedThreadToast({
+          type: "success",
+          title: "Atlassian project settings saved",
+          description: "Jira and Bitbucket defaults were updated for this project.",
+        }),
+      );
+    },
+    onError: (error) => {
+      toastManager.add(
+        stackedThreadToast({
+          type: "error",
+          title: "Could not save Atlassian project settings",
+          description: error instanceof Error ? error.message : "The project link was not saved.",
+        }),
+      );
+    },
+  });
+
+  const isLoading = projectLinkQuery.isLoading || connectionsQuery.isLoading;
+  const disabled = client === null || target === null || saveMutation.isPending;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <SlidersHorizontalIcon className="size-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0">
+            <div className="truncate text-xs font-medium text-foreground">Atlassian workflow</div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Project-scoped Jira, Bitbucket, and smart-link defaults.
+            </p>
+          </div>
+        </div>
+        {isLoading ? (
+          <span className="text-[11px] text-muted-foreground">Loading</span>
+        ) : (
+          <span className="rounded bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            Project defaults
+          </span>
+        )}
+      </div>
+
+      <section className="space-y-3">
+        <div className="text-xs font-medium text-foreground">Connections</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Jira connection</label>
+            <Select
+              value={jiraConnectionValue}
+              onValueChange={(value) => {
+                if (typeof value === "string") setJiraConnectionValue(value);
+              }}
+            >
+              <SelectTrigger size="sm" disabled={disabled}>
+                <SelectValue placeholder="Select Jira connection" />
+              </SelectTrigger>
+              <SelectPopup>
+                <SelectItem value={ATLASSIAN_NONE_VALUE}>Not configured</SelectItem>
+                {jiraConnections.map((item) => (
+                  <SelectItem key={item.connectionId} value={item.connectionId}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Bitbucket connection</label>
+            <Select
+              value={bitbucketConnectionValue}
+              onValueChange={(value) => {
+                if (typeof value === "string") setBitbucketConnectionValue(value);
+              }}
+            >
+              <SelectTrigger size="sm" disabled={disabled}>
+                <SelectValue placeholder="Select Bitbucket connection" />
+              </SelectTrigger>
+              <SelectPopup>
+                <SelectItem value={ATLASSIAN_NONE_VALUE}>Not configured</SelectItem>
+                {bitbucketConnections.map((item) => (
+                  <SelectItem key={item.connectionId} value={item.connectionId}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="text-xs font-medium text-foreground">Repository mapping</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ProjectSettingsField label="Jira site URL">
+            <Input
+              size="sm"
+              value={jiraSiteUrl}
+              inputMode="url"
+              disabled={disabled}
+              placeholder="https://your-team.atlassian.net"
+              onChange={(event) => setJiraSiteUrl(event.currentTarget.value)}
+            />
+          </ProjectSettingsField>
+          <ProjectSettingsField label="Jira project keys">
+            <Input
+              size="sm"
+              value={jiraProjectKeys}
+              disabled={disabled}
+              placeholder="WEB, API"
+              onChange={(event) => setJiraProjectKeys(event.currentTarget.value)}
+            />
+          </ProjectSettingsField>
+          <ProjectSettingsField label="Bitbucket workspace">
+            <Input
+              size="sm"
+              value={bitbucketWorkspace}
+              disabled={disabled}
+              placeholder="workspace"
+              onChange={(event) => setBitbucketWorkspace(event.currentTarget.value)}
+            />
+          </ProjectSettingsField>
+          <ProjectSettingsField label="Bitbucket repo slug">
+            <Input
+              size="sm"
+              value={bitbucketRepoSlug}
+              disabled={disabled}
+              placeholder="repo-slug"
+              onChange={(event) => setBitbucketRepoSlug(event.currentTarget.value)}
+            />
+          </ProjectSettingsField>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="text-xs font-medium text-foreground">Templates</div>
+        <div className="grid gap-3">
+          <ProjectSettingsField label="Default issue type">
+            <Input
+              size="sm"
+              value={defaultIssueTypeName}
+              disabled={disabled}
+              placeholder="Task"
+              onChange={(event) => setDefaultIssueTypeName(event.currentTarget.value)}
+            />
+          </ProjectSettingsField>
+          <ProjectSettingsField label="Branch template">
+            <Input
+              size="sm"
+              value={branchNameTemplate}
+              disabled={disabled}
+              onChange={(event) => setBranchNameTemplate(event.currentTarget.value)}
+            />
+          </ProjectSettingsField>
+          <ProjectSettingsField label="Commit template">
+            <Input
+              size="sm"
+              value={commitMessageTemplate}
+              disabled={disabled}
+              onChange={(event) => setCommitMessageTemplate(event.currentTarget.value)}
+            />
+          </ProjectSettingsField>
+          <ProjectSettingsField label="PR title template">
+            <Input
+              size="sm"
+              value={pullRequestTitleTemplate}
+              disabled={disabled}
+              onChange={(event) => setPullRequestTitleTemplate(event.currentTarget.value)}
+            />
+          </ProjectSettingsField>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="text-xs font-medium text-foreground">Automation</div>
+        <div className="grid gap-2">
+          <label className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/60 px-3 py-2 text-xs">
+            <span>Smart-link Jira keys in branches, commits, and PRs</span>
+            <Switch
+              checked={smartLinkingEnabled}
+              disabled={disabled}
+              onCheckedChange={(checked) => setSmartLinkingEnabled(Boolean(checked))}
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/60 px-3 py-2 text-xs">
+            <span>Attach linked work items to project explorer workflows</span>
+            <Switch
+              checked={autoAttachWorkItems}
+              disabled={disabled}
+              onCheckedChange={(checked) => setAutoAttachWorkItems(Boolean(checked))}
+            />
+          </label>
+        </div>
+      </section>
+
+      <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-4">
+        <p className="text-[11px] text-muted-foreground">
+          Tokens live in Source Control settings. These defaults belong only to this project.
+        </p>
+        <Button
+          type="button"
+          size="sm"
+          className="h-8 shrink-0"
+          disabled={disabled}
+          onClick={() => saveMutation.mutate()}
+        >
+          {saveMutation.isPending ? "Saving..." : "Save Atlassian"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ProjectSettingsField(props: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="grid gap-1.5">
+      <span className="text-xs font-medium text-foreground">{props.label}</span>
+      {props.children}
+    </label>
   );
 }
 

@@ -48,6 +48,7 @@ import Migration0031 from "./Migrations/031_WorktreeTitles.ts";
 import Migration0032 from "./Migrations/032_ProjectCustomSystemPrompt.ts";
 import Migration0033 from "./Migrations/033_ProjectMetadataDir.ts";
 import Migration0034 from "./Migrations/034_ProjectAvatarAndPreferredRemote.ts";
+import Migration0035 from "./Migrations/035_AtlassianConnections.ts";
 
 /**
  * Migration loader with all migrations defined inline.
@@ -94,6 +95,7 @@ export const migrationEntries = [
   [32, "ProjectCustomSystemPrompt", Migration0032],
   [33, "ProjectMetadataDir", Migration0033],
   [34, "ProjectAvatarAndPreferredRemote", Migration0034],
+  [35, "AtlassianConnections", Migration0035],
 ] as const;
 
 export const makeMigrationLoader = (throughId?: number) =>
