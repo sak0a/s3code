@@ -150,7 +150,7 @@ export function makeForgejoDiscovery(
     kind: "forgejo",
     label: "Forgejo",
     installHint:
-      "Set S3CODE_FORGEJO_BASE_URL and S3CODE_FORGEJO_TOKEN on the server, provide S3CODE_FORGEJO_INSTANCES for multiple Forgejo hosts, or authenticate with `fj auth login`.",
+      "Authenticate with `fj auth login` on the server and verify with `fj -H codeberg.org whoami`, or set S3CODE_FORGEJO_BASE_URL and S3CODE_FORGEJO_TOKEN. For unusual fj installs, point S3Code at the token file with S3CODE_FORGEJO_CLI_KEYS_FILE.",
     probeAuth: forgejo.probeAuth,
   };
 }

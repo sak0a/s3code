@@ -138,10 +138,12 @@ function itemSummary({
   item,
   auth,
   authAccount,
+  authHost,
 }: {
   readonly item: VcsDiscoveryItem | SourceControlProviderDiscoveryItem;
   readonly auth: SourceControlProviderAuth | null;
   readonly authAccount: string | null;
+  readonly authHost: string | null;
 }) {
   if (isVcsNotReady(item)) {
     return <span>Support for {item.label} is coming soon.</span>;
@@ -160,6 +162,14 @@ function itemSummary({
             <>
               <span aria-hidden>as</span>
               <RedactedAccount account={authAccount} />
+            </>
+          ) : null}
+          {authHost ? (
+            <>
+              <span aria-hidden>on</span>
+              <code className="rounded bg-muted px-1 py-px text-[11px] text-muted-foreground">
+                {authHost}
+              </code>
             </>
           ) : null}
         </>
@@ -181,7 +191,7 @@ function itemSummary({
     }
     return (
       <span>
-        Could not verify {item.label}. {item.installHint}
+        Could not verify {item.label}. {optionLabel(auth.detail) ?? item.installHint}
       </span>
     );
   }
@@ -200,6 +210,7 @@ function DiscoveryItemRow({
   const auth = isProviderDiscoveryItem(item) ? item.auth : null;
   const authStatus = auth ? authPresentation(auth) : null;
   const authAccount = auth ? optionLabel(auth.account) : null;
+  const authHost = auth ? optionLabel(auth.host) : null;
 
   return (
     <div
@@ -229,7 +240,7 @@ function DiscoveryItemRow({
               ) : null}
             </div>
             <p className="flex min-w-0 flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
-              {itemSummary({ item, auth, authAccount })}
+              {itemSummary({ item, auth, authAccount, authHost })}
             </p>
           </div>
           <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto sm:justify-end">

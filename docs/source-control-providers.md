@@ -94,21 +94,41 @@ Bitbucket uses API tokens instead of a CLI tool:
 
 ### For Forgejo / Codeberg
 
-Forgejo uses direct REST API access. Public Codeberg repositories can be read without a token; creating repositories or pull requests requires a token. If you already use the `fj` CLI, S3Code can read the token created by `fj auth login` or `fj auth add-key`.
+Forgejo uses direct REST API access. Public Codeberg repositories can be read without a token; creating repositories or pull requests requires a token. If you already use the `fj` CLI, S3Code can read the token created by `fj auth login` or `fj auth add-key`; S3Code still calls Forgejo's API directly after it has found that token.
 
-1. Either sign in with `fj`:
+#### Option A: Use the Forgejo CLI (`fj`)
+
+1. Install `fj` on the machine running S3Code.
+2. Sign in to Codeberg:
    ```bash
    fj auth login
    ```
-   or create an access token on your Forgejo instance with repository and pull request access
+3. Confirm the login. `fj whoami` may need an explicit host, so use:
+   ```bash
+   fj auth list
+   fj -H codeberg.org whoami
+   ```
+4. Restart S3Code and open **Settings → Source Control → Rescan**. Forgejo should show the account and host, for example `saka on codeberg.org`.
+
+S3Code looks for `fj` credentials in the standard Forgejo CLI data locations, including:
+
+- macOS: `~/Library/Application Support/Cyborus.forgejo-cli/keys.json`
+- Linux: `~/.local/share/forgejo-cli/keys.json`
+- Linux with XDG: `$XDG_DATA_HOME/forgejo-cli/keys.json`
+
+If your install stores the file somewhere else, point S3Code at it:
+
+```bash
+export S3CODE_FORGEJO_CLI_KEYS_FILE="/path/to/keys.json"
+```
+
+#### Option B: Use S3Code environment variables
+
+1. Create an access token on your Forgejo instance with repository and pull request access.
 2. Add these environment variables to the environment running S3Code:
    ```bash
    export S3CODE_FORGEJO_BASE_URL="https://codeberg.org"
    export S3CODE_FORGEJO_TOKEN="your-token"
-   ```
-   If you use `fj`, `S3CODE_FORGEJO_TOKEN` is optional. To point S3Code at a non-standard `fj` credentials file, set:
-   ```bash
-   export S3CODE_FORGEJO_CLI_KEYS_FILE="/path/to/keys.json"
    ```
 3. For multiple instances without `fj`, set `S3CODE_FORGEJO_INSTANCES` to a JSON array:
    ```bash
@@ -143,7 +163,7 @@ Forgejo uses direct REST API access. Public Codeberg repositories can be read wi
 
 - **Provider shows "Not authenticated"** – Run the login command for that provider (e.g., `gh auth login`) in a terminal on the server, then rescan in Settings
 - **Bitbucket not connecting** – Double-check your environment variables are set in the correct shell profile and the server was restarted
-- **Forgejo not connecting** – Confirm `S3CODE_FORGEJO_BASE_URL` points at the instance root and the token has repository access; if you use `fj`, run `fj auth list` on the server and confirm the host is present
+- **Forgejo not connecting** – If you use `fj`, run `fj auth list` and `fj -H codeberg.org whoami` on the server, then restart S3Code and rescan. If that works but S3Code still cannot authenticate, set `S3CODE_FORGEJO_CLI_KEYS_FILE` to the `fj` `keys.json` path. If you use environment variables, confirm `S3CODE_FORGEJO_BASE_URL` points at the instance root and the token has repository access.
 - **Can't push to a remote** – Verify your Git remote URL matches the provider you've authenticated with (SSH vs HTTPS remotes may need different credentials)
 
 **Need more help?** Check your provider's CLI documentation:

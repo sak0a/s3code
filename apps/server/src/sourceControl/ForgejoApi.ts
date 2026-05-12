@@ -354,6 +354,9 @@ function forgejoCliKeysFileCandidates(
   if (home.length > 0) {
     paths.add(NodePath.join(home, ".local", "share", "forgejo-cli", "keys.json"));
     paths.add(
+      NodePath.join(home, "Library", "Application Support", "Cyborus.forgejo-cli", "keys.json"),
+    );
+    paths.add(
       NodePath.join(home, "Library", "Application Support", "org.Cyborus.forgejo-cli", "keys.json"),
     );
     paths.add(NodePath.join(home, "Library", "Application Support", "forgejo-cli", "keys.json"));
@@ -802,7 +805,7 @@ export const make = Effect.fn("makeForgejoApi")(function* () {
           account: Option.none(),
           host: Option.some(firstInstance.host),
           detail: Option.some(
-            "Set S3CODE_FORGEJO_BASE_URL and S3CODE_FORGEJO_TOKEN, set S3CODE_FORGEJO_INSTANCES, or run `fj auth login` / `fj auth add-key`.",
+            "Run `fj auth login` on the server and verify with `fj -H codeberg.org whoami`, set S3CODE_FORGEJO_BASE_URL and S3CODE_FORGEJO_TOKEN, or set S3CODE_FORGEJO_CLI_KEYS_FILE to the fj keys.json path.",
           ),
         };
       }
