@@ -21,6 +21,7 @@ const COPILOT_PRESENTATION = {
   displayName: "GitHub Copilot",
   showInteractionModeToggle: true,
 } as const;
+const COPILOT_HEALTH_CHECK_TIMEOUT_MS = 10_000;
 
 const EMPTY_MODEL_CAPABILITIES: ModelCapabilities = createModelCapabilities({
   optionDescriptors: [],
@@ -109,6 +110,18 @@ function formatCopilotAuthLabel(authType: string | undefined): string | undefine
     default:
       return undefined;
   }
+}
+
+function withTimeout<A>(promise: Promise<A>, timeoutMs: number, label: string): Promise<A> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms.`));
+    }, timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeout !== undefined) clearTimeout(timeout);
+  });
 }
 
 function makeClient(
@@ -205,11 +218,11 @@ export const checkCopilotProviderStatus = Effect.fn("checkCopilotProviderStatus"
 
   const statusResult = yield* withClient(settings, environment, async (client) => {
     await client.start();
-    const [status, auth, models] = await Promise.all([
-      client.getStatus(),
-      client.getAuthStatus(),
-      client.listModels(),
-    ]);
+    const [status, auth, models] = await withTimeout(
+      Promise.all([client.getStatus(), client.getAuthStatus(), client.listModels()]),
+      COPILOT_HEALTH_CHECK_TIMEOUT_MS,
+      "GitHub Copilot health check",
+    );
 
     const resolvedModels =
       models.length > 0

@@ -223,6 +223,8 @@ function mapProjectShellRow(
     repositoryIdentity,
     defaultModelSelection: row.defaultModelSelection,
     customSystemPrompt: row.customSystemPrompt ?? null,
+    customAvatarContentHash: row.customAvatarContentHash ?? null,
+    preferredRemoteName: row.preferredRemoteName ?? null,
     scripts: row.scripts,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -298,6 +300,8 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           project_metadata_dir AS "projectMetadataDir",
           default_model_selection_json AS "defaultModelSelection",
           custom_system_prompt AS "customSystemPrompt",
+          custom_avatar_content_hash AS "customAvatarContentHash",
+          preferred_remote_name AS "preferredRemoteName",
           scripts_json AS "scripts",
           created_at AS "createdAt",
           updated_at AS "updatedAt",
@@ -578,6 +582,8 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           project_metadata_dir AS "projectMetadataDir",
           default_model_selection_json AS "defaultModelSelection",
           custom_system_prompt AS "customSystemPrompt",
+          custom_avatar_content_hash AS "customAvatarContentHash",
+          preferred_remote_name AS "preferredRemoteName",
           scripts_json AS "scripts",
           created_at AS "createdAt",
           updated_at AS "updatedAt",
@@ -602,6 +608,8 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           project_metadata_dir AS "projectMetadataDir",
           default_model_selection_json AS "defaultModelSelection",
           custom_system_prompt AS "customSystemPrompt",
+          custom_avatar_content_hash AS "customAvatarContentHash",
+          preferred_remote_name AS "preferredRemoteName",
           scripts_json AS "scripts",
           created_at AS "createdAt",
           updated_at AS "updatedAt",
@@ -1486,6 +1494,14 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           }
           return toPersistenceSqlError("ProjectionSnapshotQuery.getShellSnapshot:query")(error);
         }),
+        Effect.tap((snapshot) =>
+          Effect.logDebug("startup shell snapshot query complete", {
+            projectCount: snapshot.projects.length,
+            worktreeCount: snapshot.worktrees?.length ?? 0,
+            threadCount: snapshot.threads.length,
+            snapshotSequence: snapshot.snapshotSequence,
+          }),
+        ),
       );
 
   const getSnapshotSequence: ProjectionSnapshotQueryShape["getSnapshotSequence"] = () =>

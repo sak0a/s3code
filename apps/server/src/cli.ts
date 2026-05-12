@@ -57,6 +57,7 @@ import { OrchestrationEngineService } from "./orchestration/Services/Orchestrati
 import { ProjectionSnapshotQuery } from "./orchestration/Services/ProjectionSnapshotQuery.ts";
 import { OrchestrationLayerLive } from "./orchestration/runtimeLayer.ts";
 import { layerConfig as SqlitePersistenceLayerLive } from "./persistence/Layers/Sqlite.ts";
+import { ProjectAvatarStoreLive } from "./project/Layers/ProjectAvatarStore.ts";
 import { RepositoryIdentityResolverLive } from "./project/Layers/RepositoryIdentityResolver.ts";
 import { getAutoBootstrapDefaultModelSelection } from "./serverRuntimeStartup.ts";
 import {
@@ -241,6 +242,7 @@ export const resolveServerConfig = (
   },
 ) =>
   Effect.gen(function* () {
+    const startedAt = Date.now();
     const { findAvailablePort } = yield* NetService;
     const path = yield* Path.Path;
     const fs = yield* FileSystem.FileSystem;
@@ -291,6 +293,11 @@ export const resolveServerConfig = (
         },
       },
     );
+    yield* Effect.logDebug("startup config phase resolved port", {
+      durationMs: Date.now() - startedAt,
+      mode,
+      port,
+    });
     const devUrl = Option.getOrElse(
       resolveOptionPrecedence(
         normalizedFlags.devUrl,
@@ -311,8 +318,16 @@ export const resolveServerConfig = (
     const rawCwd = Option.getOrElse(normalizedFlags.cwd, () => process.cwd());
     const cwd = path.resolve(yield* expandHomePath(rawCwd.trim()));
     yield* fs.makeDirectory(cwd, { recursive: true });
+    yield* Effect.logDebug("startup config phase prepared cwd", {
+      durationMs: Date.now() - startedAt,
+      cwd,
+    });
     const derivedPaths = yield* deriveServerPaths(baseDir, devUrl);
     yield* ensureServerDirectories(derivedPaths);
+    yield* Effect.logDebug("startup config phase ensured directories", {
+      durationMs: Date.now() - startedAt,
+      baseDir,
+    });
     const persistedObservabilitySettings = yield* loadPersistedObservabilitySettings(
       derivedPaths.settingsPath,
     );
@@ -365,6 +380,11 @@ export const resolveServerConfig = (
       () => 443,
     );
     const staticDir = devUrl ? undefined : yield* resolveStaticDir();
+    yield* Effect.logDebug("startup config phase resolved static dir", {
+      durationMs: Date.now() - startedAt,
+      staticDir: staticDir ?? "none",
+      devUrl: devUrl?.toString() ?? "none",
+    });
     const host = Option.getOrElse(
       resolveOptionPrecedence(
         normalizedFlags.host,
@@ -534,10 +554,18 @@ type ProjectCliDispatchCommand = Extract<
   { type: "project.create" | "project.meta.update" | "project.delete" }
 >;
 
+const ProjectAvatarStoreFromConfigLayer = Layer.unwrap(
+  Effect.gen(function* () {
+    const config = yield* ServerConfig;
+    return ProjectAvatarStoreLive({ dataDir: config.stateDir });
+  }),
+);
+
 const ProjectCliRuntimeLive = Layer.mergeAll(
   WorkspacePathsLive,
   OrchestrationLayerLive.pipe(
     Layer.provideMerge(RepositoryIdentityResolverLive),
+    Layer.provideMerge(ProjectAvatarStoreFromConfigLayer),
     Layer.provideMerge(SqlitePersistenceLayerLive),
   ),
 );

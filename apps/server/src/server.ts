@@ -6,10 +6,13 @@ import {
   attachmentsRouteLayer,
   otlpTracesProxyRouteLayer,
   projectFaviconRouteLayer,
+  projectAvatarUploadRouteLayer,
+  projectAvatarServeRouteLayer,
   serverEnvironmentRouteLayer,
   staticAndDevRouteLayer,
   browserApiCorsLayer,
 } from "./http.ts";
+import { ProjectAvatarStoreLive } from "./project/Layers/ProjectAvatarStore.ts";
 import { fixPath } from "./os-jank.ts";
 import { websocketRpcRouteLayer } from "./ws.ts";
 import { OpenLive } from "./open.ts";
@@ -133,6 +136,13 @@ const PlatformServicesLive = Layer.unwrap(
       const { layer } = yield* Effect.promise(() => import("@effect/platform-node/NodeServices"));
       return layer;
     }
+  }),
+);
+
+const ProjectAvatarStoreLayerLive = Layer.unwrap(
+  Effect.gen(function* () {
+    const config = yield* ServerConfig;
+    return ProjectAvatarStoreLive({ dataDir: config.stateDir });
   }),
 );
 
@@ -271,6 +281,7 @@ const RuntimeCoreDependenciesLive = ReactorLayerLive.pipe(
   Layer.provideMerge(ServerSettingsLive),
   Layer.provideMerge(WorkspaceLayerLive),
   Layer.provideMerge(ProjectFaviconResolverLive),
+  Layer.provideMerge(ProjectAvatarStoreLayerLive),
   Layer.provideMerge(RepositoryIdentityResolverLive),
   Layer.provideMerge(ServerEnvironmentLive),
   Layer.provideMerge(AuthLayerLive),
@@ -304,6 +315,8 @@ export const makeRoutesLayer = Layer.mergeAll(
   orchestrationSnapshotRouteLayer,
   otlpTracesProxyRouteLayer,
   projectFaviconRouteLayer,
+  projectAvatarUploadRouteLayer,
+  projectAvatarServeRouteLayer,
   serverEnvironmentRouteLayer,
   staticAndDevRouteLayer,
   websocketRpcRouteLayer,

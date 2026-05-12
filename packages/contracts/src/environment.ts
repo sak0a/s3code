@@ -48,6 +48,14 @@ export const RepositoryIdentityLocator = Schema.Struct({
 });
 export type RepositoryIdentityLocator = typeof RepositoryIdentityLocator.Type;
 
+export const RepositoryRemote = Schema.Struct({
+  name: TrimmedNonEmptyString,
+  url: TrimmedNonEmptyString,
+  provider: Schema.optionalKey(TrimmedNonEmptyString),
+  ownerRepo: Schema.optionalKey(TrimmedNonEmptyString),
+});
+export type RepositoryRemote = typeof RepositoryRemote.Type;
+
 export const RepositoryIdentity = Schema.Struct({
   canonicalKey: TrimmedNonEmptyString,
   locator: RepositoryIdentityLocator,
@@ -56,6 +64,9 @@ export const RepositoryIdentity = Schema.Struct({
   provider: Schema.optionalKey(TrimmedNonEmptyString),
   owner: Schema.optionalKey(TrimmedNonEmptyString),
   name: Schema.optionalKey(TrimmedNonEmptyString),
+  remotes: Schema.optional(Schema.Array(RepositoryRemote)).pipe(
+    Schema.withDecodingDefault(Effect.succeed([] as ReadonlyArray<RepositoryRemote>)),
+  ),
 });
 export type RepositoryIdentity = typeof RepositoryIdentity.Type;
 

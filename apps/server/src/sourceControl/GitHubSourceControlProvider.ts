@@ -13,7 +13,7 @@ import * as GitHubCli from "./GitHubCli.ts";
 import * as GitHubIssues from "./gitHubIssues.ts";
 import * as GitHubPullRequests from "./gitHubPullRequests.ts";
 import * as SourceControlProvider from "./SourceControlProvider.ts";
-import * as SourceControlProviderDiscovery from "./SourceControlProviderDiscovery.ts";
+export { githubDiscovery as discovery } from "./SourceControlProviderDiscoveryCatalog.ts";
 
 function providerError(
   operation: string,
@@ -116,49 +116,6 @@ function toChangeRequestDetail(
     ...(raw.files && raw.files.length > 0 ? { files: raw.files } : {}),
   };
 }
-
-function parseGitHubAuth(input: SourceControlProviderDiscovery.SourceControlAuthProbeInput) {
-  const output = SourceControlProviderDiscovery.combinedAuthOutput(input);
-  const account = SourceControlProviderDiscovery.matchFirst(output, [
-    /Logged in to .* account\s+([^\s(]+)/iu,
-    /Logged in to .* as\s+([^\s(]+)/iu,
-  ]);
-  const host = SourceControlProviderDiscovery.parseCliHost(output);
-
-  if (input.exitCode !== 0) {
-    return SourceControlProviderDiscovery.providerAuth({
-      status: "unauthenticated",
-      host,
-      detail:
-        SourceControlProviderDiscovery.firstSafeAuthLine(output) ??
-        "Run `gh auth login` to authenticate GitHub CLI.",
-    });
-  }
-
-  if (account) {
-    return SourceControlProviderDiscovery.providerAuth({ status: "authenticated", account, host });
-  }
-
-  return SourceControlProviderDiscovery.providerAuth({
-    status: "unknown",
-    host,
-    detail:
-      SourceControlProviderDiscovery.firstSafeAuthLine(output) ??
-      "GitHub CLI auth status could not be parsed.",
-  });
-}
-
-export const discovery = {
-  type: "cli",
-  kind: "github",
-  label: "GitHub",
-  executable: "gh",
-  versionArgs: ["--version"],
-  authArgs: ["auth", "status"],
-  parseAuth: parseGitHubAuth,
-  installHint:
-    "Install the GitHub command-line tool (`gh`) via https://cli.github.com/ or your package manager (for example `brew install gh`).",
-} satisfies SourceControlProviderDiscovery.SourceControlCliDiscoverySpec;
 
 export const make = Effect.fn("makeGitHubSourceControlProvider")(function* () {
   const github = yield* GitHubCli.GitHubCli;

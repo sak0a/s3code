@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { chmodSync, existsSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, unlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -56,6 +56,11 @@ export interface PendingUserInputRequest {
   readonly resolve: (result: { readonly answer: string; readonly wasFreeform: boolean }) => void;
 }
 
+export interface PendingTurnStartRequest {
+  readonly resolve: (turnId: TurnId) => void;
+  readonly reject: (cause: Error) => void;
+}
+
 export interface MutableTurnSnapshot {
   readonly id: TurnId;
   readonly items: Array<unknown>;
@@ -70,8 +75,10 @@ export interface ActiveCopilotSession {
   readonly runtimeMode: ProviderSession["runtimeMode"];
   readonly pendingApprovals: Map<string, PendingApprovalRequest>;
   readonly pendingUserInputs: Map<string, PendingUserInputRequest>;
+  readonly pendingTurnStarts: Set<PendingTurnStartRequest>;
   readonly turns: Array<MutableTurnSnapshot>;
   readonly renewSession: () => Promise<CopilotSession>;
+  readonly attachSession: (session: CopilotSession) => void;
   unsubscribe: () => void;
   cwd: string | undefined;
   model: string | undefined;
@@ -106,13 +113,42 @@ function resolveCopilotCliPath(): string | undefined {
   return undefined;
 }
 
+let cachedNodeWrapperCliPath: string | undefined;
+let nodeWrapperCleanupRegistered = false;
+
+function cleanupNodeWrapperCliPath(): void {
+  if (!cachedNodeWrapperCliPath) return;
+  try {
+    unlinkSync(cachedNodeWrapperCliPath);
+  } catch {
+    // Best-effort cleanup for a temporary wrapper.
+  } finally {
+    cachedNodeWrapperCliPath = undefined;
+  }
+}
+
+function registerNodeWrapperCleanup(): void {
+  if (nodeWrapperCleanupRegistered) return;
+  nodeWrapperCleanupRegistered = true;
+  process.once("exit", cleanupNodeWrapperCliPath);
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.once(signal, () => {
+      cleanupNodeWrapperCliPath();
+      process.kill(process.pid, signal);
+    });
+  }
+}
+
 export function makeNodeWrapperCliPath(): string | undefined {
   if (!("electron" in process.versions)) return undefined;
+  if (cachedNodeWrapperCliPath) return cachedNodeWrapperCliPath;
   const cliPath = resolveCopilotCliPath();
   if (!cliPath) return undefined;
   const wrapperPath = join(tmpdir(), `copilot-node-wrapper-${randomUUID()}.sh`);
   writeFileSync(wrapperPath, `#!/bin/sh\nexec node ${JSON.stringify(cliPath)} "$@"\n`, "utf8");
   chmodSync(wrapperPath, 0o755);
+  cachedNodeWrapperCliPath = wrapperPath;
+  registerNodeWrapperCleanup();
   return wrapperPath;
 }
 

@@ -237,7 +237,8 @@ export const mapEvent = (
           },
         ];
       }
-      case "tool.execution_complete":
+      case "tool.execution_complete": {
+        const isMcpTool = "mcpToolName" in event.data && event.data.mcpToolName !== undefined;
         return [
           {
             ...eventBase({
@@ -251,7 +252,7 @@ export const mapEvent = (
             }),
             type: "item.completed",
             payload: {
-              itemType: "dynamic_tool_call",
+              itemType: isMcpTool ? "mcp_tool_call" : "dynamic_tool_call",
               status: event.data.success ? "completed" : "failed",
               title: "Tool call",
               ...((event.data.result?.detailedContent ??
@@ -268,6 +269,7 @@ export const mapEvent = (
             },
           },
         ];
+      }
       case "user_input.requested": {
         const question: UserInputQuestion = {
           id: USER_INPUT_QUESTION_ID,

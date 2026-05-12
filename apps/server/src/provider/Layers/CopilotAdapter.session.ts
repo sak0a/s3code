@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 import {
@@ -35,6 +34,7 @@ import {
   type ActiveCopilotSession,
   type CopilotAdapterLiveOptions,
   type PendingApprovalRequest,
+  type PendingTurnStartRequest,
   type PendingUserInputRequest,
   buildThreadSnapshot,
   isSessionNotFoundError,
@@ -44,6 +44,8 @@ import {
 } from "./CopilotAdapter.types.ts";
 
 type CopilotReasoningEffort = "low" | "medium" | "high" | "xhigh";
+
+const TURN_START_TIMEOUT_MS = 30_000;
 
 export interface SessionOpsDeps {
   readonly sessions: Map<ThreadId, ActiveCopilotSession>;
@@ -89,6 +91,48 @@ function parseResumeCursor(resumeCursor: unknown): string | undefined {
 
 function attachmentMimeType(attachment: ChatAttachment): string {
   return attachment.mimeType;
+}
+
+function createTurnStartWaiter(record: ActiveCopilotSession) {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  let pending: PendingTurnStartRequest | undefined;
+  let settled = false;
+
+  const clear = () => {
+    if (timeout !== undefined) clearTimeout(timeout);
+    timeout = undefined;
+    if (pending) record.pendingTurnStarts.delete(pending);
+  };
+
+  const promise = new Promise<TurnId>((resolve, reject) => {
+    pending = {
+      resolve: (turnId) => {
+        if (settled) return;
+        settled = true;
+        clear();
+        resolve(turnId);
+      },
+      reject: (cause) => {
+        if (settled) return;
+        settled = true;
+        clear();
+        reject(cause);
+      },
+    };
+    record.pendingTurnStarts.add(pending);
+    timeout = setTimeout(() => {
+      pending?.reject(new Error("Timed out waiting for GitHub Copilot turn start."));
+    }, TURN_START_TIMEOUT_MS);
+  });
+
+  return {
+    promise,
+    cancel: () => {
+      if (settled) return;
+      settled = true;
+      clear();
+    },
+  };
 }
 
 export const makeStartSession =
@@ -182,8 +226,28 @@ export const makeStartSession =
         runtimeMode: input.runtimeMode,
         pendingApprovals,
         pendingUserInputs,
+        pendingTurnStarts: new Set(),
         turns: [],
         renewSession: () => client.createSession(sessionConfig),
+        attachSession: (nextSession) => {
+          record.unsubscribe();
+          record.session = nextSession;
+          record.unsubscribe = nextSession.on((event) => {
+            if (event.type === "assistant.turn_start") {
+              activeTurn = TurnId.make(event.data.turnId);
+              record.activeTurnId = activeTurn;
+              for (const pending of Array.from(record.pendingTurnStarts)) {
+                pending.resolve(activeTurn);
+              }
+              record.pendingTurnStarts.clear();
+            }
+            void deps
+              .handleEvent(record, event)
+              .pipe(Effect.runPromise)
+              .catch(() => undefined);
+            activeTurn = record.activeTurnId;
+          });
+        },
         unsubscribe: () => {},
         cwd: input.cwd,
         model: selectionTargetsCopilotInstance(input.modelSelection, deps.instanceId)
@@ -202,15 +266,7 @@ export const makeStartSession =
         },
       };
 
-      record.unsubscribe = session.on((event) => {
-        activeTurn =
-          event.type === "assistant.turn_start" ? TurnId.make(event.data.turnId) : activeTurn;
-        void deps
-          .handleEvent(record, event)
-          .pipe(Effect.runPromise)
-          .catch(() => undefined);
-        activeTurn = record.activeTurnId;
-      });
+      record.attachSession(session);
 
       deps.sessions.set(input.threadId, record);
 
@@ -306,7 +362,7 @@ export const makeSendTurn =
             } catch (firstError) {
               if (!isSessionNotFoundError(firstError)) throw firstError;
               const freshSession = await record.renewSession();
-              record.session = freshSession;
+              record.attachSession(freshSession);
               await record.session.setModel(copilotModelSelection.model, setModelOptions);
             }
           },
@@ -320,8 +376,6 @@ export const makeSendTurn =
         });
       }
 
-      const turnId = TurnId.make(`copilot-turn-${randomUUID()}`);
-      record.activeTurnId = turnId;
       record.updatedAt = new Date().toISOString();
 
       const sendPayload: Parameters<typeof record.session.send>[0] = {
@@ -330,15 +384,42 @@ export const makeSendTurn =
         mode: "immediate",
       };
 
+      const sendAndWaitForTurnStart = async (): Promise<TurnId> => {
+        const turnStart = createTurnStartWaiter(record);
+        try {
+          const [, startedTurnId] = await Promise.all([
+            record.session.send(sendPayload),
+            turnStart.promise,
+          ]);
+          return startedTurnId;
+        } catch (error) {
+          turnStart.cancel();
+          throw error;
+        }
+      };
+
+      let turnId: TurnId;
       yield* Effect.tryPromise({
         try: async () => {
           try {
-            await record.session.send(sendPayload);
+            turnId = await sendAndWaitForTurnStart();
           } catch (firstError) {
             if (!isSessionNotFoundError(firstError)) throw firstError;
             const freshSession = await record.renewSession();
-            record.session = freshSession;
-            await record.session.send(sendPayload);
+            record.attachSession(freshSession);
+            if (copilotModelSelection) {
+              const reasoningEffort = getModelSelectionStringOptionValue(
+                copilotModelSelection,
+                "reasoningEffort",
+              );
+              await record.session.setModel(
+                copilotModelSelection.model,
+                reasoningEffort
+                  ? { reasoningEffort: reasoningEffort as CopilotReasoningEffort }
+                  : undefined,
+              );
+            }
+            turnId = await sendAndWaitForTurnStart();
           }
         },
         catch: (cause) =>
@@ -352,7 +433,7 @@ export const makeSendTurn =
 
       return {
         threadId: input.threadId,
-        turnId,
+        turnId: turnId!,
         resumeCursor: { sessionId: record.session.sessionId },
       } satisfies ProviderTurnStartResult;
     });
@@ -387,10 +468,17 @@ export const stopSessionRecord = (
       for (const pending of record.pendingUserInputs.values()) {
         pending.resolve({ answer: "", wasFreeform: true });
       }
+      for (const pending of record.pendingTurnStarts.values()) {
+        pending.reject(new Error("GitHub Copilot session stopped before turn start."));
+      }
       record.pendingApprovals.clear();
       record.pendingUserInputs.clear();
-      await record.session.disconnect();
-      await record.client.stop();
+      record.pendingTurnStarts.clear();
+      try {
+        await record.session.disconnect();
+      } finally {
+        await record.client.stop();
+      }
     },
     catch: (cause) =>
       new ProviderAdapterRequestError({

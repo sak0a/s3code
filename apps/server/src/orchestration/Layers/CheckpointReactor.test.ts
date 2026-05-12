@@ -27,6 +27,7 @@ import { CheckpointStore } from "../../checkpointing/Services/CheckpointStore.ts
 import * as VcsDriverRegistry from "../../vcs/VcsDriverRegistry.ts";
 import * as VcsProcess from "../../vcs/VcsProcess.ts";
 import { VcsStatusBroadcaster } from "../../vcs/VcsStatusBroadcaster.ts";
+import { ProjectAvatarStore } from "../../project/Services/ProjectAvatarStore.ts";
 import { RepositoryIdentityResolverLive } from "../../project/Layers/RepositoryIdentityResolver.ts";
 import { CheckpointReactorLive } from "./CheckpointReactor.ts";
 import { OrchestrationEngineLive } from "./OrchestrationEngine.ts";
@@ -282,6 +283,13 @@ describe("CheckpointReactor", () => {
     const orchestrationLayer = OrchestrationEngineLive.pipe(
       Layer.provide(OrchestrationProjectionSnapshotQueryLive),
       Layer.provide(OrchestrationProjectionPipelineLive),
+      Layer.provide(
+        Layer.succeed(ProjectAvatarStore, {
+          write: () => Effect.die("ProjectAvatarStore.write not implemented in test"),
+          read: () => Effect.succeed(null),
+          remove: () => Effect.void,
+        }),
+      ),
       Layer.provide(OrchestrationEventStoreLive),
       Layer.provide(OrchestrationCommandReceiptRepositoryLive),
       Layer.provide(RepositoryIdentityResolverLive),

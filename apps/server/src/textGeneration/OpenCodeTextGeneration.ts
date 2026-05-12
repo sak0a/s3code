@@ -288,52 +288,65 @@ export const makeOpenCodeTextGeneration = Effect.fn("makeOpenCodeTextGeneration"
     });
 
     const runAgainstServer = (server: Pick<OpenCodeServerConnection, "url">) =>
-      Effect.tryPromise({
-        try: async () => {
-          const client = openCodeRuntime.createOpenCodeSdkClient({
+      Effect.gen(function* () {
+        const client = yield* openCodeRuntime
+          .createOpenCodeSdkClient({
             baseUrl: server.url,
             directory: input.cwd,
             ...(openCodeSettings.serverUrl.length > 0 && openCodeSettings.serverPassword
               ? { serverPassword: openCodeSettings.serverPassword }
               : {}),
-          });
-          const session = await client.session.create({
-            title: `S3Code ${input.operation}`,
-            permission: [{ permission: "*", pattern: "*", action: "deny" }],
-          });
-          if (!session.data) {
-            throw new Error("OpenCode session.create returned no session payload.");
-          }
-          const selectedAgent = getModelSelectionStringOptionValue(input.modelSelection, "agent");
-          const selectedVariant = getModelSelectionStringOptionValue(
-            input.modelSelection,
-            "variant",
+          })
+          .pipe(
+            Effect.mapError(
+              (cause) =>
+                new TextGenerationError({
+                  operation: input.operation,
+                  detail: openCodeRuntimeErrorDetail(cause),
+                  cause,
+                }),
+            ),
           );
+        return yield* Effect.tryPromise({
+          try: async () => {
+            const session = await client.session.create({
+              title: `S3Code ${input.operation}`,
+              permission: [{ permission: "*", pattern: "*", action: "deny" }],
+            });
+            if (!session.data) {
+              throw new Error("OpenCode session.create returned no session payload.");
+            }
+            const selectedAgent = getModelSelectionStringOptionValue(input.modelSelection, "agent");
+            const selectedVariant = getModelSelectionStringOptionValue(
+              input.modelSelection,
+              "variant",
+            );
 
-          const result = await client.session.prompt({
-            sessionID: session.data.id,
-            model: parsedModel,
-            ...(selectedAgent ? { agent: selectedAgent } : {}),
-            ...(selectedVariant ? { variant: selectedVariant } : {}),
-            parts: [{ type: "text", text: input.prompt }, ...fileParts],
-          });
-          const info = result.data?.info;
-          const errorMessage = getOpenCodePromptErrorMessage(info?.error);
-          if (errorMessage) {
-            throw new Error(errorMessage);
-          }
-          const rawText = getOpenCodeTextResponse(result.data?.parts);
-          if (rawText.length === 0) {
-            throw new Error("OpenCode returned empty output.");
-          }
-          return rawText;
-        },
-        catch: (cause) =>
-          new TextGenerationError({
-            operation: input.operation,
-            detail: openCodeRuntimeErrorDetail(cause),
-            cause,
-          }),
+            const result = await client.session.prompt({
+              sessionID: session.data.id,
+              model: parsedModel,
+              ...(selectedAgent ? { agent: selectedAgent } : {}),
+              ...(selectedVariant ? { variant: selectedVariant } : {}),
+              parts: [{ type: "text", text: input.prompt }, ...fileParts],
+            });
+            const info = result.data?.info;
+            const errorMessage = getOpenCodePromptErrorMessage(info?.error);
+            if (errorMessage) {
+              throw new Error(errorMessage);
+            }
+            const rawText = getOpenCodeTextResponse(result.data?.parts);
+            if (rawText.length === 0) {
+              throw new Error("OpenCode returned empty output.");
+            }
+            return rawText;
+          },
+          catch: (cause) =>
+            new TextGenerationError({
+              operation: input.operation,
+              detail: openCodeRuntimeErrorDetail(cause),
+              cause,
+            }),
+        });
       });
 
     const rawOutput =

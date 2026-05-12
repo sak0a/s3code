@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import path from "node:path";
 
 import { Cause, Duration, Effect, Layer, Option, Queue, Ref, Schema, Stream } from "effect";
 import {
@@ -38,6 +39,7 @@ import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
 import { CheckpointDiffQuery } from "./checkpointing/Services/CheckpointDiffQuery.ts";
 import { ServerConfig } from "./config.ts";
 import { Keybindings } from "./keybindings.ts";
+import { makeCodexMcpService } from "./mcp/CodexMcpService.ts";
 import { Open, resolveAvailableEditors } from "./open.ts";
 import { normalizeDispatchCommand } from "./orchestration/Normalizer.ts";
 import { OrchestrationEngineService } from "./orchestration/Services/OrchestrationEngine.ts";
@@ -61,7 +63,7 @@ import { GitWorkflowService } from "./git/GitWorkflowService.ts";
 import { ProjectSetupScriptRunner } from "./project/Services/ProjectSetupScriptRunner.ts";
 import { RepositoryIdentityResolver } from "./project/Services/RepositoryIdentityResolver.ts";
 import { resolveProjectWorktreesDir } from "./project/projectMetadataPaths.ts";
-import { resolveProjectWorktreeCheckoutPath } from "./project/worktreeCheckoutPaths.ts";
+import { resolveWorktreeCheckoutPath } from "./project/worktreeCheckoutPaths.ts";
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment.ts";
 import { ServerAuth } from "./auth/Services/ServerAuth.ts";
 import { ProjectionWorktreeRepository } from "./persistence/Services/ProjectionWorktrees.ts";
@@ -208,6 +210,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
       const config = yield* ServerConfig;
       const lifecycleEvents = yield* ServerLifecycleEvents;
       const serverSettings = yield* ServerSettingsService;
+      const codexMcp = yield* makeCodexMcpService;
       const startup = yield* ServerRuntimeStartup;
       const workspaceEntries = yield* WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem;
@@ -569,11 +572,16 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
                 cwd: bootstrap.prepareWorktree.projectCwd,
                 refName: bootstrap.prepareWorktree.baseBranch,
                 newRefName: bootstrap.prepareWorktree.branch,
-                path: resolveProjectWorktreeCheckoutPath(
-                  bootstrap.prepareWorktree.projectCwd,
-                  bootstrapProject?.projectMetadataDir,
-                  bootstrap.prepareWorktree.branch ?? bootstrap.prepareWorktree.baseBranch,
-                ),
+                path: resolveWorktreeCheckoutPath({
+                  location: undefined,
+                  appWorktreesRoot: config.worktreesDir,
+                  projectId:
+                    targetProjectId ?? bootstrapProject?.id ?? ProjectId.make("project-unknown"),
+                  workspaceRoot: bootstrap.prepareWorktree.projectCwd,
+                  projectMetadataDir: bootstrapProject?.projectMetadataDir,
+                  branchName:
+                    bootstrap.prepareWorktree.branch ?? bootstrap.prepareWorktree.baseBranch,
+                }),
               });
               targetWorktreePath = worktree.worktree.path;
               yield* orchestrationEngine.dispatch({
@@ -707,6 +715,91 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
           Effect.asVoid,
         );
 
+      const launchSetupScriptForWorktreeInBackground = (input: {
+        readonly threadId: ThreadId;
+        readonly projectId: ProjectId;
+        readonly projectCwd: string;
+        readonly worktreePath: string;
+      }) =>
+        Effect.gen(function* () {
+          const requestedAt = new Date().toISOString();
+          yield* projectSetupScriptRunner
+            .runForThread({
+              threadId: input.threadId,
+              projectId: input.projectId,
+              projectCwd: input.projectCwd,
+              worktreePath: input.worktreePath,
+            })
+            .pipe(
+              Effect.matchEffect({
+                onFailure: (error) => {
+                  const detail = error instanceof Error ? error.message : "Unknown setup failure.";
+                  return appendSetupScriptActivity({
+                    threadId: input.threadId,
+                    kind: "setup-script.failed",
+                    summary: "Setup script failed to start",
+                    createdAt: requestedAt,
+                    payload: {
+                      detail,
+                      worktreePath: input.worktreePath,
+                    },
+                    tone: "error",
+                  }).pipe(
+                    Effect.ignoreCause({ log: false }),
+                    Effect.flatMap(() =>
+                      Effect.logWarning("worktree setup script failed to start", {
+                        threadId: input.threadId,
+                        worktreePath: input.worktreePath,
+                        detail,
+                      }),
+                    ),
+                  );
+                },
+                onSuccess: (setupResult) => {
+                  if (setupResult.status !== "started") {
+                    return Effect.void;
+                  }
+                  const payload = {
+                    scriptId: setupResult.scriptId,
+                    scriptName: setupResult.scriptName,
+                    terminalId: setupResult.terminalId,
+                    worktreePath: input.worktreePath,
+                  };
+                  return Effect.all([
+                    appendSetupScriptActivity({
+                      threadId: input.threadId,
+                      kind: "setup-script.requested",
+                      summary: "Starting setup script",
+                      createdAt: requestedAt,
+                      payload,
+                      tone: "info",
+                    }),
+                    appendSetupScriptActivity({
+                      threadId: input.threadId,
+                      kind: "setup-script.started",
+                      summary: "Setup script started",
+                      createdAt: new Date().toISOString(),
+                      payload,
+                      tone: "info",
+                    }),
+                  ]).pipe(
+                    Effect.asVoid,
+                    Effect.catch((error) =>
+                      Effect.logWarning(
+                        "worktree setup script started but setup activity recording failed",
+                        {
+                          threadId: input.threadId,
+                          worktreePath: input.worktreePath,
+                          detail: error.message,
+                        },
+                      ),
+                    ),
+                  );
+                },
+              }),
+            );
+        }).pipe(Effect.ignoreCause({ log: true }), Effect.forkDetach, Effect.asVoid);
+
       const createWorktreeForProject = (input: GitCreateWorktreeForProjectInput) =>
         Effect.gen(function* () {
           const operation = "git.createWorktreeForProject";
@@ -830,11 +923,14 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             cwd: project.workspaceRoot,
             refName,
             ...(newRefName !== undefined ? { newRefName } : {}),
-            path: resolveProjectWorktreeCheckoutPath(
-              project.workspaceRoot,
-              project.projectMetadataDir,
-              branch,
-            ),
+            path: resolveWorktreeCheckoutPath({
+              location: input.worktreeLocation,
+              appWorktreesRoot: config.worktreesDir,
+              projectId: input.projectId,
+              workspaceRoot: project.workspaceRoot,
+              projectMetadataDir: project.projectMetadataDir,
+              branchName: branch,
+            }),
           });
 
           yield* dispatchWorktreeCommand(
@@ -883,6 +979,12 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             operation,
           );
 
+          yield* launchSetupScriptForWorktreeInBackground({
+            threadId,
+            projectId: input.projectId,
+            projectCwd: project.workspaceRoot,
+            worktreePath: worktree.worktree.path,
+          });
           yield* refreshGitStatus(worktree.worktree.path);
           return { worktreeId, sessionId: threadId };
         });
@@ -1359,6 +1461,34 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               "rpc.aggregate": "server",
             },
           ),
+        [WS_METHODS.mcpListWorkspaces]: (_input) =>
+          observeRpcEffect(WS_METHODS.mcpListWorkspaces, codexMcp.listWorkspaces, {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpListServers]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpListServers, codexMcp.listServers(input), {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpUpsertServer]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpUpsertServer, codexMcp.upsertServer(input), {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpSetServerEnabled]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpSetServerEnabled, codexMcp.setServerEnabled(input), {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpRemoveServer]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpRemoveServer, codexMcp.removeServer(input), {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpReloadServers]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpReloadServers, codexMcp.reloadServers(input), {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpStartOauthLogin]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpStartOauthLogin, codexMcp.startOauthLogin(input), {
+            "rpc.aggregate": "mcp",
+          }),
         [WS_METHODS.sourceControlLookupRepository]: (input) =>
           observeRpcEffect(
             WS_METHODS.sourceControlLookupRepository,
@@ -1629,10 +1759,13 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
                   Effect.map(Option.getOrNull),
                   Effect.map((project) => ({
                     ...input,
-                    worktreesDir: resolveProjectWorktreesDir(
-                      input.cwd,
-                      project?.projectMetadataDir,
-                    ),
+                    worktreesDir:
+                      input.worktreeLocation === "projectMetadata"
+                        ? resolveProjectWorktreesDir(input.cwd, project?.projectMetadataDir)
+                        : path.join(
+                            config.worktreesDir,
+                            project?.id ?? input.projectId ?? ProjectId.make("project-unknown"),
+                          ),
                   })),
                   Effect.flatMap((normalizedInput) =>
                     gitWorkflow.preparePullRequestThread(normalizedInput),

@@ -326,12 +326,12 @@ export function resolveRemoteS3CliPackageSpec(input: {
 }): string {
   const appVersion = input.appVersion.trim();
   if (!input.isDevelopment && PUBLISHABLE_S3_VERSION_PATTERN.test(appVersion)) {
-    return `s3@${appVersion}`;
+    return `sakacode@${appVersion}`;
   }
 
   if (input.isDevelopment) {
-    return "s3@nightly";
+    return "sakacode@nightly";
   }
 
-  return input.updateChannel === "nightly" ? "s3@nightly" : "s3@latest";
+  return input.updateChannel === "nightly" ? "sakacode@nightly" : "sakacode@latest";
 }

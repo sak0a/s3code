@@ -37,6 +37,18 @@ import {
 } from "./git.ts";
 import { KeybindingsConfigError } from "./keybindings.ts";
 import {
+  McpListServersInput,
+  McpListServersResult,
+  McpListWorkspacesResult,
+  McpOauthLoginInput,
+  McpOauthLoginResult,
+  McpServerEnabledInput,
+  McpServerRemoveInput,
+  McpServerUpsertInput,
+  McpServersReloadInput,
+  McpSettingsError,
+} from "./mcp.ts";
+import {
   ClientOrchestrationCommand,
   ORCHESTRATION_WS_METHODS,
   OrchestrationDispatchCommandError,
@@ -100,7 +112,12 @@ import {
   SourceControlProviderError,
 } from "./sourceControl.ts";
 import { VcsError } from "./vcs.ts";
-import { CreateWorktreeIntent, StatusBucket, WorktreeId } from "./worktree.ts";
+import {
+  CreateWorktreeIntent,
+  StatusBucket,
+  WorktreeCheckoutLocation,
+  WorktreeId,
+} from "./worktree.ts";
 
 export const WS_METHODS = {
   // Project registry methods
@@ -160,6 +177,15 @@ export const WS_METHODS = {
   serverUpdateSettings: "server.updateSettings",
   serverDiscoverSourceControl: "server.discoverSourceControl",
 
+  // MCP settings methods
+  mcpListWorkspaces: "mcp.listWorkspaces",
+  mcpListServers: "mcp.listServers",
+  mcpUpsertServer: "mcp.upsertServer",
+  mcpSetServerEnabled: "mcp.setServerEnabled",
+  mcpRemoveServer: "mcp.removeServer",
+  mcpReloadServers: "mcp.reloadServers",
+  mcpStartOauthLogin: "mcp.startOauthLogin",
+
   // Source control methods
   sourceControlLookupRepository: "sourceControl.lookupRepository",
   sourceControlCloneRepository: "sourceControl.cloneRepository",
@@ -182,6 +208,9 @@ export const WS_METHODS = {
 export const GitCreateWorktreeForProjectInput = Schema.Struct({
   projectId: ProjectId,
   intent: CreateWorktreeIntent,
+  // "projectMetadata" preserves the legacy project-local checkout location.
+  // New worktrees should use the default app-managed location.
+  worktreeLocation: Schema.optional(WorktreeCheckoutLocation),
 });
 export type GitCreateWorktreeForProjectInput = typeof GitCreateWorktreeForProjectInput.Type;
 
@@ -285,6 +314,48 @@ export const WsServerUpdateSettingsRpc = Rpc.make(WS_METHODS.serverUpdateSetting
 export const WsServerDiscoverSourceControlRpc = Rpc.make(WS_METHODS.serverDiscoverSourceControl, {
   payload: Schema.Struct({}),
   success: SourceControlDiscoveryResult,
+});
+
+export const WsMcpListWorkspacesRpc = Rpc.make(WS_METHODS.mcpListWorkspaces, {
+  payload: Schema.Struct({}),
+  success: McpListWorkspacesResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpListServersRpc = Rpc.make(WS_METHODS.mcpListServers, {
+  payload: McpListServersInput,
+  success: McpListServersResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpUpsertServerRpc = Rpc.make(WS_METHODS.mcpUpsertServer, {
+  payload: McpServerUpsertInput,
+  success: McpListServersResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpSetServerEnabledRpc = Rpc.make(WS_METHODS.mcpSetServerEnabled, {
+  payload: McpServerEnabledInput,
+  success: McpListServersResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpRemoveServerRpc = Rpc.make(WS_METHODS.mcpRemoveServer, {
+  payload: McpServerRemoveInput,
+  success: McpListServersResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpReloadServersRpc = Rpc.make(WS_METHODS.mcpReloadServers, {
+  payload: McpServersReloadInput,
+  success: McpListServersResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpStartOauthLoginRpc = Rpc.make(WS_METHODS.mcpStartOauthLogin, {
+  payload: McpOauthLoginInput,
+  success: McpOauthLoginResult,
+  error: McpSettingsError,
 });
 
 export const WsSourceControlLookupRepositoryRpc = Rpc.make(
@@ -651,6 +722,13 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerGetSettingsRpc,
   WsServerUpdateSettingsRpc,
   WsServerDiscoverSourceControlRpc,
+  WsMcpListWorkspacesRpc,
+  WsMcpListServersRpc,
+  WsMcpUpsertServerRpc,
+  WsMcpSetServerEnabledRpc,
+  WsMcpRemoveServerRpc,
+  WsMcpReloadServersRpc,
+  WsMcpStartOauthLoginRpc,
   WsSourceControlLookupRepositoryRpc,
   WsSourceControlCloneRepositoryRpc,
   WsSourceControlPublishRepositoryRpc,

@@ -160,6 +160,15 @@ export interface WsRpcClient {
     readonly subscribeLifecycle: RpcStreamMethod<typeof WS_METHODS.subscribeServerLifecycle>;
     readonly subscribeAuthAccess: RpcStreamMethod<typeof WS_METHODS.subscribeAuthAccess>;
   };
+  readonly mcp: {
+    readonly listWorkspaces: RpcUnaryNoArgMethod<typeof WS_METHODS.mcpListWorkspaces>;
+    readonly listServers: RpcUnaryMethod<typeof WS_METHODS.mcpListServers>;
+    readonly upsertServer: RpcUnaryMethod<typeof WS_METHODS.mcpUpsertServer>;
+    readonly setServerEnabled: RpcUnaryMethod<typeof WS_METHODS.mcpSetServerEnabled>;
+    readonly removeServer: RpcUnaryMethod<typeof WS_METHODS.mcpRemoveServer>;
+    readonly reloadServers: RpcUnaryMethod<typeof WS_METHODS.mcpReloadServers>;
+    readonly startOauthLogin: RpcUnaryMethod<typeof WS_METHODS.mcpStartOauthLogin>;
+  };
   readonly orchestration: {
     readonly dispatchCommand: RpcUnaryMethod<typeof ORCHESTRATION_WS_METHODS.dispatchCommand>;
     readonly getTurnDiff: RpcUnaryMethod<typeof ORCHESTRATION_WS_METHODS.getTurnDiff>;
@@ -325,6 +334,21 @@ export function createWsRpcClient(transport: WsTransport): WsRpcClient {
           ...options,
           tag: WS_METHODS.subscribeAuthAccess,
         }),
+    },
+    mcp: {
+      listWorkspaces: () => transport.request((client) => client[WS_METHODS.mcpListWorkspaces]({})),
+      listServers: (input) =>
+        transport.request((client) => client[WS_METHODS.mcpListServers](input)),
+      upsertServer: (input) =>
+        transport.request((client) => client[WS_METHODS.mcpUpsertServer](input)),
+      setServerEnabled: (input) =>
+        transport.request((client) => client[WS_METHODS.mcpSetServerEnabled](input)),
+      removeServer: (input) =>
+        transport.request((client) => client[WS_METHODS.mcpRemoveServer](input)),
+      reloadServers: (input) =>
+        transport.request((client) => client[WS_METHODS.mcpReloadServers](input)),
+      startOauthLogin: (input) =>
+        transport.request((client) => client[WS_METHODS.mcpStartOauthLogin](input)),
     },
     orchestration: {
       dispatchCommand: (input) =>

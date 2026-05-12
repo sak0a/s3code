@@ -93,13 +93,15 @@ export const makeCopilotAdapter = Effect.fn("makeCopilotAdapter")(function* (
     event: SessionEvent,
   ) {
     if (!nativeEventLogger) return;
-    yield* nativeEventLogger.write(
-      {
-        observedAt: new Date().toISOString(),
-        event,
-      },
-      threadId,
-    );
+    yield* nativeEventLogger
+      .write(
+        {
+          observedAt: new Date().toISOString(),
+          event,
+        },
+        threadId,
+      )
+      .pipe(Effect.ignoreCause({ log: true }));
   });
 
   const makeSyntheticEvent = <TType extends ProviderRuntimeEvent["type"]>(

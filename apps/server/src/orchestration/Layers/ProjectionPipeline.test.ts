@@ -21,6 +21,7 @@ import {
   SqlitePersistenceMemory,
 } from "../../persistence/Layers/Sqlite.ts";
 import { OrchestrationEventStore } from "../../persistence/Services/OrchestrationEventStore.ts";
+import { ProjectAvatarStore } from "../../project/Services/ProjectAvatarStore.ts";
 import { RepositoryIdentityResolverLive } from "../../project/Layers/RepositoryIdentityResolver.ts";
 import { OrchestrationEngineLive } from "./OrchestrationEngine.ts";
 import {
@@ -32,11 +33,18 @@ import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import { OrchestrationProjectionPipeline } from "../Services/ProjectionPipeline.ts";
 import { ServerConfig } from "../../config.ts";
 
+const MockProjectAvatarStoreLive = Layer.succeed(ProjectAvatarStore, {
+  write: () => Effect.die("ProjectAvatarStore.write not implemented in test"),
+  read: () => Effect.succeed(null),
+  remove: () => Effect.void,
+});
+
 const makeProjectionPipelinePrefixedTestLayer = (prefix: string) =>
   OrchestrationProjectionPipelineLive.pipe(
     Layer.provideMerge(OrchestrationEventStoreLive),
     Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix })),
     Layer.provideMerge(SqlitePersistenceMemory),
+    Layer.provideMerge(MockProjectAvatarStoreLive),
     Layer.provideMerge(NodeServices.layer),
   );
 
@@ -2042,10 +2050,12 @@ it.effect("restores pending turn-start metadata across projection pipeline resta
     const persistenceLayer = makeSqlitePersistenceLive(dbPath);
     const firstProjectionLayer = OrchestrationProjectionPipelineLive.pipe(
       Layer.provideMerge(OrchestrationEventStoreLive),
+      Layer.provideMerge(MockProjectAvatarStoreLive),
       Layer.provideMerge(persistenceLayer),
     );
     const secondProjectionLayer = OrchestrationProjectionPipelineLive.pipe(
       Layer.provideMerge(OrchestrationEventStoreLive),
+      Layer.provideMerge(MockProjectAvatarStoreLive),
       Layer.provideMerge(persistenceLayer),
     );
 
@@ -2169,6 +2179,7 @@ const engineLayer = it.layer(
   OrchestrationEngineLive.pipe(
     Layer.provide(OrchestrationProjectionSnapshotQueryLive),
     Layer.provide(OrchestrationProjectionPipelineLive),
+    Layer.provide(MockProjectAvatarStoreLive),
     Layer.provide(OrchestrationEventStoreLive),
     Layer.provide(OrchestrationCommandReceiptRepositoryLive),
     Layer.provide(RepositoryIdentityResolverLive),

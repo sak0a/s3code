@@ -1,6 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, it, assert, live } from "@effect/vitest";
-import { Effect, Exit, Layer, PubSub, Ref, Schema, Scope, Sink, Stream } from "effect";
+import { Deferred, Effect, Exit, Layer, PubSub, Ref, Schema, Scope, Sink, Stream } from "effect";
 import * as CodexErrors from "effect-codex-app-server/errors";
 import {
   ClaudeSettings,
@@ -621,6 +621,91 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest()))(
         }),
       );
 
+      it.effect("does not block registry startup on initial provider refresh", () =>
+        Effect.gen(function* () {
+          const codexDriver = ProviderDriverKind.make("codex");
+          const codexInstanceId = ProviderInstanceId.make("codex");
+          const initialProvider = {
+            instanceId: codexInstanceId,
+            driver: codexDriver,
+            status: "warning",
+            enabled: true,
+            installed: true,
+            auth: { status: "unknown" },
+            checkedAt: "2026-04-29T10:00:00.000Z",
+            version: "1.0.0",
+            models: [],
+            slashCommands: [],
+            skills: [],
+          } as const satisfies ServerProvider;
+          const refreshedProvider = {
+            ...initialProvider,
+            status: "ready",
+            auth: { status: "authenticated" },
+            checkedAt: "2026-04-29T10:01:00.000Z",
+          } as const satisfies ServerProvider;
+          const releaseRefresh = yield* Deferred.make<void>();
+          const instance = {
+            instanceId: codexInstanceId,
+            driverKind: codexDriver,
+            continuationIdentity: {
+              driverKind: codexDriver,
+              continuationKey: "codex:instance:codex",
+            },
+            displayName: undefined,
+            enabled: true,
+            snapshot: {
+              getSnapshot: Effect.succeed(initialProvider),
+              refresh: Deferred.await(releaseRefresh).pipe(Effect.as(refreshedProvider)),
+              streamChanges: Stream.empty,
+            },
+            adapter: {} as ProviderInstance["adapter"],
+            textGeneration: {} as ProviderInstance["textGeneration"],
+          } satisfies ProviderInstance;
+          const instanceRegistryLayer = Layer.succeed(ProviderInstanceRegistry, {
+            getInstance: (instanceId) =>
+              Effect.succeed(instanceId === codexInstanceId ? instance : undefined),
+            listInstances: Effect.succeed([instance]),
+            listUnavailable: Effect.succeed([]),
+            streamChanges: Stream.empty,
+            subscribeChanges: Effect.flatMap(PubSub.unbounded<void>(), (pubsub) =>
+              PubSub.subscribe(pubsub),
+            ),
+          });
+          const scope = yield* Scope.make();
+          yield* Effect.addFinalizer(() => Scope.close(scope, Exit.void));
+          const runtimeServices = yield* Layer.build(
+            ProviderRegistryLive.pipe(
+              Layer.provideMerge(instanceRegistryLayer),
+              Layer.provideMerge(
+                ServerConfig.layerTest(process.cwd(), {
+                  prefix: "s3-provider-registry-initial-refresh-",
+                }),
+              ),
+              Layer.provideMerge(NodeServices.layer),
+            ),
+          ).pipe(Scope.provide(scope));
+
+          yield* Effect.gen(function* () {
+            const registry = yield* ProviderRegistry;
+            assert.deepStrictEqual(yield* registry.getProviders, [initialProvider]);
+
+            yield* Deferred.succeed(releaseRefresh, undefined);
+            let providers = yield* registry.getProviders;
+            for (
+              let attempt = 0;
+              attempt < 50 && providers[0]?.checkedAt !== refreshedProvider.checkedAt;
+              attempt += 1
+            ) {
+              yield* Effect.yieldNow;
+              providers = yield* registry.getProviders;
+            }
+
+            assert.deepStrictEqual(providers, [refreshedProvider]);
+          }).pipe(Effect.provide(runtimeServices));
+        }),
+      );
+
       it.effect("keeps consuming registry changes after one sync fails", () =>
         Effect.gen(function* () {
           const codexDriver = ProviderDriverKind.make("codex");
@@ -813,7 +898,17 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest()))(
 
           yield* Effect.gen(function* () {
             const registry = yield* ProviderRegistry;
-            const providers = yield* registry.getProviders;
+            const providers = yield* Effect.gen(function* () {
+              for (let attempts = 0; attempts < 100; attempts += 1) {
+                const current = yield* registry.getProviders;
+                const codex = current.find((provider) => provider.instanceId === "codex_personal");
+                if (codex?.status === "error") {
+                  return current;
+                }
+                yield* Effect.yieldNow;
+              }
+              return yield* registry.getProviders;
+            });
             const codexPersonal = providers.find(
               (provider) => provider.instanceId === "codex_personal",
             );
@@ -899,11 +994,21 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest()))(
             const registry = yield* ProviderRegistry;
             // Boot-time probe: the default codex instance is enabled with
             // `firstMissing`, so the real spawner yields ENOENT and the
-            // snapshot should be `status: "error"`. What *distinguishes*
-            // the two probe runs is `checkedAt` — each probe stamps a
-            // fresh DateTime, so we capture it and assert it advances
-            // after the settings mutation.
-            const initialProviders = yield* registry.getProviders;
+            // background refresh eventually reports `status: "error"`.
+            // What *distinguishes* the two probe runs is `checkedAt` —
+            // each probe stamps a fresh DateTime, so we capture it and
+            // assert it advances after the settings mutation.
+            const initialProviders = yield* Effect.gen(function* () {
+              for (let attempts = 0; attempts < 60; attempts += 1) {
+                const providers = yield* registry.getProviders;
+                const codex = providers.find((provider) => provider.instanceId === "codex");
+                if (codex?.status === "error") {
+                  return providers;
+                }
+                yield* Effect.sleep("50 millis");
+              }
+              return yield* registry.getProviders;
+            });
             const initialCodex = initialProviders.find(
               (provider) => provider.instanceId === "codex",
             );
@@ -1080,6 +1185,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest()))(
               assert.deepStrictEqual(providers.map((provider) => provider.instanceId).toSorted(), [
                 "claudeAgent",
                 "codex",
+                "copilot",
                 "cursor",
                 "opencode",
               ]);

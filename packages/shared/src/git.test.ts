@@ -13,22 +13,22 @@ import {
 describe("normalizeGitRemoteUrl", () => {
   it("canonicalizes equivalent GitHub remotes across protocol variants", () => {
     expect(normalizeGitRemoteUrl("git@github.com:S3Tools/S3Code.git")).toBe(
-      "github.com/t3tools/s3code",
+      "github.com/s3tools/s3code",
     );
     expect(normalizeGitRemoteUrl("https://github.com/S3Tools/S3Code.git")).toBe(
-      "github.com/t3tools/s3code",
+      "github.com/s3tools/s3code",
     );
     expect(normalizeGitRemoteUrl("ssh://git@github.com/S3Tools/S3Code")).toBe(
-      "github.com/t3tools/s3code",
+      "github.com/s3tools/s3code",
     );
   });
 
   it("preserves nested group paths for providers like GitLab", () => {
     expect(normalizeGitRemoteUrl("git@gitlab.com:S3Tools/platform/S3Code.git")).toBe(
-      "gitlab.com/t3tools/platform/s3code",
+      "gitlab.com/s3tools/platform/s3code",
     );
     expect(normalizeGitRemoteUrl("https://gitlab.com/S3Tools/platform/S3Code.git")).toBe(
-      "gitlab.com/t3tools/platform/s3code",
+      "gitlab.com/s3tools/platform/s3code",
     );
   });
 

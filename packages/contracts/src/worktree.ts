@@ -11,6 +11,9 @@ export type WorktreeOrigin = typeof WorktreeOrigin.Type;
 export const StatusBucket = Schema.Literals(["idle", "in_progress", "review", "done"]);
 export type StatusBucket = typeof StatusBucket.Type;
 
+export const WorktreeCheckoutLocation = Schema.Literals(["appManaged", "projectMetadata"]);
+export type WorktreeCheckoutLocation = typeof WorktreeCheckoutLocation.Type;
+
 export const Worktree = Schema.Struct({
   worktreeId: WorktreeId,
   projectId: ProjectId,

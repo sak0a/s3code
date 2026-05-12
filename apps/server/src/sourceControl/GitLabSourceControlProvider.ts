@@ -12,7 +12,7 @@ import * as GitLabCli from "./GitLabCli.ts";
 import * as GitLabIssues from "./gitLabIssues.ts";
 import * as GitLabMergeRequests from "./gitLabMergeRequests.ts";
 import * as SourceControlProvider from "./SourceControlProvider.ts";
-import * as SourceControlProviderDiscovery from "./SourceControlProviderDiscovery.ts";
+export { gitlabDiscovery as discovery } from "./SourceControlProviderDiscoveryCatalog.ts";
 
 function providerError(
   operation: string,
@@ -98,50 +98,6 @@ function toChangeRequestDetail(
     truncated: content.truncated,
   };
 }
-
-function parseGitLabAuth(input: SourceControlProviderDiscovery.SourceControlAuthProbeInput) {
-  const output = SourceControlProviderDiscovery.combinedAuthOutput(input);
-  const account = SourceControlProviderDiscovery.matchFirst(output, [
-    /Logged in to .* as\s+([^\s(]+)/iu,
-    /Logged in to .* account\s+([^\s(]+)/iu,
-    /account:\s*([^\s(]+)/iu,
-  ]);
-  const host = SourceControlProviderDiscovery.parseCliHost(output);
-
-  if (input.exitCode !== 0) {
-    return SourceControlProviderDiscovery.providerAuth({
-      status: "unauthenticated",
-      host,
-      detail:
-        SourceControlProviderDiscovery.firstSafeAuthLine(output) ??
-        "Run `glab auth login` to authenticate GitLab CLI.",
-    });
-  }
-
-  if (account) {
-    return SourceControlProviderDiscovery.providerAuth({ status: "authenticated", account, host });
-  }
-
-  return SourceControlProviderDiscovery.providerAuth({
-    status: "unknown",
-    host,
-    detail:
-      SourceControlProviderDiscovery.firstSafeAuthLine(output) ??
-      "GitLab CLI auth status could not be parsed.",
-  });
-}
-
-export const discovery = {
-  type: "cli",
-  kind: "gitlab",
-  label: "GitLab",
-  executable: "glab",
-  versionArgs: ["--version"],
-  authArgs: ["auth", "status"],
-  parseAuth: parseGitLabAuth,
-  installHint:
-    "Install the GitLab command-line tool (`glab`) from https://gitlab.com/gitlab-org/cli or your package manager (for example `brew install glab`).",
-} satisfies SourceControlProviderDiscovery.SourceControlCliDiscoverySpec;
 
 export const make = Effect.fn("makeGitLabSourceControlProvider")(function* () {
   const gitlab = yield* GitLabCli.GitLabCli;

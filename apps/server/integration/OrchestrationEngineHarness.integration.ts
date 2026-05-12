@@ -50,6 +50,7 @@ import { CheckpointReactorLive } from "../src/orchestration/Layers/CheckpointRea
 import { RepositoryIdentityResolverLive } from "../src/project/Layers/RepositoryIdentityResolver.ts";
 import { OrchestrationEngineLive } from "../src/orchestration/Layers/OrchestrationEngine.ts";
 import { OrchestrationProjectionPipelineLive } from "../src/orchestration/Layers/ProjectionPipeline.ts";
+import { ProjectAvatarStore } from "../src/project/Services/ProjectAvatarStore.ts";
 import { OrchestrationProjectionSnapshotQueryLive } from "../src/orchestration/Layers/ProjectionSnapshotQuery.ts";
 import { RuntimeReceiptBusTest } from "../src/orchestration/Layers/RuntimeReceiptBus.ts";
 import { OrchestrationReactorLive } from "../src/orchestration/Layers/OrchestrationReactor.ts";
@@ -256,8 +257,14 @@ export const makeOrchestrationIntegrationHarness = (
     yield* initializeGitWorkspace(workspaceDir);
 
     const persistenceLayer = makeSqlitePersistenceLive(dbPath);
+    const MockProjectAvatarStoreLive = Layer.succeed(ProjectAvatarStore, {
+      write: () => Effect.die("ProjectAvatarStore.write not implemented in test"),
+      read: () => Effect.succeed(null),
+      remove: () => Effect.void,
+    });
     const orchestrationLayer = OrchestrationEngineLive.pipe(
       Layer.provide(OrchestrationProjectionPipelineLive),
+      Layer.provide(MockProjectAvatarStoreLive),
       Layer.provide(OrchestrationEventStoreLive),
       Layer.provide(OrchestrationCommandReceiptRepositoryLive),
     );

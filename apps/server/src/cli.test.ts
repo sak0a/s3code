@@ -24,6 +24,7 @@ import {
   orchestrationSnapshotRouteLayer,
 } from "./orchestration/http.ts";
 import { layerConfig as SqlitePersistenceLayerLive } from "./persistence/Layers/Sqlite.ts";
+import { ProjectAvatarStoreLive } from "./project/Layers/ProjectAvatarStore.ts";
 import { RepositoryIdentityResolverLive } from "./project/Layers/RepositoryIdentityResolver.ts";
 import {
   makePersistedServerRuntimeState,
@@ -84,6 +85,7 @@ const makeProjectPersistenceLayer = (config: ServerConfigShape) =>
   Layer.mergeAll(
     OrchestrationLayerLive.pipe(
       Layer.provideMerge(RepositoryIdentityResolverLive),
+      Layer.provideMerge(ProjectAvatarStoreLive({ dataDir: config.stateDir })),
       Layer.provideMerge(SqlitePersistenceLayerLive),
     ),
     WorkspacePathsLive,

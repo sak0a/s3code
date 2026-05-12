@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildWorktreeCheckoutDirectoryName,
+  resolveAppManagedWorktreeCheckoutPath,
   resolveProjectWorktreeCheckoutPath,
+  resolveWorktreeCheckoutPath,
 } from "./worktreeCheckoutPaths.ts";
+import { ProjectId } from "@s3tools/contracts";
 
 describe("worktree checkout paths", () => {
   it("builds checkout directory names from branch and a short word", () => {
@@ -20,5 +23,41 @@ describe("worktree checkout paths", () => {
     expect(resolveProjectWorktreeCheckoutPath("/repo", ".s3code", "bug/fix")).toMatch(
       /^\/repo\/\.s3code\/worktrees\/bug-fix__[a-z]{5}$/,
     );
+  });
+
+  it("resolves app-managed worktrees under the app worktrees directory", () => {
+    expect(
+      resolveAppManagedWorktreeCheckoutPath(
+        "/app/.s3code/worktrees",
+        ProjectId.make("project-123"),
+        "bug/fix",
+      ),
+    ).toMatch(/^\/app\/\.s3code\/worktrees\/project-123\/bug-fix__[a-z]{5}$/);
+  });
+
+  it("defaults to app-managed worktree paths", () => {
+    expect(
+      resolveWorktreeCheckoutPath({
+        location: undefined,
+        appWorktreesRoot: "/app/.s3code/worktrees",
+        projectId: ProjectId.make("project-123"),
+        workspaceRoot: "/repo",
+        projectMetadataDir: ".s3code",
+        branchName: "bug/fix",
+      }),
+    ).toMatch(/^\/app\/\.s3code\/worktrees\/project-123\/bug-fix__[a-z]{5}$/);
+  });
+
+  it("keeps project metadata worktree paths as a deprecated compatibility mode", () => {
+    expect(
+      resolveWorktreeCheckoutPath({
+        location: "projectMetadata",
+        appWorktreesRoot: "/app/.s3code/worktrees",
+        projectId: ProjectId.make("project-123"),
+        workspaceRoot: "/repo",
+        projectMetadataDir: ".s3code",
+        branchName: "bug/fix",
+      }),
+    ).toMatch(/^\/repo\/\.s3code\/worktrees\/bug-fix__[a-z]{5}$/);
   });
 });

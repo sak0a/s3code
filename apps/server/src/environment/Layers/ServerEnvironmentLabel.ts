@@ -4,6 +4,8 @@ import { Effect, FileSystem } from "effect";
 
 import { runProcess } from "../../processRunner.ts";
 
+export const FRIENDLY_LABEL_COMMAND_TIMEOUT_MS = 500;
+
 interface ResolveServerEnvironmentLabelInput {
   readonly cwdBaseName: string;
   readonly platform?: NodeJS.Platform;
@@ -55,6 +57,7 @@ const runFriendlyLabelCommand = Effect.fn("runFriendlyLabelCommand")(function* (
     try: () =>
       runProcess(command, args, {
         allowNonZeroExit: true,
+        timeoutMs: FRIENDLY_LABEL_COMMAND_TIMEOUT_MS,
       }),
     catch: () => null,
   }).pipe(Effect.orElseSucceed(() => null));

@@ -46,6 +46,7 @@ function buildRepositoryIdentity(input: {
   readonly remoteName: string;
   readonly remoteUrl: string;
   readonly rootPath: string;
+  readonly allRemotes: ReadonlyMap<string, string>;
 }): RepositoryIdentity {
   const canonicalKey = normalizeGitRemoteUrl(input.remoteUrl);
   const sourceControlProvider = detectSourceControlProviderFromGitRemoteUrl(input.remoteUrl);
@@ -53,6 +54,18 @@ function buildRepositoryIdentity(input: {
   const repositoryPathSegments = repositoryPath.split("/").filter((segment) => segment.length > 0);
   const [owner] = repositoryPathSegments;
   const repositoryName = repositoryPathSegments.at(-1);
+
+  const remotes = [...input.allRemotes.entries()].map(([name, url]) => {
+    const provider = detectSourceControlProviderFromGitRemoteUrl(url);
+    const canonical = normalizeGitRemoteUrl(url);
+    const ownerRepo = canonical.split("/").slice(1).join("/");
+    return {
+      name,
+      url,
+      ...(provider ? { provider: provider.kind } : {}),
+      ...(ownerRepo ? { ownerRepo } : {}),
+    };
+  });
 
   return {
     canonicalKey,
@@ -66,6 +79,7 @@ function buildRepositoryIdentity(input: {
     ...(sourceControlProvider ? { provider: sourceControlProvider.kind } : {}),
     ...(owner ? { owner } : {}),
     ...(repositoryName ? { name: repositoryName } : {}),
+    remotes,
   };
 }
 
@@ -112,8 +126,9 @@ async function resolveRepositoryIdentityFromCacheKey(
       return null;
     }
 
-    const remote = pickPrimaryRemote(parseRemoteFetchUrls(remoteResult.stdout));
-    return remote ? buildRepositoryIdentity({ ...remote, rootPath: cacheKey }) : null;
+    const allRemotes = parseRemoteFetchUrls(remoteResult.stdout);
+    const remote = pickPrimaryRemote(allRemotes);
+    return remote ? buildRepositoryIdentity({ ...remote, rootPath: cacheKey, allRemotes }) : null;
   } catch {
     return null;
   }

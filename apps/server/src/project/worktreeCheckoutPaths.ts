@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import type { ProjectId, WorktreeCheckoutLocation } from "@s3tools/contracts";
 import { sanitizeBranchFragment } from "@s3tools/shared/git";
 import { resolveProjectWorktreesDir } from "./projectMetadataPaths.ts";
 
@@ -36,6 +37,11 @@ export function buildWorktreeCheckoutDirectoryName(
   return `${branchSegment}__${wordSegment || createRandomWorktreeWord()}`;
 }
 
+/**
+ * @deprecated Project-local worktrees put generated checkouts inside the
+ * repository. Keep this for explicit compatibility only; prefer
+ * resolveAppManagedWorktreeCheckoutPath for new S3Code-created worktrees.
+ */
 export function resolveProjectWorktreeCheckoutPath(
   workspaceRoot: string,
   projectMetadataDir: string | null | undefined,
@@ -44,5 +50,40 @@ export function resolveProjectWorktreeCheckoutPath(
   return path.join(
     resolveProjectWorktreesDir(workspaceRoot, projectMetadataDir),
     buildWorktreeCheckoutDirectoryName(branchName),
+  );
+}
+
+export function resolveAppManagedWorktreeCheckoutPath(
+  worktreesRoot: string,
+  projectId: ProjectId,
+  branchName: string,
+): string {
+  return path.join(
+    worktreesRoot,
+    sanitizePathSegment(projectId),
+    buildWorktreeCheckoutDirectoryName(branchName),
+  );
+}
+
+export function resolveWorktreeCheckoutPath(input: {
+  readonly location: WorktreeCheckoutLocation | undefined;
+  readonly appWorktreesRoot: string;
+  readonly projectId: ProjectId;
+  readonly workspaceRoot: string;
+  readonly projectMetadataDir: string | null | undefined;
+  readonly branchName: string;
+}): string {
+  if (input.location === "projectMetadata") {
+    return resolveProjectWorktreeCheckoutPath(
+      input.workspaceRoot,
+      input.projectMetadataDir,
+      input.branchName,
+    );
+  }
+
+  return resolveAppManagedWorktreeCheckoutPath(
+    input.appWorktreesRoot,
+    input.projectId,
+    input.branchName,
   );
 }
