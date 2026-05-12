@@ -661,6 +661,8 @@ function OpenCommandPaletteDialog() {
           <ProjectFavicon
             environmentId={project.environmentId}
             cwd={project.cwd}
+            projectId={project.id}
+            customAvatarContentHash={project.customAvatarContentHash ?? null}
             className={ITEM_ICON_CLASS}
           />
         ),
@@ -678,6 +680,8 @@ function OpenCommandPaletteDialog() {
           <ProjectFavicon
             environmentId={project.environmentId}
             cwd={project.cwd}
+            projectId={project.id}
+            customAvatarContentHash={project.customAvatarContentHash ?? null}
             className={ITEM_ICON_CLASS}
           />
         ),

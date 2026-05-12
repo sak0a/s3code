@@ -1228,20 +1228,38 @@ function resolveRemoteUrlToBrowserUrl(remoteUrl: string): string | null {
 
 function resolveProjectRemoteLink(
   repositoryIdentity: RepositoryIdentity | null | undefined,
+  preferredRemoteName: string | null | undefined,
 ): ProjectRemoteLink | null {
-  const remoteUrl = repositoryIdentity?.locator.remoteUrl;
-  if (!remoteUrl) {
-    return null;
-  }
-  const url = resolveRemoteUrlToBrowserUrl(remoteUrl);
-  if (!url) {
-    return null;
-  }
+  if (!repositoryIdentity) return null;
+
+  const candidate = (() => {
+    if (preferredRemoteName) {
+      const match = repositoryIdentity.remotes.find(
+        (remote) => remote.name === preferredRemoteName,
+      );
+      if (match) {
+        return {
+          url: match.url,
+          label: match.ownerRepo ?? match.url,
+          provider: match.provider ?? undefined,
+        };
+      }
+    }
+    const locatorUrl = repositoryIdentity.locator.remoteUrl;
+    return {
+      url: locatorUrl,
+      label: repositoryIdentity.displayName ?? repositoryIdentity.canonicalKey,
+      provider: repositoryIdentity.provider ?? undefined,
+    };
+  })();
+
+  const url = resolveRemoteUrlToBrowserUrl(candidate.url);
+  if (!url) return null;
   return {
     url,
-    label: repositoryIdentity.displayName ?? repositoryIdentity.canonicalKey,
-    provider: repositoryIdentity.provider,
-    providerLabel: formatRepositoryProviderLabel(repositoryIdentity.provider),
+    label: candidate.label,
+    provider: candidate.provider,
+    providerLabel: formatRepositoryProviderLabel(candidate.provider),
   };
 }
 
@@ -1255,7 +1273,7 @@ function ProjectSettingsMenu(props: {
   onSettings: (member: SidebarProjectGroupMember) => void;
 }) {
   const renderActions = (member: SidebarProjectGroupMember) => {
-    const remoteLink = resolveProjectRemoteLink(member.repositoryIdentity);
+    const remoteLink = resolveProjectRemoteLink(member.repositoryIdentity, member.preferredRemoteName);
     const RemoteIcon = resolveRepositoryProviderIcon(remoteLink?.provider);
     return (
       <>
@@ -1337,7 +1355,7 @@ function ProjectSettingsDialog(props: {
   const visibleWorktrees = props.worktrees.slice(0, 5);
   const archivedWorktreeCount = props.worktrees.filter((worktree) => worktree.archivedAt).length;
   const activeWorktreeCount = props.worktrees.length - archivedWorktreeCount;
-  const remoteLink = resolveProjectRemoteLink(target?.repositoryIdentity);
+  const remoteLink = resolveProjectRemoteLink(target?.repositoryIdentity, target?.preferredRemoteName);
 
   return (
     <Dialog
@@ -2031,7 +2049,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   }, []);
 
   const openProjectRemoteLink = useCallback((member: SidebarProjectGroupMember) => {
-    const remoteLink = resolveProjectRemoteLink(member.repositoryIdentity);
+    const remoteLink = resolveProjectRemoteLink(member.repositoryIdentity, member.preferredRemoteName);
     if (!remoteLink) {
       toastManager.add({
         type: "warning",
@@ -2277,7 +2295,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         };
 
         const hasAnyRemoteLink = project.memberProjects.some(
-          (member) => resolveProjectRemoteLink(member.repositoryIdentity) !== null,
+          (member) => resolveProjectRemoteLink(member.repositoryIdentity, member.preferredRemoteName) !== null,
         );
         const menuItems: ContextMenuItem<string>[] = [
           buildTargetedItem("settings", "Project settings"),
@@ -2285,7 +2303,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
             ? [
                 buildTargetedItem("open-remote", "Open remote", {
                   isDisabled: (member) =>
-                    resolveProjectRemoteLink(member.repositoryIdentity) === null,
+                    resolveProjectRemoteLink(member.repositoryIdentity, member.preferredRemoteName) === null,
                 }),
               ]
             : []),
@@ -3279,7 +3297,12 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
               }`}
             />
           )}
-          <ProjectFavicon environmentId={project.environmentId} cwd={project.cwd} />
+          <ProjectFavicon
+            environmentId={project.environmentId}
+            cwd={project.cwd}
+            projectId={project.id}
+            customAvatarContentHash={project.customAvatarContentHash ?? null}
+          />
           <span className="flex min-w-0 flex-1 items-center gap-2">
             <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground/90">
               {project.displayName}
