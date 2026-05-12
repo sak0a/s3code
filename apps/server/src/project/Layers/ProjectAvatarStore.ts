@@ -35,7 +35,13 @@ export const makeProjectAvatarStore = (options: { readonly dataDir: string }) =>
             .toBuffer(),
         );
         const contentHash = createHash("sha256").update(resized).digest("hex");
-        yield* fileSystem.writeFile(filePath(input.projectId as unknown as string), resized);
+        yield* fileSystem
+          .writeFile(filePath(input.projectId as unknown as string), resized)
+          .pipe(
+            Effect.mapError(
+              (err) => new ProjectAvatarStoreError(`failed to write avatar: ${err.message}`),
+            ),
+          );
         return { contentHash };
       });
 
