@@ -18,7 +18,7 @@ import { makeNodeWrapperCliPath } from "./CopilotAdapter.ts";
 const PROVIDER = ProviderDriverKind.make("copilot");
 const DEFAULT_BINARY_PATH = "copilot";
 const COPILOT_PRESENTATION = {
-  displayName: "Copilot",
+  displayName: "GitHub Copilot",
   showInteractionModeToggle: true,
 } as const;
 

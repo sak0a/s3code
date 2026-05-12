@@ -7,7 +7,7 @@ import {
   ProviderDriverKind,
 } from "@s3tools/contracts";
 import type { Schema } from "effect";
-import { ClaudeAI, CursorIcon, GitHubIcon, type Icon, OpenAI, OpenCodeIcon } from "../Icons";
+import { ClaudeAI, CursorIcon, GithubCopilotIcon, type Icon, OpenAI, OpenCodeIcon } from "../Icons";
 
 type ProviderSettingsSchema = {
   readonly fields: Readonly<Record<string, Schema.Top>>;
@@ -49,8 +49,8 @@ export const PROVIDER_CLIENT_DEFINITIONS: readonly ProviderClientDefinition[] = 
   },
   {
     value: ProviderDriverKind.make("copilot"),
-    label: "Copilot",
-    icon: GitHubIcon,
+    label: "GitHub Copilot",
+    icon: GithubCopilotIcon,
     settingsSchema: CopilotSettings,
   },
   {

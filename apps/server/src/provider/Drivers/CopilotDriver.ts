@@ -49,7 +49,7 @@ const withInstanceIdentity =
 export const CopilotDriver: ProviderDriver<CopilotSettings, CopilotDriverEnv> = {
   driverKind: DRIVER_KIND,
   metadata: {
-    displayName: "Copilot",
+    displayName: "GitHub Copilot",
     supportsMultipleInstances: true,
   },
   configSchema: CopilotSettings,
