@@ -1,16 +1,11 @@
 import { useMemo } from "react";
 import { useDetectedServerStore } from "../../detectedServerStore.ts";
 import { DetectedServerRow } from "./DetectedServerRow.tsx";
+import { DetectedServerLogView } from "./DetectedServerLogView.tsx";
 
 interface Props {
   threadKey: string;
 }
-
-const DetectedServerLogViewPlaceholder = () => (
-  <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-    Log view coming in Task 27
-  </div>
-);
 
 export const DetectedServersPanel = ({ threadKey }: Props) => {
   const serversMap = useDetectedServerStore((s) => s.serversByThreadKey[threadKey]);
@@ -61,7 +56,7 @@ export const DetectedServersPanel = ({ threadKey }: Props) => {
       </div>
       <div className="flex-1 overflow-hidden">
         {active ? (
-          <DetectedServerLogViewPlaceholder />
+          <DetectedServerLogView serverId={active.id} />
         ) : (
           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
             Select a server to view logs
