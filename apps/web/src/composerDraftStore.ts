@@ -10,6 +10,7 @@ import {
   ProviderDriverKind,
   ProviderOptionSelection,
   RuntimeMode,
+  AgentTokenMode,
   type ServerProvider,
   type ScopedProjectRef,
   type ScopedThreadRef,
@@ -31,7 +32,12 @@ import { createModelSelection, normalizeModelSlug } from "@s3tools/shared/model"
 import { useMemo } from "react";
 import { getLocalStorageItem } from "./hooks/useLocalStorage";
 import { resolveAppModelSelection, resolveAppModelSelectionForInstance } from "./modelSelection";
-import { DEFAULT_INTERACTION_MODE, DEFAULT_RUNTIME_MODE, type ChatImageAttachment } from "./types";
+import {
+  DEFAULT_AGENT_TOKEN_MODE,
+  DEFAULT_INTERACTION_MODE,
+  DEFAULT_RUNTIME_MODE,
+  type ChatImageAttachment,
+} from "./types";
 import {
   type TerminalContextDraft,
   ensureInlineTerminalContextPlaceholders,
@@ -45,9 +51,10 @@ import { getDefaultServerModel } from "./providerModels";
 import { UnifiedSettings } from "@s3tools/contracts/settings";
 
 export const COMPOSER_DRAFT_STORAGE_KEY = "s3code:composer-drafts:v1";
-const COMPOSER_DRAFT_STORAGE_VERSION = 6;
+const COMPOSER_DRAFT_STORAGE_VERSION = 7;
 const DraftThreadEnvModeSchema = Schema.Literals(["local", "worktree"]);
 const isRuntimeMode = Schema.is(RuntimeMode);
+const isAgentTokenMode = Schema.is(AgentTokenMode);
 export type DraftThreadEnvMode = typeof DraftThreadEnvModeSchema.Type;
 
 export const DraftId = Schema.String.pipe(Schema.brand("DraftId"));
@@ -111,6 +118,7 @@ const PersistedComposerThreadDraftState = Schema.Struct({
   activeProvider: Schema.optionalKey(Schema.NullOr(ProviderInstanceId)),
   runtimeMode: Schema.optionalKey(RuntimeMode),
   interactionMode: Schema.optionalKey(ProviderInteractionMode),
+  tokenMode: Schema.optionalKey(AgentTokenMode),
 });
 type PersistedComposerThreadDraftState = typeof PersistedComposerThreadDraftState.Type;
 
@@ -176,6 +184,7 @@ const PersistedDraftThreadState = Schema.Struct({
   createdAt: Schema.String,
   runtimeMode: RuntimeMode,
   interactionMode: ProviderInteractionMode,
+  tokenMode: Schema.optionalKey(AgentTokenMode),
   branch: Schema.NullOr(Schema.String),
   worktreePath: Schema.NullOr(Schema.String),
   envMode: DraftThreadEnvModeSchema,
@@ -231,6 +240,7 @@ export interface ComposerThreadDraftState {
   activeProvider: ProviderInstanceId | null;
   runtimeMode: RuntimeMode | null;
   interactionMode: ProviderInteractionMode | null;
+  tokenMode?: AgentTokenMode | null;
 }
 
 /**
@@ -247,6 +257,7 @@ export interface DraftSessionState {
   createdAt: string;
   runtimeMode: RuntimeMode;
   interactionMode: ProviderInteractionMode;
+  tokenMode?: AgentTokenMode;
   branch: string | null;
   worktreePath: string | null;
   envMode: DraftThreadEnvMode;
@@ -313,6 +324,7 @@ interface ComposerDraftStoreState {
       envMode?: DraftThreadEnvMode;
       runtimeMode?: RuntimeMode;
       interactionMode?: ProviderInteractionMode;
+      tokenMode?: AgentTokenMode;
     },
   ) => void;
   /** Creates or updates the draft session tracked for a concrete project ref. */
@@ -327,6 +339,7 @@ interface ComposerDraftStoreState {
       envMode?: DraftThreadEnvMode;
       runtimeMode?: RuntimeMode;
       interactionMode?: ProviderInteractionMode;
+      tokenMode?: AgentTokenMode;
     },
   ) => void;
   /** Updates mutable draft-session metadata without touching composer content. */
@@ -340,6 +353,7 @@ interface ComposerDraftStoreState {
       envMode?: DraftThreadEnvMode;
       runtimeMode?: RuntimeMode;
       interactionMode?: ProviderInteractionMode;
+      tokenMode?: AgentTokenMode;
     },
   ) => void;
   clearProjectDraftThreadId: (projectRef: ScopedProjectRef) => void;
@@ -384,6 +398,10 @@ interface ComposerDraftStoreState {
   setInteractionMode: (
     threadRef: ComposerThreadTarget,
     interactionMode: ProviderInteractionMode | null | undefined,
+  ) => void;
+  setTokenMode: (
+    threadRef: ComposerThreadTarget,
+    tokenMode: AgentTokenMode | null | undefined,
   ) => void;
   addImage: (threadRef: ComposerThreadTarget, image: ComposerImageAttachment) => void;
   addImages: (threadRef: ComposerThreadTarget, images: ComposerImageAttachment[]) => void;
@@ -500,6 +518,7 @@ const EMPTY_THREAD_DRAFT = Object.freeze<ComposerThreadDraftState>({
   activeProvider: null,
   runtimeMode: null,
   interactionMode: null,
+  tokenMode: null,
 });
 
 function createEmptyThreadDraft(): ComposerThreadDraftState {
@@ -514,6 +533,7 @@ function createEmptyThreadDraft(): ComposerThreadDraftState {
     activeProvider: null,
     runtimeMode: null,
     interactionMode: null,
+    tokenMode: null,
   };
 }
 
@@ -584,7 +604,8 @@ function shouldRemoveDraft(draft: ComposerThreadDraftState): boolean {
     Object.keys(draft.modelSelectionByProvider).length === 0 &&
     draft.activeProvider === null &&
     draft.runtimeMode === null &&
-    draft.interactionMode === null
+    draft.interactionMode === null &&
+    draft.tokenMode == null
   );
 }
 
@@ -1170,6 +1191,7 @@ function createDraftThreadState(
     envMode?: DraftThreadEnvMode;
     runtimeMode?: RuntimeMode;
     interactionMode?: ProviderInteractionMode;
+    tokenMode?: AgentTokenMode;
   },
 ): DraftThreadState {
   const projectChanged =
@@ -1197,6 +1219,7 @@ function createDraftThreadState(
     runtimeMode: options?.runtimeMode ?? existingThread?.runtimeMode ?? DEFAULT_RUNTIME_MODE,
     interactionMode:
       options?.interactionMode ?? existingThread?.interactionMode ?? DEFAULT_INTERACTION_MODE,
+    tokenMode: options?.tokenMode ?? existingThread?.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
     branch: nextBranch,
     worktreePath: nextWorktreePath,
     envMode:
@@ -1234,6 +1257,7 @@ function draftThreadsEqual(left: DraftThreadState | undefined, right: DraftThrea
     left.createdAt === right.createdAt &&
     left.runtimeMode === right.runtimeMode &&
     left.interactionMode === right.interactionMode &&
+    left.tokenMode === right.tokenMode &&
     left.branch === right.branch &&
     left.worktreePath === right.worktreePath &&
     left.envMode === right.envMode &&
@@ -1375,6 +1399,9 @@ function normalizePersistedDraftThreads(
           candidateDraftThread.interactionMode === "default"
             ? candidateDraftThread.interactionMode
             : DEFAULT_INTERACTION_MODE,
+        tokenMode: isAgentTokenMode(candidateDraftThread.tokenMode)
+          ? candidateDraftThread.tokenMode
+          : DEFAULT_AGENT_TOKEN_MODE,
         branch: typeof branch === "string" ? branch : null,
         worktreePath: normalizedWorktreePath,
         envMode: normalizeDraftThreadEnvMode(candidateDraftThread.envMode, normalizedWorktreePath),
@@ -1420,6 +1447,7 @@ function normalizePersistedDraftThreads(
           createdAt: new Date().toISOString(),
           runtimeMode: DEFAULT_RUNTIME_MODE,
           interactionMode: DEFAULT_INTERACTION_MODE,
+          tokenMode: DEFAULT_AGENT_TOKEN_MODE,
           branch: null,
           worktreePath: null,
           envMode: "local",
@@ -1495,6 +1523,7 @@ function normalizePersistedDraftsByThreadId(
       draftCandidate.interactionMode === "plan" || draftCandidate.interactionMode === "default"
         ? draftCandidate.interactionMode
         : null;
+    const tokenMode = isAgentTokenMode(draftCandidate.tokenMode) ? draftCandidate.tokenMode : null;
     const prompt = ensureInlineTerminalContextPlaceholders(
       promptCandidate,
       terminalContexts.length,
@@ -1553,7 +1582,8 @@ function normalizePersistedDraftsByThreadId(
       terminalContexts.length === 0 &&
       !hasModelData &&
       !runtimeMode &&
-      !interactionMode
+      !interactionMode &&
+      !tokenMode
     ) {
       continue;
     }
@@ -1581,6 +1611,7 @@ function normalizePersistedDraftsByThreadId(
         : {}),
       ...(runtimeMode ? { runtimeMode } : {}),
       ...(interactionMode ? { interactionMode } : {}),
+      ...(tokenMode ? { tokenMode } : {}),
     };
   }
 
@@ -1657,7 +1688,8 @@ function partializeComposerDraftStoreState(
       draft.terminalContexts.length === 0 &&
       !hasModelData &&
       draft.runtimeMode === null &&
-      draft.interactionMode === null
+      draft.interactionMode === null &&
+      draft.tokenMode == null
     ) {
       continue;
     }
@@ -1687,6 +1719,7 @@ function partializeComposerDraftStoreState(
         : {}),
       ...(draft.runtimeMode ? { runtimeMode: draft.runtimeMode } : {}),
       ...(draft.interactionMode ? { interactionMode: draft.interactionMode } : {}),
+      ...(draft.tokenMode ? { tokenMode: draft.tokenMode } : {}),
     };
     persistedDraftsByThreadKey[threadKey] = persistedDraft;
   }
@@ -1915,6 +1948,7 @@ function toHydratedThreadDraft(
     activeProvider,
     runtimeMode: persistedDraft.runtimeMode ?? null,
     interactionMode: persistedDraft.interactionMode ?? null,
+    tokenMode: persistedDraft.tokenMode ?? null,
   };
 }
 
@@ -1936,6 +1970,7 @@ function toHydratedDraftThreadState(
     createdAt: persistedDraftThread.createdAt,
     runtimeMode: persistedDraftThread.runtimeMode,
     interactionMode: persistedDraftThread.interactionMode,
+    tokenMode: persistedDraftThread.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
     branch: persistedDraftThread.branch,
     worktreePath: persistedDraftThread.worktreePath,
     envMode: persistedDraftThread.envMode,
@@ -2135,6 +2170,7 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
                   : options.createdAt || existing.createdAt,
               runtimeMode: options.runtimeMode ?? existing.runtimeMode,
               interactionMode: options.interactionMode ?? existing.interactionMode,
+              tokenMode: options.tokenMode ?? existing.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
               branch: nextBranch,
               worktreePath: nextWorktreePath,
               envMode:
@@ -2153,6 +2189,7 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
               nextDraftThread.createdAt === existing.createdAt &&
               nextDraftThread.runtimeMode === existing.runtimeMode &&
               nextDraftThread.interactionMode === existing.interactionMode &&
+              nextDraftThread.tokenMode === existing.tokenMode &&
               nextDraftThread.branch === existing.branch &&
               nextDraftThread.worktreePath === existing.worktreePath &&
               nextDraftThread.envMode === existing.envMode &&
@@ -2595,6 +2632,34 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
             const nextDraft: ComposerThreadDraftState = {
               ...base,
               interactionMode: nextInteractionMode,
+            };
+            const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
+            if (shouldRemoveDraft(nextDraft)) {
+              delete nextDraftsByThreadKey[threadKey];
+            } else {
+              nextDraftsByThreadKey[threadKey] = nextDraft;
+            }
+            return { draftsByThreadKey: nextDraftsByThreadKey };
+          });
+        },
+        setTokenMode: (threadRef, tokenMode) => {
+          const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
+          if (threadKey.length === 0) {
+            return;
+          }
+          const nextTokenMode = isAgentTokenMode(tokenMode) ? tokenMode : null;
+          set((state) => {
+            const existing = state.draftsByThreadKey[threadKey];
+            if (!existing && nextTokenMode === null) {
+              return state;
+            }
+            const base = existing ?? createEmptyThreadDraft();
+            if (base.tokenMode === nextTokenMode) {
+              return state;
+            }
+            const nextDraft: ComposerThreadDraftState = {
+              ...base,
+              tokenMode: nextTokenMode,
             };
             const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
             if (shouldRemoveDraft(nextDraft)) {

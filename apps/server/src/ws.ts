@@ -25,6 +25,7 @@ import {
   ProjectSearchEntriesError,
   ProjectWriteFileError,
   OrchestrationReplayEventsError,
+  OpinionatedPluginError,
   FilesystemBrowseError,
   ThreadId,
   type TerminalEvent,
@@ -41,6 +42,11 @@ import { ServerConfig } from "./config.ts";
 import { Keybindings } from "./keybindings.ts";
 import { makeCodexMcpService } from "./mcp/CodexMcpService.ts";
 import { Open, resolveAvailableEditors } from "./open.ts";
+import {
+  checkOpinionatedPlugins,
+  installOpinionatedPlugin,
+  listOpinionatedPlugins,
+} from "./opinionatedPlugins.ts";
 import { normalizeDispatchCommand } from "./orchestration/Normalizer.ts";
 import { OrchestrationEngineService } from "./orchestration/Services/OrchestrationEngine.ts";
 import { ProjectionSnapshotQuery } from "./orchestration/Services/ProjectionSnapshotQuery.ts";
@@ -134,6 +140,16 @@ function isAlreadyMissingGitResourceError(error: GitManagerServiceError): boolea
     text.includes("not a working tree") ||
     text.includes("is not a valid working tree")
   );
+}
+
+function toOpinionatedPluginRpcError(cause: unknown): OpinionatedPluginError {
+  if (Schema.is(OpinionatedPluginError)(cause)) {
+    return cause;
+  }
+  return new OpinionatedPluginError({
+    detail: cause instanceof Error ? cause.message : "Opinionated plugin operation failed.",
+    ...(cause !== undefined ? { cause } : {}),
+  });
 }
 
 const ignoreAlreadyMissingGitResource = (
@@ -1458,6 +1474,61 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
           observeRpcEffect(
             WS_METHODS.serverDiscoverSourceControl,
             sourceControlDiscovery.discover,
+            {
+              "rpc.aggregate": "server",
+            },
+          ),
+        [WS_METHODS.serverListOpinionatedPlugins]: (_input) =>
+          observeRpcEffect(
+            WS_METHODS.serverListOpinionatedPlugins,
+            Effect.sync(() => listOpinionatedPlugins()),
+            {
+              "rpc.aggregate": "server",
+            },
+          ),
+        [WS_METHODS.serverCheckOpinionatedPlugins]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.serverCheckOpinionatedPlugins,
+            Effect.gen(function* () {
+              const settings = yield* serverSettings.getSettings.pipe(
+                Effect.mapError(toOpinionatedPluginRpcError),
+              );
+              const providers = yield* providerRegistry.getProviders;
+              return yield* Effect.tryPromise({
+                try: () =>
+                  checkOpinionatedPlugins({
+                    settings,
+                    providers,
+                    ...(input.pluginId ? { pluginId: input.pluginId } : {}),
+                  }),
+                catch: toOpinionatedPluginRpcError,
+              });
+            }),
+            {
+              "rpc.aggregate": "server",
+            },
+          ),
+        [WS_METHODS.serverInstallOpinionatedPlugin]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.serverInstallOpinionatedPlugin,
+            Effect.gen(function* () {
+              const settings = yield* serverSettings.getSettings.pipe(
+                Effect.mapError(toOpinionatedPluginRpcError),
+              );
+              const providers = yield* providerRegistry.getProviders;
+              const result = yield* Effect.tryPromise({
+                try: () =>
+                  installOpinionatedPlugin({
+                    request: input,
+                    settings,
+                    providers,
+                    cwd: config.cwd,
+                  }),
+                catch: toOpinionatedPluginRpcError,
+              });
+              yield* providerRegistry.refresh().pipe(Effect.ignore);
+              return result;
+            }),
             {
               "rpc.aggregate": "server",
             },

@@ -2,6 +2,7 @@ import {
   ApprovalRequestId,
   type AssistantDeliveryMode,
   CommandId,
+  DEFAULT_AGENT_TOKEN_MODE,
   MessageId,
   type OrchestrationEvent,
   type OrchestrationMessage,
@@ -1301,6 +1302,7 @@ const make = Effect.gen(function* () {
                 ? { providerInstanceId: event.providerInstanceId }
                 : {}),
               runtimeMode: thread.session?.runtimeMode ?? "full-access",
+              tokenMode: thread.session?.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
               activeTurnId: nextActiveTurnId,
               lastError,
               updatedAt: now,
@@ -1551,6 +1553,7 @@ const make = Effect.gen(function* () {
                 ? { providerInstanceId: event.providerInstanceId }
                 : {}),
               runtimeMode: thread.session?.runtimeMode ?? "full-access",
+              tokenMode: thread.session?.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
               activeTurnId: eventTurnId ?? null,
               lastError: runtimeErrorMessage,
               updatedAt: now,

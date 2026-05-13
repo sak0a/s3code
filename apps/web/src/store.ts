@@ -27,6 +27,7 @@ import { resolveModelSlugForProvider } from "@s3tools/shared/model";
 import { create } from "zustand";
 import {
   type ChatMessage,
+  DEFAULT_AGENT_TOKEN_MODE,
   type Project,
   type ProposedPlan,
   type SidebarThreadSummary,
@@ -278,6 +279,7 @@ function mapThread(thread: OrchestrationThread, environmentId: EnvironmentId): T
     modelSelection: normalizeModelSelection(thread.modelSelection),
     runtimeMode: thread.runtimeMode,
     interactionMode: thread.interactionMode,
+    tokenMode: thread.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
     session: thread.session ? mapSession(thread.session) : null,
     messages: thread.messages.map((message) => mapMessage(environmentId, message)),
     proposedPlans: thread.proposedPlans.map(mapProposedPlan),
@@ -315,6 +317,7 @@ function mapThreadShell(
     modelSelection: normalizeModelSelection(thread.modelSelection),
     runtimeMode: thread.runtimeMode,
     interactionMode: thread.interactionMode,
+    tokenMode: thread.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
     error: sanitizeThreadErrorMessage(thread.session?.lastError),
     createdAt: thread.createdAt,
     archivedAt: thread.archivedAt,
@@ -336,6 +339,7 @@ function mapThreadShell(
     projectId: thread.projectId,
     title: thread.title,
     interactionMode: thread.interactionMode,
+    tokenMode: thread.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
     session,
     createdAt: thread.createdAt,
     archivedAt: thread.archivedAt,
@@ -369,6 +373,7 @@ function toThreadShell(thread: Thread): ThreadShell {
     modelSelection: thread.modelSelection,
     runtimeMode: thread.runtimeMode,
     interactionMode: thread.interactionMode,
+    tokenMode: thread.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
     error: thread.error,
     createdAt: thread.createdAt,
     archivedAt: thread.archivedAt,
@@ -443,6 +448,7 @@ function sidebarThreadSummariesEqual(
     left.projectId === right.projectId &&
     left.title === right.title &&
     left.interactionMode === right.interactionMode &&
+    left.tokenMode === right.tokenMode &&
     threadSessionsEqual(left.session, right.session) &&
     left.createdAt === right.createdAt &&
     left.archivedAt === right.archivedAt &&
@@ -471,6 +477,7 @@ function threadShellsEqual(left: ThreadShell | undefined, right: ThreadShell): b
     left.modelSelection === right.modelSelection &&
     left.runtimeMode === right.runtimeMode &&
     left.interactionMode === right.interactionMode &&
+    left.tokenMode === right.tokenMode &&
     left.error === right.error &&
     left.createdAt === right.createdAt &&
     left.archivedAt === right.archivedAt &&
@@ -1513,6 +1520,7 @@ function applyEnvironmentOrchestrationEvent(
           modelSelection: event.payload.modelSelection,
           runtimeMode: event.payload.runtimeMode,
           interactionMode: event.payload.interactionMode,
+          tokenMode: event.payload.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
           branch: event.payload.branch,
           worktreePath: event.payload.worktreePath,
           worktreeId: null,
@@ -1579,6 +1587,13 @@ function applyEnvironmentOrchestrationEvent(
         updatedAt: event.payload.updatedAt,
       }));
 
+    case "thread.token-mode-set":
+      return updateThreadState(state, event.payload.threadId, (thread) => ({
+        ...thread,
+        tokenMode: event.payload.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
+        updatedAt: event.payload.updatedAt,
+      }));
+
     case "thread.turn-start-requested":
       return updateThreadState(state, event.payload.threadId, (thread) => ({
         ...thread,
@@ -1587,6 +1602,7 @@ function applyEnvironmentOrchestrationEvent(
           : {}),
         runtimeMode: event.payload.runtimeMode,
         interactionMode: event.payload.interactionMode,
+        tokenMode: event.payload.tokenMode,
         pendingSourceProposedPlan: event.payload.sourceProposedPlan,
         updatedAt: event.occurredAt,
       }));

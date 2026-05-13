@@ -82,6 +82,7 @@ function commandToAggregateRef(command: OrchestrationCommand): {
     case "thread.meta.update":
     case "thread.runtime-mode.set":
     case "thread.interaction-mode.set":
+    case "thread.token-mode.set":
     case "thread.turn.start":
     case "thread.turn.interrupt":
     case "thread.approval.respond":

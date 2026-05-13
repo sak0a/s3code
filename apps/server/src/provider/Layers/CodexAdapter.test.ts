@@ -26,6 +26,7 @@ import * as CodexErrors from "effect-codex-app-server/errors";
 
 import { ServerConfig } from "../../config.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
+import { buildAgentTokenModeInstructions } from "../../tokenReduction.ts";
 import { ProviderAdapterValidationError } from "../Errors.ts";
 import type { CodexAdapterShape } from "../Services/CodexAdapter.ts";
 import { ProviderSessionDirectory } from "../Services/ProviderSessionDirectory.ts";
@@ -265,7 +266,9 @@ validationLayer("CodexAdapterLive validation", (it) => {
         runtimeMode: "full-access",
       });
 
-      assert.deepStrictEqual(validationRuntimeFactory.factory.mock.calls[0]?.[0], {
+      const runtimeOptions = validationRuntimeFactory.factory.mock.calls[0]?.[0];
+      const { tokenReductionInstructions, ...stableRuntimeOptions } = runtimeOptions ?? {};
+      assert.deepStrictEqual(stableRuntimeOptions, {
         binaryPath: "codex",
         cwd: process.cwd(),
         model: "gpt-5.3-codex",
@@ -273,7 +276,11 @@ validationLayer("CodexAdapterLive validation", (it) => {
         serviceTier: "fast",
         threadId: asThreadId("thread-1"),
         runtimeMode: "full-access",
+        tokenMode: "balanced",
       });
+      assert.ok(
+        tokenReductionInstructions?.includes(buildAgentTokenModeInstructions("balanced") ?? ""),
+      );
     }),
   );
 });
