@@ -30,6 +30,10 @@ import {
 } from "../../observability/Metrics.ts";
 import { runProcess } from "../../processRunner.ts";
 import {
+  DetectedServersIngress,
+  type PtyTracker,
+} from "../../detectedServers/Layers/DetectedServersIngress.ts";
+import {
   TerminalCwdError,
   TerminalHistoryError,
   TerminalManager,
@@ -114,6 +118,7 @@ interface TerminalSessionState {
   unsubscribeExit: (() => void) | null;
   hasRunningSubprocess: boolean;
   runtimeEnv: Record<string, string> | null;
+  detectedServersTracker: PtyTracker | null;
 }
 
 interface PersistHistoryRequest {
@@ -714,6 +719,7 @@ const makeTerminalManager = Effect.fn("makeTerminalManager")(function* () {
 export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWithOptions")(
   function* (options: TerminalManagerOptions) {
     const fileSystem = yield* FileSystem.FileSystem;
+    const detectedServers = yield* DetectedServersIngress;
     const context = yield* Effect.context<never>();
     const runFork = Effect.runForkWith(context);
 
@@ -1223,6 +1229,10 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
             : null;
           session.updatedAt = new Date().toISOString();
 
+          const tracker = session.detectedServersTracker;
+          session.detectedServersTracker = null;
+          tracker?.end(session.exitCode);
+
           return {
             type: "exit",
             process,
@@ -1283,6 +1293,9 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
         session.pendingProcessEventIndex = 0;
         session.processEventDrainRunning = false;
         session.updatedAt = new Date().toISOString();
+        const tracker = session.detectedServersTracker;
+        session.detectedServersTracker = null;
+        tracker?.end(null);
         return [undefined, state] as const;
       });
 
@@ -1391,7 +1404,22 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
               startedShell = spawnResult.shellLabel;
 
               const processPid = ptyProcess.pid;
+
+              // Create a detected-servers tracker for this PTY spawn.
+              // ArgvHinter will classify shell commands (bash/zsh) as non-server
+              // and return a noop tracker — this is expected for v1 (Option B).
+              const ptyTracker = yield* detectedServers.trackPty(
+                {
+                  threadId: session.threadId,
+                  pid: processPid,
+                  argv: [spawnResult.shellLabel],
+                  cwd: session.cwd,
+                },
+                undefined,
+              );
+
               const unsubscribeData = ptyProcess.onData((data) => {
+                ptyTracker.feed(data);
                 if (!enqueueProcessEvent(session, processPid, { type: "output", data })) {
                   return;
                 }
@@ -1411,6 +1439,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
                 session.updatedAt = new Date().toISOString();
                 session.unsubscribeData = unsubscribeData;
                 session.unsubscribeExit = unsubscribeExit;
+                session.detectedServersTracker = ptyTracker;
                 return [undefined, state] as const;
               });
 
@@ -1447,6 +1476,9 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
           session.pendingProcessEventIndex = 0;
           session.processEventDrainRunning = false;
           session.updatedAt = new Date().toISOString();
+          const tracker = session.detectedServersTracker;
+          session.detectedServersTracker = null;
+          tracker?.end(null);
           return [undefined, state] as const;
         });
 
@@ -1603,6 +1635,9 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
           session: TerminalSessionState,
         ) {
           cleanupProcessHandles(session);
+          const tracker = session.detectedServersTracker;
+          session.detectedServersTracker = null;
+          tracker?.end(null);
           if (!session.process) return;
           yield* clearKillFiber(session.process);
           yield* runKillEscalation(session.process, session.threadId, session.terminalId);
@@ -1651,6 +1686,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
               unsubscribeExit: null,
               hasRunningSubprocess: false,
               runtimeEnv: normalizedRuntimeEnv(input.env),
+              detectedServersTracker: null,
             };
 
             const createdSession = session;
@@ -1830,6 +1866,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
               unsubscribeExit: null,
               hasRunningSubprocess: false,
               runtimeEnv: normalizedRuntimeEnv(input.env),
+              detectedServersTracker: null,
             };
             const createdSession = session;
             yield* modifyManagerState((state) => {

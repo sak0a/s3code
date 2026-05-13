@@ -224,8 +224,6 @@ const CheckpointingLayerLive = Layer.empty.pipe(
   Layer.provideMerge(CheckpointStoreLive.pipe(Layer.provide(VcsDriverRegistryLayerLive))),
 );
 
-const TerminalLayerLive = TerminalManagerLive.pipe(Layer.provide(PtyAdapterLive));
-
 const DetectedServersLayerLive = Layer.mergeAll(
   SocketProbeLive,
   LivenessHeartbeatLive,
@@ -235,6 +233,11 @@ const DetectedServersLayerLive = Layer.mergeAll(
     Layer.provide(SocketProbeLive),
     Layer.provide(LivenessHeartbeatLive),
   ),
+);
+
+const TerminalLayerLive = TerminalManagerLive.pipe(
+  Layer.provide(PtyAdapterLive),
+  Layer.provide(DetectedServersLayerLive),
 );
 
 const WorkspaceEntriesLayerLive = WorkspaceEntriesLive.pipe(
