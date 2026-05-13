@@ -1,4 +1,5 @@
 import {
+  DEFAULT_AGENT_TOKEN_MODE,
   EventId,
   type OpenCodeSettings,
   ProviderDriverKind,
@@ -1086,11 +1087,13 @@ export function makeOpenCodeAdapter(
         }
 
         const createdAt = nowIso();
+        const tokenMode = input.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE;
         const session: ProviderSession = {
           provider: PROVIDER,
           providerInstanceId: boundInstanceId,
           status: "ready",
           runtimeMode: input.runtimeMode,
+          tokenMode,
           cwd: directory,
           ...(input.modelSelection ? { model: input.modelSelection.model } : {}),
           threadId: input.threadId,

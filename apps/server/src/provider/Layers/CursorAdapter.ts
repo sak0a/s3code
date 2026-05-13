@@ -7,6 +7,7 @@ import * as nodePath from "node:path";
 
 import {
   ApprovalRequestId,
+  DEFAULT_AGENT_TOKEN_MODE,
   type CursorSettings,
   type ProviderOptionSelection,
   EventId,
@@ -686,11 +687,13 @@ export function makeCursorAdapter(
           });
 
           const now = yield* nowIso;
+          const tokenMode = input.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE;
           const session: ProviderSession = {
             provider: PROVIDER,
             providerInstanceId: boundInstanceId,
             status: "ready",
             runtimeMode: input.runtimeMode,
+            tokenMode,
             cwd,
             model: cursorModelSelection?.model,
             threadId: input.threadId,

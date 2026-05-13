@@ -9,6 +9,7 @@ import type {
   ProviderInteractionMode,
   ResolvedKeybindingsConfig,
   RuntimeMode,
+  AgentTokenMode,
   ScopedThreadRef,
   ServerProvider,
   SourceControlIssueSummary,
@@ -102,12 +103,15 @@ import { toastManager } from "../ui/toast";
 import {
   BotIcon,
   CircleAlertIcon,
+  CircleOffIcon,
+  GaugeIcon,
   ListTodoIcon,
   type LucideIcon,
   LockIcon,
   LockOpenIcon,
   PenLineIcon,
   XIcon,
+  ZapIcon,
 } from "lucide-react";
 import { proposedPlanTitle } from "../../proposedPlan";
 import { getProviderInteractionModeToggle } from "../../providerModels";
@@ -154,6 +158,32 @@ const runtimeModeConfig: Record<
 };
 
 const runtimeModeOptions = Object.keys(runtimeModeConfig) as RuntimeMode[];
+
+const tokenModeConfig: Record<
+  AgentTokenMode,
+  { label: string; triggerLabel: string; description: string; icon: LucideIcon }
+> = {
+  off: {
+    label: "Off",
+    triggerLabel: "Tokens off",
+    description: "Do not add S3Code token-efficiency instructions.",
+    icon: CircleOffIcon,
+  },
+  balanced: {
+    label: "Balanced",
+    triggerLabel: "Balanced",
+    description: "Favor concise answers and targeted reads without hiding important detail.",
+    icon: GaugeIcon,
+  },
+  aggressive: {
+    label: "Aggressive",
+    triggerLabel: "Aggressive",
+    description: "Minimize prose and avoid copying large outputs unless needed.",
+    icon: ZapIcon,
+  },
+};
+
+const tokenModeOptions = Object.keys(tokenModeConfig) as AgentTokenMode[];
 const COMPOSER_PATH_QUERY_DEBOUNCE_MS = 120;
 const EMPTY_PROJECT_ENTRIES: ProjectEntry[] = [];
 const COMPOSER_FLOATING_LAYER_SELECTOR = [
@@ -200,15 +230,19 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
   showInteractionModeToggle: boolean;
   interactionMode: ProviderInteractionMode;
   runtimeMode: RuntimeMode;
+  tokenMode: AgentTokenMode;
   showPlanToggle: boolean;
   planSidebarLabel: string;
   planSidebarOpen: boolean;
   onToggleInteractionMode: () => void;
   onRuntimeModeChange: (mode: RuntimeMode) => void;
+  onTokenModeChange: (mode: AgentTokenMode) => void;
   onTogglePlanSidebar: () => void;
 }) {
   const runtimeModeOption = runtimeModeConfig[props.runtimeMode];
   const RuntimeModeIcon = runtimeModeOption.icon;
+  const tokenModeOption = tokenModeConfig[props.tokenMode];
+  const TokenModeIcon = tokenModeOption.icon;
 
   return (
     <>
@@ -262,6 +296,44 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
         >
           {runtimeModeOptions.map((mode) => {
             const option = runtimeModeConfig[mode];
+            const OptionIcon = option.icon;
+            return (
+              <SelectItem key={mode} value={mode} className="min-w-0 py-1.5">
+                <div className="grid min-w-0 gap-0.5">
+                  <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                    <OptionIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                    {option.label}
+                  </span>
+                  <span className="text-muted-foreground text-xs leading-4">
+                    {option.description}
+                  </span>
+                </div>
+              </SelectItem>
+            );
+          })}
+        </SelectPopup>
+      </Select>
+
+      <Select
+        value={props.tokenMode}
+        onValueChange={(value) => props.onTokenModeChange(value as AgentTokenMode)}
+      >
+        <SelectTrigger
+          variant="ghost"
+          size="xs"
+          className="gap-1 px-1.5 font-medium text-muted-foreground/80 hover:text-foreground/80 sm:px-1.5"
+          aria-label="Token mode"
+          title={tokenModeOption.description}
+        >
+          <TokenModeIcon className="size-4" />
+          <SelectValue>{tokenModeOption.triggerLabel}</SelectValue>
+        </SelectTrigger>
+        <SelectPopup
+          alignItemWithTrigger={false}
+          className="w-60 p-0.5 [&_[data-slot=select-item]]:min-h-7"
+        >
+          {tokenModeOptions.map((mode) => {
+            const option = tokenModeConfig[mode];
             const OptionIcon = option.icon;
             return (
               <SelectItem key={mode} value={mode} className="min-w-0 py-1.5">
@@ -459,6 +531,7 @@ export interface ChatComposerProps {
   // Mode
   runtimeMode: RuntimeMode;
   interactionMode: ProviderInteractionMode;
+  tokenMode: AgentTokenMode;
 
   // Provider / model
   lockedProvider: ProviderDriverKind | null;
@@ -508,6 +581,7 @@ export interface ChatComposerProps {
   toggleInteractionMode: () => void;
   handleRuntimeModeChange: (mode: RuntimeMode) => void;
   handleInteractionModeChange: (mode: ProviderInteractionMode) => void;
+  handleTokenModeChange: (mode: AgentTokenMode) => void;
   togglePlanSidebar: () => void;
 
   focusComposer: () => void;
@@ -555,6 +629,7 @@ export const ChatComposer = memo(
       planSidebarOpen,
       runtimeMode,
       interactionMode,
+      tokenMode,
       lockedProvider,
       providerStatuses,
       activeProjectDefaultModelSelection,
@@ -582,6 +657,7 @@ export const ChatComposer = memo(
       toggleInteractionMode,
       handleRuntimeModeChange,
       handleInteractionModeChange,
+      handleTokenModeChange,
       togglePlanSidebar,
       focusComposer,
       scheduleComposerFocus,
@@ -2610,11 +2686,13 @@ export const ChatComposer = memo(
                       planSidebarLabel={planSidebarLabel}
                       planSidebarOpen={planSidebarOpen}
                       runtimeMode={runtimeMode}
+                      tokenMode={tokenMode}
                       showInteractionModeToggle={composerProviderControls.showInteractionModeToggle}
                       traitsMenuContent={providerTraitsMenuContent}
                       onToggleInteractionMode={toggleInteractionMode}
                       onTogglePlanSidebar={togglePlanSidebar}
                       onRuntimeModeChange={handleRuntimeModeChange}
+                      onTokenModeChange={handleTokenModeChange}
                     />
                   ) : (
                     <>
@@ -2633,11 +2711,13 @@ export const ChatComposer = memo(
                         }
                         interactionMode={interactionMode}
                         runtimeMode={runtimeMode}
+                        tokenMode={tokenMode}
                         showPlanToggle={showPlanSidebarToggle}
                         planSidebarLabel={planSidebarLabel}
                         planSidebarOpen={planSidebarOpen}
                         onToggleInteractionMode={toggleInteractionMode}
                         onRuntimeModeChange={handleRuntimeModeChange}
+                        onTokenModeChange={handleTokenModeChange}
                         onTogglePlanSidebar={togglePlanSidebar}
                       />
                     </>

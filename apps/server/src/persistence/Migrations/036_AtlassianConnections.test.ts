@@ -7,11 +7,11 @@ import * as NodeSqliteClient from "../NodeSqliteClient.ts";
 
 const layer = it.layer(Layer.mergeAll(NodeSqliteClient.layerMemory()));
 
-layer("035_AtlassianConnections", (it) => {
+layer("036_AtlassianConnections", (it) => {
   it.effect("creates Atlassian connection, resource, and project link tables", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
-      yield* runMigrations({ toMigrationInclusive: 35 });
+      yield* runMigrations({ toMigrationInclusive: 36 });
 
       const tables = yield* sql<{ readonly name: string }>`
         SELECT name FROM sqlite_master
@@ -34,7 +34,7 @@ layer("035_AtlassianConnections", (it) => {
   it.effect("creates lookup indexes", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
-      yield* runMigrations({ toMigrationInclusive: 35 });
+      yield* runMigrations({ toMigrationInclusive: 36 });
 
       const indices = yield* sql<{ readonly name: string }>`
         SELECT name FROM sqlite_master
@@ -57,8 +57,8 @@ layer("035_AtlassianConnections", (it) => {
   it.effect("is idempotent when the full migration set is requested again", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
-      yield* runMigrations({ toMigrationInclusive: 35 });
-      yield* runMigrations({ toMigrationInclusive: 35 });
+      yield* runMigrations({ toMigrationInclusive: 36 });
+      yield* runMigrations({ toMigrationInclusive: 36 });
 
       const tables = yield* sql<{ readonly name: string }>`
         SELECT name FROM sqlite_master

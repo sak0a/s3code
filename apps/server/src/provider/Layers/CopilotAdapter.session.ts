@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 import {
+  DEFAULT_AGENT_TOKEN_MODE,
   ProviderInstanceId,
   ThreadId,
   TurnId,
@@ -160,6 +161,7 @@ export const makeStartSession =
           providerInstanceId: deps.instanceId,
           status: existing.activeTurnId ? "running" : "ready",
           runtimeMode: existing.runtimeMode,
+          tokenMode: existing.tokenMode,
           threadId: input.threadId,
           ...(existing.cwd ? { cwd: existing.cwd } : {}),
           ...(existing.model ? { model: existing.model } : {}),
@@ -213,6 +215,7 @@ export const makeStartSession =
       });
 
       const createdAt = new Date().toISOString();
+      const tokenMode = input.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE;
       const record: ActiveCopilotSession = {
         client,
         session,
@@ -220,6 +223,7 @@ export const makeStartSession =
         providerInstanceId: deps.instanceId,
         createdAt,
         runtimeMode: input.runtimeMode,
+        tokenMode,
         pendingApprovals,
         pendingUserInputs,
         pendingTurnStarts: new Set(),
@@ -286,6 +290,7 @@ export const makeStartSession =
         providerInstanceId: deps.instanceId,
         status: "ready",
         runtimeMode: input.runtimeMode,
+        tokenMode,
         threadId: input.threadId,
         ...(input.cwd ? { cwd: input.cwd } : {}),
         ...(record.model ? { model: record.model } : {}),
@@ -516,6 +521,7 @@ export const makeListSessions =
           providerInstanceId: deps.instanceId,
           status: record.activeTurnId ? "running" : "ready",
           runtimeMode: record.runtimeMode,
+          tokenMode: record.tokenMode,
           threadId: record.threadId,
           resumeCursor: { sessionId: record.session.sessionId },
           activeTurnId: record.activeTurnId,

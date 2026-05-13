@@ -1,6 +1,7 @@
 import {
   type ChatAttachment,
   CommandId,
+  DEFAULT_AGENT_TOKEN_MODE,
   EventId,
   type ModelSelection,
   type OrchestrationEvent,
@@ -10,6 +11,7 @@ import {
   ThreadId,
   type ProviderSession,
   type RuntimeMode,
+  type AgentTokenMode,
   type TurnId,
 } from "@s3tools/contracts";
 import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@s3tools/shared/git";
@@ -37,6 +39,7 @@ type ProviderIntentEvent = Extract<
   {
     type:
       | "thread.runtime-mode-set"
+      | "thread.token-mode-set"
       | "thread.turn-start-requested"
       | "thread.turn-interrupt-requested"
       | "thread.approval-response-requested"
@@ -77,6 +80,7 @@ const serverCommandId = (tag: string): CommandId =>
 const HANDLED_TURN_START_KEY_MAX = 10_000;
 const HANDLED_TURN_START_KEY_TTL = Duration.minutes(30);
 const DEFAULT_RUNTIME_MODE: RuntimeMode = "full-access";
+const DEFAULT_TOKEN_MODE: AgentTokenMode = DEFAULT_AGENT_TOKEN_MODE;
 const DEFAULT_THREAD_TITLE = "New thread";
 
 export function providerErrorLabel(value: string | undefined): string {
@@ -295,6 +299,7 @@ const make = Effect.gen(function* () {
     }
 
     const desiredRuntimeMode = thread.runtimeMode;
+    const desiredTokenMode = thread.tokenMode ?? DEFAULT_TOKEN_MODE;
     const requestedModelSelection = options?.modelSelection;
     const resolveActiveSession = (threadId: ThreadId) =>
       providerService
@@ -403,6 +408,7 @@ const make = Effect.gen(function* () {
         modelSelection: desiredModelSelection,
         ...(input?.resumeCursor !== undefined ? { resumeCursor: input.resumeCursor } : {}),
         runtimeMode: desiredRuntimeMode,
+        tokenMode: desiredTokenMode,
         ...(customSystemPrompt !== undefined ? { customSystemPrompt } : {}),
       });
 
@@ -423,6 +429,7 @@ const make = Effect.gen(function* () {
             providerName: session.provider,
             providerInstanceId: session.providerInstanceId,
             runtimeMode: desiredRuntimeMode,
+            tokenMode: desiredTokenMode,
             // Provider turn ids are not orchestration turn ids.
             activeTurnId: null,
             lastError: session.lastError ?? null,
@@ -436,6 +443,11 @@ const make = Effect.gen(function* () {
       thread.session && thread.session.status !== "stopped" && activeSession ? thread.id : null;
     if (existingSessionThreadId) {
       const runtimeModeChanged = thread.runtimeMode !== thread.session?.runtimeMode;
+      const currentThreadSessionTokenMode = thread.session?.tokenMode ?? DEFAULT_TOKEN_MODE;
+      const activeSessionTokenMode = activeSession?.tokenMode ?? DEFAULT_TOKEN_MODE;
+      const tokenModeChanged =
+        desiredTokenMode !== currentThreadSessionTokenMode ||
+        desiredTokenMode !== activeSessionTokenMode;
       const cwdChanged = effectiveCwd !== activeSession?.cwd;
       const sessionModelSwitch = (yield* providerService.getCapabilities(desiredInstanceId))
         .sessionModelSwitch;
@@ -454,6 +466,7 @@ const make = Effect.gen(function* () {
 
       if (
         !runtimeModeChanged &&
+        !tokenModeChanged &&
         !cwdChanged &&
         !instanceChanged &&
         !shouldRestartForModelChange &&
@@ -475,6 +488,10 @@ const make = Effect.gen(function* () {
         currentRuntimeMode: thread.session?.runtimeMode,
         desiredRuntimeMode: thread.runtimeMode,
         runtimeModeChanged,
+        currentTokenMode: thread.session?.tokenMode,
+        activeTokenMode: activeSession?.tokenMode,
+        desiredTokenMode,
+        tokenModeChanged,
         previousCwd: activeSession?.cwd,
         desiredCwd: effectiveCwd,
         cwdChanged,
@@ -493,6 +510,7 @@ const make = Effect.gen(function* () {
         restartedSessionThreadId: restartedSession.threadId,
         provider: restartedSession.provider,
         runtimeMode: restartedSession.runtimeMode,
+        tokenMode: restartedSession.tokenMode,
         cwd: restartedSession.cwd,
       });
       yield* bindSessionToThread(restartedSession);
@@ -510,6 +528,7 @@ const make = Effect.gen(function* () {
     readonly attachments?: ReadonlyArray<ChatAttachment>;
     readonly modelSelection?: ModelSelection;
     readonly interactionMode?: "default" | "plan";
+    readonly tokenMode?: AgentTokenMode;
     readonly createdAt: string;
   }) {
     const thread = yield* resolveThread(input.threadId);
@@ -564,6 +583,7 @@ const make = Effect.gen(function* () {
       ...(normalizedAttachments.length > 0 ? { attachments: normalizedAttachments } : {}),
       ...(modelForTurn !== undefined ? { modelSelection: modelForTurn } : {}),
       ...(input.interactionMode !== undefined ? { interactionMode: input.interactionMode } : {}),
+      tokenMode: input.tokenMode ?? thread.tokenMode ?? DEFAULT_TOKEN_MODE,
       ...(customSystemPrompt !== undefined ? { customSystemPrompt } : {}),
     };
   });
@@ -769,6 +789,7 @@ const make = Effect.gen(function* () {
         ? { modelSelection: event.payload.modelSelection }
         : {}),
       interactionMode: event.payload.interactionMode,
+      tokenMode: event.payload.tokenMode,
       createdAt: event.payload.createdAt,
     }).pipe(
       Effect.map(Option.some),
@@ -918,6 +939,7 @@ const make = Effect.gen(function* () {
           ? { providerInstanceId: thread.session.providerInstanceId }
           : {}),
         runtimeMode: thread.session?.runtimeMode ?? DEFAULT_RUNTIME_MODE,
+        tokenMode: thread.session?.tokenMode ?? DEFAULT_TOKEN_MODE,
         activeTurnId: null,
         lastError: thread.session?.lastError ?? null,
         updatedAt: now,
@@ -939,6 +961,19 @@ const make = Effect.gen(function* () {
     });
     switch (event.type) {
       case "thread.runtime-mode-set": {
+        const thread = yield* resolveThread(event.payload.threadId);
+        if (!thread?.session || thread.session.status === "stopped") {
+          return;
+        }
+        const cachedModelSelection = threadModelSelections.get(event.payload.threadId);
+        yield* ensureSessionForThread(
+          event.payload.threadId,
+          event.occurredAt,
+          cachedModelSelection !== undefined ? { modelSelection: cachedModelSelection } : {},
+        );
+        return;
+      }
+      case "thread.token-mode-set": {
         const thread = yield* resolveThread(event.payload.threadId);
         if (!thread?.session || thread.session.status === "stopped") {
           return;
@@ -988,6 +1023,7 @@ const make = Effect.gen(function* () {
     const processEvent = Effect.fn("processEvent")(function* (event: OrchestrationEvent) {
       if (
         event.type === "thread.runtime-mode-set" ||
+        event.type === "thread.token-mode-set" ||
         event.type === "thread.turn-start-requested" ||
         event.type === "thread.turn-interrupt-requested" ||
         event.type === "thread.approval-response-requested" ||
