@@ -13,7 +13,7 @@ describe("decodeBitbucketPullRequestDetailJson", () => {
       destination: { branch: { name: "main" } },
       links: { html: { href: "https://bitbucket.org/owner/repo/pull-requests/12" } },
     });
-    const result = decodeBitbucketPullRequestDetailJson(raw);
+    const result = decodeBitbucketPullRequestDetailJson(raw, []);
     expect(Result.isSuccess(result)).toBe(true);
     if (!Result.isSuccess(result)) return;
     expect(result.success.body).toBe("PR body text");

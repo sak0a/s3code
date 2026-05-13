@@ -10,7 +10,7 @@ import { DateTime, Option } from "effect";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { RotateCwIcon, SearchIcon, TicketCheckIcon } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type RefObject } from "react";
 import { readEnvironmentConnection } from "~/environments/runtime";
 import {
   workItemListQueryOptions,
@@ -336,13 +336,24 @@ function JiraProjectSetup(props: {
   const [connectionId, setConnectionId] = useState("");
   const [siteUrl, setSiteUrl] = useState("");
   const [projectKeys, setProjectKeys] = useState("");
+  const dirtyRef = useRef(false);
+  const initializedProjectRef = useRef<ProjectId | null>(null);
 
   useEffect(() => {
+    if (initializedProjectRef.current !== props.projectId) {
+      initializedProjectRef.current = props.projectId;
+      dirtyRef.current = false;
+    }
+    if (dirtyRef.current) return;
     const first = props.connections[0];
     setConnectionId(connectionIdValue(props.projectLink?.jiraConnectionId ?? first?.connectionId));
     setSiteUrl(props.projectLink?.jiraSiteUrl ?? first?.baseUrl ?? "");
     setProjectKeys(props.projectLink?.jiraProjectKeys.join(", ") ?? "");
-  }, [props.connections, props.projectLink]);
+  }, [props.connections, props.projectId, props.projectLink]);
+
+  const markDirty = () => {
+    dirtyRef.current = true;
+  };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -363,6 +374,7 @@ function JiraProjectSetup(props: {
       );
     },
     onSuccess: () => {
+      dirtyRef.current = false;
       props.onSaved();
       toastManager.add(
         stackedThreadToast({
@@ -429,7 +441,10 @@ function JiraProjectSetup(props: {
               <Select
                 value={connectionId}
                 onValueChange={(value) => {
-                  if (typeof value === "string") setConnectionId(value);
+                  if (typeof value === "string") {
+                    markDirty();
+                    setConnectionId(value);
+                  }
                 }}
               >
                 <SelectTrigger size="sm">
@@ -453,7 +468,10 @@ function JiraProjectSetup(props: {
                 size="sm"
                 value={siteUrl}
                 inputMode="url"
-                onChange={(event) => setSiteUrl(event.currentTarget.value)}
+                onChange={(event) => {
+                  markDirty();
+                  setSiteUrl(event.currentTarget.value);
+                }}
                 placeholder="https://your-team.atlassian.net"
               />
             </div>
@@ -465,7 +483,10 @@ function JiraProjectSetup(props: {
                 id="work-item-jira-project-keys"
                 size="sm"
                 value={projectKeys}
-                onChange={(event) => setProjectKeys(event.currentTarget.value)}
+                onChange={(event) => {
+                  markDirty();
+                  setProjectKeys(event.currentTarget.value);
+                }}
                 placeholder="WEB, API"
               />
             </div>

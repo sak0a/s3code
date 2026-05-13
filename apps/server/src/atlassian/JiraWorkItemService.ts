@@ -167,6 +167,39 @@ function mapError(operation: string, detail: string) {
   return (cause: unknown) => workItemError(operation, detail, cause);
 }
 
+function issueProjectKey(key: string): string | null {
+  const [projectKey] = key.trim().toUpperCase().split("-", 1);
+  return projectKey && /^[A-Z][A-Z0-9]{1,9}$/u.test(projectKey) ? projectKey : null;
+}
+
+function requireProjectKeys(
+  context: JiraProjectContext,
+  operation: string,
+): Effect.Effect<void, WorkItemProviderError> {
+  return context.projectKeys.length > 0
+    ? Effect.void
+    : Effect.fail(
+        workItemError(operation, "No Jira project keys are configured for the linked project."),
+      );
+}
+
+function requireAllowedIssueKey(
+  context: JiraProjectContext,
+  key: string,
+  operation: string,
+): Effect.Effect<void, WorkItemProviderError> {
+  const projectKey = issueProjectKey(key);
+  if (projectKey && context.projectKeys.includes(projectKey)) {
+    return Effect.void;
+  }
+  return Effect.fail(
+    workItemError(
+      operation,
+      `Issue key ${key} is outside the linked Jira project keys: ${context.projectKeys.join(", ")}.`,
+    ),
+  );
+}
+
 function trimSlash(value: string): string {
   return value.trim().replace(/\/+$/u, "");
 }
@@ -418,6 +451,7 @@ export const make = Effect.fn("makeJiraWorkItemService")(function* () {
       input.projectKeys && input.projectKeys.length > 0 ? input.projectKeys : link.jiraProjectKeys
     )
       .map((key) => key.trim())
+      .map((key) => key.toUpperCase())
       .filter(Boolean);
     return {
       siteUrl,
@@ -474,6 +508,7 @@ export const make = Effect.fn("makeJiraWorkItemService")(function* () {
     input: WorkItemListInput | WorkItemSearchInput,
   ) {
     const context = yield* resolveProject(input);
+    yield* requireProjectKeys(context, "workItems.search");
     const jql = buildJql({
       projectKeys: context.projectKeys,
       state: "state" in input ? input.state : "all",
@@ -505,6 +540,8 @@ export const make = Effect.fn("makeJiraWorkItemService")(function* () {
 
   const getDetail = Effect.fn("JiraWorkItemService.getDetail")(function* (input: WorkItemGetInput) {
     const context = yield* resolveProject(input);
+    yield* requireProjectKeys(context, "workItems.get");
+    yield* requireAllowedIssueKey(context, input.key, "workItems.get");
     const [issue, comments, transitions] = yield* Effect.all(
       [
         request("workItems.get", JiraIssueSchema, {
@@ -588,6 +625,8 @@ export const make = Effect.fn("makeJiraWorkItemService")(function* () {
     addComment: (input) =>
       Effect.gen(function* () {
         const context = yield* resolveProject(input);
+        yield* requireProjectKeys(context, "workItems.addComment");
+        yield* requireAllowedIssueKey(context, input.key, "workItems.addComment");
         yield* requestVoid("workItems.addComment", {
           ...context,
           path: `/rest/api/3/issue/${encodeURIComponent(input.key)}/comment`,
@@ -601,11 +640,15 @@ export const make = Effect.fn("makeJiraWorkItemService")(function* () {
     listTransitions: (input) =>
       Effect.gen(function* () {
         const context = yield* resolveProject(input);
+        yield* requireProjectKeys(context, "workItems.listTransitions");
+        yield* requireAllowedIssueKey(context, input.key, "workItems.listTransitions");
         return yield* getTransitions(context, input.key);
       }),
     transition: (input) =>
       Effect.gen(function* () {
         const context = yield* resolveProject(input);
+        yield* requireProjectKeys(context, "workItems.transition");
+        yield* requireAllowedIssueKey(context, input.key, "workItems.transition");
         if (input.comment) {
           yield* requestVoid("workItems.transitionComment", {
             ...context,

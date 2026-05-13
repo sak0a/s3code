@@ -102,18 +102,22 @@ const makeAtlassianResourceRepository = Effect.gen(function* () {
     `;
 
   const upsertForConnection: AtlassianResourceRepositoryShape["upsertForConnection"] = (input) =>
-    Effect.gen(function* () {
-      yield* sql`
-        DELETE FROM atlassian_resources
-        WHERE connection_id = ${input.connectionId}
-      `;
-      yield* Effect.forEach(input.resources, upsertOne, { concurrency: 1 });
-    }).pipe(
-      Effect.asVoid,
-      Effect.mapError(
-        toPersistenceSqlError("AtlassianResourceRepository.upsertForConnection:query"),
-      ),
-    );
+    sql
+      .withTransaction(
+        Effect.gen(function* () {
+          yield* sql`
+          DELETE FROM atlassian_resources
+          WHERE connection_id = ${input.connectionId}
+        `;
+          yield* Effect.forEach(input.resources, upsertOne, { concurrency: 1 });
+        }),
+      )
+      .pipe(
+        Effect.asVoid,
+        Effect.mapError(
+          toPersistenceSqlError("AtlassianResourceRepository.upsertForConnection:query"),
+        ),
+      );
 
   const list: AtlassianResourceRepositoryShape["list"] = (input = {}) => {
     const rows =

@@ -375,6 +375,8 @@ function AtlassianConnectionsSection() {
       });
     },
     onSuccess: () => {
+      setBitbucketLabel("Bitbucket");
+      setBitbucketEmail("");
       setBitbucketToken("");
       void queryClient.invalidateQueries({ queryKey: atlassianConnectionQueryKey });
       toastManager.add(
@@ -408,6 +410,9 @@ function AtlassianConnectionsSection() {
       });
     },
     onSuccess: () => {
+      setJiraLabel("Jira");
+      setJiraEmail("");
+      setJiraSiteUrl("");
       setJiraToken("");
       void queryClient.invalidateQueries({ queryKey: atlassianConnectionQueryKey });
       toastManager.add(

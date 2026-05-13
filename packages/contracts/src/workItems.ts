@@ -139,8 +139,4 @@ export class WorkItemProviderError extends Schema.TaggedErrorClass<WorkItemProvi
     detail: Schema.String,
     cause: Schema.optional(Schema.Defect),
   },
-) {
-  override get message(): string {
-    return `Work item provider ${this.provider} failed in ${this.operation}: ${this.detail}`;
-  }
-}
+) {}

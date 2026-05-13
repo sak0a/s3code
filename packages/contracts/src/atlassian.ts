@@ -168,8 +168,4 @@ export class AtlassianConnectionError extends Schema.TaggedErrorClass<AtlassianC
     detail: Schema.String,
     cause: Schema.optional(Schema.Defect),
   },
-) {
-  override get message(): string {
-    return `Atlassian connection operation ${this.operation} failed: ${this.detail}`;
-  }
-}
+) {}

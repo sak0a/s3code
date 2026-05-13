@@ -15,7 +15,7 @@ import {
   type AtlassianStartOAuthInput,
   type AtlassianStartOAuthResult,
 } from "@s3tools/contracts";
-import { Context, DateTime, Effect, Layer, Option } from "effect";
+import { Context, DateTime, Effect, Layer, Option, Schema } from "effect";
 
 import { ServerSecretStore } from "../auth/Services/ServerSecretStore.ts";
 import { AtlassianConnectionRepository } from "../persistence/Services/AtlassianConnections.ts";
@@ -98,6 +98,14 @@ function normalizeSiteUrl(value: string): string {
   return value.trim().replace(/\/+$/u, "");
 }
 
+function normalizedOrigin(value: string): string | null {
+  try {
+    return new URL(normalizeSiteUrl(value)).origin;
+  } catch {
+    return null;
+  }
+}
+
 export const make = Effect.fn("makeAtlassianConnectionService")(function* () {
   const connections = yield* AtlassianConnectionRepository;
   const resources = yield* AtlassianResourceRepository;
@@ -161,6 +169,45 @@ export const make = Effect.fn("makeAtlassianConnectionService")(function* () {
     updatedAt: dateTime(record.updatedAt),
   });
 
+  const cleanupSecretOnFailure = (secretName: string) =>
+    Effect.tapError(() => secretStore.remove(secretName).pipe(Effect.ignore));
+
+  const vettedJiraSiteUrl = Effect.fn("AtlassianConnectionService.vettedJiraSiteUrl")(function* (
+    input: AtlassianSaveProjectLinkInput,
+  ) {
+    if (!input.jiraConnectionId) return null;
+    const connection = yield* connections.getById({ connectionId: input.jiraConnectionId }).pipe(
+      Effect.flatMap(
+        Option.match({
+          onNone: () =>
+            Effect.fail(
+              atlassianError(
+                "atlassian.saveProjectLink",
+                "The selected Jira connection was not found.",
+              ),
+            ),
+          onSome: Effect.succeed,
+        }),
+      ),
+    );
+    const connectionSiteUrl = normalizeSiteUrl(connection.baseUrl ?? "");
+    if (!connectionSiteUrl || !connection.products.includes("jira")) {
+      return yield* atlassianError(
+        "atlassian.saveProjectLink",
+        "The selected Jira connection does not have a vetted Jira site URL.",
+      );
+    }
+    const connectionOrigin = normalizedOrigin(connectionSiteUrl);
+    const inputOrigin = input.jiraSiteUrl ? normalizedOrigin(input.jiraSiteUrl) : null;
+    if (!connectionOrigin || (input.jiraSiteUrl && inputOrigin !== connectionOrigin)) {
+      return yield* atlassianError(
+        "atlassian.saveProjectLink",
+        "The Jira site URL must match the selected Jira connection.",
+      );
+    }
+    return connectionSiteUrl;
+  });
+
   return AtlassianConnectionService.of({
     listConnections: connections.list().pipe(
       Effect.map((items) => items.map(toSummary)),
@@ -200,6 +247,7 @@ export const make = Effect.fn("makeAtlassianConnectionService")(function* () {
         .set(manualBitbucketTokenSecretName(connectionId), textEncoder.encode(input.token))
         .pipe(
           Effect.flatMap(() => connections.upsert(record)),
+          cleanupSecretOnFailure(manualBitbucketTokenSecretName(connectionId)),
           Effect.as(toSummary(record)),
           Effect.mapError(
             mapError("atlassian.saveManualBitbucketToken", "Failed to save the Bitbucket token."),
@@ -250,6 +298,7 @@ export const make = Effect.fn("makeAtlassianConnectionService")(function* () {
               resources: [resource],
             }),
           ),
+          cleanupSecretOnFailure(manualJiraTokenSecretName(connectionId)),
           Effect.as(toSummary(record)),
           Effect.mapError(
             mapError("atlassian.saveManualJiraToken", "Failed to save the Jira API token."),
@@ -310,20 +359,29 @@ export const make = Effect.fn("makeAtlassianConnectionService")(function* () {
           ),
         ),
     saveProjectLink: (input) =>
-      projectLinks.getByProjectId({ projectId: input.projectId }).pipe(
-        Effect.flatMap((existing) => {
-          const updatedAt = nowIso();
-          const createdAt = Option.isSome(existing) ? existing.value.createdAt : updatedAt;
-          const record = {
-            ...input,
-            createdAt,
-            updatedAt,
-          };
-          return projectLinks.upsert(record).pipe(Effect.as(toProjectLink(record)));
-        }),
-        Effect.mapError(
-          mapError("atlassian.saveProjectLink", "Failed to save the project Atlassian link."),
+      vettedJiraSiteUrl(input).pipe(
+        Effect.flatMap((jiraSiteUrl) =>
+          projectLinks.getByProjectId({ projectId: input.projectId }).pipe(
+            Effect.flatMap((existing) => {
+              const updatedAt = nowIso();
+              const createdAt = Option.isSome(existing) ? existing.value.createdAt : updatedAt;
+              const record = {
+                ...input,
+                jiraSiteUrl,
+                createdAt,
+                updatedAt,
+              };
+              return projectLinks.upsert(record).pipe(Effect.as(toProjectLink(record)));
+            }),
+          ),
         ),
+        Effect.mapError((error) => {
+          if (Schema.is(AtlassianConnectionError)(error)) return error;
+          return mapError(
+            "atlassian.saveProjectLink",
+            "Failed to save the project Atlassian link.",
+          )(error);
+        }),
       ),
   });
 });

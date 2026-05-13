@@ -165,10 +165,17 @@ export const BitbucketPullRequestDetailSchema = Schema.Struct({
 
 const decodeBitbucketPullRequestDetailDecoder = decodeJsonResult(BitbucketPullRequestDetailSchema);
 
-const WORK_ITEM_KEY_PATTERN = /\b[A-Z][A-Z0-9]+-\d+\b/gu;
+const WORK_ITEM_KEY_PATTERN = /\b([A-Z][A-Z0-9]{1,9})-(\d+)\b/giu;
 
 function extractWorkItemKeys(input: string): ReadonlyArray<string> {
-  return Array.from(new Set(input.match(WORK_ITEM_KEY_PATTERN) ?? []));
+  const keys = new Set<string>();
+  for (const match of input.matchAll(WORK_ITEM_KEY_PATTERN)) {
+    const projectKey = match[1]?.toUpperCase();
+    const issueNumber = match[2];
+    if (!projectKey || !issueNumber || Number(issueNumber) <= 0) continue;
+    keys.add(`${projectKey}-${issueNumber}`);
+  }
+  return Array.from(keys);
 }
 
 export function normalizeBitbucketPullRequestDetailRecord(
@@ -209,8 +216,9 @@ export function normalizeBitbucketPullRequestDetailRecord(
 
 export function decodeBitbucketPullRequestDetailJson(
   raw: string,
+  comments: NormalizedBitbucketPullRequestDetail["comments"],
 ): Result.Result<NormalizedBitbucketPullRequestDetail, Cause.Cause<Schema.SchemaError>> {
   const result = decodeBitbucketPullRequestDetailDecoder(raw);
   if (!Result.isSuccess(result)) return Result.fail(result.failure);
-  return Result.succeed(normalizeBitbucketPullRequestDetailRecord(result.success, []));
+  return Result.succeed(normalizeBitbucketPullRequestDetailRecord(result.success, comments));
 }

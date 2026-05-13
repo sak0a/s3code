@@ -1810,9 +1810,11 @@ function ProjectSettingsDialog(props: ProjectSettingsDialogProps) {
           <Button variant="outline" onClick={props.onClose}>
             Cancel
           </Button>
-          <Button onClick={props.onSave} disabled={props.saving}>
-            {props.saving ? "Saving…" : "Save changes"}
-          </Button>
+          {section === "atlassian" ? null : (
+            <Button onClick={props.onSave} disabled={props.saving}>
+              {props.saving ? "Saving…" : "Save changes"}
+            </Button>
+          )}
         </footer>
       </DialogPopup>
     </Dialog>
@@ -1873,6 +1875,8 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
   const [pullRequestTitleTemplate, setPullRequestTitleTemplate] = useState("{issueKey}: {summary}");
   const [smartLinkingEnabled, setSmartLinkingEnabled] = useState(true);
   const [autoAttachWorkItems, setAutoAttachWorkItems] = useState(true);
+  const dirtyRef = useRef(false);
+  const initializedTargetRef = useRef<string | null>(null);
 
   const projectLinkQuery = useQuery({
     queryKey: ["atlassian", "project-link", target?.environmentId ?? null, target?.id ?? null],
@@ -1903,6 +1907,12 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
 
   useEffect(() => {
     if (!target) return;
+    const targetKey = `${target.environmentId}:${target.id}`;
+    if (initializedTargetRef.current !== targetKey) {
+      initializedTargetRef.current = targetKey;
+      dirtyRef.current = false;
+    }
+    if (dirtyRef.current) return;
     const link = projectLinkQuery.data;
     const remote = bitbucketRemoteSuggestion(target.repositoryIdentity);
     setJiraConnectionValue(
@@ -1924,6 +1934,10 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
     setSmartLinkingEnabled(link?.smartLinkingEnabled ?? true);
     setAutoAttachWorkItems(link?.autoAttachWorkItems ?? true);
   }, [bitbucketConnections, jiraConnections, projectLinkQuery.data, target]);
+
+  const markDirty = () => {
+    dirtyRef.current = true;
+  };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -1952,6 +1966,7 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
       });
     },
     onSuccess: () => {
+      dirtyRef.current = false;
       void queryClient.invalidateQueries({ queryKey: ["atlassian"] });
       void queryClient.invalidateQueries({ queryKey: ["workItems"] });
       toastManager.add(
@@ -2005,7 +2020,10 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
             <Select
               value={jiraConnectionValue}
               onValueChange={(value) => {
-                if (typeof value === "string") setJiraConnectionValue(value);
+                if (typeof value === "string") {
+                  markDirty();
+                  setJiraConnectionValue(value);
+                }
               }}
             >
               <SelectTrigger size="sm" disabled={disabled}>
@@ -2026,7 +2044,10 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
             <Select
               value={bitbucketConnectionValue}
               onValueChange={(value) => {
-                if (typeof value === "string") setBitbucketConnectionValue(value);
+                if (typeof value === "string") {
+                  markDirty();
+                  setBitbucketConnectionValue(value);
+                }
               }}
             >
               <SelectTrigger size="sm" disabled={disabled}>
@@ -2055,7 +2076,10 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
               inputMode="url"
               disabled={disabled}
               placeholder="https://your-team.atlassian.net"
-              onChange={(event) => setJiraSiteUrl(event.currentTarget.value)}
+              onChange={(event) => {
+                markDirty();
+                setJiraSiteUrl(event.currentTarget.value);
+              }}
             />
           </ProjectSettingsField>
           <ProjectSettingsField label="Jira project keys">
@@ -2064,7 +2088,10 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
               value={jiraProjectKeys}
               disabled={disabled}
               placeholder="WEB, API"
-              onChange={(event) => setJiraProjectKeys(event.currentTarget.value)}
+              onChange={(event) => {
+                markDirty();
+                setJiraProjectKeys(event.currentTarget.value);
+              }}
             />
           </ProjectSettingsField>
           <ProjectSettingsField label="Bitbucket workspace">
@@ -2073,7 +2100,10 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
               value={bitbucketWorkspace}
               disabled={disabled}
               placeholder="workspace"
-              onChange={(event) => setBitbucketWorkspace(event.currentTarget.value)}
+              onChange={(event) => {
+                markDirty();
+                setBitbucketWorkspace(event.currentTarget.value);
+              }}
             />
           </ProjectSettingsField>
           <ProjectSettingsField label="Bitbucket repo slug">
@@ -2082,7 +2112,10 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
               value={bitbucketRepoSlug}
               disabled={disabled}
               placeholder="repo-slug"
-              onChange={(event) => setBitbucketRepoSlug(event.currentTarget.value)}
+              onChange={(event) => {
+                markDirty();
+                setBitbucketRepoSlug(event.currentTarget.value);
+              }}
             />
           </ProjectSettingsField>
         </div>
@@ -2097,7 +2130,10 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
               value={defaultIssueTypeName}
               disabled={disabled}
               placeholder="Task"
-              onChange={(event) => setDefaultIssueTypeName(event.currentTarget.value)}
+              onChange={(event) => {
+                markDirty();
+                setDefaultIssueTypeName(event.currentTarget.value);
+              }}
             />
           </ProjectSettingsField>
           <ProjectSettingsField label="Branch template">
@@ -2105,7 +2141,10 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
               size="sm"
               value={branchNameTemplate}
               disabled={disabled}
-              onChange={(event) => setBranchNameTemplate(event.currentTarget.value)}
+              onChange={(event) => {
+                markDirty();
+                setBranchNameTemplate(event.currentTarget.value);
+              }}
             />
           </ProjectSettingsField>
           <ProjectSettingsField label="Commit template">
@@ -2113,7 +2152,10 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
               size="sm"
               value={commitMessageTemplate}
               disabled={disabled}
-              onChange={(event) => setCommitMessageTemplate(event.currentTarget.value)}
+              onChange={(event) => {
+                markDirty();
+                setCommitMessageTemplate(event.currentTarget.value);
+              }}
             />
           </ProjectSettingsField>
           <ProjectSettingsField label="PR title template">
@@ -2121,7 +2163,10 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
               size="sm"
               value={pullRequestTitleTemplate}
               disabled={disabled}
-              onChange={(event) => setPullRequestTitleTemplate(event.currentTarget.value)}
+              onChange={(event) => {
+                markDirty();
+                setPullRequestTitleTemplate(event.currentTarget.value);
+              }}
             />
           </ProjectSettingsField>
         </div>
@@ -2135,7 +2180,10 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
             <Switch
               checked={smartLinkingEnabled}
               disabled={disabled}
-              onCheckedChange={(checked) => setSmartLinkingEnabled(Boolean(checked))}
+              onCheckedChange={(checked) => {
+                markDirty();
+                setSmartLinkingEnabled(Boolean(checked));
+              }}
             />
           </label>
           <label className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/60 px-3 py-2 text-xs">
@@ -2143,7 +2191,10 @@ function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMem
             <Switch
               checked={autoAttachWorkItems}
               disabled={disabled}
-              onCheckedChange={(checked) => setAutoAttachWorkItems(Boolean(checked))}
+              onCheckedChange={(checked) => {
+                markDirty();
+                setAutoAttachWorkItems(Boolean(checked));
+              }}
             />
           </label>
         </div>
