@@ -37,6 +37,9 @@ const FRAMEWORK_TOKEN_MAP: ReadonlyArray<readonly [string, ServerFramework]> = [
 
 const PACKAGE_RUNNERS = new Set(["npm", "pnpm", "yarn", "bun"]);
 
+/** Strip path components from a token, returning only the filename portion. */
+const basename = (token: string): string => token.split(/[\\/]/).pop() ?? token;
+
 export const hintFromArgv = (
   argv: ReadonlyArray<string>,
   pkg: PackageJsonShape | undefined,
@@ -44,6 +47,8 @@ export const hintFromArgv = (
   const tokens = argv.map((t) => t.toLowerCase());
 
   // Indirect invocation: <runner> run <script-name>
+  // One-level expansion only — passing `undefined` for pkg in the recursive
+  // call prevents infinite loops on scripts that reference each other.
   if (
     tokens.length >= 3 &&
     PACKAGE_RUNNERS.has(tokens[0]!) &&
@@ -55,6 +60,7 @@ export const hintFromArgv = (
   }
 
   // Shortcut: <runner> dev / serve / start / watch (no explicit "run" keyword)
+  // One-level expansion only — passing `undefined` for pkg prevents infinite loops.
   if (
     tokens.length >= 2 &&
     PACKAGE_RUNNERS.has(tokens[0]!) &&
@@ -71,9 +77,24 @@ export const hintFromArgv = (
     return { framework: "vitest-ui", isLikelyServer: true };
   }
 
-  // Framework token match
+  // Framework token match.
+  // The first argv token is treated as a file path — strip any directory prefix
+  // so that `./node_modules/.bin/vite` matches `vite`, but `snextflix` does NOT
+  // match `next`.  Only the first three non-flag tokens (binary + subcommand +
+  // subsubcommand) are considered; the framework name must be an exact match
+  // (with optional JS extension on the head token).
+  const head = tokens[0] ? basename(tokens[0]) : "";
+  const positional = tokens.slice(0, 3).filter((t) => !t.startsWith("-"));
+
   for (const [tok, fw] of FRAMEWORK_TOKEN_MAP) {
-    if (tokens[0]?.endsWith(tok) || tokens.includes(tok)) {
+    const hasFrameworkToken =
+      head === tok ||
+      head === `${tok}.js` ||
+      head === `${tok}.cjs` ||
+      head === `${tok}.mjs` ||
+      positional.includes(tok);
+
+    if (hasFrameworkToken) {
       const hasDeny = tokens.some((t) => DENY_TOKENS.has(t));
       if (hasDeny) return { framework: fw, isLikelyServer: false };
       return { framework: fw, isLikelyServer: true };

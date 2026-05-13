@@ -78,4 +78,20 @@ describe("ArgvHinter.hintFromArgv", () => {
     const got = hintFromArgv(["npm", "run", "build"], { scripts: { build: "vite build" } });
     expect(got).toEqual({ framework: "vite", isLikelyServer: false });
   });
+
+  // Regression tests: prefix-match false positives
+  it("does NOT match next for a binary named snextflix", () => {
+    const got = hintFromArgv(["snextflix"], undefined);
+    expect(got).toEqual({ framework: "unknown", isLikelyServer: false });
+  });
+
+  it("does NOT match remix for a binary named myremix", () => {
+    const got = hintFromArgv(["myremix"], undefined);
+    expect(got).toEqual({ framework: "unknown", isLikelyServer: false });
+  });
+
+  it("matches vite when invoked via a full node_modules path", () => {
+    const got = hintFromArgv(["./node_modules/.bin/vite"], undefined);
+    expect(got).toEqual({ framework: "vite", isLikelyServer: true });
+  });
 });
