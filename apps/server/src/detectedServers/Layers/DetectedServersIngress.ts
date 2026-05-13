@@ -94,8 +94,8 @@ export const DetectedServersIngressLive = Layer.effect(
         });
 
         const sniffer = new StdoutSniffer();
-        sniffer.onCandidate((c) => {
-          Effect.runPromise(
+        const unsubCandidate = sniffer.onCandidate((c) => {
+          runFork(
             registry.registerOrUpdate({
               threadId: source.threadId,
               source: sourceKind,
@@ -108,16 +108,17 @@ export const DetectedServersIngressLive = Layer.effect(
                 host: c.host,
               },
             }),
-          ).catch(() => {});
+          );
         });
 
         return {
           feed: (chunk: string) => {
             sniffer.feed(chunk);
-            Effect.runPromise(registry.publishLog(server.id, chunk)).catch(() => {});
+            runFork(registry.publishLog(server.id, chunk));
           },
           end: (result: "success" | "error") => {
-            Effect.runPromise(
+            unsubCandidate();
+            runFork(
               registry.registerOrUpdate({
                 threadId: source.threadId,
                 source: sourceKind,
@@ -128,7 +129,7 @@ export const DetectedServersIngressLive = Layer.effect(
                   exitReason: result === "success" ? "stopped" : "crashed",
                 },
               }),
-            ).catch(() => {});
+            );
           },
         };
       });
@@ -157,9 +158,9 @@ export const DetectedServersIngressLive = Layer.effect(
 
         const sniffer = new StdoutSniffer();
         let sniffedPort: number | null = null;
-        sniffer.onCandidate((c) => {
+        const unsubCandidate = sniffer.onCandidate((c) => {
           sniffedPort = c.port;
-          Effect.runPromise(
+          runFork(
             registry.registerOrUpdate({
               threadId: source.threadId,
               source: "pty",
@@ -172,7 +173,7 @@ export const DetectedServersIngressLive = Layer.effect(
                 host: c.host,
               },
             }),
-          ).catch(() => {});
+          );
         });
 
         const denyPorts = new Set<number>([...DEBUGGER_PORTS, ...argvHasInspect(source.argv)]);
@@ -228,13 +229,14 @@ export const DetectedServersIngressLive = Layer.effect(
         return {
           feed: (chunk: string) => {
             sniffer.feed(chunk);
-            Effect.runPromise(registry.publishLog(server.id, chunk)).catch(() => {});
+            runFork(registry.publishLog(server.id, chunk));
           },
           end: (exitCode: number | null) => {
-            Effect.runPromise(Fiber.interrupt(probeFiber).pipe(Effect.ignore)).catch(() => {});
+            unsubCandidate();
+            runFork(Fiber.interrupt(probeFiber).pipe(Effect.ignore));
             const status = exitCode === 0 || exitCode === null ? "exited" : "crashed";
             const exitReason: "stopped" | "crashed" = status === "exited" ? "stopped" : "crashed";
-            Effect.runPromise(
+            runFork(
               registry.registerOrUpdate({
                 threadId: source.threadId,
                 source: "pty",
@@ -245,7 +247,7 @@ export const DetectedServersIngressLive = Layer.effect(
                   exitReason,
                 },
               }),
-            ).catch(() => {});
+            );
           },
         };
       });

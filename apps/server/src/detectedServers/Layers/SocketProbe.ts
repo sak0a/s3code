@@ -6,7 +6,7 @@
  *
  * @module SocketProbe
  */
-import { Effect, Context, Layer } from "effect";
+import { Effect, Context } from "effect";
 
 /**
  * ProbeResult - A single socket probe result.
@@ -34,25 +34,3 @@ export interface SocketProbeShape {
 export class SocketProbe extends Context.Service<SocketProbe, SocketProbeShape>()(
   "s3/detectedServers/Layers/SocketProbe",
 ) {}
-
-import { platform } from "node:os";
-import { SocketProbeLinuxLive } from "./SocketProbe.Linux.ts";
-import { SocketProbeDarwinLive } from "./SocketProbe.Darwin.ts";
-import { SocketProbeWindowsLive } from "./SocketProbe.Windows.ts";
-
-const NoopProbeLive = Layer.succeed(SocketProbe, {
-  probe: () => Effect.succeed([] as ReadonlyArray<ProbeResult>),
-});
-
-export const SocketProbeLive: Layer.Layer<SocketProbe> = (() => {
-  switch (platform()) {
-    case "linux":
-      return SocketProbeLinuxLive;
-    case "darwin":
-      return SocketProbeDarwinLive;
-    case "win32":
-      return SocketProbeWindowsLive;
-    default:
-      return NoopProbeLive;
-  }
-})();

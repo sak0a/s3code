@@ -35,7 +35,7 @@ import * as GitLabCli from "./sourceControl/GitLabCli.ts";
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
 import { ProviderInstanceRegistryHydrationLive } from "./provider/Layers/ProviderInstanceRegistryHydration.ts";
 import { TerminalManagerLive } from "./terminal/Layers/Manager.ts";
-import { SocketProbeLive } from "./detectedServers/Layers/SocketProbe.ts";
+import { SocketProbeLive } from "./detectedServers/Layers/SocketProbeLive.ts";
 import { LivenessHeartbeatLive } from "./detectedServers/Layers/LivenessHeartbeat.ts";
 import { DetectedServerRegistryLive } from "./detectedServers/Services/DetectedServerRegistry.ts";
 import { DetectedServersIngressLive } from "./detectedServers/Layers/DetectedServersIngress.ts";
