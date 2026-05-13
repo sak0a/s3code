@@ -185,6 +185,11 @@ export interface BitbucketApiShape {
     BitbucketPullRequests.NormalizedBitbucketPullRequestDetail,
     BitbucketApiError
   >;
+  readonly getPullRequestDiff: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProvider.SourceControlProviderContext;
+    readonly reference: string;
+  }) => Effect.Effect<string, BitbucketApiError>;
 }
 
 export class BitbucketApi extends Context.Service<BitbucketApi, BitbucketApiShape>()(
@@ -475,6 +480,21 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
       Effect.flatMap((response) => decodeResponse(operation, schema, response)),
     );
 
+  const executeText = (
+    operation: string,
+    request: HttpClientRequest.HttpClientRequest,
+  ): Effect.Effect<string, BitbucketApiError> =>
+    httpClient.execute(withAuth(request)).pipe(
+      Effect.mapError((cause) => requestError(operation, cause)),
+      Effect.flatMap((response) =>
+        HttpClientResponse.matchStatus({
+          "2xx": (success) =>
+            success.text.pipe(Effect.mapError((cause) => requestError(operation, cause))),
+          orElse: (failed) => responseError(operation, failed),
+        })(response),
+      ),
+    );
+
   const resolveRepository = Effect.fn("BitbucketApi.resolveRepository")(function* (input: {
     readonly cwd: string;
     readonly context?: SourceControlProvider.SourceControlProviderContext;
@@ -632,13 +652,15 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
       resolveRepository(input).pipe(
         Effect.flatMap((repository) => {
           const states = toBitbucketStates(input.state);
+          const sourceBranch = SourceControlProvider.sourceBranch(input).replaceAll('"', '\\"');
+          const filters = [
+            ...(sourceBranch.length > 0 ? [`source.branch.name = "${sourceBranch}"`] : []),
+            bitbucketStateFilter(states),
+          ];
           const query: Record<string, string | ReadonlyArray<string>> = {
             pagelen: String(Math.max(1, Math.min(input.limit ?? 20, 50))),
             sort: "-updated_on",
-            q: bitbucketQueryString([
-              `source.branch.name = "${SourceControlProvider.sourceBranch(input).replaceAll('"', '\\"')}"`,
-              bitbucketStateFilter(states),
-            ]),
+            q: bitbucketQueryString(filters),
             state: states,
           };
 
@@ -864,9 +886,7 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
             }),
             BitbucketIssues.BitbucketCommentListSchema,
           ).pipe(
-            Effect.map((list) =>
-              [...BitbucketIssues.normalizeBitbucketCommentList(list)].reverse(),
-            ),
+            Effect.map((list) => BitbucketIssues.normalizeBitbucketCommentList(list).toReversed()),
             Effect.catch((err) =>
               isBitbucketApiError(err) && err.status === 404
                 ? Effect.succeed([])
@@ -962,9 +982,7 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
             }),
             BitbucketIssues.BitbucketCommentListSchema,
           ).pipe(
-            Effect.map((list) =>
-              [...BitbucketIssues.normalizeBitbucketCommentList(list)].reverse(),
-            ),
+            Effect.map((list) => BitbucketIssues.normalizeBitbucketCommentList(list).toReversed()),
             Effect.catch((err) =>
               isBitbucketApiError(err) && err.status === 404
                 ? Effect.succeed([])
@@ -972,16 +990,32 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
             ),
           );
           return Effect.all([pr, comments], { concurrency: 2 }).pipe(
-            Effect.map(([raw, normalizedComments]) => {
-              const summary = BitbucketPullRequests.normalizeBitbucketPullRequestRecord(raw);
-              return {
-                ...summary,
-                body: raw.summary?.raw ?? "",
-                comments: normalizedComments,
-              };
-            }),
+            Effect.map(([raw, normalizedComments]) =>
+              BitbucketPullRequests.normalizeBitbucketPullRequestDetailRecord(
+                raw,
+                normalizedComments,
+              ),
+            ),
           );
         }),
+      );
+    },
+    getPullRequestDiff: (input) => {
+      const referenceId = normalizeChangeRequestId(input.reference);
+      return resolveRepository({
+        cwd: input.cwd,
+        ...(input.context ? { context: input.context } : {}),
+      }).pipe(
+        Effect.flatMap((repo) =>
+          executeText(
+            "getPullRequestDiff",
+            HttpClientRequest.get(
+              apiUrl(
+                `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/pullrequests/${encodeURIComponent(referenceId)}/diff`,
+              ),
+            ),
+          ),
+        ),
       );
     },
   });

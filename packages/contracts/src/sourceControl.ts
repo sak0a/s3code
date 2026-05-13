@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { PositiveInt, TrimmedNonEmptyString } from "./baseSchemas.ts";
+import { NonNegativeInt, PositiveInt, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { VcsDriverKind } from "./vcs.ts";
 
 export const SourceControlProviderKind = Schema.Literals([
@@ -116,13 +116,25 @@ export const SourceControlChangeRequestFile = Schema.Struct({
 });
 export type SourceControlChangeRequestFile = typeof SourceControlChangeRequestFile.Type;
 
+export const SourceControlChangeRequestParticipant = Schema.Struct({
+  displayName: TrimmedNonEmptyString,
+  username: Schema.optional(TrimmedNonEmptyString),
+  role: Schema.optional(TrimmedNonEmptyString),
+  approved: Schema.optional(Schema.Boolean),
+});
+export type SourceControlChangeRequestParticipant =
+  typeof SourceControlChangeRequestParticipant.Type;
+
 export const SourceControlChangeRequestDetail = Schema.Struct({
   ...ChangeRequest.fields,
   body: Schema.String,
   comments: Schema.Array(SourceControlIssueComment),
   truncated: Schema.Boolean,
   linkedIssueNumbers: Schema.optional(Schema.Array(Schema.Number)),
+  linkedWorkItemKeys: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
   reviewers: Schema.optional(Schema.Array(TrimmedNonEmptyString)),
+  participants: Schema.optional(Schema.Array(SourceControlChangeRequestParticipant)),
+  tasksCount: Schema.optional(NonNegativeInt),
   commits: Schema.optional(Schema.Array(SourceControlChangeRequestCommit)),
   additions: Schema.optional(Schema.Number),
   deletions: Schema.optional(Schema.Number),

@@ -33,6 +33,11 @@ export type TurnId = typeof TurnId.Type;
 export const AuthSessionId = makeEntityId("AuthSessionId");
 export type AuthSessionId = typeof AuthSessionId.Type;
 
+export const AtlassianConnectionId = makeEntityId("AtlassianConnectionId");
+export type AtlassianConnectionId = typeof AtlassianConnectionId.Type;
+export const AtlassianResourceId = makeEntityId("AtlassianResourceId");
+export type AtlassianResourceId = typeof AtlassianResourceId.Type;
+
 export const ProviderItemId = makeEntityId("ProviderItemId");
 export type ProviderItemId = typeof ProviderItemId.Type;
 export const RuntimeSessionId = makeEntityId("RuntimeSessionId");

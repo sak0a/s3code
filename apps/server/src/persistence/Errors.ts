@@ -104,4 +104,8 @@ export type ProviderSessionRuntimeRepositoryError = PersistenceSqlError | Persis
 export type AuthPairingLinkRepositoryError = PersistenceSqlError | PersistenceDecodeError;
 export type AuthSessionRepositoryError = PersistenceSqlError | PersistenceDecodeError;
 
+export type AtlassianConnectionRepositoryError = PersistenceSqlError | PersistenceDecodeError;
+export type AtlassianResourceRepositoryError = PersistenceSqlError | PersistenceDecodeError;
+export type ProjectAtlassianLinkRepositoryError = PersistenceSqlError | PersistenceDecodeError;
+
 export type ProjectionRepositoryError = PersistenceSqlError | PersistenceDecodeError;

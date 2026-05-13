@@ -1,7 +1,15 @@
-import { GitPullRequestIcon, RefreshCwIcon } from "lucide-react";
+import {
+  KeyRoundIcon,
+  GitPullRequestIcon,
+  RefreshCwIcon,
+  TicketCheckIcon,
+  Trash2Icon,
+} from "lucide-react";
 import { Option } from "effect";
-import { type ReactNode } from "react";
+import { type FormEvent, type ReactNode, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  AtlassianConnectionSummary,
   SourceControlProviderKind,
   SourceControlDiscoveryResult,
   SourceControlProviderAuth,
@@ -40,6 +48,11 @@ import {
 } from "../Icons";
 import { RedactedSensitiveText } from "./RedactedSensitiveText";
 import { SettingsPageContainer, SettingsSection } from "./settingsLayout";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Spinner } from "../ui/spinner";
+import { stackedThreadToast, toastManager } from "../ui/toast";
+import { getPrimaryEnvironmentConnection } from "~/environments/runtime";
 
 const EMPTY_DISCOVERY_RESULT: SourceControlDiscoveryResult = {
   versionControlSystems: [],
@@ -60,6 +73,7 @@ const VCS_ICONS: Partial<Record<VcsDriverKind, Icon>> = {
 };
 
 const SOURCE_CONTROL_SKELETON_ROWS = ["primary", "secondary"] as const;
+const atlassianConnectionQueryKey = ["atlassian", "connections"] as const;
 
 function optionLabel(value: Option.Option<string>): string | null {
   return Option.getOrNull(value);
@@ -291,6 +305,378 @@ function SourceControlSectionSkeleton({
   );
 }
 
+function statusBadgeVariant(
+  status: AtlassianConnectionSummary["status"],
+): "success" | "warning" | "error" | "outline" {
+  switch (status) {
+    case "connected":
+      return "success";
+    case "needs_reauth":
+      return "warning";
+    case "invalid":
+      return "error";
+    case "revoked":
+      return "outline";
+  }
+}
+
+function formatConnectionKind(kind: AtlassianConnectionSummary["kind"]): string {
+  switch (kind) {
+    case "oauth_3lo":
+      return "OAuth";
+    case "bitbucket_token":
+      return "Bitbucket token";
+    case "jira_token":
+      return "Jira token";
+    case "env_fallback":
+      return "Environment";
+  }
+}
+
+function AtlassianProductIcon(props: {
+  readonly products: AtlassianConnectionSummary["products"];
+  readonly className?: string;
+}) {
+  if (props.products.includes("bitbucket")) {
+    return <BitbucketIcon className={props.className} aria-hidden />;
+  }
+  return <TicketCheckIcon className={props.className} aria-hidden />;
+}
+
+function AtlassianConnectionsSection() {
+  const queryClient = useQueryClient();
+  const [bitbucketLabel, setBitbucketLabel] = useState("Bitbucket");
+  const [bitbucketEmail, setBitbucketEmail] = useState("");
+  const [bitbucketToken, setBitbucketToken] = useState("");
+  const [jiraLabel, setJiraLabel] = useState("Jira");
+  const [jiraEmail, setJiraEmail] = useState("");
+  const [jiraSiteUrl, setJiraSiteUrl] = useState("");
+  const [jiraToken, setJiraToken] = useState("");
+
+  const connection = getPrimaryEnvironmentConnection();
+  const client = connection?.client ?? null;
+  const connectionsQuery = useQuery({
+    queryKey: atlassianConnectionQueryKey,
+    queryFn: async () => {
+      if (!client) return [];
+      return client.atlassian.listConnections();
+    },
+    enabled: client !== null,
+  });
+
+  const saveTokenMutation = useMutation({
+    mutationFn: async () => {
+      if (!client) throw new Error("No server connection is available.");
+      return client.atlassian.saveManualBitbucketToken({
+        label: bitbucketLabel.trim(),
+        email: bitbucketEmail.trim(),
+        token: bitbucketToken.trim(),
+        isDefault: true,
+      });
+    },
+    onSuccess: () => {
+      setBitbucketLabel("Bitbucket");
+      setBitbucketEmail("");
+      setBitbucketToken("");
+      void queryClient.invalidateQueries({ queryKey: atlassianConnectionQueryKey });
+      toastManager.add(
+        stackedThreadToast({
+          type: "success",
+          title: "Bitbucket token saved",
+          description: "S3Code can now use this Atlassian connection for Bitbucket workflows.",
+        }),
+      );
+    },
+    onError: (error) => {
+      toastManager.add(
+        stackedThreadToast({
+          type: "error",
+          title: "Could not save Bitbucket token",
+          description: error instanceof Error ? error.message : "The token could not be saved.",
+        }),
+      );
+    },
+  });
+
+  const saveJiraTokenMutation = useMutation({
+    mutationFn: async () => {
+      if (!client) throw new Error("No server connection is available.");
+      return client.atlassian.saveManualJiraToken({
+        label: jiraLabel.trim(),
+        email: jiraEmail.trim(),
+        siteUrl: jiraSiteUrl.trim(),
+        token: jiraToken.trim(),
+        isDefault: true,
+      });
+    },
+    onSuccess: () => {
+      setJiraLabel("Jira");
+      setJiraEmail("");
+      setJiraSiteUrl("");
+      setJiraToken("");
+      void queryClient.invalidateQueries({ queryKey: atlassianConnectionQueryKey });
+      toastManager.add(
+        stackedThreadToast({
+          type: "success",
+          title: "Jira token saved",
+          description: "S3Code can now load Jira work items for linked projects.",
+        }),
+      );
+    },
+    onError: (error) => {
+      toastManager.add(
+        stackedThreadToast({
+          type: "error",
+          title: "Could not save Jira token",
+          description: error instanceof Error ? error.message : "The token could not be saved.",
+        }),
+      );
+    },
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: async (item: AtlassianConnectionSummary) => {
+      if (!client) throw new Error("No server connection is available.");
+      return client.atlassian.disconnect({ connectionId: item.connectionId });
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: atlassianConnectionQueryKey });
+    },
+    onError: (error) => {
+      toastManager.add(
+        stackedThreadToast({
+          type: "error",
+          title: "Could not disconnect Atlassian account",
+          description: error instanceof Error ? error.message : "The connection was not changed.",
+        }),
+      );
+    },
+  });
+
+  const canSubmit =
+    client !== null &&
+    bitbucketLabel.trim().length > 0 &&
+    bitbucketEmail.trim().length > 0 &&
+    bitbucketToken.trim().length > 0 &&
+    !saveTokenMutation.isPending;
+
+  const canSubmitJira =
+    client !== null &&
+    jiraLabel.trim().length > 0 &&
+    jiraEmail.trim().length > 0 &&
+    jiraSiteUrl.trim().length > 0 &&
+    jiraToken.trim().length > 0 &&
+    !saveJiraTokenMutation.isPending;
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canSubmit) return;
+    saveTokenMutation.mutate();
+  };
+
+  const handleJiraSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canSubmitJira) return;
+    saveJiraTokenMutation.mutate();
+  };
+
+  const items = connectionsQuery.data ?? [];
+
+  return (
+    <SettingsSection title="Atlassian Workflow" icon={<KeyRoundIcon className="size-3" />}>
+      <div className="border-t border-border/60 px-4 py-4 first:border-t-0 sm:px-5">
+        <form className="grid gap-3 sm:grid-cols-[1fr_1fr] sm:items-end" onSubmit={handleSubmit}>
+          <div className="space-y-1.5">
+            <Label htmlFor="bitbucket-token-label" className="text-xs">
+              Label
+            </Label>
+            <Input
+              id="bitbucket-token-label"
+              size="sm"
+              value={bitbucketLabel}
+              autoComplete="organization"
+              onChange={(event) => setBitbucketLabel(event.currentTarget.value)}
+              placeholder="Bitbucket"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="bitbucket-token-email" className="text-xs">
+              Email
+            </Label>
+            <Input
+              id="bitbucket-token-email"
+              size="sm"
+              type="email"
+              value={bitbucketEmail}
+              autoComplete="username"
+              onChange={(event) => setBitbucketEmail(event.currentTarget.value)}
+              placeholder="you@example.com"
+            />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label htmlFor="bitbucket-token-secret" className="text-xs">
+              Bitbucket app password
+            </Label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                id="bitbucket-token-secret"
+                size="sm"
+                type="password"
+                value={bitbucketToken}
+                autoComplete="current-password"
+                onChange={(event) => setBitbucketToken(event.currentTarget.value)}
+                placeholder="Stored locally in the server secret store"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                className="h-7.5 shrink-0 gap-1.5 px-3 text-xs"
+                disabled={!canSubmit}
+              >
+                {saveTokenMutation.isPending ? <Spinner className="size-3" /> : null}
+                Save Token
+              </Button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div className="border-t border-border/60 px-4 py-4 sm:px-5">
+        <form
+          className="grid gap-3 sm:grid-cols-[1fr_1fr] sm:items-end"
+          onSubmit={handleJiraSubmit}
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor="jira-token-label" className="text-xs">
+              Label
+            </Label>
+            <Input
+              id="jira-token-label"
+              size="sm"
+              value={jiraLabel}
+              autoComplete="organization"
+              onChange={(event) => setJiraLabel(event.currentTarget.value)}
+              placeholder="Jira"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="jira-token-email" className="text-xs">
+              Email
+            </Label>
+            <Input
+              id="jira-token-email"
+              size="sm"
+              type="email"
+              value={jiraEmail}
+              autoComplete="username"
+              onChange={(event) => setJiraEmail(event.currentTarget.value)}
+              placeholder="you@example.com"
+            />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label htmlFor="jira-site-url" className="text-xs">
+              Jira site URL
+            </Label>
+            <Input
+              id="jira-site-url"
+              size="sm"
+              value={jiraSiteUrl}
+              inputMode="url"
+              autoComplete="url"
+              onChange={(event) => setJiraSiteUrl(event.currentTarget.value)}
+              placeholder="https://your-team.atlassian.net"
+            />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label htmlFor="jira-token-secret" className="text-xs">
+              Jira API token
+            </Label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                id="jira-token-secret"
+                size="sm"
+                type="password"
+                value={jiraToken}
+                autoComplete="current-password"
+                onChange={(event) => setJiraToken(event.currentTarget.value)}
+                placeholder="Stored locally in the server secret store"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                className="h-7.5 shrink-0 gap-1.5 px-3 text-xs"
+                disabled={!canSubmitJira}
+              >
+                {saveJiraTokenMutation.isPending ? <Spinner className="size-3" /> : null}
+                Save Jira
+              </Button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div className="border-t border-border/60">
+        {connectionsQuery.isPending ? (
+          <div className="flex items-center gap-2 px-4 py-4 text-xs text-muted-foreground sm:px-5">
+            <Spinner className="size-3.5" />
+            Loading Atlassian connections
+          </div>
+        ) : items.length === 0 ? (
+          <div className="px-4 py-4 text-xs leading-relaxed text-muted-foreground sm:px-5">
+            No Atlassian connections are stored yet. Add Bitbucket and Jira tokens to enable
+            repository PRs, diffs, and work-item links.
+          </div>
+        ) : (
+          items.map((item) => (
+            <div
+              key={item.connectionId}
+              className="flex flex-col gap-3 border-t border-border/60 px-4 py-3.5 first:border-t-0 sm:flex-row sm:items-center sm:justify-between sm:px-5"
+            >
+              <div className="min-w-0 space-y-1">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <AtlassianProductIcon
+                    products={item.products}
+                    className="size-4 text-foreground/80"
+                  />
+                  <h3 className="truncate text-[13px] font-semibold text-foreground">
+                    {item.label}
+                  </h3>
+                  <Badge variant={statusBadgeVariant(item.status)} size="sm">
+                    {item.status.replace("_", " ")}
+                  </Badge>
+                  <Badge variant="outline" size="sm">
+                    {formatConnectionKind(item.kind)}
+                  </Badge>
+                </div>
+                <p className="flex min-w-0 flex-wrap gap-x-1 text-xs text-muted-foreground">
+                  {item.accountEmail ? (
+                    <RedactedAccount account={item.accountEmail} />
+                  ) : (
+                    <span>No account email saved</span>
+                  )}
+                  <span aria-hidden>·</span>
+                  <span>{item.capabilities.join(", ")}</span>
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="icon-xs"
+                variant="ghost"
+                className="size-7 self-start text-muted-foreground hover:text-destructive sm:self-auto"
+                aria-label={`Disconnect ${item.label}`}
+                disabled={disconnectMutation.isPending || item.readonly}
+                onClick={() => disconnectMutation.mutate(item)}
+              >
+                <Trash2Icon className="size-3.5" />
+              </Button>
+            </div>
+          ))
+        )}
+      </div>
+    </SettingsSection>
+  );
+}
+
 function EmptySourceControlDiscovery({
   error,
   isPending,
@@ -367,6 +753,7 @@ export function SourceControlSettingsPanel() {
 
   return (
     <SettingsPageContainer>
+      <AtlassianConnectionsSection />
       {isInitialScanPending ? (
         <>
           <SourceControlSectionSkeleton title="Version Control" headerAction={scanButton} />
