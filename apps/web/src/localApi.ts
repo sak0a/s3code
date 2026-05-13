@@ -168,6 +168,36 @@ function createBrowserLocalApi(rpcClient?: WsRpcClient): LocalApi {
   };
 }
 
+function mergeLocalApiFallbacks(fallback: LocalApi, api: Partial<LocalApi>): LocalApi {
+  const mcp = api.mcp ?? fallback.mcp;
+
+  return {
+    ...fallback,
+    ...api,
+    dialogs: {
+      ...fallback.dialogs,
+      ...api.dialogs,
+    },
+    shell: {
+      ...fallback.shell,
+      ...api.shell,
+    },
+    contextMenu: {
+      ...fallback.contextMenu,
+      ...api.contextMenu,
+    },
+    persistence: {
+      ...fallback.persistence,
+      ...api.persistence,
+    },
+    server: {
+      ...fallback.server,
+      ...api.server,
+    },
+    ...(mcp ? { mcp } : {}),
+  };
+}
+
 export function createLocalApi(rpcClient: WsRpcClient): LocalApi {
   return createBrowserLocalApi(rpcClient);
 }
@@ -177,7 +207,7 @@ export function readLocalApi(): LocalApi | undefined {
   if (cachedApi) return cachedApi;
 
   if (window.nativeApi) {
-    cachedApi = window.nativeApi;
+    cachedApi = mergeLocalApiFallbacks(createBrowserLocalApi(), window.nativeApi);
     return cachedApi;
   }
 
