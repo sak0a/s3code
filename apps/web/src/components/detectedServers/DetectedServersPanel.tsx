@@ -1,9 +1,66 @@
 import { useMemo } from "react";
+import type { DetectedServer } from "@s3tools/contracts";
 import { parseScopedThreadKey } from "@s3tools/client-runtime";
 import { useDetectedServerStore } from "../../detectedServerStore.ts";
 import { readEnvironmentConnection } from "../../environments/runtime/service.ts";
 import { DetectedServerRow } from "./DetectedServerRow.tsx";
 import { DetectedServerLogView } from "./DetectedServerLogView.tsx";
+
+interface ViewProps {
+  servers: ReadonlyArray<DetectedServer>;
+  activeId: string | null;
+  active: DetectedServer | null;
+  onSelect: (serverId: string) => void;
+  onOpen: (serverId: string) => void;
+  onCopy: (url: string) => void;
+  onStop: (serverId: string) => void;
+}
+
+export const DetectedServersPanelView = ({
+  servers,
+  activeId,
+  active,
+  onSelect,
+  onOpen,
+  onCopy,
+  onStop,
+}: ViewProps) => {
+  if (servers.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center p-4 text-xs text-muted-foreground">
+        No servers detected yet. They&apos;ll appear here when an agent runs{" "}
+        <code className="mx-1">dev</code>/<code className="mx-1">serve</code> commands.
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full">
+      <div className="w-64 shrink-0 overflow-y-auto border-r border-border p-1">
+        {servers.map((s) => (
+          <DetectedServerRow
+            key={s.id}
+            server={s}
+            active={s.id === activeId}
+            onSelect={() => onSelect(s.id)}
+            onOpen={() => onOpen(s.id)}
+            onCopy={() => s.url && onCopy(s.url)}
+            onStop={() => onStop(s.id)}
+          />
+        ))}
+      </div>
+      <div className="flex-1 overflow-hidden">
+        {active ? (
+          <DetectedServerLogView serverId={active.id} />
+        ) : (
+          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+            Select a server to view logs
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 interface Props {
   threadKey: string;
@@ -17,15 +74,6 @@ export const DetectedServersPanel = ({ threadKey }: Props) => {
   const servers = useMemo(() => (serversMap ? [...serversMap.values()] : []), [serversMap]);
   const active = activeId && serversMap ? (serversMap.get(activeId) ?? null) : null;
   const threadRef = parseScopedThreadKey(threadKey);
-
-  if (servers.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center p-4 text-xs text-muted-foreground">
-        No servers detected yet. They&apos;ll appear here when an agent runs{" "}
-        <code className="mx-1">dev</code>/<code className="mx-1">serve</code> commands.
-      </div>
-    );
-  }
 
   const handleStop = async (serverId: string) => {
     if (!threadRef) return;
@@ -49,29 +97,14 @@ export const DetectedServersPanel = ({ threadKey }: Props) => {
   };
 
   return (
-    <div className="flex h-full">
-      <div className="w-64 shrink-0 overflow-y-auto border-r border-border p-1">
-        {servers.map((s) => (
-          <DetectedServerRow
-            key={s.id}
-            server={s}
-            active={s.id === activeId}
-            onSelect={() => setActive(threadKey, s.id)}
-            onOpen={() => void handleOpen(s.id)}
-            onCopy={() => s.url && handleCopy(s.url)}
-            onStop={() => void handleStop(s.id)}
-          />
-        ))}
-      </div>
-      <div className="flex-1 overflow-hidden">
-        {active ? (
-          <DetectedServerLogView serverId={active.id} />
-        ) : (
-          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-            Select a server to view logs
-          </div>
-        )}
-      </div>
-    </div>
+    <DetectedServersPanelView
+      servers={servers}
+      activeId={activeId}
+      active={active}
+      onSelect={(id) => setActive(threadKey, id)}
+      onOpen={(id) => void handleOpen(id)}
+      onCopy={handleCopy}
+      onStop={(id) => void handleStop(id)}
+    />
   );
 };

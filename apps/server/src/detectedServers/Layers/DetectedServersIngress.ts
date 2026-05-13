@@ -1,14 +1,15 @@
 import { Context, DateTime, Duration, Effect, Fiber, Layer, Schema } from "effect";
 import pidtree from "pidtree";
-
-class PidtreeError extends Schema.TaggedErrorClass<PidtreeError>(
-  "s3/detectedServers/PidtreeError",
-)("PidtreeError", { pid: Schema.Int }) {}
 import { DetectedServerRegistry } from "../Services/DetectedServerRegistry.ts";
 import { SocketProbe } from "./SocketProbe.ts";
 import { LivenessHeartbeat } from "./LivenessHeartbeat.ts";
 import { StdoutSniffer } from "./StdoutSniffer.ts";
 import { hintFromArgv, type PackageJsonShape } from "./ArgvHinter.ts";
+
+class PidtreeError extends Schema.TaggedErrorClass<PidtreeError>("s3/detectedServers/PidtreeError")(
+  "PidtreeError",
+  { pid: Schema.Int },
+) {}
 
 const DEBUGGER_PORTS = new Set([9229, 9230]);
 

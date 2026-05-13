@@ -6,9 +6,7 @@ describe("AcpDetailSuffixDedup", () => {
     const dedup = new AcpDetailSuffixDedup();
     expect(dedup.consume("call-1", "Local: http://")).toBe("Local: http://");
     expect(dedup.consume("call-1", "Local: http://localhost")).toBe("localhost");
-    expect(dedup.consume("call-1", "Local: http://localhost:5173/\nready")).toBe(
-      ":5173/\nready",
-    );
+    expect(dedup.consume("call-1", "Local: http://localhost:5173/\nready")).toBe(":5173/\nready");
   });
 
   it("returns null when detail length did not change", () => {
@@ -55,10 +53,6 @@ describe("AcpDetailSuffixDedup", () => {
       if (suffix !== null) feed(suffix);
     }
 
-    expect(fed).toEqual([
-      "running vite\n",
-      "VITE v5.0.0\n",
-      "Local: http://localhost:5173/\n",
-    ]);
+    expect(fed).toEqual(["running vite\n", "VITE v5.0.0\n", "Local: http://localhost:5173/\n"]);
   });
 });
