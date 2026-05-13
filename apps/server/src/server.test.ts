@@ -121,6 +121,7 @@ import * as SourceControlRepositoryService from "./sourceControl/SourceControlRe
 import * as SourceControlProviderRegistry from "./sourceControl/SourceControlProviderRegistry.ts";
 import { ServerSecretStoreLive } from "./auth/Layers/ServerSecretStore.ts";
 import { ServerAuthLive } from "./auth/Layers/ServerAuth.ts";
+import { DetectedServerRegistry } from "./detectedServers/Services/DetectedServerRegistry.ts";
 
 const defaultProjectId = ProjectId.make("project-default");
 const defaultThreadId = ThreadId.make("thread-default");
@@ -572,6 +573,17 @@ const buildAppUnderTest = (options?: {
       Layer.provide(
         Layer.mock(TerminalManager)({
           ...options?.layers?.terminalManager,
+        }),
+      ),
+      Layer.provide(
+        Layer.mock(DetectedServerRegistry)({
+          registerOrUpdate: () =>
+            Effect.die("DetectedServerRegistry.registerOrUpdate not implemented in test"),
+          publishLog: () => Effect.void,
+          remove: () => Effect.void,
+          subscribe: (_threadId, _listener) => Effect.succeed(() => {}),
+          getCurrent: () => Effect.succeed([]),
+          findById: () => Effect.succeed(undefined),
         }),
       ),
       Layer.provide(

@@ -27,6 +27,7 @@ import {
   OrchestrationReplayEventsError,
   FilesystemBrowseError,
   ThreadId,
+  type DetectedServerEvent,
   type TerminalEvent,
   WorktreeId,
   WS_METHODS,
@@ -87,6 +88,7 @@ import {
   type SessionCredentialChange,
 } from "./auth/Services/SessionCredentialService.ts";
 import { respondToAuthError } from "./auth/http.ts";
+import { DetectedServerRegistry } from "./detectedServers/Services/DetectedServerRegistry.ts";
 
 function isThreadDetailEvent(event: OrchestrationEvent): event is Extract<
   OrchestrationEvent,
@@ -225,6 +227,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
       const bootstrapCredentials = yield* BootstrapCredentialService;
       const sessions = yield* SessionCredentialService;
       const projectionWorktrees = yield* ProjectionWorktreeRepository;
+      const detectedServerRegistry = yield* DetectedServerRegistry;
       const serverCommandId = (tag: string) =>
         CommandId.make(`server:${tag}:${crypto.randomUUID()}`);
 
@@ -2029,20 +2032,53 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             }),
             { "rpc.aggregate": "auth" },
           ),
-        [WS_METHODS.subscribeDetectedServerEvents]: (_input) =>
-          observeRpcStream(WS_METHODS.subscribeDetectedServerEvents, Stream.empty, {
-            "rpc.aggregate": "detectedServers",
-          }),
-        [WS_METHODS.detectedServersStop]: (_input) =>
-          observeRpcEffect(
-            WS_METHODS.detectedServersStop,
-            Effect.die(new Error("detectedServers.stop: not yet implemented")),
+        [WS_METHODS.subscribeDetectedServerEvents]: (input) =>
+          observeRpcStreamEffect(
+            WS_METHODS.subscribeDetectedServerEvents,
+            Effect.gen(function* () {
+              const snapshot = yield* detectedServerRegistry.getCurrent(input.threadId);
+              const snapshotEvents: DetectedServerEvent[] = snapshot.map((server) => ({
+                type: "registered" as const,
+                threadId: input.threadId,
+                server,
+                createdAt: new Date().toISOString(),
+              }));
+              const liveStream = Stream.callback<DetectedServerEvent>((queue) =>
+                Effect.acquireRelease(
+                  detectedServerRegistry.subscribe(input.threadId, (event) => {
+                    Effect.runSync(Queue.offer(queue, event));
+                  }),
+                  (unsubscribe) => Effect.sync(unsubscribe),
+                ),
+              );
+              return Stream.concat(Stream.fromIterable(snapshotEvents), liveStream);
+            }),
             { "rpc.aggregate": "detectedServers" },
           ),
-        [WS_METHODS.detectedServersOpenInBrowser]: (_input) =>
+        [WS_METHODS.detectedServersStop]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.detectedServersStop,
+            Effect.gen(function* () {
+              const server = yield* detectedServerRegistry.findById(input.serverId);
+              if (!server) {
+                return { kind: "not-stoppable", hint: "interrupt-turn" } as const;
+              }
+              // TODO: PTY kill — requires pid→terminalId mapping; defer to follow-up.
+              return { kind: "not-stoppable", hint: "interrupt-turn" } as const;
+            }),
+            { "rpc.aggregate": "detectedServers" },
+          ),
+        [WS_METHODS.detectedServersOpenInBrowser]: (input) =>
           observeRpcEffect(
             WS_METHODS.detectedServersOpenInBrowser,
-            Effect.die(new Error("detectedServers.openInBrowser: not yet implemented")),
+            Effect.gen(function* () {
+              const server = yield* detectedServerRegistry.findById(input.serverId);
+              if (!server?.url) {
+                return { ok: false };
+              }
+              yield* open.openBrowser(server.url).pipe(Effect.ignore({ log: true }));
+              return { ok: true };
+            }),
             { "rpc.aggregate": "detectedServers" },
           ),
       });
