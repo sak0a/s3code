@@ -106,6 +106,36 @@ const NOW_ISO = "2026-03-04T12:00:00.000Z";
 const BASE_TIME_MS = Date.parse(NOW_ISO);
 const ATTACHMENT_SVG = "<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'></svg>";
 const ADD_PROJECT_SUBMENU_PLACEHOLDER = "Enter path (e.g. ~/projects/my-app)";
+const CHAT_NEW_KEYBINDING: ServerConfig["keybindings"][number] = {
+  command: "chat.new",
+  shortcut: {
+    key: "o",
+    metaKey: false,
+    ctrlKey: false,
+    shiftKey: true,
+    altKey: false,
+    modKey: true,
+  },
+  whenAst: {
+    type: "not" as const,
+    node: { type: "identifier" as const, name: "terminalFocus" },
+  },
+};
+const CHAT_NEW_LOCAL_KEYBINDING: ServerConfig["keybindings"][number] = {
+  command: "chat.newLocal",
+  shortcut: {
+    key: "n",
+    metaKey: false,
+    ctrlKey: false,
+    shiftKey: true,
+    altKey: false,
+    modKey: true,
+  },
+  whenAst: {
+    type: "not" as const,
+    node: { type: "identifier" as const, name: "terminalFocus" },
+  },
+};
 
 interface TestFixture {
   snapshot: OrchestrationReadModel;
@@ -604,7 +634,7 @@ async function materializePromotedDraftThreadViaDomainEvent(threadId: ThreadId):
 }
 
 async function startPromotedServerThreadViaDomainEvent(threadId: ThreadId): Promise<void> {
-  fixture.snapshot = updateThreadSessionInSnapshot(fixture.snapshot, threadId, {
+  const snapshotWithSession = updateThreadSessionInSnapshot(fixture.snapshot, threadId, {
     threadId,
     status: "running",
     providerName: "codex",
@@ -613,6 +643,24 @@ async function startPromotedServerThreadViaDomainEvent(threadId: ThreadId): Prom
     lastError: null,
     updatedAt: NOW_ISO,
   });
+  fixture.snapshot = {
+    ...snapshotWithSession,
+    threads: snapshotWithSession.threads.map((thread) =>
+      thread.id === threadId
+        ? {
+            ...thread,
+            latestTurn: {
+              turnId: `turn-${threadId}` as TurnId,
+              state: "running",
+              requestedAt: NOW_ISO,
+              startedAt: NOW_ISO,
+              completedAt: null,
+              assistantMessageId: null,
+            },
+          }
+        : thread,
+    ),
+  };
   sendShellThreadUpsert(threadId);
 }
 
@@ -1472,6 +1520,20 @@ function dispatchChatNewShortcut(): void {
   );
 }
 
+function dispatchChatNewLocalShortcut(): void {
+  const useMetaForMod = isMacPlatform(navigator.platform);
+  window.dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key: "n",
+      shiftKey: true,
+      metaKey: useMetaForMod,
+      ctrlKey: !useMetaForMod,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+}
+
 function releaseModShortcut(key?: string): void {
   window.dispatchEvent(
     new KeyboardEvent("keyup", {
@@ -1502,6 +1564,38 @@ async function triggerChatNewShortcutUntilPath(
   throw new Error(`${errorMessage} Last path: ${pathname}`);
 }
 
+async function triggerChatNewLocalShortcutUntilPath(
+  router: ReturnType<typeof getRouter>,
+  predicate: (pathname: string) => boolean,
+  errorMessage: string,
+): Promise<string> {
+  let pathname = router.state.location.pathname;
+  const deadline = Date.now() + 8_000;
+  while (Date.now() < deadline) {
+    dispatchChatNewLocalShortcut();
+    await waitForLayout();
+    pathname = router.state.location.pathname;
+    if (predicate(pathname)) {
+      return pathname;
+    }
+  }
+  throw new Error(`${errorMessage} Last path: ${pathname}`);
+}
+
+function enableChatNewShortcut(nextFixture: TestFixture): void {
+  nextFixture.serverConfig = {
+    ...nextFixture.serverConfig,
+    keybindings: [CHAT_NEW_KEYBINDING],
+  };
+}
+
+function enableChatNewLocalShortcut(nextFixture: TestFixture): void {
+  nextFixture.serverConfig = {
+    ...nextFixture.serverConfig,
+    keybindings: [CHAT_NEW_LOCAL_KEYBINDING],
+  };
+}
+
 async function openCommandPaletteFromTrigger(): Promise<void> {
   const trigger = page.getByTestId("command-palette-trigger");
   await expect.element(trigger).toBeInTheDocument();
@@ -1512,14 +1606,39 @@ async function openCommandPaletteFromTrigger(): Promise<void> {
   );
 }
 
-async function waitForNewThreadShortcutLabel(): Promise<void> {
+async function openNewWorkspaceDialog(): Promise<void> {
   const newThreadButton = page.getByTestId("new-thread-button");
   await expect.element(newThreadButton).toBeInTheDocument();
-  await newThreadButton.hover();
-  const shortcutLabel = isMacPlatform(navigator.platform)
-    ? "New thread (⇧⌘O)"
-    : "New thread (Ctrl+Shift+O)";
-  await expect.element(page.getByText(shortcutLabel)).toBeInTheDocument();
+  await newThreadButton.click();
+  await expect.element(page.getByText("New worktree", { exact: true })).toBeInTheDocument();
+}
+
+async function createDraftFromChatNewLocalShortcut(
+  mounted: Pick<MountedChatView, "router">,
+): Promise<string> {
+  await waitForServerConfigToApply();
+  const composerEditor = await waitForComposerEditor();
+  composerEditor.focus();
+  await waitForLayout();
+  return triggerChatNewLocalShortcutUntilPath(
+    mounted.router,
+    (path) => UUID_ROUTE_RE.test(path),
+    "Route should have changed to a new draft thread UUID.",
+  );
+}
+
+async function createDraftFromChatNewShortcut(
+  mounted: Pick<MountedChatView, "router">,
+): Promise<string> {
+  await waitForServerConfigToApply();
+  const composerEditor = await waitForComposerEditor();
+  composerEditor.focus();
+  await waitForLayout();
+  return triggerChatNewShortcutUntilPath(
+    mounted.router,
+    (path) => UUID_ROUTE_RE.test(path),
+    "Route should have changed to a new draft thread UUID from the shortcut.",
+  );
 }
 
 async function waitForCommandPaletteShortcutLabel(): Promise<void> {
@@ -1746,7 +1865,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
     document.body.innerHTML = "";
   });
 
-  it("renders locked single-environment mobile run context as a static workspace label", async () => {
+  it("keeps the mobile run-context control non-interactive when the environment is locked", async () => {
     const mounted = await mountChatView({
       viewport: COMPACT_FOOTER_VIEWPORT,
       snapshot: createSnapshotForTargetUser({
@@ -1756,15 +1875,8 @@ describe("ChatView timeline estimator parity (full app)", () => {
     });
 
     try {
-      await waitForElement(
-        () =>
-          Array.from(document.querySelectorAll<HTMLElement>("span")).find(
-            (element) => element.textContent?.trim() === "Local checkout",
-          ) ?? null,
-        "Unable to find static mobile workspace label.",
-      );
-
-      expect(findButtonByText("Local checkout")).toBeNull();
+      await expect.element(page.getByTestId("composer-editor")).toBeInTheDocument();
+      expect(document.querySelector('button[aria-label="Run on"]')).toBeNull();
     } finally {
       await mounted.cleanup();
     }
@@ -1842,14 +1954,15 @@ describe("ChatView timeline estimator parity (full app)", () => {
     }
   });
 
-  it("shows an explicit empty state for projects without threads in the sidebar", async () => {
+  it("keeps the sidebar project available when the snapshot has no server threads", async () => {
     const mounted = await mountChatView({
       viewport: DEFAULT_VIEWPORT,
       snapshot: createDraftOnlySnapshot(),
     });
 
     try {
-      await expect.element(page.getByText("No threads yet")).toBeInTheDocument();
+      await expect.element(page.getByText("Project", { exact: true })).toBeInTheDocument();
+      expect(document.querySelector('[data-testid="thread-row-thread-browser-test"]')).toBeNull();
     } finally {
       await mounted.cleanup();
     }
@@ -2713,16 +2826,11 @@ describe("ChatView timeline estimator parity (full app)", () => {
     }
   });
 
-  it("keeps new-worktree mode on empty server threads and bootstraps the first send", async () => {
-    const snapshot = addThreadToSnapshot(createDraftOnlySnapshot(), THREAD_ID);
+  it("creates a worktree from the sidebar new workspace dialog", async () => {
+    const createdThreadId = "thread-browser-test-created-worktree" as ThreadId;
     const mounted = await mountChatView({
       viewport: DEFAULT_VIEWPORT,
-      snapshot: {
-        ...snapshot,
-        threads: snapshot.threads.map((thread) =>
-          thread.id === THREAD_ID ? Object.assign({}, thread, { session: null }) : thread,
-        ),
-      },
+      snapshot: createDraftOnlySnapshot(),
       resolveRpc: (body) => {
         if (body._tag === WS_METHODS.vcsListRefs) {
           return {
@@ -2740,9 +2848,10 @@ describe("ChatView timeline estimator parity (full app)", () => {
             ],
           };
         }
-        if (body._tag === ORCHESTRATION_WS_METHODS.dispatchCommand) {
+        if (body._tag === WS_METHODS.gitCreateWorktreeForProject) {
           return {
-            sequence: fixture.snapshot.snapshotSequence + 1,
+            worktreeId: "worktree-browser-test-created",
+            sessionId: createdThreadId,
           };
         }
         return undefined;
@@ -2750,242 +2859,164 @@ describe("ChatView timeline estimator parity (full app)", () => {
     });
 
     try {
-      (await waitForButtonByText("Current checkout")).click();
-      await page.getByText("New worktree", { exact: true }).click();
+      await openNewWorkspaceDialog();
+      await page.getByText("Create worktree", { exact: true }).click();
 
       await vi.waitFor(
         () => {
-          expect(findButtonByText("New worktree")).toBeTruthy();
-        },
-        { timeout: 8_000, interval: 16 },
-      );
-
-      useComposerDraftStore.getState().setPrompt(THREAD_REF, "Ship it");
-      await waitForLayout();
-
-      const sendButton = await waitForSendButton();
-      expect(sendButton.disabled).toBe(false);
-      sendButton.click();
-
-      await vi.waitFor(
-        () => {
-          const turnStartRequest = wsRequests.find(
-            (request) =>
-              request._tag === ORCHESTRATION_WS_METHODS.dispatchCommand &&
-              request.type === "thread.turn.start",
+          const createWorktreeRequest = wsRequests.find(
+            (request) => request._tag === WS_METHODS.gitCreateWorktreeForProject,
           ) as
             | {
                 _tag: string;
-                type?: string;
-                bootstrap?: {
-                  createThread?: { projectId?: string };
-                  prepareWorktree?: { projectCwd?: string; baseBranch?: string; branch?: string };
-                  runSetupScript?: boolean;
-                };
+                intent?: { kind?: string; branchName?: string };
+                projectId?: string;
               }
             | undefined;
 
-          expect(turnStartRequest).toMatchObject({
-            _tag: ORCHESTRATION_WS_METHODS.dispatchCommand,
-            type: "thread.turn.start",
-            bootstrap: {
-              prepareWorktree: {
-                projectCwd: "/repo/project",
-                baseBranch: "main",
-                branch: expect.stringMatching(/^s3code\/[0-9a-f]{8}$/),
-              },
-              runSetupScript: true,
+          expect(createWorktreeRequest).toMatchObject({
+            _tag: WS_METHODS.gitCreateWorktreeForProject,
+            projectId: PROJECT_ID,
+            intent: {
+              kind: "branch",
+              branchName: "main",
             },
           });
-          expect(turnStartRequest?.bootstrap?.createThread).toBeUndefined();
         },
         { timeout: 8_000, interval: 16 },
       );
-    } finally {
-      await mounted.cleanup();
-    }
-  });
-
-  it("updates the selected worktree base branch on empty server threads", async () => {
-    const snapshot = addThreadToSnapshot(createDraftOnlySnapshot(), THREAD_ID);
-    const mounted = await mountChatView({
-      viewport: DEFAULT_VIEWPORT,
-      snapshot: {
-        ...snapshot,
-        threads: snapshot.threads.map((thread) =>
-          thread.id === THREAD_ID ? Object.assign({}, thread, { session: null }) : thread,
-        ),
-      },
-      resolveRpc: (body) => {
-        if (body._tag === WS_METHODS.vcsListRefs) {
-          return {
-            isRepo: true,
-            hasPrimaryRemote: true,
-            nextCursor: null,
-            totalCount: 2,
-            refs: [
-              {
-                name: "main",
-                current: true,
-                isDefault: true,
-                worktreePath: null,
-              },
-              {
-                name: "release/next",
-                current: false,
-                isDefault: false,
-                worktreePath: null,
-              },
-            ],
-          };
-        }
-        if (body._tag === ORCHESTRATION_WS_METHODS.dispatchCommand) {
-          return {
-            sequence: fixture.snapshot.snapshotSequence + 1,
-          };
-        }
-        return undefined;
-      },
-    });
-
-    try {
-      (await waitForButtonByText("Current checkout")).click();
-      await page.getByText("New worktree", { exact: true }).click();
-      await page.getByText("From main", { exact: true }).click();
-      await page.getByText("release/next", { exact: true }).click();
-
-      await vi.waitFor(
-        () => {
-          expect(findButtonByText("From release/next")).toBeTruthy();
-        },
-        { timeout: 8_000, interval: 16 },
-      );
-
-      useComposerDraftStore.getState().setPrompt(THREAD_REF, "Ship it");
-      await waitForLayout();
-
-      const sendButton = await waitForSendButton();
-      expect(sendButton.disabled).toBe(false);
-      sendButton.click();
-
-      await vi.waitFor(
-        () => {
-          const turnStartRequest = wsRequests.find(
-            (request) =>
-              request._tag === ORCHESTRATION_WS_METHODS.dispatchCommand &&
-              request.type === "thread.turn.start",
-          ) as
-            | {
-                _tag: string;
-                type?: string;
-                bootstrap?: {
-                  prepareWorktree?: { baseBranch?: string };
-                };
-              }
-            | undefined;
-
-          expect(turnStartRequest?.bootstrap?.prepareWorktree?.baseBranch).toBe("release/next");
-        },
-        { timeout: 8_000, interval: 16 },
-      );
-    } finally {
-      await mounted.cleanup();
-    }
-  });
-
-  it("clears pending worktree overrides when switching empty server threads", async () => {
-    const secondThreadId = "thread-browser-test-second" as ThreadId;
-    const snapshot = addThreadToSnapshot(createDraftOnlySnapshot(), THREAD_ID);
-    const snapshotWithSecondThread = addThreadToSnapshot(snapshot, secondThreadId);
-    const snapshotWithTwoThreads = {
-      ...snapshotWithSecondThread,
-      threads: snapshotWithSecondThread.threads.map((thread) => {
-        if (thread.id === THREAD_ID) {
-          return Object.assign({}, thread, { session: null, title: "Thread alpha" });
-        }
-        if (thread.id === secondThreadId) {
-          return Object.assign({}, thread, { session: null, title: "Thread beta" });
-        }
-        return thread;
-      }),
-    };
-    const mounted = await mountChatView({
-      viewport: DEFAULT_VIEWPORT,
-      snapshot: snapshotWithTwoThreads,
-      resolveRpc: (body) => {
-        if (body._tag === WS_METHODS.vcsListRefs) {
-          return {
-            isRepo: true,
-            hasPrimaryRemote: true,
-            nextCursor: null,
-            totalCount: 2,
-            refs: [
-              {
-                name: "main",
-                current: true,
-                isDefault: true,
-                worktreePath: null,
-              },
-              {
-                name: "release/next",
-                current: false,
-                isDefault: false,
-                worktreePath: null,
-              },
-            ],
-          };
-        }
-        if (body._tag === ORCHESTRATION_WS_METHODS.dispatchCommand) {
-          return {
-            sequence: fixture.snapshot.snapshotSequence + 1,
-          };
-        }
-        return undefined;
-      },
-    });
-
-    try {
-      (await waitForButtonByText("Current checkout")).click();
-      await page.getByText("New worktree", { exact: true }).click();
-      await page.getByText("From main", { exact: true }).click();
-      await page.getByText("release/next", { exact: true }).click();
-
-      await vi.waitFor(
-        () => {
-          expect(findButtonByText("From release/next")).toBeTruthy();
-        },
-        { timeout: 8_000, interval: 16 },
-      );
-
-      await mounted.router.navigate({
-        to: "/$environmentId/$threadId",
-        params: {
-          environmentId: LOCAL_ENVIRONMENT_ID,
-          threadId: secondThreadId,
-        },
-      });
 
       await waitForURL(
         mounted.router,
-        (path) => path === serverThreadPath(secondThreadId),
-        "Route should switch to the second empty server thread.",
+        (path) => path === serverThreadPath(createdThreadId),
+        "Route should switch to the created worktree session.",
       );
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("updates the selected branch in the new workspace dialog before creation", async () => {
+    const createdThreadId = "thread-browser-test-selected-worktree" as ThreadId;
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createDraftOnlySnapshot(),
+      resolveRpc: (body) => {
+        if (body._tag === WS_METHODS.vcsListRefs) {
+          return {
+            isRepo: true,
+            hasPrimaryRemote: true,
+            nextCursor: null,
+            totalCount: 2,
+            refs: [
+              {
+                name: "main",
+                current: true,
+                isDefault: true,
+                worktreePath: null,
+              },
+              {
+                name: "release/next",
+                current: false,
+                isDefault: false,
+                worktreePath: null,
+              },
+            ],
+          };
+        }
+        if (body._tag === WS_METHODS.gitCreateWorktreeForProject) {
+          return {
+            worktreeId: "worktree-browser-test-selected",
+            sessionId: createdThreadId,
+          };
+        }
+        return undefined;
+      },
+    });
+
+    try {
+      await openNewWorkspaceDialog();
+      await page.getByText("release/next", { exact: true }).click();
+      await page.getByText("Create worktree", { exact: true }).click();
 
       await vi.waitFor(
         () => {
-          expect(findButtonByText("Current checkout")).toBeTruthy();
-          expect(findButtonByText("From release/next")).toBeNull();
+          const createWorktreeRequest = wsRequests.find(
+            (request) => request._tag === WS_METHODS.gitCreateWorktreeForProject,
+          ) as
+            | {
+                _tag: string;
+                intent?: { branchName?: string };
+              }
+            | undefined;
+
+          expect(createWorktreeRequest?.intent?.branchName).toBe("release/next");
         },
         { timeout: 8_000, interval: 16 },
       );
+    } finally {
+      await mounted.cleanup();
+    }
+  });
 
-      (await waitForButtonByText("Current checkout")).click();
-      await page.getByText("New worktree", { exact: true }).click();
+  it("preserves the selected branch when reopening the new workspace dialog", async () => {
+    const createdThreadId = "thread-browser-test-reopened-worktree" as ThreadId;
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createDraftOnlySnapshot(),
+      resolveRpc: (body) => {
+        if (body._tag === WS_METHODS.vcsListRefs) {
+          return {
+            isRepo: true,
+            hasPrimaryRemote: true,
+            nextCursor: null,
+            totalCount: 2,
+            refs: [
+              {
+                name: "main",
+                current: true,
+                isDefault: true,
+                worktreePath: null,
+              },
+              {
+                name: "release/next",
+                current: false,
+                isDefault: false,
+                worktreePath: null,
+              },
+            ],
+          };
+        }
+        if (body._tag === WS_METHODS.gitCreateWorktreeForProject) {
+          return {
+            worktreeId: "worktree-browser-test-reopened",
+            sessionId: createdThreadId,
+          };
+        }
+        return undefined;
+      },
+    });
+
+    try {
+      await openNewWorkspaceDialog();
+      await page.getByText("release/next", { exact: true }).click();
+      await page.getByText("Cancel", { exact: true }).click();
+
+      await openNewWorkspaceDialog();
+      await page.getByText("Create worktree", { exact: true }).click();
 
       await vi.waitFor(
         () => {
-          expect(findButtonByText("From main")).toBeTruthy();
-          expect(findButtonByText("From release/next")).toBeNull();
+          const createWorktreeRequest = wsRequests.findLast(
+            (request) => request._tag === WS_METHODS.gitCreateWorktreeForProject,
+          ) as
+            | {
+                _tag: string;
+                intent?: { branchName?: string };
+              }
+            | undefined;
+
+          expect(createWorktreeRequest?.intent?.branchName).toBe("release/next");
         },
         { timeout: 8_000, interval: 16 },
       );
@@ -3746,7 +3777,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
     }
   });
 
-  it("hides the archive action when the pointer leaves a thread row", async () => {
+  it("renders the active thread title inside the sessions worktree list", async () => {
     const mounted = await mountChatView({
       viewport: DEFAULT_VIEWPORT,
       snapshot: createSnapshotForTargetUser({
@@ -3756,42 +3787,19 @@ describe("ChatView timeline estimator parity (full app)", () => {
     });
 
     try {
-      const threadRow = page.getByTestId(`thread-row-${THREAD_ID}`);
-
-      await expect.element(threadRow).toBeInTheDocument();
-      const archiveButton = await waitForElement(
+      await waitForElement(
         () =>
-          document.querySelector<HTMLButtonElement>(`[data-testid="thread-archive-${THREAD_ID}"]`),
-        "Unable to find archive button.",
-      );
-      const archiveAction = archiveButton.parentElement;
-      expect(
-        archiveAction,
-        "Archive button should render inside a visibility wrapper.",
-      ).not.toBeNull();
-      expect(getComputedStyle(archiveAction!).opacity).toBe("0");
-
-      await threadRow.hover();
-      await vi.waitFor(
-        () => {
-          expect(getComputedStyle(archiveAction!).opacity).toBe("1");
-        },
-        { timeout: 4_000, interval: 16 },
-      );
-
-      await page.getByTestId("composer-editor").hover();
-      await vi.waitFor(
-        () => {
-          expect(getComputedStyle(archiveAction!).opacity).toBe("0");
-        },
-        { timeout: 4_000, interval: 16 },
+          Array.from(
+            document.querySelectorAll<HTMLElement>('[aria-label="Sessions in this worktree"]'),
+          ).find((element) => element.textContent?.includes(THREAD_TITLE)) ?? null,
+        "Unable to find the active thread title in the sessions worktree list.",
       );
     } finally {
       await mounted.cleanup();
     }
   });
 
-  it("exposes the full thread title on the sidebar row tooltip", async () => {
+  it("renders the active thread title in the breadcrumb", async () => {
     const mounted = await mountChatView({
       viewport: DEFAULT_VIEWPORT,
       snapshot: createSnapshotForTargetUser({
@@ -3801,25 +3809,19 @@ describe("ChatView timeline estimator parity (full app)", () => {
     });
 
     try {
-      const threadTitle = page.getByTestId(`thread-title-${THREAD_ID}`);
-
-      await expect.element(threadTitle).toBeInTheDocument();
-      await threadTitle.hover();
-
-      await vi.waitFor(
-        () => {
-          const tooltip = document.querySelector<HTMLElement>('[data-slot="tooltip-popup"]');
-          expect(tooltip).not.toBeNull();
-          expect(tooltip?.textContent).toContain(THREAD_TITLE);
-        },
-        { timeout: 8_000, interval: 16 },
+      await waitForElement(
+        () =>
+          Array.from(document.querySelectorAll<HTMLElement>('[aria-label="Breadcrumb"]')).find(
+            (element) => element.textContent?.includes(THREAD_TITLE),
+          ) ?? null,
+        "Unable to find the active thread title in the breadcrumb.",
       );
     } finally {
       await mounted.cleanup();
     }
   });
 
-  it("shows the confirm archive action after clicking the archive button", async () => {
+  it("does not render a thread archive action for the active worktree session row", async () => {
     localStorage.setItem(
       "s3code:client-settings:v1",
       JSON.stringify({
@@ -3837,18 +3839,17 @@ describe("ChatView timeline estimator parity (full app)", () => {
     });
 
     try {
-      const threadRow = page.getByTestId(`thread-row-${THREAD_ID}`);
-
-      await expect.element(threadRow).toBeInTheDocument();
-      await threadRow.hover();
-
-      const archiveButton = page.getByTestId(`thread-archive-${THREAD_ID}`);
-      await expect.element(archiveButton).toBeInTheDocument();
-      await archiveButton.click();
-
-      const confirmButton = page.getByTestId(`thread-archive-confirm-${THREAD_ID}`);
-      await expect.element(confirmButton).toBeInTheDocument();
-      await expect.element(confirmButton).toBeVisible();
+      await waitForElement(
+        () =>
+          Array.from(
+            document.querySelectorAll<HTMLElement>('[aria-label="Sessions in this worktree"]'),
+          ).find((element) => element.textContent?.includes(THREAD_TITLE)) ?? null,
+        "Unable to find the active thread title in the sessions worktree list.",
+      );
+      expect(document.querySelector(`[data-testid="thread-archive-${THREAD_ID}"]`)).toBeNull();
+      expect(
+        document.querySelector(`[data-testid="thread-archive-confirm-${THREAD_ID}"]`),
+      ).toBeNull();
     } finally {
       localStorage.removeItem("s3code:client-settings:v1");
       await mounted.cleanup();
@@ -3862,21 +3863,11 @@ describe("ChatView timeline estimator parity (full app)", () => {
         targetMessageId: "msg-user-new-thread-test" as MessageId,
         targetText: "new thread selection test",
       }),
+      configureFixture: enableChatNewLocalShortcut,
     });
 
     try {
-      // Wait for the sidebar to render with the project.
-      const newThreadButton = page.getByTestId("new-thread-button");
-      await expect.element(newThreadButton).toBeInTheDocument();
-
-      await newThreadButton.click();
-
-      // The route should change to a new draft thread ID.
-      const newThreadPath = await waitForURL(
-        mounted.router,
-        (path) => UUID_ROUTE_RE.test(path),
-        "Route should have changed to a new draft thread UUID.",
-      );
+      const newThreadPath = await createDraftFromChatNewLocalShortcut(mounted);
       const newDraftId = draftIdFromPath(newThreadPath);
       const newThreadId = draftThreadIdFor(newDraftId);
 
@@ -3891,14 +3882,6 @@ describe("ChatView timeline estimator parity (full app)", () => {
 
       // Once the server thread starts, the route should canonicalize.
       await startPromotedServerThreadViaDomainEvent(newThreadId);
-      await vi.waitFor(
-        () => {
-          expect(useComposerDraftStore.getState().draftThreadsByThreadKey[newDraftId]).toBe(
-            undefined,
-          );
-        },
-        { timeout: 8_000, interval: 16 },
-      );
 
       // The route should switch to the canonical server thread path.
       await waitForURL(
@@ -3923,28 +3906,22 @@ describe("ChatView timeline estimator parity (full app)", () => {
         targetMessageId: "msg-user-draft-hydration-race-test" as MessageId,
         targetText: "draft hydration race test",
       }),
+      configureFixture: enableChatNewLocalShortcut,
     });
 
     try {
-      const newThreadButton = page.getByTestId("new-thread-button");
-      await expect.element(newThreadButton).toBeInTheDocument();
-
-      await newThreadButton.click();
-
-      const newThreadPath = await waitForURL(
-        mounted.router,
-        (path) => UUID_ROUTE_RE.test(path),
-        "Route should have changed to a new draft thread UUID.",
-      );
+      const newThreadPath = await createDraftFromChatNewLocalShortcut(mounted);
       const newDraftId = draftIdFromPath(newThreadPath);
       const newThreadId = draftThreadIdFor(newDraftId);
 
-      await promoteDraftThreadViaDomainEvent(newThreadId);
+      await materializePromotedDraftThreadViaDomainEvent(newThreadId);
 
       await mounted.router.navigate({
         to: "/draft/$draftId",
         params: { draftId: newDraftId },
       });
+
+      await startPromotedServerThreadViaDomainEvent(newThreadId);
 
       await waitForURL(
         mounted.router,
@@ -3979,6 +3956,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
         ),
       },
       configureFixture: (nextFixture) => {
+        enableChatNewLocalShortcut(nextFixture);
         nextFixture.serverConfig = {
           ...nextFixture.serverConfig,
           settings: {
@@ -3990,16 +3968,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
     });
 
     try {
-      const newThreadButton = page.getByTestId("new-thread-button");
-      await expect.element(newThreadButton).toBeInTheDocument();
-
-      await newThreadButton.click();
-
-      const newThreadPath = await waitForURL(
-        mounted.router,
-        (path) => UUID_ROUTE_RE.test(path),
-        "Route should change to a new draft thread.",
-      );
+      const newThreadPath = await createDraftFromChatNewLocalShortcut(mounted);
       const newDraftId = draftIdFromPath(newThreadPath);
 
       expect(useComposerDraftStore.getState().getDraftSession(newDraftId)).toMatchObject({
@@ -4018,28 +3987,18 @@ describe("ChatView timeline estimator parity (full app)", () => {
         targetMessageId: "msg-user-promoting-draft-new-thread-test" as MessageId,
         targetText: "promoting draft new thread test",
       }),
+      configureFixture: enableChatNewLocalShortcut,
     });
 
     try {
-      const newThreadButton = page.getByTestId("new-thread-button");
-      await expect.element(newThreadButton).toBeInTheDocument();
-
-      await newThreadButton.click();
-
-      const firstDraftPath = await waitForURL(
-        mounted.router,
-        (path) => UUID_ROUTE_RE.test(path),
-        "Route should change to the first draft thread.",
-      );
+      const firstDraftPath = await createDraftFromChatNewLocalShortcut(mounted);
       const firstDraftId = draftIdFromPath(firstDraftPath);
       const firstThreadId = draftThreadIdFor(firstDraftId);
 
       await materializePromotedDraftThreadViaDomainEvent(firstThreadId);
       expect(mounted.router.state.location.pathname).toBe(firstDraftPath);
 
-      await newThreadButton.click();
-
-      const secondDraftPath = await waitForURL(
+      const secondDraftPath = await triggerChatNewLocalShortcutUntilPath(
         mounted.router,
         (path) => UUID_ROUTE_RE.test(path) && path !== firstDraftPath,
         "Route should change to a second draft thread instead of reusing the promoting draft.",
@@ -4071,19 +4030,11 @@ describe("ChatView timeline estimator parity (full app)", () => {
         targetMessageId: "msg-user-sticky-codex-traits-test" as MessageId,
         targetText: "sticky codex traits test",
       }),
+      configureFixture: enableChatNewLocalShortcut,
     });
 
     try {
-      const newThreadButton = page.getByTestId("new-thread-button");
-      await expect.element(newThreadButton).toBeInTheDocument();
-
-      await newThreadButton.click();
-
-      const newThreadPath = await waitForURL(
-        mounted.router,
-        (path) => UUID_ROUTE_RE.test(path),
-        "Route should have changed to a new draft thread UUID.",
-      );
+      const newThreadPath = await createDraftFromChatNewLocalShortcut(mounted);
       const newDraftId = draftIdFromPath(newThreadPath);
 
       // `toMatchObject` matches objects loosely (extras ignored) but compares
@@ -4126,19 +4077,11 @@ describe("ChatView timeline estimator parity (full app)", () => {
         targetMessageId: "msg-user-sticky-claude-model-test" as MessageId,
         targetText: "sticky claude model test",
       }),
+      configureFixture: enableChatNewLocalShortcut,
     });
 
     try {
-      const newThreadButton = page.getByTestId("new-thread-button");
-      await expect.element(newThreadButton).toBeInTheDocument();
-
-      await newThreadButton.click();
-
-      const newThreadPath = await waitForURL(
-        mounted.router,
-        (path) => UUID_ROUTE_RE.test(path),
-        "Route should have changed to a new sticky claude draft thread UUID.",
-      );
+      const newThreadPath = await createDraftFromChatNewLocalShortcut(mounted);
       const newDraftId = draftIdFromPath(newThreadPath);
 
       expect(composerDraftFor(newDraftId)).toMatchObject({
@@ -4166,19 +4109,11 @@ describe("ChatView timeline estimator parity (full app)", () => {
         targetMessageId: "msg-user-default-codex-traits-test" as MessageId,
         targetText: "default codex traits test",
       }),
+      configureFixture: enableChatNewLocalShortcut,
     });
 
     try {
-      const newThreadButton = page.getByTestId("new-thread-button");
-      await expect.element(newThreadButton).toBeInTheDocument();
-
-      await newThreadButton.click();
-
-      const newThreadPath = await waitForURL(
-        mounted.router,
-        (path) => UUID_ROUTE_RE.test(path),
-        "Route should have changed to a new draft thread UUID.",
-      );
+      const newThreadPath = await createDraftFromChatNewLocalShortcut(mounted);
       const newDraftId = draftIdFromPath(newThreadPath);
 
       expect(composerDraftFor(newDraftId)).toBe(undefined);
@@ -4208,19 +4143,11 @@ describe("ChatView timeline estimator parity (full app)", () => {
         targetMessageId: "msg-user-draft-codex-traits-precedence-test" as MessageId,
         targetText: "draft codex traits precedence test",
       }),
+      configureFixture: enableChatNewLocalShortcut,
     });
 
     try {
-      const newThreadButton = page.getByTestId("new-thread-button");
-      await expect.element(newThreadButton).toBeInTheDocument();
-
-      await newThreadButton.click();
-
-      const threadPath = await waitForURL(
-        mounted.router,
-        (path) => UUID_ROUTE_RE.test(path),
-        "Route should have changed to a sticky draft thread UUID.",
-      );
+      const threadPath = await createDraftFromChatNewLocalShortcut(mounted);
       const draftId = draftIdFromPath(threadPath);
 
       // See the note on the sibling sticky-codex test: arrays match strictly
@@ -4245,9 +4172,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
         ]),
       );
 
-      await newThreadButton.click();
-
-      await waitForURL(
+      await triggerChatNewLocalShortcutUntilPath(
         mounted.router,
         (path) => path === threadPath,
         "New-thread should reuse the existing project draft thread.",
@@ -4274,24 +4199,11 @@ describe("ChatView timeline estimator parity (full app)", () => {
         targetText: "chat shortcut test",
       }),
       configureFixture: (nextFixture) => {
+        enableChatNewShortcut(nextFixture);
         nextFixture.serverConfig = {
           ...nextFixture.serverConfig,
           keybindings: [
-            {
-              command: "chat.new",
-              shortcut: {
-                key: "o",
-                metaKey: false,
-                ctrlKey: false,
-                shiftKey: true,
-                altKey: false,
-                modKey: true,
-              },
-              whenAst: {
-                type: "not",
-                node: { type: "identifier", name: "terminalFocus" },
-              },
-            },
+            CHAT_NEW_KEYBINDING,
             {
               command: "thread.jump.1",
               shortcut: {
@@ -4321,16 +4233,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
     });
 
     try {
-      await waitForNewThreadShortcutLabel();
-      await waitForServerConfigToApply();
-      const composerEditor = await waitForComposerEditor();
-      composerEditor.focus();
-      await waitForLayout();
-      await triggerChatNewShortcutUntilPath(
-        mounted.router,
-        (path) => UUID_ROUTE_RE.test(path),
-        "Route should have changed to a new draft thread UUID from the shortcut.",
-      );
+      await createDraftFromChatNewShortcut(mounted);
     } finally {
       await mounted.cleanup();
     }
@@ -5573,44 +5476,21 @@ describe("ChatView timeline estimator parity (full app)", () => {
         targetText: "promoted draft shortcut test",
       }),
       configureFixture: (nextFixture) => {
+        enableChatNewShortcut(nextFixture);
         nextFixture.serverConfig = {
           ...nextFixture.serverConfig,
-          keybindings: [
-            {
-              command: "chat.new",
-              shortcut: {
-                key: "o",
-                metaKey: false,
-                ctrlKey: false,
-                shiftKey: true,
-                altKey: false,
-                modKey: true,
-              },
-              whenAst: {
-                type: "not",
-                node: { type: "identifier", name: "terminalFocus" },
-              },
-            },
-          ],
+          keybindings: [CHAT_NEW_KEYBINDING],
         };
       },
     });
 
     try {
-      const newThreadButton = page.getByTestId("new-thread-button");
-      await expect.element(newThreadButton).toBeInTheDocument();
-      await waitForServerConfigToApply();
-      await newThreadButton.click();
-
-      const promotedThreadPath = await waitForURL(
-        mounted.router,
-        (path) => UUID_ROUTE_RE.test(path),
-        "Route should have changed to a promoted draft thread UUID.",
-      );
+      const promotedThreadPath = await createDraftFromChatNewShortcut(mounted);
       const promotedDraftId = draftIdFromPath(promotedThreadPath);
       const promotedThreadId = draftThreadIdFor(promotedDraftId);
 
-      await promoteDraftThreadViaDomainEvent(promotedThreadId);
+      await materializePromotedDraftThreadViaDomainEvent(promotedThreadId);
+      await startPromotedServerThreadViaDomainEvent(promotedThreadId);
       await waitForURL(
         mounted.router,
         (path) => path === serverThreadPath(promotedThreadId),
