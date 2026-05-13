@@ -171,10 +171,10 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogPopup
-        className="flex h-[80vh] max-h-[800px] w-full max-w-3xl flex-col p-0 sm:max-w-3xl"
+        className="flex h-[80vh] max-h-[800px] w-full max-w-6xl flex-col p-0 sm:max-w-6xl"
         onKeyDown={handleKeyDown}
       >
-        <header className="flex items-center justify-between border-border/60 border-b px-5 py-3">
+        <header className="flex items-center justify-between border-border/60 border-b py-3 pl-5 pr-14">
           <DialogTitle className="truncate text-base">{dialogTitle}</DialogTitle>
           <span className="shrink-0 text-muted-foreground text-xs">
             ⌘1 issues · ⌘2 PRs · ⌘3 Jira · / focus search · Esc close
