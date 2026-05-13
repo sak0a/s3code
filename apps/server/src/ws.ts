@@ -2029,6 +2029,22 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             }),
             { "rpc.aggregate": "auth" },
           ),
+        [WS_METHODS.subscribeDetectedServerEvents]: (_input) =>
+          observeRpcStream(WS_METHODS.subscribeDetectedServerEvents, Stream.empty, {
+            "rpc.aggregate": "detectedServers",
+          }),
+        [WS_METHODS.detectedServersStop]: (_input) =>
+          observeRpcEffect(
+            WS_METHODS.detectedServersStop,
+            Effect.die(new Error("detectedServers.stop: not yet implemented")),
+            { "rpc.aggregate": "detectedServers" },
+          ),
+        [WS_METHODS.detectedServersOpenInBrowser]: (_input) =>
+          observeRpcEffect(
+            WS_METHODS.detectedServersOpenInBrowser,
+            Effect.die(new Error("detectedServers.openInBrowser: not yet implemented")),
+            { "rpc.aggregate": "detectedServers" },
+          ),
       });
     }),
   );
