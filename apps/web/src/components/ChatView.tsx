@@ -206,7 +206,11 @@ import {
   useServerKeybindings,
 } from "~/rpc/serverState";
 import { sanitizeThreadErrorMessage } from "~/rpc/transportError";
-import { retainThreadDetailSubscription } from "../environments/runtime/service";
+import {
+  retainThreadDetailSubscription,
+  readEnvironmentConnection,
+} from "../environments/runtime/service";
+import { useDetectedServerStore } from "../detectedServerStore";
 import { RightPanelSheet } from "./RightPanelSheet";
 import { Button } from "./ui/button";
 import {
@@ -779,6 +783,7 @@ export default function ChatView(props: ChatViewProps) {
   const storeNewTerminal = useTerminalStateStore((s) => s.newTerminal);
   const storeSetActiveTerminal = useTerminalStateStore((s) => s.setActiveTerminal);
   const storeCloseTerminal = useTerminalStateStore((s) => s.closeTerminal);
+  const storeSetTerminalDrawerKind = useTerminalStateStore((s) => s.setTerminalDrawerKind);
   const serverThreadKeys = useStore(
     useShallow((state) =>
       selectThreadsAcrossEnvironments(state).map((thread) =>
@@ -1047,6 +1052,18 @@ export default function ChatView(props: ChatViewProps) {
       return;
     }
     return retainThreadDetailSubscription(environmentId, threadId);
+  }, [environmentId, routeKind, threadId]);
+
+  // Subscribe to detected-server events and dispatch into the detected-server store.
+  // Scoped to the active server-thread; the store is keyed by threadKey.
+  useEffect(() => {
+    if (routeKind !== "server") return;
+    const connection = readEnvironmentConnection(environmentId);
+    if (!connection) return;
+    const threadKey = scopedThreadKey(scopeThreadRef(environmentId, threadId));
+    return connection.client.detectedServers.onEvent({ threadId }, (event) => {
+      useDetectedServerStore.getState().handleEvent(threadKey, event);
+    });
   }, [environmentId, routeKind, threadId]);
 
   // Compute the list of environments this logical project spans, used to
@@ -2025,6 +2042,11 @@ export default function ChatView(props: ChatViewProps) {
     if (!activeThreadRef) return;
     setTerminalOpen(!terminalState.terminalOpen);
   }, [activeThreadRef, setTerminalOpen, terminalState.terminalOpen]);
+  const openServersTab = useCallback(() => {
+    if (!activeThreadRef) return;
+    storeSetTerminalOpen(activeThreadRef, true);
+    storeSetTerminalDrawerKind(scopedThreadKey(activeThreadRef), "servers");
+  }, [activeThreadRef, storeSetTerminalOpen, storeSetTerminalDrawerKind]);
   const splitTerminal = useCallback(() => {
     if (!activeThreadRef || hasReachedSplitLimit) return;
     const terminalId = `terminal-${randomUUID()}`;
@@ -3968,6 +3990,7 @@ export default function ChatView(props: ChatViewProps) {
                 terminalToggleShortcutLabel={terminalToggleShortcutLabel}
                 onToggleTerminal={toggleTerminalVisibility}
                 terminalCount={terminalState.terminalIds.length}
+                onOpenServersTab={openServersTab}
               />
             )}
           </div>

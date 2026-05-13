@@ -1,5 +1,7 @@
 import { useMemo } from "react";
+import { parseScopedThreadKey } from "@s3tools/client-runtime";
 import { useDetectedServerStore } from "../../detectedServerStore.ts";
+import { readEnvironmentConnection } from "../../environments/runtime/service.ts";
 import { DetectedServerRow } from "./DetectedServerRow.tsx";
 import { DetectedServerLogView } from "./DetectedServerLogView.tsx";
 
@@ -14,6 +16,7 @@ export const DetectedServersPanel = ({ threadKey }: Props) => {
 
   const servers = useMemo(() => (serversMap ? [...serversMap.values()] : []), [serversMap]);
   const active = activeId && serversMap ? (serversMap.get(activeId) ?? null) : null;
+  const threadRef = parseScopedThreadKey(threadKey);
 
   if (servers.length === 0) {
     return (
@@ -25,18 +28,24 @@ export const DetectedServersPanel = ({ threadKey }: Props) => {
   }
 
   const handleStop = async (serverId: string) => {
-    // wsRpcClient.detectedServers.stop({ serverId }) — wire when wsRpcClient is in scope
-    // For Task 26 this stays a TODO; Task 28 wires actions through ChatView
-    console.warn("stop server", serverId);
+    if (!threadRef) return;
+    const connection = readEnvironmentConnection(threadRef.environmentId);
+    if (!connection) return;
+    const result = await connection.client.detectedServers.stop({ serverId });
+    if (result.kind === "not-stoppable") {
+      console.info("Server managed by agent — interrupt the turn to stop it");
+    }
   };
 
   const handleCopy = (url: string) => {
     void navigator.clipboard.writeText(url);
   };
 
-  const handleOpen = (serverId: string) => {
-    // wsRpcClient.detectedServers.openInBrowser({ serverId }) — wired in Task 28
-    console.warn("open server", serverId);
+  const handleOpen = async (serverId: string) => {
+    if (!threadRef) return;
+    const connection = readEnvironmentConnection(threadRef.environmentId);
+    if (!connection) return;
+    await connection.client.detectedServers.openInBrowser({ serverId });
   };
 
   return (
@@ -48,7 +57,7 @@ export const DetectedServersPanel = ({ threadKey }: Props) => {
             server={s}
             active={s.id === activeId}
             onSelect={() => setActive(threadKey, s.id)}
-            onOpen={() => handleOpen(s.id)}
+            onOpen={() => void handleOpen(s.id)}
             onCopy={() => s.url && handleCopy(s.url)}
             onStop={() => void handleStop(s.id)}
           />
