@@ -137,7 +137,7 @@ Transition rules (enforced in `Registry.registerOrUpdate`):
 - `confirmed`: SocketProbe sees a `LISTEN` socket on the matching port (or
   any port for silent servers without a sniffed URL).
 - `live`: LivenessHeartbeat got any response from `fetch(url, { method:
-  "HEAD" })`. Most servers reach `live` ~100–500 ms after this.
+"HEAD" })`. Most servers reach `live` ~100–500 ms after this.
 - `restarting`: previously `live`, socket disappeared briefly but pid still
   alive (Vite HMR restart).
 - `exited` / `crashed`: terminal state.
@@ -147,7 +147,7 @@ Exit triggers per source:
 - `pty`: the existing PTY `onExit` callback (`exitCode === 0` → `exited`,
   non-zero → `crashed`), or sustained `lost-socket` from SocketProbe while
   the pid is still alive (rare; treat as `exited` with `exitReason:
-  "lost-socket"`).
+"lost-socket"`).
 - `codex` / `acp`: the matching command-execution completion notification
   on the provider's event stream. Without a process-exit signal we cannot
   distinguish clean exit from crash; we record both as `exited` with
@@ -228,9 +228,9 @@ Pure synchronous + one cached `package.json` read per cwd.
   `<cwd>/package.json` `scripts.<name>` and re-tokenize (one level only).
 - Build/test denylist: `build`, `test`, `tsc`, `eslint`, `prettier`,
   `vitest run` (without `--ui`), `playwright test` → `isLikelyServer =
-  false`.
+false`.
 - Unknown but `dev`/`serve`/`start`/`watch` token → `framework = "unknown",
-  isLikelyServer = true`.
+isLikelyServer = true`.
 
 ### StdoutSniffer
 
@@ -260,7 +260,7 @@ OS adapters (selected at layer construction):
 
 - **Linux**: `/proc/<pid>/fd/*` symlink scan for `socket:[<inode>]`,
   cross-referenced against `/proc/<pid>/net/tcp` + `tcp6` rows with `st =
-  0A`. Pure JS, ~5 ms per pid.
+0A`. Pure JS, ~5 ms per pid.
 - **Darwin**: shell out to `lsof -nP -iTCP -sTCP:LISTEN -a -p <pidlist>`
   and parse. ~150–400 ms.
 - **Windows**: shell out to `netstat -ano` and filter pid column. ~300–800
@@ -300,11 +300,11 @@ state to newly-subscribing clients).
 
 - **Codex** (`CodexSessionRuntime.ts`):
   - On `item/commandExecution/requestApproval` with `requestKind:
-    "command"` → `ArgvHinter.hint(payload.argv, payload.cwd)`; if
+"command"` → `ArgvHinter.hint(payload.argv, payload.cwd)`; if
     `isLikelyServer`, register with `source: "codex"`, `status:
-    "predicted"`.
+"predicted"`.
   - On `item/commandExecution/outputDelta` for the matching `(turnId,
-    itemId)` → feed `StdoutSniffer`.
+itemId)` → feed `StdoutSniffer`.
   - No SocketProbe (no real pid).
 
 - **ACP** (`AcpSessionRuntime.ts`): mirrors the Codex hooks on the ACP
@@ -376,7 +376,7 @@ mirroring the existing `terminal.onEvent` pattern. `ChatView` subscribes in
 - Source `pty`: `Registry.stop` → `terminalManager.stopProcess(pid)`
   (SIGTERM→SIGKILL via existing escalation).
 - Source `codex`/`acp`: RPC returns `{ kind: "not-stoppable", hint:
-  "interrupt-turn" }`. UI shows inline tooltip "This server is managed by
+"interrupt-turn" }`. UI shows inline tooltip "This server is managed by
   the agent — interrupt the current turn to stop it" with a button calling
   `providers.interruptTurn`.
 
@@ -391,7 +391,7 @@ mirroring the existing `terminal.onEvent` pattern. `ChatView` subscribes in
   exit → silently discard (no `removed` event published since nothing was
   ever surfaced beyond predicted).
 - **Vite HMR self-restart**: same pid + same port → `live → restarting →
-  live` on the same `serverId`.
+live` on the same `serverId`.
 - **Page reload**: on `subscribeDetectedServerEvents`, the server first
   yields one synthetic `registered` event per current server in that
   thread (snapshot from `Registry.getCurrent(threadId)`), then streams

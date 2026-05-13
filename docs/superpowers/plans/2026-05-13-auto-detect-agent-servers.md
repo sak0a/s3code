@@ -79,6 +79,7 @@ Establish the schema, shared utilities, and dependency before any logic.
 ### Task 1: Add `pidtree` runtime dependency
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `apps/server/package.json`
 
@@ -107,6 +108,7 @@ git commit -m "Add pidtree dependency for process-tree socket probing"
 ### Task 2: Add `LineBuffer` shared utility
 
 **Files:**
+
 - Create: `packages/shared/src/lineBuffer.ts`
 - Create: `packages/shared/src/lineBuffer.test.ts`
 - Modify: `packages/shared/package.json` (add subpath export)
@@ -240,6 +242,7 @@ git commit -m "Add LineBuffer shared utility for rolling line storage"
 ### Task 3: Define `detectedServers` contracts schema
 
 **Files:**
+
 - Create: `packages/contracts/src/detectedServers.ts`
 - Modify: `packages/contracts/src/index.ts`
 
@@ -370,14 +373,12 @@ export type DetectedServerStopResult = typeof DetectedServerStopResult.Type;
 export const DetectedServerOpenInBrowserInput = Schema.Struct({
   serverId: Schema.String.check(Schema.isNonEmpty()),
 });
-export type DetectedServerOpenInBrowserInput =
-  typeof DetectedServerOpenInBrowserInput.Type;
+export type DetectedServerOpenInBrowserInput = typeof DetectedServerOpenInBrowserInput.Type;
 
 export const SubscribeDetectedServerEventsInput = Schema.Struct({
   threadId: Schema.String.check(Schema.isNonEmpty()),
 });
-export type SubscribeDetectedServerEventsInput =
-  typeof SubscribeDetectedServerEventsInput.Type;
+export type SubscribeDetectedServerEventsInput = typeof SubscribeDetectedServerEventsInput.Type;
 ```
 
 - [ ] **Step 2: Re-export from package index**
@@ -405,6 +406,7 @@ git commit -m "Add DetectedServer contracts schema"
 ### Task 4: Add `detectedServers.event` push channel + RPCs
 
 **Files:**
+
 - Modify: `packages/contracts/src/ws.ts`
 - Modify: `packages/contracts/src/rpc.ts`
 
@@ -476,6 +478,7 @@ Each service is a self-contained Effect Service with TDD.
 ### Task 5: Implement `ArgvHinter`
 
 **Files:**
+
 - Create: `apps/server/src/detectedServers/Layers/ArgvHinter.ts`
 - Create: `apps/server/src/detectedServers/ArgvHinter.test.ts`
 
@@ -494,18 +497,58 @@ describe("ArgvHinter.hintFromArgv", () => {
     expected: { framework: string; isLikelyServer: boolean };
   }> = [
     { name: "vite", argv: ["vite"], expected: { framework: "vite", isLikelyServer: true } },
-    { name: "next dev", argv: ["next", "dev"], expected: { framework: "next", isLikelyServer: true } },
-    { name: "nuxt dev", argv: ["nuxt", "dev"], expected: { framework: "nuxt", isLikelyServer: true } },
-    { name: "astro dev", argv: ["astro", "dev"], expected: { framework: "astro", isLikelyServer: true } },
-    { name: "remix dev", argv: ["remix", "dev"], expected: { framework: "remix", isLikelyServer: true } },
-    { name: "wrangler dev", argv: ["wrangler", "dev"], expected: { framework: "wrangler", isLikelyServer: true } },
-    { name: "vitest --ui", argv: ["vitest", "--ui"], expected: { framework: "vitest-ui", isLikelyServer: true } },
-    { name: "storybook dev", argv: ["storybook", "dev"], expected: { framework: "storybook", isLikelyServer: true } },
-    { name: "vite build", argv: ["vite", "build"], expected: { framework: "vite", isLikelyServer: false } },
-    { name: "vitest run", argv: ["vitest", "run"], expected: { framework: "unknown", isLikelyServer: false } },
+    {
+      name: "next dev",
+      argv: ["next", "dev"],
+      expected: { framework: "next", isLikelyServer: true },
+    },
+    {
+      name: "nuxt dev",
+      argv: ["nuxt", "dev"],
+      expected: { framework: "nuxt", isLikelyServer: true },
+    },
+    {
+      name: "astro dev",
+      argv: ["astro", "dev"],
+      expected: { framework: "astro", isLikelyServer: true },
+    },
+    {
+      name: "remix dev",
+      argv: ["remix", "dev"],
+      expected: { framework: "remix", isLikelyServer: true },
+    },
+    {
+      name: "wrangler dev",
+      argv: ["wrangler", "dev"],
+      expected: { framework: "wrangler", isLikelyServer: true },
+    },
+    {
+      name: "vitest --ui",
+      argv: ["vitest", "--ui"],
+      expected: { framework: "vitest-ui", isLikelyServer: true },
+    },
+    {
+      name: "storybook dev",
+      argv: ["storybook", "dev"],
+      expected: { framework: "storybook", isLikelyServer: true },
+    },
+    {
+      name: "vite build",
+      argv: ["vite", "build"],
+      expected: { framework: "vite", isLikelyServer: false },
+    },
+    {
+      name: "vitest run",
+      argv: ["vitest", "run"],
+      expected: { framework: "unknown", isLikelyServer: false },
+    },
     { name: "tsc", argv: ["tsc"], expected: { framework: "unknown", isLikelyServer: false } },
     { name: "eslint", argv: ["eslint"], expected: { framework: "unknown", isLikelyServer: false } },
-    { name: "unknown serve", argv: ["foo", "serve"], expected: { framework: "unknown", isLikelyServer: true } },
+    {
+      name: "unknown serve",
+      argv: ["foo", "serve"],
+      expected: { framework: "unknown", isLikelyServer: true },
+    },
   ];
 
   for (const c of cases) {
@@ -594,7 +637,11 @@ export const hintFromArgv = (
   }
 
   // Shortcut: <runner> dev / serve / start / watch (no explicit "run" keyword)
-  if (tokens.length >= 2 && PACKAGE_RUNNERS.has(tokens[0]!) && SERVER_TRIGGER_TOKENS.has(tokens[1]!)) {
+  if (
+    tokens.length >= 2 &&
+    PACKAGE_RUNNERS.has(tokens[0]!) &&
+    SERVER_TRIGGER_TOKENS.has(tokens[1]!)
+  ) {
     if (pkg?.scripts?.[tokens[1]!]) {
       const inner = pkg.scripts[tokens[1]!]!.split(/\s+/).filter(Boolean);
       return hintFromArgv(inner, undefined);
@@ -643,6 +690,7 @@ git commit -m "Add ArgvHinter for framework detection from spawn argv"
 ### Task 6: Implement `StdoutSniffer` (regex + ANSI strip)
 
 **Files:**
+
 - Create: `apps/server/src/detectedServers/Layers/StdoutSniffer.ts`
 - Create: `apps/server/src/detectedServers/StdoutSniffer.test.ts`
 - Create: `apps/server/src/detectedServers/__fixtures__/stdout/vite.txt`
@@ -659,6 +707,7 @@ git commit -m "Add ArgvHinter for framework detection from spawn argv"
 Each fixture is real captured stdout from running the framework. Use simplified, ANSI-rich captures. Examples:
 
 `__fixtures__/stdout/vite.txt`:
+
 ```
   VITE v5.0.10  ready in 312 ms
 
@@ -667,6 +716,7 @@ Each fixture is real captured stdout from running the framework. Use simplified,
 ```
 
 `__fixtures__/stdout/next.txt`:
+
 ```
    ▲ Next.js 14.0.4
    - Local:        http://localhost:3000
@@ -676,6 +726,7 @@ Each fixture is real captured stdout from running the framework. Use simplified,
 ```
 
 `__fixtures__/stdout/nuxt.txt`:
+
 ```
 ℹ Vite client warmed up in 432ms
 ℹ Vite server warmed up in 451ms
@@ -688,6 +739,7 @@ Each fixture is real captured stdout from running the framework. Use simplified,
 ```
 
 `__fixtures__/stdout/astro.txt`:
+
 ```
  astro  v4.0.7 ready in 145 ms
 
@@ -696,6 +748,7 @@ Each fixture is real captured stdout from running the framework. Use simplified,
 ```
 
 `__fixtures__/stdout/remix.txt`:
+
 ```
  💿 remix dev
 
@@ -703,6 +756,7 @@ Each fixture is real captured stdout from running the framework. Use simplified,
 ```
 
 `__fixtures__/stdout/wrangler.txt`:
+
 ```
 ⛅️ wrangler 3.20.0
 
@@ -710,6 +764,7 @@ Each fixture is real captured stdout from running the framework. Use simplified,
 ```
 
 `__fixtures__/stdout/webpack.txt`:
+
 ```
 <i> [webpack-dev-server] Project is running at:
 <i> [webpack-dev-server] Loopback: http://localhost:8080/
@@ -717,6 +772,7 @@ Each fixture is real captured stdout from running the framework. Use simplified,
 ```
 
 `__fixtures__/stdout/express.txt`:
+
 ```
 Server listening on port 3000
 ```
@@ -971,6 +1027,7 @@ git commit -m "Add StdoutSniffer for framework URL extraction from spawn output"
 ### Task 7: Implement `Registry` state machine
 
 **Files:**
+
 - Create: `apps/server/src/detectedServers/Layers/Registry.ts`
 - Create: `apps/server/src/detectedServers/Registry.test.ts`
 
@@ -1269,9 +1326,7 @@ export class Registry {
     if (input.patch.status && input.patch.status !== cur.status) {
       const legal = ALLOWED_TRANSITIONS[cur.status];
       if (!legal.includes(input.patch.status)) {
-        throw new Error(
-          `illegal transition ${cur.status} → ${input.patch.status} for ${serverId}`,
-        );
+        throw new Error(`illegal transition ${cur.status} → ${input.patch.status} for ${serverId}`);
       }
     }
 
@@ -1327,6 +1382,7 @@ Each OS adapter is independently testable via mocked I/O.
 ### Task 8: Define `SocketProbe` service contract
 
 **Files:**
+
 - Create: `apps/server/src/detectedServers/Layers/SocketProbe.ts`
 
 - [ ] **Step 1: Create the facade interface**
@@ -1372,6 +1428,7 @@ git commit -m "Add SocketProbe service tag"
 ### Task 9: Implement `SocketProbe.Linux`
 
 **Files:**
+
 - Create: `apps/server/src/detectedServers/Layers/SocketProbe.Linux.ts`
 - Create: `apps/server/src/detectedServers/SocketProbe.Linux.test.ts`
 - Create: `apps/server/src/detectedServers/__fixtures__/proc/tcp.txt`
@@ -1380,6 +1437,7 @@ git commit -m "Add SocketProbe service tag"
 - [ ] **Step 1: Create fixtures**
 
 `__fixtures__/proc/tcp.txt`:
+
 ```
   sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
    0: 0100007F:1451 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 12345 1 0000000000000000 100 0 0 10 0
@@ -1390,6 +1448,7 @@ git commit -m "Add SocketProbe service tag"
 (`0A` = LISTEN state. Port `1451` = 5201 decimal, `14B5` = 5301, `1452` = 5202.)
 
 `__fixtures__/proc/tcp6.txt`:
+
 ```
   sl  local_address                         remote_address                        st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
    0: 00000000000000000000000000000000:1F90 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 22222 1 0000000000000000 100 0 0 10 0
@@ -1476,7 +1535,10 @@ const hexToIpv6 = (hex: string): string => {
 };
 
 export const parseProcTcpRows = (text: string): ProcTcpRow[] => {
-  const lines = text.split("\n").slice(1).filter((l) => l.trim().length > 0);
+  const lines = text
+    .split("\n")
+    .slice(1)
+    .filter((l) => l.trim().length > 0);
   return lines.map((line) => {
     const parts = line.trim().split(/\s+/);
     const [hostHex, portHex] = parts[1]!.split(":");
@@ -1491,7 +1553,10 @@ export const parseProcTcpRows = (text: string): ProcTcpRow[] => {
 };
 
 export const parseProcTcp6Rows = (text: string): ProcTcpRow[] => {
-  const lines = text.split("\n").slice(1).filter((l) => l.trim().length > 0);
+  const lines = text
+    .split("\n")
+    .slice(1)
+    .filter((l) => l.trim().length > 0);
   return lines.map((line) => {
     const parts = line.trim().split(/\s+/);
     const [hostHex, portHex] = parts[1]!.split(":");
@@ -1572,6 +1637,7 @@ git commit -m "Add Linux SocketProbe via /proc/<pid>/net/tcp parsing"
 ### Task 10: Implement `SocketProbe.Darwin`
 
 **Files:**
+
 - Create: `apps/server/src/detectedServers/Layers/SocketProbe.Darwin.ts`
 - Create: `apps/server/src/detectedServers/SocketProbe.Darwin.test.ts`
 
@@ -1691,6 +1757,7 @@ git commit -m "Add Darwin SocketProbe via lsof"
 ### Task 11: Implement `SocketProbe.Windows`
 
 **Files:**
+
 - Create: `apps/server/src/detectedServers/Layers/SocketProbe.Windows.ts`
 - Create: `apps/server/src/detectedServers/SocketProbe.Windows.test.ts`
 
@@ -1812,6 +1879,7 @@ git commit -m "Add Windows SocketProbe via netstat -ano"
 ### Task 12: Add OS-selecting `SocketProbe` layer
 
 **Files:**
+
 - Modify: `apps/server/src/detectedServers/Layers/SocketProbe.ts`
 
 - [ ] **Step 1: Add the runtime OS selector**
@@ -1864,6 +1932,7 @@ git commit -m "Add runtime OS-selecting SocketProbe layer"
 ### Task 13: Implement `LivenessHeartbeat`
 
 **Files:**
+
 - Create: `apps/server/src/detectedServers/Layers/LivenessHeartbeat.ts`
 
 - [ ] **Step 1: Implement the service**
@@ -1881,10 +1950,9 @@ export interface LivenessHeartbeatShape {
   readonly check: (url: string) => Effect.Effect<boolean>;
 }
 
-export class LivenessHeartbeat extends Context.Service<
-  LivenessHeartbeat,
-  LivenessHeartbeatShape
->()("s3/detectedServers/Layers/LivenessHeartbeat") {}
+export class LivenessHeartbeat extends Context.Service<LivenessHeartbeat, LivenessHeartbeatShape>()(
+  "s3/detectedServers/Layers/LivenessHeartbeat",
+) {}
 
 const checkImpl = (url: string): Effect.Effect<boolean> =>
   Effect.tryPromise({
@@ -1915,6 +1983,7 @@ git commit -m "Add LivenessHeartbeat service for HEAD-probe checks"
 ### Task 14: Define `DetectedServerRegistry` Service tag wrapping the in-memory `Registry`
 
 **Files:**
+
 - Create: `apps/server/src/detectedServers/Services/DetectedServerRegistry.ts`
 
 - [ ] **Step 1: Create the service tag and Layer**
@@ -1924,10 +1993,7 @@ Create `apps/server/src/detectedServers/Services/DetectedServerRegistry.ts`:
 ```ts
 import { Effect, Context, Layer } from "effect";
 import type { DetectedServer, DetectedServerEvent } from "@s3tools/contracts";
-import {
-  Registry,
-  type RegistryRegisterInput,
-} from "../Layers/Registry.ts";
+import { Registry, type RegistryRegisterInput } from "../Layers/Registry.ts";
 
 export interface DetectedServerRegistryShape {
   readonly registerOrUpdate: (input: RegistryRegisterInput) => Effect.Effect<DetectedServer>;
@@ -1976,6 +2042,7 @@ git commit -m "Add DetectedServerRegistry Effect Service wrapping the in-memory 
 ### Task 15: Build `DetectedServersIngress` layer composing everything
 
 **Files:**
+
 - Create: `apps/server/src/detectedServers/Layers/DetectedServersIngress.ts`
 - Modify: `apps/server/src/serverLayers.ts`
 
@@ -2281,11 +2348,13 @@ git commit -m "Compose DetectedServersIngress with probe, heartbeat, and registr
 ### Task 16: Tap Codex provider
 
 **Files:**
+
 - Modify: `apps/server/src/provider/Layers/CodexSessionRuntime.ts`
 
 - [ ] **Step 1: Inspect the existing notification routing**
 
 Open `apps/server/src/provider/Layers/CodexSessionRuntime.ts` and locate:
+
 - Handler for `item/commandExecution/requestApproval` (~lines 917-971 per the spec).
 - Handler for `item/commandExecution/outputDelta` (~lines 549-550 per the spec).
 
@@ -2304,11 +2373,13 @@ Add it as a dependency of the runtime construction (alongside other services alr
 In the existing `requestApproval` handler, after the user approval payload is parsed (where `argv` and `cwd` are available), call:
 
 ```ts
-const tracker = yield* ingress.trackAgentCommand(
-  { threadId, turnId, itemId, argv, cwd },
-  "codex",
-  /* pkg */ undefined, // package.json read can be added later; undefined is safe
-);
+const tracker =
+  yield *
+  ingress.trackAgentCommand(
+    { threadId, turnId, itemId, argv, cwd },
+    "codex",
+    /* pkg */ undefined, // package.json read can be added later; undefined is safe
+  );
 trackerMap.set(`${turnId}::${itemId}`, tracker);
 ```
 
@@ -2350,6 +2421,7 @@ git commit -m "Tap Codex command execution events for detected-server tracking"
 ### Task 17: Tap ACP provider (Claude/Cursor)
 
 **Files:**
+
 - Modify: `apps/server/src/provider/acp/AcpSessionRuntime.ts`
 
 - [ ] **Step 1: Inspect the existing ACP command-execution event shape**
@@ -2364,11 +2436,8 @@ Add `DetectedServersIngress` as a dependency, maintain a per-(turnId, itemId) tr
 import { DetectedServersIngress } from "../../detectedServers/Layers/DetectedServersIngress.ts";
 
 // at the right call site:
-const tracker = yield* ingress.trackAgentCommand(
-  { threadId, turnId, itemId, argv, cwd },
-  "acp",
-  undefined,
-);
+const tracker =
+  yield * ingress.trackAgentCommand({ threadId, turnId, itemId, argv, cwd }, "acp", undefined);
 trackerMap.set(`${turnId}::${itemId}`, tracker);
 
 // on output:
@@ -2396,6 +2465,7 @@ git commit -m "Tap ACP command execution events for detected-server tracking"
 ### Task 18: Tap local PTY (terminal + OpenCode)
 
 **Files:**
+
 - Modify: `apps/server/src/terminal/Layers/Manager.ts`
 
 - [ ] **Step 1: Locate the PTY spawn site**
@@ -2413,16 +2483,18 @@ import { DetectedServersIngress } from "../../detectedServers/Layers/DetectedSer
 Pull it as a service dependency in the manager's effect:
 
 ```ts
-const ingress = yield* DetectedServersIngress;
+const ingress = yield * DetectedServersIngress;
 ```
 
 After the `PtyProcess` is created and you know `pid`, `argv`, `cwd`:
 
 ```ts
-const tracker = yield* ingress.trackPty(
-  { threadId: session.threadId, pid: pty.pid, argv: shellArgs, cwd: session.cwd },
-  undefined,
-);
+const tracker =
+  yield *
+  ingress.trackPty(
+    { threadId: session.threadId, pid: pty.pid, argv: shellArgs, cwd: session.cwd },
+    undefined,
+  );
 ```
 
 Where `shellArgs` is the array `[session.shell, ...session.args]` or whatever the actual argv is at the spawn site.
@@ -2464,11 +2536,13 @@ git commit -m "Tap local PTY events for detected-server tracking"
 ### Task 19: Wire `detectedServers.event` push channel + RPC handlers
 
 **Files:**
+
 - Modify: `apps/server/src/wsServer.ts`
 
 - [ ] **Step 1: Inspect existing RPC + push wiring**
 
 Search for `subscribeTerminalEvents` in `apps/server/src/wsServer.ts`. Note:
+
 - How the streaming RPC handler is registered.
 - How the push channel envelope is constructed and routed through `ServerPushBus`.
 
@@ -2566,6 +2640,7 @@ git commit -m "Wire detectedServers RPC handlers (subscribe, stop, openInBrowser
 ### Task 20: Codex synthetic integration test
 
 **Files:**
+
 - Create: `apps/server/integration/detectedServersCodex.integration.test.ts`
 
 - [ ] **Step 1: Write the integration test**
@@ -2636,6 +2711,7 @@ git commit -m "Add Codex synthetic integration test for detected servers"
 ### Task 21: PTY real-server integration test
 
 **Files:**
+
 - Create: `apps/server/integration/detectedServersPty.integration.test.ts`
 
 - [ ] **Step 1: Write the integration test**
@@ -2644,7 +2720,10 @@ git commit -m "Add Codex synthetic integration test for detected servers"
 import { describe, it, expect } from "vitest";
 import { Effect, Layer } from "effect";
 import { spawn } from "node:child_process";
-import { DetectedServerRegistryLive, DetectedServerRegistry } from "../src/detectedServers/Services/DetectedServerRegistry.ts";
+import {
+  DetectedServerRegistryLive,
+  DetectedServerRegistry,
+} from "../src/detectedServers/Services/DetectedServerRegistry.ts";
 import { SocketProbeLive } from "../src/detectedServers/Layers/SocketProbe.ts";
 import { LivenessHeartbeatLive } from "../src/detectedServers/Layers/LivenessHeartbeat.ts";
 import { DetectedServersIngress } from "../src/detectedServers/Layers/DetectedServersIngress.ts";
@@ -2721,6 +2800,7 @@ git commit -m "Add PTY real-server integration test for detected servers"
 ### Task 22: Add `detectedServerStore` Zustand slice
 
 **Files:**
+
 - Create: `apps/web/src/detectedServerStore.ts`
 - Create: `apps/web/src/detectedServerStore.test.ts`
 
@@ -2923,6 +3003,7 @@ git commit -m "Add detectedServerStore Zustand slice"
 ### Task 23: Subscribe to detected-server events in the WS RPC client
 
 **Files:**
+
 - Modify: `apps/web/src/rpc/wsRpcClient.ts`
 
 - [ ] **Step 1: Inspect existing terminal subscription pattern**
@@ -2971,6 +3052,7 @@ git commit -m "Add detectedServers subscription to WS RPC client"
 ### Task 24: Build `DetectedServersBadge`
 
 **Files:**
+
 - Create: `apps/web/src/components/BranchToolbar/DetectedServersBadge.tsx`
 - Create: `apps/web/src/components/BranchToolbar/DetectedServersBadge.test.tsx`
 - Modify: `apps/web/src/components/BranchToolbar.tsx`
@@ -3084,7 +3166,7 @@ const servers = useDetectedServerStore((s) => {
 });
 
 // in JSX, alongside the terminal toggle button:
-<DetectedServersBadge servers={servers} onClick={openServersTab} />
+<DetectedServersBadge servers={servers} onClick={openServersTab} />;
 ```
 
 `openServersTab` is a callback the parent (`ChatView`) passes down that sets the drawer to open with the Servers kind active.
@@ -3106,6 +3188,7 @@ git commit -m "Add DetectedServersBadge to BranchToolbar"
 ### Task 25: Add kind tabset to `ThreadTerminalDrawer`
 
 **Files:**
+
 - Modify: `apps/web/src/components/ThreadTerminalDrawer.tsx`
 - Modify: `apps/web/src/terminalStateStore.ts`
 
@@ -3137,7 +3220,9 @@ In `ThreadTerminalDrawer.tsx`, above the current terminal-tab strip, render a sm
     aria-pressed={drawerKind === "terminals"}
     className={cn(
       "rounded px-2 py-0.5",
-      drawerKind === "terminals" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground",
+      drawerKind === "terminals"
+        ? "bg-accent text-foreground"
+        : "text-muted-foreground hover:text-foreground",
     )}
   >
     Terminals
@@ -3148,7 +3233,9 @@ In `ThreadTerminalDrawer.tsx`, above the current terminal-tab strip, render a sm
     aria-pressed={drawerKind === "servers"}
     className={cn(
       "rounded px-2 py-0.5",
-      drawerKind === "servers" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground",
+      drawerKind === "servers"
+        ? "bg-accent text-foreground"
+        : "text-muted-foreground hover:text-foreground",
     )}
   >
     Servers
@@ -3185,6 +3272,7 @@ git commit -m "Add kind tabset (Terminals / Servers) to ThreadTerminalDrawer"
 ### Task 26: Build `DetectedServersPanel` + `DetectedServerRow`
 
 **Files:**
+
 - Create: `apps/web/src/components/detectedServers/DetectedServersPanel.tsx`
 - Create: `apps/web/src/components/detectedServers/DetectedServerRow.tsx`
 
@@ -3301,12 +3389,13 @@ export const DetectedServersPanel = ({ threadKey }: Props) => {
   const setActive = useDetectedServerStore((s) => s.setActive);
 
   const servers = useMemo(() => (serversMap ? [...serversMap.values()] : []), [serversMap]);
-  const active = activeId && serversMap ? serversMap.get(activeId) ?? null : null;
+  const active = activeId && serversMap ? (serversMap.get(activeId) ?? null) : null;
 
   if (servers.length === 0) {
     return (
       <div className="flex h-full items-center justify-center p-4 text-xs text-muted-foreground">
-        No servers detected yet. They'll appear here when an agent runs <code>dev</code>/<code>serve</code> commands.
+        No servers detected yet. They'll appear here when an agent runs <code>dev</code>/
+        <code>serve</code> commands.
       </div>
     );
   }
@@ -3374,6 +3463,7 @@ git commit -m "Add DetectedServersPanel and DetectedServerRow"
 ### Task 27: Build `DetectedServerLogView` with xterm.js
 
 **Files:**
+
 - Create: `apps/web/src/components/detectedServers/DetectedServerLogView.tsx`
 
 - [ ] **Step 1: Inspect the existing xterm.js mount pattern**
@@ -3479,6 +3569,7 @@ git commit -m "Add xterm.js-backed log view for detected servers"
 ### Task 28: Wire WS subscription in ChatView
 
 **Files:**
+
 - Modify: `apps/web/src/components/ChatView.tsx` (or wherever active-thread WS subscriptions live)
 
 - [ ] **Step 1: Inspect the existing terminal subscription site**
@@ -3523,6 +3614,7 @@ Expected: no errors.
 Run: `bun run dev:web` (and `bun run dev:server` if separate)
 
 Manually:
+
 1. Open the web app.
 2. Open a thread.
 3. From the integrated terminal, run `npx vite` in a real Vite project, or use the agent to spawn a dev server.
@@ -3570,6 +3662,7 @@ Expected: all tests PASS (including new unit, OS adapter, and integration tests)
 - [ ] **Step 5: Smoke test manually**
 
 Repeat the manual smoke test from Task 28 Step 5 against the agent flow:
+
 1. Open a Codex thread.
 2. Approve a `bun run dev` (or `npm run dev`) command in a project whose `package.json` `scripts.dev` is `vite`.
 3. Confirm a `candidate` server appears in the Servers tab with the agent's printed URL.
