@@ -26,6 +26,7 @@ import * as CodexErrors from "effect-codex-app-server/errors";
 
 import { ServerConfig } from "../../config.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
+import { DetectedServersIngress } from "../../detectedServers/Layers/DetectedServersIngress.ts";
 import { ProviderAdapterValidationError } from "../Errors.ts";
 import type { CodexAdapterShape } from "../Services/CodexAdapter.ts";
 import { ProviderSessionDirectory } from "../Services/ProviderSessionDirectory.ts";
@@ -209,6 +210,11 @@ const providerSessionDirectoryTestLayer = Layer.succeed(ProviderSessionDirectory
   listBindings: () => Effect.succeed([]),
 });
 
+const detectedServersIngressTestLayer = Layer.succeed(DetectedServersIngress, {
+  trackAgentCommand: () => Effect.succeed({ feed: () => {}, end: () => {} }),
+  trackPty: () => Effect.succeed({ feed: () => {}, end: () => {} }),
+});
+
 const validationRuntimeFactory = makeRuntimeFactory();
 const validationLayer = it.layer(
   Layer.effect(
@@ -224,6 +230,7 @@ const validationLayer = it.layer(
     Layer.provideMerge(ServerSettingsService.layerTest()),
     Layer.provideMerge(providerSessionDirectoryTestLayer),
     Layer.provideMerge(NodeServices.layer),
+    Layer.provideMerge(detectedServersIngressTestLayer),
   ),
 );
 
@@ -293,6 +300,7 @@ const sessionErrorLayer = it.layer(
     Layer.provideMerge(ServerSettingsService.layerTest()),
     Layer.provideMerge(providerSessionDirectoryTestLayer),
     Layer.provideMerge(NodeServices.layer),
+    Layer.provideMerge(detectedServersIngressTestLayer),
   ),
 );
 
@@ -365,6 +373,7 @@ sessionErrorLayer("CodexAdapterLive session errors", (it) => {
       Layer.provideMerge(ServerSettingsService.layerTest()),
       Layer.provideMerge(providerSessionDirectoryTestLayer),
       Layer.provideMerge(NodeServices.layer),
+      Layer.provideMerge(detectedServersIngressTestLayer),
     );
 
     return Effect.gen(function* () {
@@ -419,6 +428,7 @@ const lifecycleLayer = it.layer(
     Layer.provideMerge(ServerSettingsService.layerTest()),
     Layer.provideMerge(providerSessionDirectoryTestLayer),
     Layer.provideMerge(NodeServices.layer),
+    Layer.provideMerge(detectedServersIngressTestLayer),
   ),
 );
 
@@ -998,6 +1008,7 @@ const scopedLifecycleLayer = it.layer(
     Layer.provideMerge(ServerSettingsService.layerTest()),
     Layer.provideMerge(providerSessionDirectoryTestLayer),
     Layer.provideMerge(NodeServices.layer),
+    Layer.provideMerge(detectedServersIngressTestLayer),
   ),
 );
 
@@ -1042,6 +1053,7 @@ const scopedFailureLayer = it.layer(
     Layer.provideMerge(ServerSettingsService.layerTest()),
     Layer.provideMerge(providerSessionDirectoryTestLayer),
     Layer.provideMerge(NodeServices.layer),
+    Layer.provideMerge(detectedServersIngressTestLayer),
   ),
 );
 
@@ -1092,6 +1104,7 @@ it.effect("flushes managed native logs when the adapter layer shuts down", () =>
         Layer.provideMerge(ServerSettingsService.layerTest()),
         Layer.provideMerge(providerSessionDirectoryTestLayer),
         Layer.provideMerge(NodeServices.layer),
+        Layer.provideMerge(detectedServersIngressTestLayer),
       );
       const context = yield* Layer.buildWithScope(layer, scope);
       const adapter = yield* Effect.service(CodexAdapter).pipe(Effect.provide(context));
