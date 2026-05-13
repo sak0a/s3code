@@ -1376,7 +1376,6 @@ interface ProjectSettingsDialogProps {
   preferredRemoteName: string | null;
   // Location section
   workspaceRoot: string;
-  projectMetadataDir: string;
   // AI section
   customSystemPrompt: string;
   // Handlers
@@ -1384,7 +1383,6 @@ interface ProjectSettingsDialogProps {
   onSave: () => void;
   onTitleChange: (value: string) => void;
   onWorkspaceRootChange: (value: string) => void;
-  onProjectMetadataDirChange: (value: string) => void;
   onCustomSystemPromptChange: (value: string) => void;
   onPreferredRemoteChange: (value: string | null) => void;
   onPickWorkspaceRoot: () => void;
@@ -1594,15 +1592,12 @@ function ProjectSettingsGeneralSection(props: {
 
 function ProjectSettingsLocationSection(props: {
   workspaceRoot: string;
-  projectMetadataDir: string;
+  projectId: string;
   onWorkspaceRootChange: (value: string) => void;
-  onProjectMetadataDirChange: (value: string) => void;
   onPickWorkspaceRoot: () => void;
   onSave: () => void;
 }) {
-  const preview = `${props.workspaceRoot || "<project-root>"}/${
-    props.projectMetadataDir || ".s3code"
-  }/worktrees`;
+  const worktreesPath = `~/.s3code/worktrees/${props.projectId}/`;
   return (
     <div className="space-y-6">
       <section className="space-y-1.5">
@@ -1633,31 +1628,17 @@ function ProjectSettingsLocationSection(props: {
       </section>
 
       <section className="space-y-1.5">
-        <label htmlFor="project-metadata-dir" className="text-xs font-medium text-foreground">
-          Metadata folder
-        </label>
+        <div className="text-xs font-medium text-foreground">Worktrees location</div>
         <p className="text-[11px] text-muted-foreground">
-          Where worktrees and project data are stored.
+          New worktrees for this project are created here. Each one is named{" "}
+          <span className="font-mono">{"<branch>__<word>"}</span>, where{" "}
+          <span className="font-mono">{"<word>"}</span> is a random 5-letter suffix that
+          disambiguates multiple checkouts of the same branch.
         </p>
-        <Input
-          id="project-metadata-dir"
-          aria-label="Metadata folder"
-          value={props.projectMetadataDir}
-          placeholder=".s3code"
-          onChange={(event) => props.onProjectMetadataDirChange(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              props.onSave();
-            }
-          }}
-        />
+        <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-3 py-2">
+          <div className="truncate font-mono text-xs">{worktreesPath}</div>
+        </div>
       </section>
-
-      <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-3 py-2">
-        <div className="text-[11px] text-muted-foreground">Worktrees will be created under</div>
-        <div className="truncate font-mono text-xs">{preview}</div>
-      </div>
     </div>
   );
 }
@@ -1787,9 +1768,8 @@ function ProjectSettingsDialog(props: ProjectSettingsDialogProps) {
               ) : section === "location" ? (
                 <ProjectSettingsLocationSection
                   workspaceRoot={props.workspaceRoot}
-                  projectMetadataDir={props.projectMetadataDir}
+                  projectId={target.id}
                   onWorkspaceRootChange={props.onWorkspaceRootChange}
-                  onProjectMetadataDirChange={props.onProjectMetadataDirChange}
                   onPickWorkspaceRoot={props.onPickWorkspaceRoot}
                   onSave={props.onSave}
                 />
@@ -2429,7 +2409,6 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   const [projectSettingsTitle, setProjectSettingsTitle] = useState("");
   const [projectSettingsWorkspaceRoot, setProjectSettingsWorkspaceRoot] = useState("");
   const [projectSettingsCustomSystemPrompt, setProjectSettingsCustomSystemPrompt] = useState("");
-  const [projectSettingsProjectMetadataDir, setProjectSettingsProjectMetadataDir] = useState("");
   const [projectSettingsSaving, setProjectSettingsSaving] = useState(false);
   const [projectSettingsCustomAvatarContentHash, setProjectSettingsCustomAvatarContentHash] =
     useState<string | null>(null);
@@ -2699,7 +2678,6 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     setProjectSettingsTitle(member.name);
     setProjectSettingsWorkspaceRoot(member.cwd);
     setProjectSettingsCustomSystemPrompt(member.customSystemPrompt ?? "");
-    setProjectSettingsProjectMetadataDir(member.projectMetadataDir ?? ".s3code");
     setProjectSettingsSaving(false);
     setProjectSettingsCustomAvatarContentHash(member.customAvatarContentHash ?? null);
     setProjectSettingsPreferredRemoteName(member.preferredRemoteName ?? null);
@@ -3637,7 +3615,6 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     setProjectSettingsTitle("");
     setProjectSettingsWorkspaceRoot("");
     setProjectSettingsCustomSystemPrompt("");
-    setProjectSettingsProjectMetadataDir("");
     setProjectSettingsSaving(false);
     setProjectSettingsCustomAvatarContentHash(null);
     setProjectSettingsPreferredRemoteName(null);
@@ -3669,7 +3646,6 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     const title = projectSettingsTitle.trim();
     const workspaceRoot = projectSettingsWorkspaceRoot.trim();
     const customSystemPrompt = projectSettingsCustomSystemPrompt.trim();
-    const projectMetadataDir = projectSettingsProjectMetadataDir.trim();
     if (title.length === 0) {
       toastManager.add({
         type: "warning",
@@ -3684,18 +3660,9 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       });
       return;
     }
-    if (projectMetadataDir.length === 0) {
-      toastManager.add({
-        type: "warning",
-        title: "Project metadata folder cannot be empty",
-      });
-      return;
-    }
 
     const titleChanged = title !== projectSettingsTarget.name;
     const workspaceRootChanged = workspaceRoot !== projectSettingsTarget.cwd;
-    const projectMetadataDirChanged =
-      projectMetadataDir !== (projectSettingsTarget.projectMetadataDir ?? ".s3code");
     const currentCustomSystemPrompt = projectSettingsTarget.customSystemPrompt?.trim() ?? "";
     const customSystemPromptChanged = customSystemPrompt !== currentCustomSystemPrompt;
     const preferredRemoteNameChanged =
@@ -3703,7 +3670,6 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     if (
       !titleChanged &&
       !workspaceRootChanged &&
-      !projectMetadataDirChanged &&
       !customSystemPromptChanged &&
       !preferredRemoteNameChanged
     ) {
@@ -3731,7 +3697,6 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         projectId: projectSettingsTarget.id,
         ...(titleChanged ? { title } : {}),
         ...(workspaceRootChanged ? { workspaceRoot } : {}),
-        ...(projectMetadataDirChanged ? { projectMetadataDir } : {}),
         ...(customSystemPromptChanged
           ? { customSystemPrompt: customSystemPrompt.length > 0 ? customSystemPrompt : null }
           : {}),
@@ -3754,7 +3719,6 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     closeProjectSettingsDialog,
     projectSettingsSaving,
     projectSettingsCustomSystemPrompt,
-    projectSettingsProjectMetadataDir,
     projectSettingsPreferredRemoteName,
     projectSettingsTarget,
     projectSettingsTitle,
@@ -4271,14 +4235,12 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         customAvatarContentHash={projectSettingsCustomAvatarContentHash}
         preferredRemoteName={projectSettingsPreferredRemoteName}
         workspaceRoot={projectSettingsWorkspaceRoot}
-        projectMetadataDir={projectSettingsProjectMetadataDir}
         customSystemPrompt={projectSettingsCustomSystemPrompt}
         saving={projectSettingsSaving}
         onClose={closeProjectSettingsDialog}
         onSave={() => void submitProjectSettings()}
         onTitleChange={setProjectSettingsTitle}
         onWorkspaceRootChange={setProjectSettingsWorkspaceRoot}
-        onProjectMetadataDirChange={setProjectSettingsProjectMetadataDir}
         onCustomSystemPromptChange={setProjectSettingsCustomSystemPrompt}
         onPreferredRemoteChange={setProjectSettingsPreferredRemoteName}
         onPickWorkspaceRoot={() => void pickProjectSettingsWorkspaceRoot()}
