@@ -1,18 +1,26 @@
 import {
   BrainIcon,
+  CircleOffIcon,
   ClipboardCopyIcon,
   CopyIcon,
   DownloadIcon,
+  GaugeIcon,
+  type LucideIcon,
   PencilIcon,
   PlusIcon,
   Trash2Icon,
   UploadIcon,
+  ZapIcon,
 } from "lucide-react";
 import { type ChangeEvent, Fragment, useCallback, useMemo, useRef, useState } from "react";
 
 import { useTheme } from "../../hooks/useTheme";
 import { cn } from "../../lib/utils";
-import { type ReasoningIndicatorStyle, useUiStateStore } from "../../uiStateStore";
+import {
+  type ReasoningIndicatorStyle,
+  type TokenModeControlStyle,
+  useUiStateStore,
+} from "../../uiStateStore";
 import {
   addCustomTheme,
   applyThemeToDocument,
@@ -71,10 +79,42 @@ const REASONING_INDICATOR_OPTIONS = [
   description: string;
 }>;
 
+const TOKEN_MODE_CONTROL_OPTIONS = [
+  {
+    value: "icon-text" as const,
+    label: "Icon + text",
+    description: "Show the mode icon and label",
+    preview: "Balanced",
+    icon: GaugeIcon,
+  },
+  {
+    value: "icon" as const,
+    label: "Icon only",
+    description: "Use the compact mode icon",
+    preview: "",
+    icon: ZapIcon,
+  },
+  {
+    value: "text" as const,
+    label: "Text label",
+    description: "Show labels without icons",
+    preview: "Tokens off",
+    icon: CircleOffIcon,
+  },
+] satisfies ReadonlyArray<{
+  value: TokenModeControlStyle;
+  label: string;
+  description: string;
+  preview: string;
+  icon: LucideIcon;
+}>;
+
 export function AppearanceSettingsPanel() {
   const { theme, setTheme, resolvedTheme, activeThemeId, setActiveTheme } = useTheme();
   const reasoningIndicatorStyle = useUiStateStore((state) => state.reasoningIndicatorStyle);
   const setReasoningIndicatorStyle = useUiStateStore((state) => state.setReasoningIndicatorStyle);
+  const tokenModeControlStyle = useUiStateStore((state) => state.tokenModeControlStyle);
+  const setTokenModeControlStyle = useUiStateStore((state) => state.setTokenModeControlStyle);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ThemeDefinition | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -397,7 +437,7 @@ export function AppearanceSettingsPanel() {
         </div>
       </SettingsSection>
 
-      <SettingsSection title="Reasoning indicator">
+      <SettingsSection title="Composer controls">
         <SettingsRow
           title="Reasoning chip style"
           description="How the reasoning effort level appears in the composer bar."
@@ -461,6 +501,58 @@ export function AppearanceSettingsPanel() {
                       ) : (
                         <span>High</span>
                       )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          }
+        />
+        <SettingsRow
+          title="Token mode style"
+          description="How the token efficiency mode appears in the composer bar."
+          resetAction={
+            tokenModeControlStyle !== "icon-text" ? (
+              <SettingResetButton
+                label="token mode style"
+                onClick={() => setTokenModeControlStyle("icon-text")}
+              />
+            ) : null
+          }
+          control={
+            <div className="flex w-full flex-col gap-2 sm:w-80">
+              {TOKEN_MODE_CONTROL_OPTIONS.map((option) => {
+                const isSelected = tokenModeControlStyle === option.value;
+                const PreviewIcon = option.icon;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    onClick={() => setTokenModeControlStyle(option.value)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md border px-3 py-2 text-left",
+                      isSelected
+                        ? "border-primary ring-1 ring-primary/40"
+                        : "border-border hover:border-foreground/30",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "size-3.5 rounded-full border",
+                        isSelected ? "border-primary bg-primary/80" : "border-foreground/30",
+                      )}
+                    />
+                    <span className="flex flex-grow flex-col">
+                      <span className="font-medium text-sm">{option.label}</span>
+                      <span className="text-muted-foreground text-xs">{option.description}</span>
+                    </span>
+                    <span className="inline-flex h-7 min-w-7 items-center justify-center gap-1.5 rounded-md bg-muted px-2 font-medium text-muted-foreground text-xs">
+                      {option.value !== "text" ? (
+                        <PreviewIcon aria-hidden="true" className="size-3.5" />
+                      ) : null}
+                      {option.preview ? <span>{option.preview}</span> : null}
                     </span>
                   </button>
                 );
