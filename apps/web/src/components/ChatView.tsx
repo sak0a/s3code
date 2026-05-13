@@ -2919,6 +2919,7 @@ export default function ChatView(props: ChatViewProps) {
       });
       promptRef.current = "";
       clearComposerDraftContent(composerDraftTarget);
+      setComposerDraftTokenMode(composerDraftTarget, tokenMode);
       composerRef.current?.resetCursorState();
       await onSubmitPlanFollowUp({
         text: followUp.text,
@@ -2934,6 +2935,7 @@ export default function ChatView(props: ChatViewProps) {
       handleInteractionModeChange(standaloneSlashCommand);
       promptRef.current = "";
       clearComposerDraftContent(composerDraftTarget);
+      setComposerDraftTokenMode(composerDraftTarget, tokenMode);
       composerRef.current?.resetCursorState();
       return;
     }
@@ -3037,6 +3039,10 @@ export default function ChatView(props: ChatViewProps) {
     ]);
 
     setThreadError(threadIdForSend, null);
+    setComposerDraftTokenMode(scopeThreadRef(environmentId, threadIdForSend), tokenMode);
+    if (isLocalDraftThread) {
+      setDraftThreadContext(composerDraftTarget, { tokenMode });
+    }
     if (expiredTerminalContextCount > 0) {
       const toastCopy = buildExpiredTerminalContextToastCopy(
         expiredTerminalContextCount,
@@ -3052,6 +3058,7 @@ export default function ChatView(props: ChatViewProps) {
     }
     promptRef.current = "";
     clearComposerDraftContent(composerDraftTarget);
+    setComposerDraftTokenMode(composerDraftTarget, tokenMode);
     composerRef.current?.resetCursorState();
 
     let turnStartSucceeded = false;

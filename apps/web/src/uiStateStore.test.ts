@@ -15,6 +15,7 @@ import {
   setReasoningIndicatorStyle,
   setThreadChangedFilesExpanded,
   setThreadWorkEntryExpanded,
+  setTokenModeControlStyle,
   syncProjects,
   syncThreads,
   type UiState,
@@ -29,6 +30,7 @@ function makeUiState(overrides: Partial<UiState> = {}): UiState {
     threadWorkEntryExpandedById: {},
     defaultAdvertisedEndpointKey: null,
     reasoningIndicatorStyle: "icon-dots",
+    tokenModeControlStyle: "icon-text",
     ...overrides,
   };
 }
@@ -731,5 +733,14 @@ describe("uiStateStore — reasoningIndicatorStyle", () => {
     expect(raw).not.toBeNull();
     const parsed = JSON.parse(raw!) as PersistedUiState;
     expect(parsed.reasoningIndicatorStyle).toBe("text");
+  });
+
+  it("persists the token mode control style and reads it back", () => {
+    const state = setTokenModeControlStyle(makeUiState(), "icon");
+    persistState(state);
+    const raw = localStorageStub.getItem(PERSISTED_STATE_KEY);
+    expect(raw).not.toBeNull();
+    const parsed = JSON.parse(raw!) as PersistedUiState;
+    expect(parsed.tokenModeControlStyle).toBe("icon");
   });
 });

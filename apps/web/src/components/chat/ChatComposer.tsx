@@ -130,6 +130,7 @@ import { deriveLatestContextWindowSnapshot } from "../../lib/contextWindow";
 import { formatProviderSkillDisplayName } from "../../providerSkillPresentation";
 import { searchProviderSkills } from "../../providerSkillSearch";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { useUiStateStore } from "../../uiStateStore";
 
 const IMAGE_SIZE_LIMIT_LABEL = `${Math.round(PROVIDER_SEND_TURN_MAX_IMAGE_BYTES / (1024 * 1024))}MB`;
 
@@ -243,6 +244,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
   const RuntimeModeIcon = runtimeModeOption.icon;
   const tokenModeOption = tokenModeConfig[props.tokenMode];
   const TokenModeIcon = tokenModeOption.icon;
+  const tokenModeControlStyle = useUiStateStore((state) => state.tokenModeControlStyle);
 
   return (
     <>
@@ -321,12 +323,17 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
         <SelectTrigger
           variant="ghost"
           size="xs"
-          className="gap-1 px-1.5 font-medium text-muted-foreground/80 hover:text-foreground/80 sm:px-1.5"
+          className={cn(
+            "gap-1 px-1.5 font-medium text-muted-foreground/80 hover:text-foreground/80 sm:px-1.5",
+            tokenModeControlStyle === "icon" && "min-w-7 justify-center px-1 sm:px-1",
+          )}
           aria-label="Token mode"
           title={tokenModeOption.description}
         >
-          <TokenModeIcon className="size-4" />
-          <SelectValue>{tokenModeOption.triggerLabel}</SelectValue>
+          {tokenModeControlStyle !== "text" ? <TokenModeIcon className="size-4" /> : null}
+          {tokenModeControlStyle !== "icon" ? (
+            <SelectValue>{tokenModeOption.triggerLabel}</SelectValue>
+          ) : null}
         </SelectTrigger>
         <SelectPopup
           alignItemWithTrigger={false}
