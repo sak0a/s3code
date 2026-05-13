@@ -9,7 +9,13 @@ import {
   type ThreadId,
   type TurnId,
 } from "@s3tools/contracts";
-import { type ChatMessage, type SessionPhase, type Thread, type ThreadSession } from "../types";
+import {
+  type ChatMessage,
+  DEFAULT_AGENT_TOKEN_MODE,
+  type SessionPhase,
+  type Thread,
+  type ThreadSession,
+} from "../types";
 import { type ComposerImageAttachment, type DraftThreadState } from "../composerDraftStore";
 import { DateTime, Schema } from "effect";
 import { selectThreadByRef, useStore } from "../store";
@@ -40,6 +46,7 @@ export function buildLocalDraftThread(
     modelSelection: fallbackModelSelection,
     runtimeMode: draftThread.runtimeMode,
     interactionMode: draftThread.interactionMode,
+    tokenMode: draftThread.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
     session: null,
     messages: [],
     error,

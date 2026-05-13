@@ -139,6 +139,18 @@ function createBrowserLocalApi(rpcClient?: WsRpcClient): LocalApi {
         rpcClient
           ? rpcClient.server.discoverSourceControl()
           : Promise.reject(unavailableLocalBackendError()),
+      listOpinionatedPlugins: () =>
+        rpcClient
+          ? rpcClient.server.listOpinionatedPlugins()
+          : Promise.reject(unavailableLocalBackendError()),
+      checkOpinionatedPlugins: (input) =>
+        rpcClient
+          ? rpcClient.server.checkOpinionatedPlugins(input)
+          : Promise.reject(unavailableLocalBackendError()),
+      installOpinionatedPlugin: (input) =>
+        rpcClient
+          ? rpcClient.server.installOpinionatedPlugin(input)
+          : Promise.reject(unavailableLocalBackendError()),
     },
     ...(rpcClient
       ? {

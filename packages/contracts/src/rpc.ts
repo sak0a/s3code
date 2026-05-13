@@ -49,6 +49,14 @@ import {
   McpSettingsError,
 } from "./mcp.ts";
 import {
+  OpinionatedPluginCheckInput,
+  OpinionatedPluginError,
+  OpinionatedPluginInstallInput,
+  OpinionatedPluginInstallResult,
+  OpinionatedPluginListResult,
+  OpinionatedPluginStatusResult,
+} from "./opinionatedPlugins.ts";
+import {
   ClientOrchestrationCommand,
   ORCHESTRATION_WS_METHODS,
   OrchestrationDispatchCommandError,
@@ -176,6 +184,9 @@ export const WS_METHODS = {
   serverGetSettings: "server.getSettings",
   serverUpdateSettings: "server.updateSettings",
   serverDiscoverSourceControl: "server.discoverSourceControl",
+  serverListOpinionatedPlugins: "server.listOpinionatedPlugins",
+  serverCheckOpinionatedPlugins: "server.checkOpinionatedPlugins",
+  serverInstallOpinionatedPlugin: "server.installOpinionatedPlugin",
 
   // MCP settings methods
   mcpListWorkspaces: "mcp.listWorkspaces",
@@ -315,6 +326,30 @@ export const WsServerDiscoverSourceControlRpc = Rpc.make(WS_METHODS.serverDiscov
   payload: Schema.Struct({}),
   success: SourceControlDiscoveryResult,
 });
+
+export const WsServerListOpinionatedPluginsRpc = Rpc.make(WS_METHODS.serverListOpinionatedPlugins, {
+  payload: Schema.Struct({}),
+  success: OpinionatedPluginListResult,
+  error: OpinionatedPluginError,
+});
+
+export const WsServerCheckOpinionatedPluginsRpc = Rpc.make(
+  WS_METHODS.serverCheckOpinionatedPlugins,
+  {
+    payload: OpinionatedPluginCheckInput,
+    success: OpinionatedPluginStatusResult,
+    error: OpinionatedPluginError,
+  },
+);
+
+export const WsServerInstallOpinionatedPluginRpc = Rpc.make(
+  WS_METHODS.serverInstallOpinionatedPlugin,
+  {
+    payload: OpinionatedPluginInstallInput,
+    success: OpinionatedPluginInstallResult,
+    error: OpinionatedPluginError,
+  },
+);
 
 export const WsMcpListWorkspacesRpc = Rpc.make(WS_METHODS.mcpListWorkspaces, {
   payload: Schema.Struct({}),
@@ -722,6 +757,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerGetSettingsRpc,
   WsServerUpdateSettingsRpc,
   WsServerDiscoverSourceControlRpc,
+  WsServerListOpinionatedPluginsRpc,
+  WsServerCheckOpinionatedPluginsRpc,
+  WsServerInstallOpinionatedPluginRpc,
   WsMcpListWorkspacesRpc,
   WsMcpListServersRpc,
   WsMcpUpsertServerRpc,

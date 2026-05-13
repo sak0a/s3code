@@ -6,7 +6,7 @@ import {
   resolveThreadStatusPill,
   type SidebarStatusBucket,
 } from "./components/Sidebar.logic";
-import type { SidebarThreadSummary } from "./types";
+import { DEFAULT_AGENT_TOKEN_MODE, type SidebarThreadSummary } from "./types";
 
 export interface SessionTabsFilter {
   worktreeId: string | null | undefined;
@@ -24,6 +24,7 @@ export function draftThreadToSidebarSummary(draft: DraftThreadState): SidebarThr
     projectId: draft.projectId,
     title: "Empty Session",
     interactionMode: draft.interactionMode,
+    tokenMode: draft.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
     session: null,
     createdAt: draft.createdAt,
     archivedAt: null,

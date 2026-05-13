@@ -1,5 +1,6 @@
 import {
   EventId,
+  type AgentTokenMode,
   ProviderDriverKind,
   ProviderInstanceId,
   ProviderItemId,
@@ -68,6 +69,7 @@ export interface ActiveCopilotSession {
   readonly providerInstanceId: ProviderInstanceId;
   readonly createdAt: string;
   readonly runtimeMode: ProviderSession["runtimeMode"];
+  readonly tokenMode: AgentTokenMode;
   readonly pendingApprovals: Map<string, PendingApprovalRequest>;
   readonly pendingUserInputs: Map<string, PendingUserInputRequest>;
   readonly pendingTurnStarts: Set<PendingTurnStartRequest>;

@@ -7,6 +7,7 @@ import {
 import type { ProjectId } from "@s3tools/contracts";
 import type { DraftId, DraftThreadState } from "../../composerDraftStore";
 import {
+  DEFAULT_AGENT_TOKEN_MODE,
   DEFAULT_INTERACTION_MODE,
   type Project,
   type SidebarThreadSummary,
@@ -168,6 +169,7 @@ function adaptDraftThreadForSidebarTree(input: {
     hasPendingUserInput: false,
     id: input.draftThread.threadId,
     interactionMode: input.draftThread.interactionMode ?? DEFAULT_INTERACTION_MODE,
+    tokenMode: input.draftThread.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
     latestTurn: null,
     latestUserMessageAt: null,
     manualStatusBucket: null,

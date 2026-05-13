@@ -6,6 +6,8 @@ import {
   type VcsStatusStreamEvent,
   type LocalApi,
   ORCHESTRATION_WS_METHODS,
+  type OpinionatedPluginCheckInput,
+  type OpinionatedPluginInstallInput,
   type ServerSettingsPatch,
   WS_METHODS,
 } from "@s3tools/contracts";
@@ -156,6 +158,15 @@ export interface WsRpcClient {
     readonly discoverSourceControl: RpcUnaryNoArgMethod<
       typeof WS_METHODS.serverDiscoverSourceControl
     >;
+    readonly listOpinionatedPlugins: RpcUnaryNoArgMethod<
+      typeof WS_METHODS.serverListOpinionatedPlugins
+    >;
+    readonly checkOpinionatedPlugins: (
+      input?: OpinionatedPluginCheckInput,
+    ) => ReturnType<RpcUnaryMethod<typeof WS_METHODS.serverCheckOpinionatedPlugins>>;
+    readonly installOpinionatedPlugin: (
+      input: OpinionatedPluginInstallInput,
+    ) => ReturnType<RpcUnaryMethod<typeof WS_METHODS.serverInstallOpinionatedPlugin>>;
     readonly subscribeConfig: RpcStreamMethod<typeof WS_METHODS.subscribeServerConfig>;
     readonly subscribeLifecycle: RpcStreamMethod<typeof WS_METHODS.subscribeServerLifecycle>;
     readonly subscribeAuthAccess: RpcStreamMethod<typeof WS_METHODS.subscribeAuthAccess>;
@@ -319,6 +330,14 @@ export function createWsRpcClient(transport: WsTransport): WsRpcClient {
         transport.request((client) => client[WS_METHODS.serverUpdateSettings]({ patch })),
       discoverSourceControl: () =>
         transport.request((client) => client[WS_METHODS.serverDiscoverSourceControl]({})),
+      listOpinionatedPlugins: () =>
+        transport.request((client) => client[WS_METHODS.serverListOpinionatedPlugins]({})),
+      checkOpinionatedPlugins: (input) =>
+        transport.request((client) =>
+          client[WS_METHODS.serverCheckOpinionatedPlugins](input ?? {}),
+        ),
+      installOpinionatedPlugin: (input) =>
+        transport.request((client) => client[WS_METHODS.serverInstallOpinionatedPlugin](input)),
       subscribeConfig: (listener, options) =>
         transport.subscribe((client) => client[WS_METHODS.subscribeServerConfig]({}), listener, {
           ...options,

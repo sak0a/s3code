@@ -45,6 +45,13 @@ import type {
   McpServersReloadInput,
 } from "./mcp.ts";
 import type {
+  OpinionatedPluginCheckInput,
+  OpinionatedPluginInstallInput,
+  OpinionatedPluginInstallResult,
+  OpinionatedPluginListResult,
+  OpinionatedPluginStatusResult,
+} from "./opinionatedPlugins.ts";
+import type {
   ProjectListEntriesInput,
   ProjectListEntriesResult,
   ProjectReadFileInput,
@@ -329,6 +336,13 @@ export interface LocalApi {
     getSettings: () => Promise<ServerSettings>;
     updateSettings: (patch: ServerSettingsPatch) => Promise<ServerSettings>;
     discoverSourceControl: () => Promise<SourceControlDiscoveryResult>;
+    listOpinionatedPlugins: () => Promise<OpinionatedPluginListResult>;
+    checkOpinionatedPlugins: (
+      input?: OpinionatedPluginCheckInput,
+    ) => Promise<OpinionatedPluginStatusResult>;
+    installOpinionatedPlugin: (
+      input: OpinionatedPluginInstallInput,
+    ) => Promise<OpinionatedPluginInstallResult>;
   };
   mcp?: {
     listWorkspaces: () => Promise<McpListWorkspacesResult>;
