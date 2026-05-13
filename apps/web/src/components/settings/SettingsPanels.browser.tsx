@@ -17,6 +17,7 @@ import { DateTime, Option } from "effect";
 import { page } from "vitest/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { __resetLocalApiForTests } from "../../localApi";
 import { AppAtomRegistryProvider, resetAppAtomRegistryForTests } from "../../rpc/atomRegistry";
@@ -1233,14 +1234,20 @@ describe("SourceControlSettingsPanel discovery states", () => {
     } as LocalApi;
   }
 
+  function renderSourceControlSettingsPanel(queryClient = new QueryClient()) {
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <AppAtomRegistryProvider>
+          <SourceControlSettingsPanel />
+        </AppAtomRegistryProvider>
+      </QueryClientProvider>,
+    );
+  }
+
   it("shows skeleton sections while the first source control scan is pending", async () => {
     setSourceControlDiscoveryStub(() => new Promise(() => {}));
 
-    mounted = await render(
-      <AppAtomRegistryProvider>
-        <SourceControlSettingsPanel />
-      </AppAtomRegistryProvider>,
-    );
+    mounted = await renderSourceControlSettingsPanel();
 
     await expect.element(page.getByText("Version Control")).toBeInTheDocument();
     await expect.element(page.getByText("Source Control Providers")).toBeInTheDocument();
@@ -1256,11 +1263,7 @@ describe("SourceControlSettingsPanel discovery states", () => {
       sourceControlProviders: [],
     }));
 
-    mounted = await render(
-      <AppAtomRegistryProvider>
-        <SourceControlSettingsPanel />
-      </AppAtomRegistryProvider>,
-    );
+    mounted = await renderSourceControlSettingsPanel();
 
     await expect.element(page.getByText("Nothing detected yet")).toBeInTheDocument();
     await expect
@@ -1290,11 +1293,7 @@ describe("SourceControlSettingsPanel discovery states", () => {
       sourceControlProviders: [],
     }));
 
-    mounted = await render(
-      <AppAtomRegistryProvider>
-        <SourceControlSettingsPanel />
-      </AppAtomRegistryProvider>,
-    );
+    mounted = await renderSourceControlSettingsPanel();
 
     await expect.element(page.getByRole("heading", { name: "Git" })).toBeInTheDocument();
     await expect.element(page.getByText("Nothing detected yet")).not.toBeInTheDocument();
@@ -1321,11 +1320,8 @@ describe("SourceControlSettingsPanel discovery states", () => {
       };
     });
 
-    mounted = await render(
-      <AppAtomRegistryProvider>
-        <SourceControlSettingsPanel />
-      </AppAtomRegistryProvider>,
-    );
+    const queryClient = new QueryClient();
+    mounted = await renderSourceControlSettingsPanel(queryClient);
 
     await expect.element(page.getByRole("heading", { name: "Git" })).toBeInTheDocument();
     expect(calls).toBe(1);
@@ -1335,11 +1331,7 @@ describe("SourceControlSettingsPanel discovery states", () => {
     mounted = null;
     document.body.innerHTML = "";
 
-    mounted = await render(
-      <AppAtomRegistryProvider>
-        <SourceControlSettingsPanel />
-      </AppAtomRegistryProvider>,
-    );
+    mounted = await renderSourceControlSettingsPanel(queryClient);
 
     await expect.element(page.getByRole("heading", { name: "Git" })).toBeInTheDocument();
     expect(calls).toBe(1);
