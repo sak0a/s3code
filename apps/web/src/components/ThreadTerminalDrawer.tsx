@@ -50,6 +50,7 @@ import {
 import { readEnvironmentApi } from "~/environmentApi";
 import { readLocalApi } from "~/localApi";
 import { selectTerminalEventEntries, useTerminalStateStore } from "../terminalStateStore";
+import { DetectedServersPanel } from "./detectedServers/DetectedServersPanel.tsx";
 
 const MIN_DRAWER_HEIGHT = 180;
 const MAX_DRAWER_HEIGHT_RATIO = 0.75;
@@ -1347,8 +1348,8 @@ export default function ThreadTerminalDrawer({
           )}
         </div>
       ) : (
-        <div className="flex min-h-0 w-full flex-1 items-center justify-center p-4 text-xs text-muted-foreground">
-          Servers panel coming in Task 26
+        <div className="min-h-0 w-full flex-1 overflow-hidden">
+          <DetectedServersPanel threadKey={threadKey} />
         </div>
       )}
     </aside>
