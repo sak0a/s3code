@@ -33,6 +33,7 @@ import {
   DetectedServersIngress,
   type PtyTracker,
 } from "../../detectedServers/Layers/DetectedServersIngress.ts";
+import { PtyInputLineBuffer, tokenizeShellLine } from "../../detectedServers/PtyInputLineBuffer.ts";
 import {
   TerminalCwdError,
   TerminalHistoryError,
@@ -119,6 +120,7 @@ interface TerminalSessionState {
   hasRunningSubprocess: boolean;
   runtimeEnv: Record<string, string> | null;
   detectedServersTracker: PtyTracker | null;
+  detectedServersInputBuffer: PtyInputLineBuffer | null;
 }
 
 interface PersistHistoryRequest {
@@ -1231,6 +1233,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
 
           const tracker = session.detectedServersTracker;
           session.detectedServersTracker = null;
+          session.detectedServersInputBuffer = null;
           tracker?.end(session.exitCode);
 
           return {
@@ -1418,6 +1421,11 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
                 },
                 undefined,
               );
+              const ptyInputBuffer = new PtyInputLineBuffer((line) => {
+                const argv = tokenizeShellLine(line);
+                if (argv.length === 0) return;
+                ptyTracker.feedCommand(argv, session.cwd);
+              });
 
               const unsubscribeData = ptyProcess.onData((data) => {
                 ptyTracker.feed(data);
@@ -1441,6 +1449,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
                 session.unsubscribeData = unsubscribeData;
                 session.unsubscribeExit = unsubscribeExit;
                 session.detectedServersTracker = ptyTracker;
+                session.detectedServersInputBuffer = ptyInputBuffer;
                 return [undefined, state] as const;
               });
 
@@ -1479,6 +1488,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
           session.updatedAt = new Date().toISOString();
           const tracker = session.detectedServersTracker;
           session.detectedServersTracker = null;
+          session.detectedServersInputBuffer = null;
           tracker?.end(null);
           return [undefined, state] as const;
         });
@@ -1638,6 +1648,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
           cleanupProcessHandles(session);
           const tracker = session.detectedServersTracker;
           session.detectedServersTracker = null;
+          session.detectedServersInputBuffer = null;
           tracker?.end(null);
           if (!session.process) return;
           yield* clearKillFiber(session.process);
@@ -1688,6 +1699,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
               hasRunningSubprocess: false,
               runtimeEnv: normalizedRuntimeEnv(input.env),
               detectedServersTracker: null,
+              detectedServersInputBuffer: null,
             };
 
             const createdSession = session;
@@ -1790,6 +1802,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
           terminalId,
         });
       }
+      session.detectedServersInputBuffer?.write(input.data);
       yield* Effect.sync(() => process.write(input.data));
     });
 
@@ -1868,6 +1881,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
               hasRunningSubprocess: false,
               runtimeEnv: normalizedRuntimeEnv(input.env),
               detectedServersTracker: null,
+              detectedServersInputBuffer: null,
             };
             const createdSession = session;
             yield* modifyManagerState((state) => {

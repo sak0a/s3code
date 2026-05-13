@@ -47,7 +47,7 @@ process.env.S3CODE_CURSOR_ENABLED = "1";
 
 const detectedServersIngressTestLayer = Layer.succeed(DetectedServersIngress, {
   trackAgentCommand: () => Effect.succeed({ feed: () => {}, end: () => {} }),
-  trackPty: () => Effect.succeed({ feed: () => {}, end: () => {} }),
+  trackPty: () => Effect.succeed({ feed: () => {}, feedCommand: () => {}, end: () => {} }),
 });
 
 const encoder = new TextEncoder();
