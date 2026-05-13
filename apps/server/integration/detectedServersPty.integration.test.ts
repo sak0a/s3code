@@ -44,6 +44,7 @@ describe("DetectedServers / PTY real server", () => {
             const tracker = yield* ingress.trackPty(
               {
                 threadId: "thread-1",
+                terminalId: "terminal-1",
                 pid: child.pid!,
                 argv: ["npm", "run", "dev"],
                 cwd: "/tmp",
@@ -66,6 +67,7 @@ describe("DetectedServers / PTY real server", () => {
             expect(server).not.toBeNull();
             expect(server!.status).toBe("live");
             expect(server!.port).toBeGreaterThan(0);
+            expect(server!.terminalId).toBe("terminal-1");
           }).pipe(Effect.provide(testLayer)),
         );
       } finally {

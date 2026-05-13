@@ -1411,6 +1411,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
               const ptyTracker = yield* detectedServers.trackPty(
                 {
                   threadId: session.threadId,
+                  terminalId: session.terminalId,
                   pid: processPid,
                   argv: [spawnResult.shellLabel],
                   cwd: session.cwd,

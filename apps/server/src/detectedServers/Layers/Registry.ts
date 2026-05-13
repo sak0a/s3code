@@ -26,6 +26,7 @@ export interface RegistryPatch {
   port?: number;
   host?: string;
   pid?: number;
+  terminalId?: string;
   argv?: ReadonlyArray<string>;
   cwd?: string;
   liveAt?: DateTime.Utc;
@@ -121,6 +122,7 @@ export class Registry {
       port: input.patch.port,
       host: input.patch.host,
       pid: input.patch.pid,
+      terminalId: input.patch.terminalId,
       argv: input.patch.argv,
       cwd: input.patch.cwd,
       startedAt: now,

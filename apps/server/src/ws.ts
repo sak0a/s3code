@@ -2063,7 +2063,12 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               if (!server) {
                 return { kind: "not-stoppable", hint: "interrupt-turn" } as const;
               }
-              // TODO: PTY kill — requires pid→terminalId mapping; defer to follow-up.
+              if (server.source === "pty" && server.terminalId) {
+                yield* terminalManager
+                  .close({ threadId: server.threadId, terminalId: server.terminalId })
+                  .pipe(Effect.ignore({ log: true }));
+                return { kind: "stopped" } as const;
+              }
               return { kind: "not-stoppable", hint: "interrupt-turn" } as const;
             }),
             { "rpc.aggregate": "detectedServers" },

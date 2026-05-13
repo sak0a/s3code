@@ -27,6 +27,7 @@ export interface CodexCommandSource {
 
 export interface PtyCommandSource {
   threadId: string;
+  terminalId: string;
   pid: number;
   argv: ReadonlyArray<string>;
   cwd: string;
@@ -151,6 +152,7 @@ export const DetectedServersIngressLive = Layer.effect(
             framework: hint.framework,
             status: "predicted",
             pid: source.pid,
+            terminalId: source.terminalId,
             argv: source.argv,
             cwd: source.cwd,
           },
