@@ -2043,10 +2043,12 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
                 server,
                 createdAt: new Date().toISOString(),
               }));
+              const services = yield* Effect.context<never>();
+              const runSyncOffer = Effect.runSyncWith(services);
               const liveStream = Stream.callback<DetectedServerEvent>((queue) =>
                 Effect.acquireRelease(
                   detectedServerRegistry.subscribe(input.threadId, (event) => {
-                    Effect.runSync(Queue.offer(queue, event));
+                    runSyncOffer(Queue.offer(queue, event));
                   }),
                   (unsubscribe) => Effect.sync(unsubscribe),
                 ),

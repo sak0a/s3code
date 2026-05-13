@@ -1,6 +1,10 @@
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Schema } from "effect";
 import { readFile, readdir, readlink } from "node:fs/promises";
 import { SocketProbe, type ProbeResult } from "./SocketProbe.ts";
+
+class SocketProbeError extends Schema.TaggedErrorClass<SocketProbeError>(
+  "s3/detectedServers/SocketProbeError",
+)("SocketProbeError", { stage: Schema.String }) {}
 
 export interface ProcTcpRow {
   inode: number;
@@ -82,7 +86,7 @@ const inodesForPid = (pid: number): Effect.Effect<ReadonlySet<number>> =>
       );
       return inodes;
     },
-    catch: () => new Error("inode lookup failed"),
+    catch: () => new SocketProbeError({ stage: "inodes" }),
   }).pipe(Effect.orElseSucceed(() => new Set<number>()));
 
 const probeImpl = (pids: ReadonlyArray<number>): Effect.Effect<ReadonlyArray<ProbeResult>> =>
@@ -97,11 +101,11 @@ const probeImpl = (pids: ReadonlyArray<number>): Effect.Effect<ReadonlyArray<Pro
 
     const tcpText = yield* Effect.tryPromise({
       try: () => readFile("/proc/net/tcp", "utf8"),
-      catch: () => new Error("read /proc/net/tcp failed"),
+      catch: () => new SocketProbeError({ stage: "tcp" }),
     }).pipe(Effect.orElseSucceed(() => ""));
     const tcp6Text = yield* Effect.tryPromise({
       try: () => readFile("/proc/net/tcp6", "utf8"),
-      catch: () => new Error("read /proc/net/tcp6 failed"),
+      catch: () => new SocketProbeError({ stage: "tcp6" }),
     }).pipe(Effect.orElseSucceed(() => ""));
 
     const rows = [...parseProcTcpRows(tcpText), ...parseProcTcp6Rows(tcp6Text)];

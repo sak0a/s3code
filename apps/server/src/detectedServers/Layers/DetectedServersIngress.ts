@@ -1,5 +1,9 @@
-import { Context, DateTime, Duration, Effect, Fiber, Layer } from "effect";
+import { Context, DateTime, Duration, Effect, Fiber, Layer, Schema } from "effect";
 import pidtree from "pidtree";
+
+class PidtreeError extends Schema.TaggedErrorClass<PidtreeError>(
+  "s3/detectedServers/PidtreeError",
+)("PidtreeError", { pid: Schema.Int }) {}
 import { DetectedServerRegistry } from "../Services/DetectedServerRegistry.ts";
 import { SocketProbe } from "./SocketProbe.ts";
 import { LivenessHeartbeat } from "./LivenessHeartbeat.ts";
@@ -203,7 +207,7 @@ export const DetectedServersIngressLive = Layer.effect(
                 while (true) {
                   const pids = yield* Effect.tryPromise({
                     try: () => pidtree(source.pid, { root: true }),
-                    catch: () => new Error("pidtree failed"),
+                    catch: () => new PidtreeError({ pid: source.pid }),
                   }).pipe(Effect.orElseSucceed(() => [source.pid] as number[]));
                   const rows = yield* probe.probe(pids);
                   const candidates = rows.filter((r) => !denyPorts.has(r.port));
