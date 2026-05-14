@@ -8,6 +8,7 @@ import type {
   AuthRevokePairingLinkInput,
   AuthSessionId,
   AuthSessionState,
+  AuthWebSocketTokenResult,
 } from "@ryco/contracts";
 
 import {
@@ -103,6 +104,20 @@ export async function fetchSessionState(): Promise<AuthSessionState> {
     }
     return (await response.json()) as AuthSessionState;
   });
+}
+
+export async function issuePrimaryWebSocketToken(): Promise<AuthWebSocketTokenResult> {
+  const response = await fetch(resolvePrimaryEnvironmentHttpUrl("/api/auth/ws-token"), {
+    credentials: "include",
+    method: "POST",
+  });
+  if (!response.ok) {
+    throw new BootstrapHttpError({
+      message: `Failed to issue websocket token (${response.status}).`,
+      status: response.status,
+    });
+  }
+  return (await response.json()) as AuthWebSocketTokenResult;
 }
 
 async function readErrorMessage(response: Response, fallbackMessage: string): Promise<string> {

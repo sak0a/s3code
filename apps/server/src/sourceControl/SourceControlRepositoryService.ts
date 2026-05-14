@@ -110,6 +110,47 @@ function expandHomePath(input: string, path: Path.Path): string {
   return input;
 }
 
+function isScpStyleGitUrl(input: string): boolean {
+  return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+:[^\s]+$/u.test(input);
+}
+
+function validateCloneRemoteUrl(
+  remoteUrl: string,
+  provider: SourceControlProviderKind,
+): Effect.Effect<string, SourceControlRepositoryError> {
+  const trimmed = remoteUrl.trim();
+  if (trimmed.length === 0 || trimmed.startsWith("-")) {
+    return Effect.fail(
+      repositoryError({
+        operation: "cloneRepository",
+        provider,
+        detail: "Enter a valid repository URL before cloning.",
+      }),
+    );
+  }
+
+  if (isScpStyleGitUrl(trimmed)) {
+    return Effect.succeed(trimmed);
+  }
+
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol === "https:" || url.protocol === "ssh:") {
+      return Effect.succeed(trimmed);
+    }
+  } catch {
+    // Fall through to the validation error below.
+  }
+
+  return Effect.fail(
+    repositoryError({
+      operation: "cloneRepository",
+      provider,
+      detail: "Clone URL must use https://, ssh://, or git@host:owner/repo.git syntax.",
+    }),
+  );
+}
+
 export const make = Effect.fn("makeSourceControlRepositoryService")(function* () {
   const config = yield* ServerConfig;
   const fileSystem = yield* FileSystem.FileSystem;
@@ -231,17 +272,19 @@ export const make = Effect.fn("makeSourceControlRepositoryService")(function* ()
       );
     }
 
+    const validatedRemoteUrl = yield* validateCloneRemoteUrl(remoteUrl, provider);
+
     yield* git.execute({
       operation: "SourceControlRepositoryService.cloneRepository",
       cwd: preparedDestination.parentPath,
-      args: ["clone", remoteUrl, preparedDestination.directoryName],
+      args: ["clone", "--", validatedRemoteUrl, preparedDestination.directoryName],
       timeoutMs: 120_000,
       maxOutputBytes: 256 * 1024,
     });
 
     return {
       cwd: preparedDestination.destinationPath,
-      remoteUrl,
+      remoteUrl: validatedRemoteUrl,
       repository,
     };
   });

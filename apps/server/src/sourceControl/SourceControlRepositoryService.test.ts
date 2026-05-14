@@ -134,7 +134,7 @@ it.effect("clones a looked-up repository into the requested destination", () =>
       assert.deepStrictEqual(cloneCalls, [
         {
           cwd: parent,
-          args: ["clone", CLONE_URLS.url, "ryco"],
+          args: ["clone", "--", CLONE_URLS.url, "ryco"],
         },
       ]);
     }).pipe(
@@ -151,6 +151,84 @@ it.effect("clones a looked-up repository into the requested destination", () =>
       ),
     );
   }).pipe(Effect.provide(NodeServices.layer)),
+);
+
+it.effect("rejects clone URLs that could be parsed as git options", () =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const parent = yield* fs.makeTempDirectoryScoped({
+      prefix: "s3-source-control-clone-parent-",
+    });
+    const service = yield* SourceControlRepositoryService.SourceControlRepositoryService;
+
+    const result = yield* service
+      .cloneRepository({
+        remoteUrl: "--upload-pack=/tmp/pwn",
+        destinationPath: `${parent}/s3code`,
+      })
+      .pipe(Effect.result);
+
+    assert.equal(result._tag, "Failure");
+  }).pipe(Effect.provide(makeLayer({}))),
+);
+
+it.effect("accepts explicit HTTPS, SSH, and SCP-style clone URLs", () => {
+  const cloneCalls: ReadonlyArray<string>[] = [];
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const parent = yield* fs.makeTempDirectoryScoped({
+      prefix: "s3-source-control-clone-parent-",
+    });
+    const service = yield* SourceControlRepositoryService.SourceControlRepositoryService;
+
+    for (const [index, remoteUrl] of [
+      "https://github.com/octocat/s3code.git",
+      "ssh://git@github.com/octocat/s3code.git",
+      "git@github.com:octocat/s3code.git",
+    ].entries()) {
+      yield* service.cloneRepository({
+        remoteUrl,
+        destinationPath: `${parent}/repo-${index}`,
+      });
+    }
+
+    assert.deepStrictEqual(cloneCalls, [
+      ["clone", "--", "https://github.com/octocat/s3code.git", "repo-0"],
+      ["clone", "--", "ssh://git@github.com/octocat/s3code.git", "repo-1"],
+      ["clone", "--", "git@github.com:octocat/s3code.git", "repo-2"],
+    ]);
+  }).pipe(
+    Effect.provide(
+      makeLayer({
+        git: {
+          execute: (input) =>
+            Effect.sync(() => {
+              cloneCalls.push(input.args);
+              return processOutput();
+            }),
+        },
+      }),
+    ),
+  );
+});
+
+it.effect("rejects unsupported clone URL schemes", () =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const parent = yield* fs.makeTempDirectoryScoped({
+      prefix: "s3-source-control-clone-parent-",
+    });
+    const service = yield* SourceControlRepositoryService.SourceControlRepositoryService;
+
+    const result = yield* service
+      .cloneRepository({
+        remoteUrl: "file:///tmp/repo.git",
+        destinationPath: `${parent}/s3code`,
+      })
+      .pipe(Effect.result);
+
+    assert.equal(result._tag, "Failure");
+  }).pipe(Effect.provide(makeLayer({}))),
 );
 
 it.effect("publishes by creating the repository, adding a remote, and pushing upstream", () => {

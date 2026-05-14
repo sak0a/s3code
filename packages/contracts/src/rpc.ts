@@ -3,7 +3,7 @@ import * as Rpc from "effect/unstable/rpc/Rpc";
 import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
 
 import { OpenError, OpenInEditorInput } from "./editor.ts";
-import { AuthAccessStreamEvent } from "./auth.ts";
+import { AuthAccessStreamEvent, AuthRpcError } from "./auth.ts";
 import {
   AtlassianConnectionError,
   AtlassianConnectionSummary,
@@ -335,7 +335,7 @@ export type EmptyRpcResult = typeof EmptyRpcResult.Type;
 export const WsServerUpsertKeybindingRpc = Rpc.make(WS_METHODS.serverUpsertKeybinding, {
   payload: ServerUpsertKeybindingInput,
   success: ServerUpsertKeybindingResult,
-  error: KeybindingsConfigError,
+  error: Schema.Union([KeybindingsConfigError, AuthRpcError]),
 });
 
 export const WsServerGetConfigRpc = Rpc.make(WS_METHODS.serverGetConfig, {
@@ -355,6 +355,7 @@ export const WsServerRefreshProvidersRpc = Rpc.make(WS_METHODS.serverRefreshProv
     instanceId: Schema.optional(ProviderInstanceId),
   }),
   success: ServerProviderUpdatedPayload,
+  error: AuthRpcError,
 });
 
 export const WsServerGetSettingsRpc = Rpc.make(WS_METHODS.serverGetSettings, {
@@ -366,12 +367,13 @@ export const WsServerGetSettingsRpc = Rpc.make(WS_METHODS.serverGetSettings, {
 export const WsServerUpdateSettingsRpc = Rpc.make(WS_METHODS.serverUpdateSettings, {
   payload: Schema.Struct({ patch: ServerSettingsPatch }),
   success: ServerSettings,
-  error: ServerSettingsError,
+  error: Schema.Union([ServerSettingsError, AuthRpcError]),
 });
 
 export const WsServerDiscoverSourceControlRpc = Rpc.make(WS_METHODS.serverDiscoverSourceControl, {
   payload: Schema.Struct({}),
   success: SourceControlDiscoveryResult,
+  error: AuthRpcError,
 });
 
 export const WsServerListOpinionatedPluginsRpc = Rpc.make(WS_METHODS.serverListOpinionatedPlugins, {
@@ -445,14 +447,14 @@ export const WsSourceControlLookupRepositoryRpc = Rpc.make(
   {
     payload: SourceControlRepositoryLookupInput,
     success: SourceControlRepositoryInfo,
-    error: SourceControlRepositoryError,
+    error: Schema.Union([SourceControlRepositoryError, AuthRpcError]),
   },
 );
 
 export const WsSourceControlCloneRepositoryRpc = Rpc.make(WS_METHODS.sourceControlCloneRepository, {
   payload: SourceControlCloneRepositoryInput,
   success: SourceControlCloneRepositoryResult,
-  error: SourceControlRepositoryError,
+  error: Schema.Union([SourceControlRepositoryError, AuthRpcError]),
 });
 
 export const WsSourceControlPublishRepositoryRpc = Rpc.make(
@@ -460,7 +462,7 @@ export const WsSourceControlPublishRepositoryRpc = Rpc.make(
   {
     payload: SourceControlPublishRepositoryInput,
     success: SourceControlPublishRepositoryResult,
-    error: SourceControlRepositoryError,
+    error: Schema.Union([SourceControlRepositoryError, AuthRpcError]),
   },
 );
 
@@ -471,7 +473,7 @@ export const WsSourceControlListIssuesRpc = Rpc.make(WS_METHODS.sourceControlLis
     limit: Schema.optional(Schema.Number),
   }),
   success: Schema.Array(SourceControlIssueSummary),
-  error: SourceControlProviderError,
+  error: Schema.Union([SourceControlProviderError, AuthRpcError]),
 });
 
 export const WsSourceControlGetIssueRpc = Rpc.make(WS_METHODS.sourceControlGetIssue, {
@@ -481,7 +483,7 @@ export const WsSourceControlGetIssueRpc = Rpc.make(WS_METHODS.sourceControlGetIs
     fullContent: Schema.optional(Schema.Boolean),
   }),
   success: SourceControlIssueDetail,
-  error: SourceControlProviderError,
+  error: Schema.Union([SourceControlProviderError, AuthRpcError]),
 });
 
 export const WsSourceControlSearchIssuesRpc = Rpc.make(WS_METHODS.sourceControlSearchIssues, {
@@ -491,7 +493,7 @@ export const WsSourceControlSearchIssuesRpc = Rpc.make(WS_METHODS.sourceControlS
     limit: Schema.optional(Schema.Number),
   }),
   success: Schema.Array(SourceControlIssueSummary),
-  error: SourceControlProviderError,
+  error: Schema.Union([SourceControlProviderError, AuthRpcError]),
 });
 
 export const WsSourceControlListChangeRequestsRpc = Rpc.make(
@@ -517,7 +519,7 @@ export const WsSourceControlSearchChangeRequestsRpc = Rpc.make(
       limit: Schema.optional(Schema.Number),
     }),
     success: Schema.Array(ChangeRequest),
-    error: SourceControlProviderError,
+    error: Schema.Union([SourceControlProviderError, AuthRpcError]),
   },
 );
 
@@ -530,7 +532,7 @@ export const WsSourceControlGetChangeRequestDetailRpc = Rpc.make(
       fullContent: Schema.optional(Schema.Boolean),
     }),
     success: SourceControlChangeRequestDetail,
-    error: SourceControlProviderError,
+    error: Schema.Union([SourceControlProviderError, AuthRpcError]),
   },
 );
 
@@ -542,7 +544,7 @@ export const WsSourceControlGetChangeRequestDiffRpc = Rpc.make(
       reference: Schema.String,
     }),
     success: Schema.String,
-    error: SourceControlProviderError,
+    error: Schema.Union([SourceControlProviderError, AuthRpcError]),
   },
 );
 
@@ -642,194 +644,194 @@ export const WsWorkItemsTransitionRpc = Rpc.make(WS_METHODS.workItemsTransition,
 export const WsProjectsSearchEntriesRpc = Rpc.make(WS_METHODS.projectsSearchEntries, {
   payload: ProjectSearchEntriesInput,
   success: ProjectSearchEntriesResult,
-  error: ProjectSearchEntriesError,
+  error: Schema.Union([ProjectSearchEntriesError, AuthRpcError]),
 });
 
 export const WsProjectsListEntriesRpc = Rpc.make(WS_METHODS.projectsListEntries, {
   payload: ProjectListEntriesInput,
   success: ProjectListEntriesResult,
-  error: ProjectListEntriesError,
+  error: Schema.Union([ProjectListEntriesError, AuthRpcError]),
 });
 
 export const WsProjectsReadFileRpc = Rpc.make(WS_METHODS.projectsReadFile, {
   payload: ProjectReadFileInput,
   success: ProjectReadFileResult,
-  error: ProjectReadFileError,
+  error: Schema.Union([ProjectReadFileError, AuthRpcError]),
 });
 
 export const WsProjectsWriteFileRpc = Rpc.make(WS_METHODS.projectsWriteFile, {
   payload: ProjectWriteFileInput,
   success: ProjectWriteFileResult,
-  error: ProjectWriteFileError,
+  error: Schema.Union([ProjectWriteFileError, AuthRpcError]),
 });
 
 export const WsShellOpenInEditorRpc = Rpc.make(WS_METHODS.shellOpenInEditor, {
   payload: OpenInEditorInput,
-  error: OpenError,
+  error: Schema.Union([OpenError, AuthRpcError]),
 });
 
 export const WsFilesystemBrowseRpc = Rpc.make(WS_METHODS.filesystemBrowse, {
   payload: FilesystemBrowseInput,
   success: FilesystemBrowseResult,
-  error: FilesystemBrowseError,
+  error: Schema.Union([FilesystemBrowseError, AuthRpcError]),
 });
 
 export const WsSubscribeVcsStatusRpc = Rpc.make(WS_METHODS.subscribeVcsStatus, {
   payload: VcsStatusInput,
   success: VcsStatusStreamEvent,
-  error: GitManagerServiceError,
+  error: Schema.Union([GitManagerServiceError, AuthRpcError]),
   stream: true,
 });
 
 export const WsVcsPullRpc = Rpc.make(WS_METHODS.vcsPull, {
   payload: VcsPullInput,
   success: VcsPullResult,
-  error: GitCommandError,
+  error: Schema.Union([GitCommandError, AuthRpcError]),
 });
 
 export const WsVcsRefreshStatusRpc = Rpc.make(WS_METHODS.vcsRefreshStatus, {
   payload: VcsStatusInput,
   success: VcsStatusResult,
-  error: GitManagerServiceError,
+  error: Schema.Union([GitManagerServiceError, AuthRpcError]),
 });
 
 export const WsGitRunStackedActionRpc = Rpc.make(WS_METHODS.gitRunStackedAction, {
   payload: GitRunStackedActionInput,
   success: GitActionProgressEvent,
-  error: GitManagerServiceError,
+  error: Schema.Union([GitManagerServiceError, AuthRpcError]),
   stream: true,
 });
 
 export const WsGitResolvePullRequestRpc = Rpc.make(WS_METHODS.gitResolvePullRequest, {
   payload: GitPullRequestRefInput,
   success: GitResolvePullRequestResult,
-  error: GitManagerServiceError,
+  error: Schema.Union([GitManagerServiceError, AuthRpcError]),
 });
 
 export const WsGitPreparePullRequestThreadRpc = Rpc.make(WS_METHODS.gitPreparePullRequestThread, {
   payload: GitPreparePullRequestThreadInput,
   success: GitPreparePullRequestThreadResult,
-  error: GitManagerServiceError,
+  error: Schema.Union([GitManagerServiceError, AuthRpcError]),
 });
 
 export const WsGitCreateWorktreeForProjectRpc = Rpc.make(WS_METHODS.gitCreateWorktreeForProject, {
   payload: GitCreateWorktreeForProjectInput,
   success: GitCreateWorktreeForProjectOutput,
-  error: GitManagerServiceError,
+  error: Schema.Union([GitManagerServiceError, AuthRpcError]),
 });
 
 export const WsGitFindWorktreeForOriginRpc = Rpc.make(WS_METHODS.gitFindWorktreeForOrigin, {
   payload: GitFindWorktreeForOriginInput,
   success: GitFindWorktreeForOriginOutput,
-  error: GitManagerServiceError,
+  error: Schema.Union([GitManagerServiceError, AuthRpcError]),
 });
 
 export const WsGitArchiveWorktreeRpc = Rpc.make(WS_METHODS.gitArchiveWorktree, {
   payload: GitArchiveWorktreeInput,
   success: EmptyRpcResult,
-  error: GitManagerServiceError,
+  error: Schema.Union([GitManagerServiceError, AuthRpcError]),
 });
 
 export const WsGitRestoreWorktreeRpc = Rpc.make(WS_METHODS.gitRestoreWorktree, {
   payload: GitRestoreWorktreeInput,
   success: EmptyRpcResult,
-  error: GitManagerServiceError,
+  error: Schema.Union([GitManagerServiceError, AuthRpcError]),
 });
 
 export const WsGitDeleteWorktreeRpc = Rpc.make(WS_METHODS.gitDeleteWorktree, {
   payload: GitDeleteWorktreeInput,
   success: EmptyRpcResult,
-  error: GitManagerServiceError,
+  error: Schema.Union([GitManagerServiceError, AuthRpcError]),
 });
 
 export const WsThreadsSetManualBucketRpc = Rpc.make(WS_METHODS.threadsSetManualBucket, {
   payload: ThreadsSetManualBucketInput,
   success: EmptyRpcResult,
-  error: GitManagerServiceError,
+  error: Schema.Union([GitManagerServiceError, AuthRpcError]),
 });
 
 export const WsThreadsSetManualPositionRpc = Rpc.make(WS_METHODS.threadsSetManualPosition, {
   payload: ThreadsSetManualPositionInput,
   success: EmptyRpcResult,
-  error: GitManagerServiceError,
+  error: Schema.Union([GitManagerServiceError, AuthRpcError]),
 });
 
 export const WsWorktreesSetManualPositionRpc = Rpc.make(WS_METHODS.worktreesSetManualPosition, {
   payload: WorktreesSetManualPositionInput,
   success: EmptyRpcResult,
-  error: GitManagerServiceError,
+  error: Schema.Union([GitManagerServiceError, AuthRpcError]),
 });
 
 export const WsProjectsInitializeGitRpc = Rpc.make(WS_METHODS.projectsInitializeGit, {
   payload: ProjectsInitializeGitInput,
   success: EmptyRpcResult,
-  error: GitManagerServiceError,
+  error: Schema.Union([GitManagerServiceError, AuthRpcError]),
 });
 
 export const WsVcsListRefsRpc = Rpc.make(WS_METHODS.vcsListRefs, {
   payload: VcsListRefsInput,
   success: VcsListRefsResult,
-  error: GitCommandError,
+  error: Schema.Union([GitCommandError, AuthRpcError]),
 });
 
 export const WsVcsCreateWorktreeRpc = Rpc.make(WS_METHODS.vcsCreateWorktree, {
   payload: VcsCreateWorktreeInput,
   success: VcsCreateWorktreeResult,
-  error: GitCommandError,
+  error: Schema.Union([GitCommandError, AuthRpcError]),
 });
 
 export const WsVcsRemoveWorktreeRpc = Rpc.make(WS_METHODS.vcsRemoveWorktree, {
   payload: VcsRemoveWorktreeInput,
-  error: GitCommandError,
+  error: Schema.Union([GitCommandError, AuthRpcError]),
 });
 
 export const WsVcsCreateRefRpc = Rpc.make(WS_METHODS.vcsCreateRef, {
   payload: VcsCreateRefInput,
   success: VcsCreateRefResult,
-  error: GitCommandError,
+  error: Schema.Union([GitCommandError, AuthRpcError]),
 });
 
 export const WsVcsSwitchRefRpc = Rpc.make(WS_METHODS.vcsSwitchRef, {
   payload: VcsSwitchRefInput,
   success: VcsSwitchRefResult,
-  error: GitCommandError,
+  error: Schema.Union([GitCommandError, AuthRpcError]),
 });
 
 export const WsVcsInitRpc = Rpc.make(WS_METHODS.vcsInit, {
   payload: VcsInitInput,
-  error: VcsError,
+  error: Schema.Union([VcsError, AuthRpcError]),
 });
 
 export const WsTerminalOpenRpc = Rpc.make(WS_METHODS.terminalOpen, {
   payload: TerminalOpenInput,
   success: TerminalSessionSnapshot,
-  error: TerminalError,
+  error: Schema.Union([TerminalError, AuthRpcError]),
 });
 
 export const WsTerminalWriteRpc = Rpc.make(WS_METHODS.terminalWrite, {
   payload: TerminalWriteInput,
-  error: TerminalError,
+  error: Schema.Union([TerminalError, AuthRpcError]),
 });
 
 export const WsTerminalResizeRpc = Rpc.make(WS_METHODS.terminalResize, {
   payload: TerminalResizeInput,
-  error: TerminalError,
+  error: Schema.Union([TerminalError, AuthRpcError]),
 });
 
 export const WsTerminalClearRpc = Rpc.make(WS_METHODS.terminalClear, {
   payload: TerminalClearInput,
-  error: TerminalError,
+  error: Schema.Union([TerminalError, AuthRpcError]),
 });
 
 export const WsTerminalRestartRpc = Rpc.make(WS_METHODS.terminalRestart, {
   payload: TerminalRestartInput,
   success: TerminalSessionSnapshot,
-  error: TerminalError,
+  error: Schema.Union([TerminalError, AuthRpcError]),
 });
 
 export const WsTerminalCloseRpc = Rpc.make(WS_METHODS.terminalClose, {
   payload: TerminalCloseInput,
-  error: TerminalError,
+  error: Schema.Union([TerminalError, AuthRpcError]),
 });
 
 export const WsOrchestrationDispatchCommandRpc = Rpc.make(
@@ -837,7 +839,7 @@ export const WsOrchestrationDispatchCommandRpc = Rpc.make(
   {
     payload: ClientOrchestrationCommand,
     success: OrchestrationRpcSchemas.dispatchCommand.output,
-    error: OrchestrationDispatchCommandError,
+    error: Schema.Union([OrchestrationDispatchCommandError, AuthRpcError]),
   },
 );
 
@@ -882,6 +884,7 @@ export const WsOrchestrationSubscribeThreadRpc = Rpc.make(
 export const WsSubscribeTerminalEventsRpc = Rpc.make(WS_METHODS.subscribeTerminalEvents, {
   payload: Schema.Struct({}),
   success: TerminalEvent,
+  error: AuthRpcError,
   stream: true,
 });
 
@@ -901,6 +904,7 @@ export const WsSubscribeServerLifecycleRpc = Rpc.make(WS_METHODS.subscribeServer
 export const WsSubscribeAuthAccessRpc = Rpc.make(WS_METHODS.subscribeAuthAccess, {
   payload: Schema.Struct({}),
   success: AuthAccessStreamEvent,
+  error: AuthRpcError,
   stream: true,
 });
 

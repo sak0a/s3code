@@ -9,6 +9,7 @@ import {
 import { DateTime, Effect, Schema } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 
+import { ServerConfig, type ServerConfigShape } from "../config.ts";
 import { AuthError, ServerAuth } from "./Services/ServerAuth.ts";
 import { SessionCredentialService } from "./Services/SessionCredentialService.ts";
 import { deriveAuthClientMetadata } from "./utils.ts";
@@ -28,6 +29,21 @@ export const respondToAuthError = (error: AuthError) =>
       { status: error.status ?? 500 },
     );
   });
+
+function shouldSetSecureSessionCookie(
+  request: HttpServerRequest.HttpServerRequest,
+  config: ServerConfigShape,
+): boolean {
+  const forwardedProto = request.headers["x-forwarded-proto"]
+    ?.split(",", 1)[0]
+    ?.trim()
+    .toLowerCase();
+  if (forwardedProto === "https") {
+    return true;
+  }
+
+  return config.tailscaleServeEnabled;
+}
 
 export const authSessionRouteLayer = HttpRouter.add(
   "GET",
@@ -64,6 +80,7 @@ export const authBootstrapRouteLayer = HttpRouter.add(
     const request = yield* HttpServerRequest.HttpServerRequest;
     const serverAuth = yield* ServerAuth;
     const sessions = yield* SessionCredentialService;
+    const config = yield* ServerConfig;
     const payload = yield* HttpServerRequest.schemaBodyJson(AuthBootstrapInput).pipe(
       Effect.mapError(
         (cause) =>
@@ -85,6 +102,7 @@ export const authBootstrapRouteLayer = HttpRouter.add(
         httpOnly: true,
         path: "/",
         sameSite: "lax",
+        secure: shouldSetSecureSessionCookie(request, config),
       }),
     );
   }).pipe(Effect.catchTag("AuthError", (error) => respondToAuthError(error))),

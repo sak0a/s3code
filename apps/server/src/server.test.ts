@@ -729,27 +729,35 @@ const buildAppUnderTest = (options?: {
 
 const parseSessionCookieFromWsUrl = (
   wsUrl: string,
-): { readonly cookie: string | null; readonly url: string } => {
+): { readonly cookie: string | null; readonly origin: string | null; readonly url: string } => {
   const next = new URL(wsUrl);
-  const cookie = next.hash.startsWith("#cookie=")
-    ? decodeURIComponent(next.hash.slice("#cookie=".length))
-    : null;
+  const hashParams = new URLSearchParams(next.hash.startsWith("#") ? next.hash.slice(1) : "");
+  const cookie = hashParams.get("cookie");
+  const origin = hashParams.get("origin");
   next.hash = "";
   return {
     cookie,
+    origin,
     url: next.toString(),
   };
 };
 
 const wsRpcProtocolLayer = (wsUrl: string) => {
-  const { cookie, url } = parseSessionCookieFromWsUrl(wsUrl);
+  const { cookie, origin, url } = parseSessionCookieFromWsUrl(wsUrl);
   const webSocketConstructorLayer = Layer.succeed(
     Socket.WebSocketConstructor,
     (socketUrl, protocols) =>
       new NodeSocket.NodeWS.WebSocket(
         socketUrl,
         protocols,
-        cookie ? { headers: { cookie } } : undefined,
+        cookie || origin
+          ? {
+              headers: {
+                ...(cookie ? { cookie } : {}),
+                ...(origin ? { origin } : {}),
+              },
+            }
+          : undefined,
       ) as unknown as globalThis.WebSocket,
   );
 
@@ -772,6 +780,15 @@ const appendSessionCookieToWsUrl = (url: string, sessionCookieHeader: string) =>
   const isAbsoluteUrl = /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(url);
   const next = new URL(url, "http://localhost");
   next.hash = `cookie=${encodeURIComponent(sessionCookieHeader)}`;
+  return isAbsoluteUrl ? next.toString() : `${next.pathname}${next.search}${next.hash}`;
+};
+
+const appendOriginToWsUrl = (url: string, origin: string) => {
+  const isAbsoluteUrl = /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(url);
+  const next = new URL(url, "http://localhost");
+  const hashParams = new URLSearchParams(next.hash.startsWith("#") ? next.hash.slice(1) : "");
+  hashParams.set("origin", origin);
+  next.hash = hashParams.toString();
   return isAbsoluteUrl ? next.toString() : `${next.pathname}${next.search}${next.hash}`;
 };
 
@@ -875,6 +892,32 @@ const getAuthenticatedBearerSessionToken = (credential = defaultDesktopBootstrap
     return body.sessionToken;
   });
 
+const getAuthenticatedWebSocketToken = (credential = defaultDesktopBootstrapToken) =>
+  Effect.gen(function* () {
+    const wsTokenUrl = yield* getHttpServerUrl("/api/auth/ws-token");
+    const cookie = yield* getAuthenticatedSessionCookieHeader(credential);
+    const response = yield* Effect.promise(() =>
+      fetch(wsTokenUrl, {
+        method: "POST",
+        headers: {
+          cookie,
+        },
+      }),
+    );
+    if (!response.ok) {
+      return yield* Effect.fail(
+        new Error(`Expected websocket token response to succeed, got ${response.status}`),
+      );
+    }
+    const body = (yield* Effect.promise(() => response.json())) as {
+      readonly token?: string;
+    };
+    if (!body.token) {
+      return yield* Effect.fail(new Error("Expected websocket token response to include a token."));
+    }
+    return body.token;
+  });
+
 const extractSessionTokenFromSetCookie = (cookieHeader: string): string => {
   const [nameValue] = cookieHeader.split(";", 1);
   const token = nameValue?.split("=", 2)[1];
@@ -902,10 +945,9 @@ const getWsServerUrl = (
     if (options?.authenticated === false) {
       return baseUrl;
     }
-    return appendSessionCookieToWsUrl(
-      baseUrl,
-      yield* getAuthenticatedSessionCookieHeader(options?.credential),
-    );
+    const next = new URL(baseUrl);
+    next.searchParams.set("wsToken", yield* getAuthenticatedWebSocketToken(options?.credential));
+    return next.toString();
   });
 
 it.layer(NodeServices.layer)("server router seam", (it) => {
@@ -1547,7 +1589,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 
-  it.effect("accepts websocket rpc handshake with a bootstrapped browser session cookie", () =>
+  it.effect("rejects websocket rpc handshake with only a bootstrapped browser session cookie", () =>
     Effect.gen(function* () {
       yield* buildAppUnderTest();
 
@@ -1560,12 +1602,12 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         yield* getWsServerUrl("/ws", { authenticated: false }),
         cookie?.split(";")[0] ?? "",
       );
-      const response = yield* Effect.scoped(
-        withWsRpcClient(wsUrl, (client) => client[WS_METHODS.serverGetConfig]({})),
+      const error = yield* Effect.flip(
+        Effect.scoped(withWsRpcClient(wsUrl, (client) => client[WS_METHODS.serverGetConfig]({}))),
       );
 
-      assert.equal(response.environment.environmentId, testEnvironmentDescriptor.environmentId);
-      assert.equal(response.auth.policy, "desktop-managed-local");
+      assert.equal(error._tag, "RpcClientError");
+      assertInclude(String(error), "SocketOpenError");
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 
@@ -1617,6 +1659,48 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         assert.equal(response.environment.environmentId, testEnvironmentDescriptor.environmentId);
         assert.equal(response.auth.policy, "desktop-managed-local");
       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("rejects websocket rpc handshake from unexpected browser origins", () =>
+    Effect.gen(function* () {
+      yield* buildAppUnderTest();
+
+      const wsUrl = appendOriginToWsUrl(yield* getWsServerUrl("/ws"), "https://evil.example");
+      const error = yield* Effect.flip(
+        Effect.scoped(withWsRpcClient(wsUrl, (client) => client[WS_METHODS.serverGetConfig]({}))),
+      );
+
+      assert.equal(error._tag, "RpcClientError");
+      assertInclude(String(error), "SocketOpenError");
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("rejects websocket rpc handshake from same host origins on a different port", () =>
+    Effect.gen(function* () {
+      yield* buildAppUnderTest();
+
+      const wsUrl = appendOriginToWsUrl(yield* getWsServerUrl("/ws"), "http://127.0.0.1");
+      const error = yield* Effect.flip(
+        Effect.scoped(withWsRpcClient(wsUrl, (client) => client[WS_METHODS.serverGetConfig]({}))),
+      );
+
+      assert.equal(error._tag, "RpcClientError");
+      assertInclude(String(error), "SocketOpenError");
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("accepts websocket rpc handshake from the same browser origin", () =>
+    Effect.gen(function* () {
+      yield* buildAppUnderTest();
+
+      const origin = yield* getHttpServerUrl("");
+      const wsUrl = appendOriginToWsUrl(yield* getWsServerUrl("/ws"), origin);
+      const response = yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) => client[WS_METHODS.serverGetConfig]({})),
+      );
+
+      assert.equal(response.environment.environmentId, testEnvironmentDescriptor.environmentId);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 
   it.effect("serves attachment files from state dir", () =>
@@ -2047,6 +2131,72 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         failureMessage.includes("Unauthorized") ||
           failureMessage.includes("An error occurred during Open"),
       );
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("rejects owner-only websocket RPC calls from paired client sessions", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const workspaceDir = yield* fs.makeTempDirectoryScoped({
+        prefix: "s3-ws-client-role-",
+      });
+      yield* buildAppUnderTest();
+
+      const createResponse = yield* HttpClient.post("/api/auth/pairing-token", {
+        headers: {
+          cookie: yield* getAuthenticatedSessionCookieHeader(),
+        },
+      });
+      const created = (yield* createResponse.json) as {
+        readonly credential: string;
+      };
+      const wsUrl = yield* getWsServerUrl("/ws", { credential: created.credential });
+      const result = yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          client[WS_METHODS.projectsSearchEntries]({
+            cwd: workspaceDir,
+            query: "needle",
+            limit: 10,
+          }),
+        ).pipe(Effect.result),
+      );
+
+      assertTrue(result._tag === "Failure");
+      assertInclude(String(result.failure), "Only owner sessions can call projects.searchEntries.");
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("allows paired client sessions to dispatch orchestration commands", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const workspaceDir = yield* fs.makeTempDirectoryScoped({
+        prefix: "s3-ws-paired-dispatch-",
+      });
+      yield* buildAppUnderTest();
+
+      const createResponse = yield* HttpClient.post("/api/auth/pairing-token", {
+        headers: {
+          cookie: yield* getAuthenticatedSessionCookieHeader(),
+        },
+      });
+      const created = (yield* createResponse.json) as {
+        readonly credential: string;
+      };
+      const wsUrl = yield* getWsServerUrl("/ws", { credential: created.credential });
+      const response = yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          client[ORCHESTRATION_WS_METHODS.dispatchCommand]({
+            type: "project.create",
+            commandId: CommandId.make("cmd-paired-project-create"),
+            projectId: ProjectId.make("project-paired-client"),
+            title: "Paired Client Project",
+            workspaceRoot: workspaceDir,
+            createdAt: new Date().toISOString(),
+          }),
+        ),
+      );
+
+      assert.isAtLeast(response.sequence, 0);
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 
