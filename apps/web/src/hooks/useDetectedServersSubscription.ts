@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { DetectedServerEvent } from "@s3tools/contracts";
+import type { DetectedServerEvent, EnvironmentId, ThreadId } from "@s3tools/contracts";
 import { scopedThreadKey, scopeThreadRef } from "@s3tools/client-runtime";
 import { readEnvironmentConnection } from "../environments/runtime/service.ts";
 import { useDetectedServerStore } from "../detectedServerStore.ts";
@@ -28,7 +28,9 @@ export const subscribeDetectedServers = (
   if (!environmentId || !threadId) return undefined;
   const connection = connect(environmentId);
   if (!connection) return undefined;
-  const threadKey = scopedThreadKey(scopeThreadRef(environmentId as never, threadId));
+  const threadKey = scopedThreadKey(
+    scopeThreadRef(environmentId as EnvironmentId, threadId as ThreadId),
+  );
   return connection.client.detectedServers.onEvent({ threadId }, (event) => {
     dispatch(threadKey, event);
   });
@@ -50,7 +52,7 @@ export const useDetectedServersSubscription = (
       environmentId,
       threadId,
       (key, event) => useDetectedServerStore.getState().handleEvent(key, event),
-      (envId) => readEnvironmentConnection(envId) as ConnectionLike | null,
+      (envId) => readEnvironmentConnection(envId as EnvironmentId) as ConnectionLike | null,
     );
   }, [environmentId, threadId]);
 };

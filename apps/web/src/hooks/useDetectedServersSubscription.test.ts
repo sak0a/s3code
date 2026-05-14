@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { DetectedServerEvent } from "@s3tools/contracts";
+import type { DetectedServerEvent, EnvironmentId, ThreadId } from "@s3tools/contracts";
 import { scopedThreadKey, scopeThreadRef } from "@s3tools/client-runtime";
 import { subscribeDetectedServers } from "./useDetectedServersSubscription.ts";
 
@@ -21,7 +21,7 @@ const makeFakeConnection = () => {
 };
 
 const keyFor = (envId: string, threadId: string): string =>
-  scopedThreadKey(scopeThreadRef(envId as never, threadId));
+  scopedThreadKey(scopeThreadRef(envId as EnvironmentId, threadId as ThreadId));
 
 describe("subscribeDetectedServers", () => {
   it("opens a subscription scoped to the given thread", () => {
