@@ -122,7 +122,7 @@ const makeResolveCursorSettings = Effect.gen(function* () {
 
 const detectedServersIngressTestLayer = Layer.succeed(DetectedServersIngress, {
   trackAgentCommand: () => Effect.succeed({ feed: () => {}, end: () => {} }),
-  trackPty: () => Effect.succeed({ feed: () => {}, end: () => {} }),
+  trackPty: () => Effect.succeed({ feed: () => {}, feedCommand: () => {}, end: () => {} }),
 });
 
 const cursorAdapterTestLayer = it.layer(

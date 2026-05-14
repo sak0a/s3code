@@ -206,11 +206,8 @@ import {
   useServerKeybindings,
 } from "~/rpc/serverState";
 import { sanitizeThreadErrorMessage } from "~/rpc/transportError";
-import {
-  retainThreadDetailSubscription,
-  readEnvironmentConnection,
-} from "../environments/runtime/service";
-import { useDetectedServerStore } from "../detectedServerStore";
+import { retainThreadDetailSubscription } from "../environments/runtime/service";
+import { useDetectedServersSubscription } from "../hooks/useDetectedServersSubscription";
 import { RightPanelSheet } from "./RightPanelSheet";
 import { Button } from "./ui/button";
 import {
@@ -1056,15 +1053,7 @@ export default function ChatView(props: ChatViewProps) {
 
   // Subscribe to detected-server events and dispatch into the detected-server store.
   // Scoped to the active server-thread; the store is keyed by threadKey.
-  useEffect(() => {
-    if (routeKind !== "server") return;
-    const connection = readEnvironmentConnection(environmentId);
-    if (!connection) return;
-    const threadKey = scopedThreadKey(scopeThreadRef(environmentId, threadId));
-    return connection.client.detectedServers.onEvent({ threadId }, (event) => {
-      useDetectedServerStore.getState().handleEvent(threadKey, event);
-    });
-  }, [environmentId, routeKind, threadId]);
+  useDetectedServersSubscription(routeKind === "server" ? environmentId : null, threadId);
 
   // Compute the list of environments this logical project spans, used to
   // drive the environment picker in BranchToolbar.

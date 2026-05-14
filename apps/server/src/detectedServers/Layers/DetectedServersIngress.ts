@@ -1,10 +1,15 @@
-import { Context, DateTime, Duration, Effect, Fiber, Layer } from "effect";
+import { Context, DateTime, Duration, Effect, Fiber, Layer, Schema } from "effect";
 import pidtree from "pidtree";
 import { DetectedServerRegistry } from "../Services/DetectedServerRegistry.ts";
 import { SocketProbe } from "./SocketProbe.ts";
 import { LivenessHeartbeat } from "./LivenessHeartbeat.ts";
 import { StdoutSniffer } from "./StdoutSniffer.ts";
 import { hintFromArgv, type PackageJsonShape } from "./ArgvHinter.ts";
+
+class PidtreeError extends Schema.TaggedErrorClass<PidtreeError>("s3/detectedServers/PidtreeError")(
+  "PidtreeError",
+  { pid: Schema.Int },
+) {}
 
 const DEBUGGER_PORTS = new Set([9229, 9230]);
 
@@ -27,6 +32,7 @@ export interface CodexCommandSource {
 
 export interface PtyCommandSource {
   threadId: string;
+  terminalId: string;
   pid: number;
   argv: ReadonlyArray<string>;
   cwd: string;
@@ -39,6 +45,7 @@ export interface CommandTracker {
 
 export interface PtyTracker {
   feed: (chunk: string) => void;
+  feedCommand: (argv: ReadonlyArray<string>, cwd: string) => void;
   end: (exitCode: number | null) => void;
 }
 
@@ -60,7 +67,6 @@ export class DetectedServersIngress extends Context.Service<
 >()("s3/detectedServers/Layers/DetectedServersIngress") {}
 
 const noopTracker = (): CommandTracker => ({ feed: () => {}, end: () => {} });
-const noopPtyTracker = (): PtyTracker => ({ feed: () => {}, end: () => {} });
 
 export const DetectedServersIngressLive = Layer.effect(
   DetectedServersIngress,
@@ -139,115 +145,150 @@ export const DetectedServersIngressLive = Layer.effect(
       pkg: PackageJsonShape | undefined,
     ): Effect.Effect<PtyTracker> =>
       Effect.gen(function* () {
-        const hint = hintFromArgv(source.argv, pkg);
-        if (!hint.isLikelyServer) return noopPtyTracker();
+        interface SubTracker {
+          serverId: string;
+          identityKey: string;
+          sniffer: StdoutSniffer;
+          unsubCandidate: () => void;
+          probeFiber: Fiber.Fiber<void, never>;
+        }
 
-        const identityKey = `${source.threadId}::pty::${source.pid}`;
-        const server = yield* registry.registerOrUpdate({
-          threadId: source.threadId,
-          source: "pty",
-          identityKey,
-          patch: {
-            framework: hint.framework,
-            status: "predicted",
-            pid: source.pid,
-            argv: source.argv,
-            cwd: source.cwd,
-          },
-        });
+        const subTrackers: SubTracker[] = [];
+        let commandSeq = 0;
 
-        const sniffer = new StdoutSniffer();
-        let sniffedPort: number | null = null;
-        const unsubCandidate = sniffer.onCandidate((c) => {
-          sniffedPort = c.port;
-          runFork(
-            registry.registerOrUpdate({
+        const startSubTracker = (
+          argv: ReadonlyArray<string>,
+          cwd: string,
+        ): Effect.Effect<SubTracker | null> =>
+          Effect.gen(function* () {
+            const hint = hintFromArgv(argv, pkg);
+            if (!hint.isLikelyServer) return null;
+
+            commandSeq += 1;
+            const identityKey = `${source.threadId}::pty::${source.pid}::${commandSeq}`;
+            const server = yield* registry.registerOrUpdate({
               threadId: source.threadId,
               source: "pty",
               identityKey,
               patch: {
-                status: "candidate",
-                framework: c.framework !== "unknown" ? c.framework : hint.framework,
-                url: c.url,
-                port: c.port,
-                host: c.host,
+                framework: hint.framework,
+                status: "predicted",
+                pid: source.pid,
+                terminalId: source.terminalId,
+                argv,
+                cwd,
               },
-            }),
-          );
-        });
+            });
 
-        const denyPorts = new Set<number>([...DEBUGGER_PORTS, ...argvHasInspect(source.argv)]);
+            const sniffer = new StdoutSniffer();
+            let sniffedPort: number | null = null;
+            const unsubCandidate = sniffer.onCandidate((c) => {
+              sniffedPort = c.port;
+              runFork(
+                registry.registerOrUpdate({
+                  threadId: source.threadId,
+                  source: "pty",
+                  identityKey,
+                  patch: {
+                    status: "candidate",
+                    framework: c.framework !== "unknown" ? c.framework : hint.framework,
+                    url: c.url,
+                    port: c.port,
+                    host: c.host,
+                  },
+                }),
+              );
+            });
 
-        // Probe fiber: polls SocketProbe + LivenessHeartbeat
-        const probeFiber = runFork(
-          Effect.gen(function* () {
-            let liveSeenAt: Date | null = null;
-            while (true) {
-              const pids = yield* Effect.tryPromise({
-                try: () => pidtree(source.pid, { root: true }),
-                catch: () => new Error("pidtree failed"),
-              }).pipe(Effect.orElseSucceed(() => [source.pid] as number[]));
-              const rows = yield* probe.probe(pids);
-              const candidates = rows.filter((r) => !denyPorts.has(r.port));
-              const matching = sniffedPort
-                ? candidates.find((r) => r.port === sniffedPort)
-                : candidates[0];
-              if (matching && !liveSeenAt) {
-                const ok = yield* heartbeat.check(`http://localhost:${matching.port}`);
-                if (ok) {
-                  liveSeenAt = new Date();
-                  yield* registry.registerOrUpdate({
-                    threadId: source.threadId,
-                    source: "pty",
-                    identityKey,
-                    patch: {
-                      status: "live",
-                      port: matching.port,
-                      host: matching.host,
-                      url: `http://localhost:${matching.port}`,
-                      liveAt: DateTime.fromDateUnsafe(liveSeenAt),
-                    },
-                  });
-                } else {
-                  yield* registry.registerOrUpdate({
-                    threadId: source.threadId,
-                    source: "pty",
-                    identityKey,
-                    patch: {
-                      status: "confirmed",
-                      port: matching.port,
-                      host: matching.host,
-                    },
-                  });
+            const denyPorts = new Set<number>([...DEBUGGER_PORTS, ...argvHasInspect(argv)]);
+
+            const probeFiber = runFork(
+              Effect.gen(function* () {
+                let liveSeenAt: Date | null = null;
+                while (true) {
+                  const pids = yield* Effect.tryPromise({
+                    try: () => pidtree(source.pid, { root: true }),
+                    catch: () => new PidtreeError({ pid: source.pid }),
+                  }).pipe(Effect.orElseSucceed(() => [source.pid] as number[]));
+                  const rows = yield* probe.probe(pids);
+                  const candidates = rows.filter((r) => !denyPorts.has(r.port));
+                  const matching = sniffedPort
+                    ? candidates.find((r) => r.port === sniffedPort)
+                    : candidates[0];
+                  if (matching && !liveSeenAt) {
+                    const ok = yield* heartbeat.check(`http://localhost:${matching.port}`);
+                    if (ok) {
+                      liveSeenAt = new Date();
+                      yield* registry.registerOrUpdate({
+                        threadId: source.threadId,
+                        source: "pty",
+                        identityKey,
+                        patch: {
+                          status: "live",
+                          port: matching.port,
+                          host: matching.host,
+                          url: `http://localhost:${matching.port}`,
+                          liveAt: DateTime.fromDateUnsafe(liveSeenAt),
+                        },
+                      });
+                    } else {
+                      yield* registry.registerOrUpdate({
+                        threadId: source.threadId,
+                        source: "pty",
+                        identityKey,
+                        patch: {
+                          status: "confirmed",
+                          port: matching.port,
+                          host: matching.host,
+                        },
+                      });
+                    }
+                  }
+                  yield* Effect.sleep(liveSeenAt ? Duration.seconds(2) : Duration.millis(250));
                 }
-              }
-              yield* Effect.sleep(liveSeenAt ? Duration.seconds(2) : Duration.millis(250));
-            }
-          }),
-        );
+              }),
+            );
+
+            return { serverId: server.id, identityKey, sniffer, unsubCandidate, probeFiber };
+          });
+
+        const initial = yield* startSubTracker(source.argv, source.cwd);
+        if (initial) subTrackers.push(initial);
 
         return {
           feed: (chunk: string) => {
-            sniffer.feed(chunk);
-            runFork(registry.publishLog(server.id, chunk));
+            for (const sub of subTrackers) {
+              sub.sniffer.feed(chunk);
+              runFork(registry.publishLog(sub.serverId, chunk));
+            }
           },
-          end: (exitCode: number | null) => {
-            unsubCandidate();
-            runFork(Fiber.interrupt(probeFiber).pipe(Effect.ignore));
-            const status = exitCode === 0 || exitCode === null ? "exited" : "crashed";
-            const exitReason: "stopped" | "crashed" = status === "exited" ? "stopped" : "crashed";
+          feedCommand: (argv: ReadonlyArray<string>, cwd: string) => {
             runFork(
-              registry.registerOrUpdate({
-                threadId: source.threadId,
-                source: "pty",
-                identityKey,
-                patch: {
-                  status,
-                  exitedAt: DateTime.fromDateUnsafe(new Date()),
-                  exitReason,
-                },
+              Effect.gen(function* () {
+                const sub = yield* startSubTracker(argv, cwd);
+                if (sub) subTrackers.push(sub);
               }),
             );
+          },
+          end: (exitCode: number | null) => {
+            const status = exitCode === 0 || exitCode === null ? "exited" : "crashed";
+            const exitReason: "stopped" | "crashed" = status === "exited" ? "stopped" : "crashed";
+            for (const sub of subTrackers) {
+              sub.unsubCandidate();
+              runFork(Fiber.interrupt(sub.probeFiber).pipe(Effect.ignore));
+              runFork(
+                registry.registerOrUpdate({
+                  threadId: source.threadId,
+                  source: "pty",
+                  identityKey: sub.identityKey,
+                  patch: {
+                    status,
+                    exitedAt: DateTime.fromDateUnsafe(new Date()),
+                    exitReason,
+                  },
+                }),
+              );
+            }
           },
         };
       });
