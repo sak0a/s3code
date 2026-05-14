@@ -1,6 +1,6 @@
 import * as NodeOS from "node:os";
 
-import { ProviderDriverKind, type CodexSettings } from "@s3tools/contracts";
+import { ProviderDriverKind, type CodexSettings } from "@ryco/contracts";
 import { Effect, FileSystem, Path, Schema } from "effect";
 import * as PlatformError from "effect/PlatformError";
 

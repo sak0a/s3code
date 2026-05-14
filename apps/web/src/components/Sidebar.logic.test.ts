@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ProviderDriverKind } from "@s3tools/contracts";
+import { ProviderDriverKind } from "@ryco/contracts";
 
 import {
   aggregateWorktreeStatus,
@@ -32,7 +32,7 @@ import {
   ProjectId,
   ProviderInstanceId,
   ThreadId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   DEFAULT_INTERACTION_MODE,
   DEFAULT_RUNTIME_MODE,
@@ -220,12 +220,12 @@ describe("resolveSidebarNewThreadSeedContext", () => {
         activeThread: {
           projectId: "project-1",
           branch: "feature/existing",
-          worktreePath: "/repo/.s3code/worktrees/existing",
+          worktreePath: "/repo/.ryco/worktrees/existing",
         },
         activeDraftThread: {
           projectId: "project-1",
           branch: "feature/draft",
-          worktreePath: "/repo/.s3code/worktrees/draft",
+          worktreePath: "/repo/.ryco/worktrees/draft",
           envMode: "worktree",
         },
       }),

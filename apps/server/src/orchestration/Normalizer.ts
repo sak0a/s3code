@@ -6,7 +6,7 @@ import {
   OrchestrationDispatchCommandError,
   ProjectMetadataDir,
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import { createAttachmentId, resolveAttachmentPath } from "../attachmentStore.ts";
 import { ServerConfig } from "../config.ts";

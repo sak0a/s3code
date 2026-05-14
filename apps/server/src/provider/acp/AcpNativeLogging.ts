@@ -1,4 +1,4 @@
-import type { ProviderDriverKind, ThreadId } from "@s3tools/contracts";
+import type { ProviderDriverKind, ThreadId } from "@ryco/contracts";
 import { Cause, Effect } from "effect";
 import type * as EffectAcpProtocol from "effect-acp/protocol";
 

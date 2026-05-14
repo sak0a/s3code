@@ -1,14 +1,14 @@
 import { Debouncer } from "@tanstack/react-pacer";
 import { create } from "zustand";
 
-export const PERSISTED_STATE_KEY = "s3code:ui-state:v1";
+export const PERSISTED_STATE_KEY = "ryco:ui-state:v1";
 const LEGACY_PERSISTED_STATE_KEYS = [
-  "s3code:renderer-state:v8",
-  "s3code:renderer-state:v7",
-  "s3code:renderer-state:v6",
-  "s3code:renderer-state:v5",
-  "s3code:renderer-state:v4",
-  "s3code:renderer-state:v3",
+  "ryco:renderer-state:v8",
+  "ryco:renderer-state:v7",
+  "ryco:renderer-state:v6",
+  "ryco:renderer-state:v5",
+  "ryco:renderer-state:v4",
+  "ryco:renderer-state:v3",
   "codething:renderer-state:v4",
   "codething:renderer-state:v3",
   "codething:renderer-state:v2",
@@ -16,11 +16,19 @@ const LEGACY_PERSISTED_STATE_KEYS = [
 ] as const;
 
 export type ReasoningIndicatorStyle = "icon-dots" | "text";
+export type TokenModeControlStyle = "icon-text" | "icon" | "text";
 
 const DEFAULT_REASONING_INDICATOR_STYLE: ReasoningIndicatorStyle = "icon-dots";
+const DEFAULT_TOKEN_MODE_CONTROL_STYLE: TokenModeControlStyle = "icon-text";
 
 function sanitizeReasoningIndicatorStyle(value: unknown): ReasoningIndicatorStyle {
   return value === "text" || value === "icon-dots" ? value : DEFAULT_REASONING_INDICATOR_STYLE;
+}
+
+function sanitizeTokenModeControlStyle(value: unknown): TokenModeControlStyle {
+  return value === "icon" || value === "text" || value === "icon-text"
+    ? value
+    : DEFAULT_TOKEN_MODE_CONTROL_STYLE;
 }
 
 export interface PersistedUiState {
@@ -30,6 +38,7 @@ export interface PersistedUiState {
   defaultAdvertisedEndpointKey?: string | null;
   threadChangedFilesExpandedById?: Record<string, Record<string, boolean>>;
   reasoningIndicatorStyle?: ReasoningIndicatorStyle;
+  tokenModeControlStyle?: TokenModeControlStyle;
 }
 
 export interface UiProjectState {
@@ -56,6 +65,7 @@ export interface UiEndpointState {
 
 export interface UiState extends UiProjectState, UiThreadState, UiEndpointState {
   reasoningIndicatorStyle: ReasoningIndicatorStyle;
+  tokenModeControlStyle: TokenModeControlStyle;
 }
 
 export interface SyncProjectInput {
@@ -79,6 +89,7 @@ const initialState: UiState = {
   threadWorkEntryExpandedById: {},
   defaultAdvertisedEndpointKey: null,
   reasoningIndicatorStyle: DEFAULT_REASONING_INDICATOR_STYLE,
+  tokenModeControlStyle: DEFAULT_TOKEN_MODE_CONTROL_STYLE,
 };
 
 const persistedCollapsedProjectCwds = new Set<string>();
@@ -124,6 +135,7 @@ function readPersistedState(): UiState {
         parsed.threadChangedFilesExpandedById,
       ),
       reasoningIndicatorStyle: sanitizeReasoningIndicatorStyle(parsed.reasoningIndicatorStyle),
+      tokenModeControlStyle: sanitizeTokenModeControlStyle(parsed.tokenModeControlStyle),
     };
   } catch {
     return initialState;
@@ -215,6 +227,7 @@ export function persistState(state: UiState): void {
         defaultAdvertisedEndpointKey: state.defaultAdvertisedEndpointKey,
         threadChangedFilesExpandedById,
         reasoningIndicatorStyle: state.reasoningIndicatorStyle,
+        tokenModeControlStyle: state.tokenModeControlStyle,
       } satisfies PersistedUiState),
     );
     if (!legacyKeysCleanedUp) {
@@ -624,6 +637,16 @@ export function setReasoningIndicatorStyle(
   };
 }
 
+export function setTokenModeControlStyle(state: UiState, style: TokenModeControlStyle): UiState {
+  if (state.tokenModeControlStyle === style) {
+    return state;
+  }
+  return {
+    ...state,
+    tokenModeControlStyle: style,
+  };
+}
+
 export function toggleProject(state: UiState, projectId: string): UiState {
   const expanded = state.projectExpandedById[projectId] ?? true;
   return {
@@ -701,6 +724,7 @@ interface UiStateStore extends UiState {
   setThreadWorkEntryExpanded: (threadId: string, entryId: string, expanded: boolean) => void;
   setDefaultAdvertisedEndpointKey: (key: string | null) => void;
   setReasoningIndicatorStyle: (style: ReasoningIndicatorStyle) => void;
+  setTokenModeControlStyle: (style: TokenModeControlStyle) => void;
   toggleProject: (projectId: string) => void;
   setProjectExpanded: (projectId: string, expanded: boolean) => void;
   reorderProjects: (
@@ -725,6 +749,7 @@ export const useUiStateStore = create<UiStateStore>((set) => ({
   setDefaultAdvertisedEndpointKey: (key) =>
     set((state) => setDefaultAdvertisedEndpointKey(state, key)),
   setReasoningIndicatorStyle: (style) => set((state) => setReasoningIndicatorStyle(state, style)),
+  setTokenModeControlStyle: (style) => set((state) => setTokenModeControlStyle(state, style)),
   toggleProject: (projectId) => set((state) => toggleProject(state, projectId)),
   setProjectExpanded: (projectId, expanded) =>
     set((state) => setProjectExpanded(state, projectId, expanded)),

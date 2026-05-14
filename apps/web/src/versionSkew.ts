@@ -1,4 +1,4 @@
-import type { EnvironmentId, ServerConfig } from "@s3tools/contracts";
+import type { EnvironmentId, ServerConfig } from "@ryco/contracts";
 import * as Schema from "effect/Schema";
 
 import { APP_VERSION } from "./branding";
@@ -10,7 +10,7 @@ export interface VersionMismatch {
   readonly hint: string;
 }
 
-export const VERSION_MISMATCH_DISMISSALS_STORAGE_KEY = "s3code:version-mismatch-dismissals:v1";
+export const VERSION_MISMATCH_DISMISSALS_STORAGE_KEY = "ryco:version-mismatch-dismissals:v1";
 
 const VersionMismatchDismissalsSchema = Schema.Struct({
   keys: Schema.Array(Schema.String),
@@ -39,7 +39,7 @@ export function resolveVersionMismatch(
   return {
     clientVersion: normalizedClientVersion,
     serverVersion: normalizedServerVersion,
-    hint: "Version mismatch. Try syncing the client and server to the same S3Code version.",
+    hint: "Version mismatch. Try syncing the client and server to the same Ryco version.",
   };
 }
 

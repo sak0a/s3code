@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ProviderDriverKind, type ModelCapabilities } from "@s3tools/contracts";
-import { createModelCapabilities } from "@s3tools/shared/model";
+import { ProviderDriverKind, type ModelCapabilities } from "@ryco/contracts";
+import { createModelCapabilities } from "@ryco/shared/model";
 
 import { providerModelsFromSettings } from "./providerSnapshot.ts";
 

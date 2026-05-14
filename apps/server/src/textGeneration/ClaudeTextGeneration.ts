@@ -10,10 +10,10 @@
 import { Effect, Option, Schema, Stream } from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
-import { type ClaudeSettings, type ModelSelection } from "@s3tools/contracts";
-import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@s3tools/shared/git";
+import { type ClaudeSettings, type ModelSelection } from "@ryco/contracts";
+import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@ryco/shared/git";
 
-import { TextGenerationError } from "@s3tools/contracts";
+import { TextGenerationError } from "@ryco/contracts";
 import { type TextGenerationShape } from "./TextGeneration.ts";
 import {
   buildBranchNamePrompt,
@@ -31,7 +31,7 @@ import {
 import {
   getModelSelectionStringOptionValue,
   getProviderOptionDescriptors,
-} from "@s3tools/shared/model";
+} from "@ryco/shared/model";
 import {
   getClaudeModelCapabilities,
   normalizeClaudeCliEffort,

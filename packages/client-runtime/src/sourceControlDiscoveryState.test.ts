@@ -1,5 +1,5 @@
 import { assert, beforeEach, it } from "vitest";
-import type { SourceControlDiscoveryResult } from "@s3tools/contracts";
+import type { SourceControlDiscoveryResult } from "@ryco/contracts";
 import { AtomRegistry } from "effect/unstable/reactivity";
 
 import {

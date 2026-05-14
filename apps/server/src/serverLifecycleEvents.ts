@@ -1,4 +1,4 @@
-import type { ServerLifecycleStreamEvent } from "@s3tools/contracts";
+import type { ServerLifecycleStreamEvent } from "@ryco/contracts";
 import { Effect, Layer, PubSub, Ref, Context, Stream } from "effect";
 
 type LifecycleEventInput =

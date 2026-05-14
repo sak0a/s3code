@@ -86,7 +86,7 @@ export interface NetServiceShape {
  * NetService - Service tag for startup networking helpers.
  */
 export class NetService extends Context.Service<NetService, NetServiceShape>()(
-  "@s3tools/shared/Net/NetService",
+  "@ryco/shared/Net/NetService",
 ) {
   static readonly layer = Layer.sync(NetService, () => {
     /**

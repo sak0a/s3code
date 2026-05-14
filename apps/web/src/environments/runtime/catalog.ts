@@ -1,11 +1,11 @@
-import { getKnownEnvironmentHttpBaseUrl } from "@s3tools/client-runtime";
+import { getKnownEnvironmentHttpBaseUrl } from "@ryco/client-runtime";
 import type {
   AuthSessionRole,
   EnvironmentId,
   ExecutionEnvironmentDescriptor,
   PersistedSavedEnvironmentRecord,
   ServerConfig,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { create } from "zustand";
 
 import { ensureLocalApi } from "../../localApi";
@@ -209,6 +209,41 @@ export function getEnvironmentHttpBaseUrl(environmentId: EnvironmentId): string 
   return getSavedEnvironmentRecord(environmentId)?.httpBaseUrl ?? null;
 }
 
+const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "::1", "localhost"]);
+
+function isLoopbackHostname(hostname: string): boolean {
+  return LOOPBACK_HOSTNAMES.has(
+    hostname
+      .trim()
+      .toLowerCase()
+      .replace(/^\[(.*)\]$/, "$1"),
+  );
+}
+
+function rewriteToCurrentOriginInDev(httpBaseUrl: string): string {
+  const configuredDevServerUrl = import.meta.env.VITE_DEV_SERVER_URL?.trim();
+  if (!configuredDevServerUrl) {
+    return httpBaseUrl;
+  }
+  const currentUrl = new URL(window.location.href);
+  const targetUrl = new URL(httpBaseUrl);
+  const devServerUrl = new URL(configuredDevServerUrl, currentUrl.origin);
+
+  const isCurrentOriginDevServer =
+    (currentUrl.protocol === "http:" || currentUrl.protocol === "https:") &&
+    currentUrl.origin === devServerUrl.origin;
+
+  if (
+    !isCurrentOriginDevServer ||
+    currentUrl.origin === targetUrl.origin ||
+    !isLoopbackHostname(currentUrl.hostname) ||
+    !isLoopbackHostname(targetUrl.hostname)
+  ) {
+    return httpBaseUrl;
+  }
+  return currentUrl.origin;
+}
+
 export function resolveEnvironmentHttpUrl(input: {
   readonly environmentId: EnvironmentId;
   readonly pathname: string;
@@ -219,7 +254,7 @@ export function resolveEnvironmentHttpUrl(input: {
     throw new Error(`Unable to resolve HTTP base URL for environment ${input.environmentId}.`);
   }
 
-  const url = new URL(httpBaseUrl);
+  const url = new URL(rewriteToCurrentOriginInDev(httpBaseUrl));
   url.pathname = input.pathname;
   if (input.searchParams) {
     url.search = new URLSearchParams(input.searchParams).toString();

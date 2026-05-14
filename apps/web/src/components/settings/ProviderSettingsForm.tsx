@@ -6,7 +6,7 @@ import type {
   ProviderSettingsFormAnnotation,
   ProviderSettingsFormControl,
   ProviderSettingsFormSchemaAnnotation,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import { cn } from "../../lib/utils";
 import { DraftInput } from "../ui/draft-input";

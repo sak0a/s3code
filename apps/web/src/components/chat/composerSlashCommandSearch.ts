@@ -2,7 +2,7 @@ import {
   insertRankedSearchResult,
   normalizeSearchQuery,
   scoreQueryMatch,
-} from "@s3tools/shared/searchRanking";
+} from "@ryco/shared/searchRanking";
 
 import type { ComposerCommandItem } from "./ComposerCommandMenu";
 

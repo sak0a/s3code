@@ -1,5 +1,6 @@
 import {
   ChatAttachment,
+  DEFAULT_AGENT_TOKEN_MODE,
   IsoDateTime,
   MessageId,
   NonNegativeInt,
@@ -25,7 +26,7 @@ import {
   ProjectId,
   ThreadId,
   WorktreeId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect, Layer, Option, Schema, Struct } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
@@ -205,6 +206,7 @@ function mapSessionRow(
     providerName: row.providerName,
     ...(row.providerInstanceId !== null ? { providerInstanceId: row.providerInstanceId } : {}),
     runtimeMode: row.runtimeMode,
+    tokenMode: row.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
     activeTurnId: row.activeTurnId,
     lastError: row.lastError,
     updatedAt: row.updatedAt,
@@ -223,6 +225,8 @@ function mapProjectShellRow(
     repositoryIdentity,
     defaultModelSelection: row.defaultModelSelection,
     customSystemPrompt: row.customSystemPrompt ?? null,
+    customAvatarContentHash: row.customAvatarContentHash ?? null,
+    preferredRemoteName: row.preferredRemoteName ?? null,
     scripts: row.scripts,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -298,6 +302,8 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           project_metadata_dir AS "projectMetadataDir",
           default_model_selection_json AS "defaultModelSelection",
           custom_system_prompt AS "customSystemPrompt",
+          custom_avatar_content_hash AS "customAvatarContentHash",
+          preferred_remote_name AS "preferredRemoteName",
           scripts_json AS "scripts",
           created_at AS "createdAt",
           updated_at AS "updatedAt",
@@ -319,6 +325,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           model_selection_json AS "modelSelection",
           runtime_mode AS "runtimeMode",
           interaction_mode AS "interactionMode",
+          token_mode AS "tokenMode",
           branch,
           worktree_path AS "worktreePath",
           worktree_id AS "worktreeId",
@@ -465,6 +472,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           provider_session_id AS "providerSessionId",
           provider_thread_id AS "providerThreadId",
           runtime_mode AS "runtimeMode",
+          token_mode AS "tokenMode",
           active_turn_id AS "activeTurnId",
           last_error AS "lastError",
           updated_at AS "updatedAt"
@@ -578,6 +586,8 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           project_metadata_dir AS "projectMetadataDir",
           default_model_selection_json AS "defaultModelSelection",
           custom_system_prompt AS "customSystemPrompt",
+          custom_avatar_content_hash AS "customAvatarContentHash",
+          preferred_remote_name AS "preferredRemoteName",
           scripts_json AS "scripts",
           created_at AS "createdAt",
           updated_at AS "updatedAt",
@@ -602,6 +612,8 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           project_metadata_dir AS "projectMetadataDir",
           default_model_selection_json AS "defaultModelSelection",
           custom_system_prompt AS "customSystemPrompt",
+          custom_avatar_content_hash AS "customAvatarContentHash",
+          preferred_remote_name AS "preferredRemoteName",
           scripts_json AS "scripts",
           created_at AS "createdAt",
           updated_at AS "updatedAt",
@@ -659,6 +671,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           model_selection_json AS "modelSelection",
           runtime_mode AS "runtimeMode",
           interaction_mode AS "interactionMode",
+          token_mode AS "tokenMode",
           branch,
           worktree_path AS "worktreePath",
           worktree_id AS "worktreeId",
@@ -756,6 +769,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           provider_name AS "providerName",
           provider_instance_id AS "providerInstanceId",
           runtime_mode AS "runtimeMode",
+          token_mode AS "tokenMode",
           active_turn_id AS "activeTurnId",
           last_error AS "lastError",
           updated_at AS "updatedAt"
@@ -1042,6 +1056,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
                     ? { providerInstanceId: row.providerInstanceId }
                     : {}),
                   runtimeMode: row.runtimeMode,
+                  tokenMode: row.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
                   activeTurnId: row.activeTurnId,
                   lastError: row.lastError,
                   updatedAt: row.updatedAt,
@@ -1072,6 +1087,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
                 modelSelection: row.modelSelection,
                 runtimeMode: row.runtimeMode,
                 interactionMode: row.interactionMode,
+                tokenMode: row.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
                 branch: row.branch,
                 worktreePath: row.worktreePath,
                 worktreeId: row.worktreeId ?? null,
@@ -1300,6 +1316,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
                   modelSelection: row.modelSelection,
                   runtimeMode: row.runtimeMode,
                   interactionMode: row.interactionMode,
+                  tokenMode: row.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
                   branch: row.branch,
                   worktreePath: row.worktreePath,
                   worktreeId: row.worktreeId ?? null,
@@ -1452,6 +1469,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
                       modelSelection: row.modelSelection,
                       runtimeMode: row.runtimeMode,
                       interactionMode: row.interactionMode,
+                      tokenMode: row.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
                       branch: row.branch,
                       worktreePath: row.worktreePath,
                       worktreeId: row.worktreeId ?? null,
@@ -1486,6 +1504,14 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           }
           return toPersistenceSqlError("ProjectionSnapshotQuery.getShellSnapshot:query")(error);
         }),
+        Effect.tap((snapshot) =>
+          Effect.logDebug("startup shell snapshot query complete", {
+            projectCount: snapshot.projects.length,
+            worktreeCount: snapshot.worktrees?.length ?? 0,
+            threadCount: snapshot.threads.length,
+            snapshotSequence: snapshot.snapshotSequence,
+          }),
+        ),
       );
 
   const getSnapshotSequence: ProjectionSnapshotQueryShape["getSnapshotSequence"] = () =>
@@ -1665,6 +1691,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
         modelSelection: threadRow.value.modelSelection,
         runtimeMode: threadRow.value.runtimeMode,
         interactionMode: threadRow.value.interactionMode,
+        tokenMode: threadRow.value.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
         branch: threadRow.value.branch,
         worktreePath: threadRow.value.worktreePath,
         worktreeId: threadRow.value.worktreeId ?? null,
@@ -1775,6 +1802,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
         modelSelection: threadRow.value.modelSelection,
         runtimeMode: threadRow.value.runtimeMode,
         interactionMode: threadRow.value.interactionMode,
+        tokenMode: threadRow.value.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
         branch: threadRow.value.branch,
         worktreePath: threadRow.value.worktreePath,
         worktreeId: threadRow.value.worktreeId ?? null,

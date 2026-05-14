@@ -6,7 +6,7 @@ import {
   ThreadId,
   TurnId,
   ProviderInstanceId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
@@ -259,6 +259,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           id: asProjectId("project-1"),
           title: "Project 1",
           workspaceRoot: "/tmp/project-1",
+          projectMetadataDir: ".ryco",
           repositoryIdentity: null,
           defaultModelSelection: {
             instanceId: ProviderInstanceId.make("codex"),
@@ -273,6 +274,8 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
               runOnWorktreeCreate: false,
             },
           ],
+          customAvatarContentHash: null,
+          preferredRemoteName: null,
           createdAt: "2026-02-24T00:00:00.000Z",
           updatedAt: "2026-02-24T00:00:01.000Z",
           deletedAt: null,
@@ -289,6 +292,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           },
           interactionMode: "default",
           runtimeMode: "full-access",
+          tokenMode: "balanced",
           branch: null,
           worktreePath: null,
           worktreeId: null,
@@ -359,6 +363,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
             status: "running",
             providerName: "codex",
             runtimeMode: "approval-required",
+            tokenMode: "balanced",
             activeTurnId: asTurnId("turn-1"),
             lastError: null,
             updatedAt: "2026-02-24T00:00:07.000Z",
@@ -373,11 +378,15 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           id: asProjectId("project-1"),
           title: "Project 1",
           workspaceRoot: "/tmp/project-1",
+          projectMetadataDir: ".ryco",
           repositoryIdentity: null,
           defaultModelSelection: {
             instanceId: ProviderInstanceId.make("codex"),
             model: "gpt-5-codex",
           },
+          customSystemPrompt: null,
+          customAvatarContentHash: null,
+          preferredRemoteName: null,
           scripts: [
             {
               id: "script-1",
@@ -402,6 +411,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           },
           interactionMode: "default",
           runtimeMode: "full-access",
+          tokenMode: "balanced",
           branch: null,
           worktreePath: null,
           worktreeId: null,
@@ -427,6 +437,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
             status: "running",
             providerName: "codex",
             runtimeMode: "approval-required",
+            tokenMode: "balanced",
             activeTurnId: asTurnId("turn-1"),
             lastError: null,
             updatedAt: "2026-02-24T00:00:07.000Z",

@@ -23,7 +23,7 @@ permissions:
 jobs:
   preflight:
     name: Preflight
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
       release_channel: ${{ steps.release_meta.outputs.release_channel }}
@@ -94,7 +94,7 @@ jobs:
             echo "release_channel=stable" >> "$GITHUB_OUTPUT"
             echo "version=$version" >> "$GITHUB_OUTPUT"
             echo "tag=v$version" >> "$GITHUB_OUTPUT"
-            echo "name=S3Code v$version" >> "$GITHUB_OUTPUT"
+            echo "name=Ryco v$version" >> "$GITHUB_OUTPUT"
             echo "cli_dist_tag=latest" >> "$GITHUB_OUTPUT"
             if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
               echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
@@ -103,6 +103,17 @@ jobs:
               echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
               echo "make_latest=false" >> "$GITHUB_OUTPUT"
             fi
+          fi
+
+      - name: Check npm package version availability
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ steps.release_meta.outputs.version }}"
+          if npm view "ryco@$version" version --json >/dev/null 2>&1; then
+            echo "ryco@$version already exists on npm. Choose a new release version." >&2
+            exit 1
           fi
 
       - name: Lint
@@ -133,22 +144,22 @@ jobs:
       matrix:
         include:
           - label: macOS arm64
-            runner: blacksmith-12vcpu-macos-26
+            runner: macos-15
             platform: mac
             target: dmg
             arch: arm64
           - label: macOS x64
-            runner: blacksmith-12vcpu-macos-26
+            runner: macos-15
             platform: mac
             target: dmg
             arch: x64
           - label: Linux x64
-            runner: blacksmith-32vcpu-ubuntu-2404
+            runner: ubuntu-24.04
             platform: linux
             target: AppImage
             arch: x64
           - label: Windows x64
-            runner: blacksmith-32vcpu-windows-2025
+            runner: windows-2025
             platform: win
             target: nsis
             arch: x64
@@ -309,7 +320,7 @@ jobs:
     name: Publish CLI to npm
     needs: [preflight, build]
     if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' && needs.build.result == 'success' }}
-    runs-on: ubuntu-24.04 # blacksmith-8vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -329,35 +340,27 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile --filter=s3 --filter=@s3tools/web --filter=@s3tools/scripts
+        run: bun install --frozen-lockfile --filter=ryco --filter=@ryco/web --filter=@ryco/scripts
 
       - name: Align package versions to release version
         run: node scripts/update-release-package-versions.ts "${{ needs.preflight.outputs.version }}"
 
       - name: Build web package
-        run: bun --filter=@s3tools/web run build
+        run: bun --filter=@ryco/web run build
 
       - name: Build CLI package
-        run: bun --filter=s3 run build
+        run: bun --filter=ryco run build
 
       - name: Publish CLI package
-        run: node apps/server/scripts/cli.ts publish --tag "${{ needs.preflight.outputs.cli_dist_tag }}" --app-version "${{ needs.preflight.outputs.version }}" --verbose
+        run: node apps/server/scripts/cli.ts publish --tag "${{ needs.preflight.outputs.cli_dist_tag }}" --app-version "${{ needs.preflight.outputs.version }}" --provenance --verbose
 
   release:
     name: Publish GitHub Release
     needs: [preflight, build, publish_cli]
     if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' && needs.build.result == 'success' && needs.publish_cli.result == 'success' }}
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - id: app_token
-        name: Mint release app token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.RELEASE_APP_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-
       - name: Checkout
         uses: actions/checkout@v6
         with:
@@ -374,7 +377,7 @@ jobs:
           node-version-file: package.json
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile --filter=@s3tools/scripts
+        run: bun install --frozen-lockfile --filter=@ryco/scripts
 
       - name: Download all desktop artifacts
         uses: actions/download-artifact@v8
@@ -442,7 +445,7 @@ jobs:
             release-assets/*.blockmap
             release-assets/*.yml
           fail_on_unmatched_files: true
-          token: ${{ steps.app_token.outputs.token }}
+          token: ${{ github.token }}
 
       - name: Publish first release
         if: needs.preflight.outputs.previous_tag == ''
@@ -462,40 +465,21 @@ jobs:
             release-assets/*.blockmap
             release-assets/*.yml
           fail_on_unmatched_files: true
-          token: ${{ steps.app_token.outputs.token }}
+          token: ${{ github.token }}
 
   finalize:
     name: Finalize release
     if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' && needs.release.result == 'success' && needs.preflight.outputs.release_channel == 'stable' }}
     needs: [preflight, release]
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - id: app_token
-        name: Mint release app token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.RELEASE_APP_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-
       - name: Checkout
         uses: actions/checkout@v6
         with:
           ref: main
           fetch-depth: 0
-          token: ${{ steps.app_token.outputs.token }}
           persist-credentials: true
-
-      - id: app_bot
-        name: Resolve GitHub App bot identity
-        env:
-          GH_TOKEN: ${{ steps.app_token.outputs.token }}
-          APP_SLUG: ${{ steps.app_token.outputs.app-slug }}
-        run: |
-          user_id="$(gh api "/users/${APP_SLUG}[bot]" --jq .id)"
-          echo "name=${APP_SLUG}[bot]" >> "$GITHUB_OUTPUT"
-          echo "email=${user_id}+${APP_SLUG}[bot]@users.noreply.github.com" >> "$GITHUB_OUTPUT"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -508,7 +492,7 @@ jobs:
           node-version-file: package.json
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile --filter=@s3tools/scripts
+        run: bun install --frozen-lockfile --filter=@ryco/scripts
 
       - id: update_versions
         name: Update version strings
@@ -535,66 +519,9 @@ jobs:
             exit 0
           fi
 
-          git config user.name "${{ steps.app_bot.outputs.name }}"
-          git config user.email "${{ steps.app_bot.outputs.email }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add apps/server/package.json apps/desktop/package.json apps/web/package.json packages/contracts/package.json bun.lock
           git commit -m "chore(release): prepare $RELEASE_TAG"
           git push origin HEAD:main
-
-  announce_discord:
-    name: Announce release on Discord
-    if: |
-      always() && !cancelled() &&
-      needs.preflight.result == 'success' &&
-      needs.release.result == 'success' &&
-      (needs.finalize.result == 'success' || needs.finalize.result == 'skipped')
-    needs: [preflight, release, finalize]
-    runs-on: blacksmith-8vcpu-ubuntu-2404
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.preflight.outputs.ref }}
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: package.json
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile --filter=@s3tools/scripts
-
-      - name: Announce prerelease on Discord
-        if: needs.preflight.outputs.is_prerelease == 'true'
-        continue-on-error: true
-        env:
-          DISCORD_MENTION_ROLE_ID: ${{ secrets.DISCORD_RELEASE_NIGHTLY_ROLE_ID }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
-        run: |
-          node scripts/notify-discord-release.ts prerelease \
-            --role-id "$DISCORD_MENTION_ROLE_ID" \
-            --release-name "${{ needs.preflight.outputs.release_name }}" \
-            --release-version "${{ needs.preflight.outputs.version }}" \
-            --tag "${{ needs.preflight.outputs.tag }}" \
-            --release-url "https://github.com/${{ github.repository }}/releases/tag/${{ needs.preflight.outputs.tag }}"
-
-      - name: Announce latest release on Discord
-        if: needs.preflight.outputs.make_latest == 'true'
-        continue-on-error: true
-        env:
-          DISCORD_MENTION_ROLE_ID: ${{ secrets.DISCORD_RELEASE_LATEST_ROLE_ID }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
-        run: |
-          node scripts/notify-discord-release.ts latest \
-            --role-id "$DISCORD_MENTION_ROLE_ID" \
-            --release-name "${{ needs.preflight.outputs.release_name }}" \
-            --release-version "${{ needs.preflight.outputs.version }}" \
-            --tag "${{ needs.preflight.outputs.tag }}" \
-            --release-url "https://github.com/${{ github.repository }}/releases/tag/${{ needs.preflight.outputs.tag }}"

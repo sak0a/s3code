@@ -11,7 +11,7 @@ import {
   type UserInputQuestion,
   type ThreadId,
   type TurnId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import type {
   ChatMessage,
@@ -33,6 +33,11 @@ export const PROVIDER_OPTIONS: Array<{
 }> = [
   { value: ProviderDriverKind.make("codex"), label: "Codex", available: true },
   { value: ProviderDriverKind.make("claudeAgent"), label: "Claude", available: true },
+  {
+    value: ProviderDriverKind.make("copilot"),
+    label: "GitHub Copilot",
+    available: true,
+  },
   {
     value: ProviderDriverKind.make("opencode"),
     label: "OpenCode",

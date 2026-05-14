@@ -30,14 +30,14 @@ import type {
   DesktopUpdateActionResult,
   DesktopUpdateCheckResult,
   DesktopUpdateState,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { autoUpdater } from "electron-updater";
 
-import type { ContextMenuItem } from "@s3tools/contracts";
-import { RotatingFileSink } from "@s3tools/shared/logging";
-import { deleteEnv, readEnv } from "@s3tools/shared/runtimeEnv";
-import { parsePersistedServerObservabilitySettings } from "@s3tools/shared/serverSettings";
-import type { RemoteS3RunnerOptions } from "@s3tools/ssh/tunnel";
+import type { ContextMenuItem } from "@ryco/contracts";
+import { RotatingFileSink } from "@ryco/shared/logging";
+import { deleteEnv, readEnv } from "@ryco/shared/runtimeEnv";
+import { parsePersistedServerObservabilitySettings } from "@ryco/shared/serverSettings";
+import type { RemoteS3RunnerOptions } from "@ryco/ssh/tunnel";
 import { DEFAULT_DESKTOP_BACKEND_PORT, resolveDesktopBackendPort } from "./backendPort.ts";
 import {
   type DesktopSettings,
@@ -65,6 +65,13 @@ import {
 } from "./serverExposure.ts";
 import { DesktopSshEnvironmentBridge, resolveRemoteS3CliPackageSpec } from "./sshEnvironment.ts";
 import { syncShellEnvironment } from "./syncShellEnvironment.ts";
+import {
+  applyShellEnvironmentCache,
+  createShellEnvironmentCacheRecord,
+  readShellEnvironmentCache,
+  writeShellEnvironmentCache,
+} from "./shellEnvironmentCache.ts";
+import { createStartupTiming, formatStartupTimingEntry } from "./startupTiming.ts";
 import { waitForBackendStartupReady } from "./backendStartupReadiness.ts";
 import { getAutoUpdateDisabledReason, shouldBroadcastDownloadProgress } from "./updateState.ts";
 import { doesVersionMatchDesktopUpdateChannel } from "./updateChannels.ts";
@@ -86,7 +93,8 @@ import { resolveDesktopAppBranding } from "./appBranding.ts";
 import { bindFirstRevealTrigger, type RevealSubscription } from "./windowReveal.ts";
 import { resolveTailscaleAdvertisedEndpoints } from "./tailscaleEndpointProvider.ts";
 
-syncShellEnvironment();
+const desktopStartupTiming = createStartupTiming();
+desktopStartupTiming.mark("desktop.launch");
 
 const PICK_FOLDER_CHANNEL = "desktop:pick-folder";
 const CONFIRM_CHANNEL = "desktop:confirm";
@@ -113,27 +121,28 @@ const GET_SERVER_EXPOSURE_STATE_CHANNEL = "desktop:get-server-exposure-state";
 const SET_SERVER_EXPOSURE_MODE_CHANNEL = "desktop:set-server-exposure-mode";
 const SET_TAILSCALE_SERVE_ENABLED_CHANNEL = "desktop:set-tailscale-serve-enabled";
 const GET_ADVERTISED_ENDPOINTS_CHANNEL = "desktop:get-advertised-endpoints";
-const BASE_DIR = readEnv("S3CODE_HOME")?.trim() || Path.join(OS.homedir(), ".s3code");
+const BASE_DIR = readEnv("RYCO_HOME")?.trim() || Path.join(OS.homedir(), ".ryco");
 const STATE_DIR = Path.join(BASE_DIR, "userdata");
 const DESKTOP_SETTINGS_PATH = Path.join(STATE_DIR, "desktop-settings.json");
 const CLIENT_SETTINGS_PATH = Path.join(STATE_DIR, "client-settings.json");
 const SAVED_ENVIRONMENT_REGISTRY_PATH = Path.join(STATE_DIR, "saved-environments.json");
+const SHELL_ENVIRONMENT_CACHE_PATH = Path.join(STATE_DIR, "shell-environment-cache.json");
 const DESKTOP_SCHEME = "s3";
 const ROOT_DIR = Path.resolve(__dirname, "../../..");
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
 // Dev-only SSH launcher override. Set this to an absolute path on the SSH host
 // for a built server entry, for example:
 // "/Users/julius/Development/Work/codething-mvp/apps/server/dist/bin.mjs"
-const DEV_REMOTE_SERVER_ENTRY_PATH = readEnv("S3CODE_DEV_REMOTE_SERVER_ENTRY_PATH")?.trim() ?? "";
+const DEV_REMOTE_SERVER_ENTRY_PATH = readEnv("RYCO_DEV_REMOTE_SERVER_ENTRY_PATH")?.trim() ?? "";
 const desktopAppBranding: DesktopAppBranding = resolveDesktopAppBranding({
   isDevelopment,
   appVersion: app.getVersion(),
 });
 const APP_DISPLAY_NAME = desktopAppBranding.displayName;
-const APP_USER_MODEL_ID = isDevelopment ? "com.sak0a.s3code.dev" : "com.sak0a.s3code";
-const LINUX_DESKTOP_ENTRY_NAME = isDevelopment ? "s3code-dev.desktop" : "s3code.desktop";
-const LINUX_WM_CLASS = isDevelopment ? "s3code-dev" : "s3code";
-const USER_DATA_DIR_NAME = isDevelopment ? "s3code-dev" : "s3code";
+const APP_USER_MODEL_ID = isDevelopment ? "com.sak0a.ryco.dev" : "com.sak0a.ryco";
+const LINUX_DESKTOP_ENTRY_NAME = isDevelopment ? "ryco-dev.desktop" : "ryco.desktop";
+const LINUX_WM_CLASS = isDevelopment ? "ryco-dev" : "ryco";
+const USER_DATA_DIR_NAME = isDevelopment ? "ryco-dev" : "ryco";
 const COMMIT_HASH_PATTERN = /^[0-9a-f]{7,40}$/i;
 const COMMIT_HASH_DISPLAY_LENGTH = 12;
 const LOG_DIR = Path.join(STATE_DIR, "logs");
@@ -305,17 +314,69 @@ function resolveDesktopDevServerUrl(): string {
 
 function backendChildEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
-  deleteEnv(env, "S3CODE_PORT");
-  deleteEnv(env, "S3CODE_MODE");
-  deleteEnv(env, "S3CODE_NO_BROWSER");
-  deleteEnv(env, "S3CODE_HOST");
-  deleteEnv(env, "S3CODE_DESKTOP_WS_URL");
-  deleteEnv(env, "S3CODE_DESKTOP_LAN_ACCESS");
-  deleteEnv(env, "S3CODE_DESKTOP_LAN_HOST");
-  deleteEnv(env, "S3CODE_DESKTOP_HTTPS_ENDPOINTS");
-  deleteEnv(env, "S3CODE_TAILSCALE_SERVE");
-  deleteEnv(env, "S3CODE_TAILSCALE_SERVE_PORT");
+  deleteEnv(env, "RYCO_PORT");
+  deleteEnv(env, "RYCO_MODE");
+  deleteEnv(env, "RYCO_NO_BROWSER");
+  deleteEnv(env, "RYCO_HOST");
+  deleteEnv(env, "RYCO_DESKTOP_WS_URL");
+  deleteEnv(env, "RYCO_DESKTOP_LAN_ACCESS");
+  deleteEnv(env, "RYCO_DESKTOP_LAN_HOST");
+  deleteEnv(env, "RYCO_DESKTOP_HTTPS_ENDPOINTS");
+  deleteEnv(env, "RYCO_TAILSCALE_SERVE");
+  deleteEnv(env, "RYCO_TAILSCALE_SERVE_PORT");
   return env;
+}
+
+function synchronizeDesktopShellEnvironment(reason: string): void {
+  markDesktopStartupPhase("desktop.shell-env.refresh.start", `reason=${reason}`);
+  syncShellEnvironment(process.env, {
+    logWarning: (message, error) => {
+      writeDesktopLogHeader(
+        `shell environment warning message=${sanitizeLogValue(message)} detail=${sanitizeLogValue(formatErrorMessage(error))}`,
+      );
+      console.warn(`[desktop] ${message}`, error instanceof Error ? error.message : (error ?? ""));
+    },
+  });
+  try {
+    writeShellEnvironmentCache(
+      SHELL_ENVIRONMENT_CACHE_PATH,
+      createShellEnvironmentCacheRecord({ env: process.env }),
+    );
+  } catch (error) {
+    writeDesktopLogHeader(
+      `shell environment cache write failed message=${sanitizeLogValue(formatErrorMessage(error))}`,
+    );
+  }
+  markDesktopStartupPhase("desktop.shell-env.refresh.end", `reason=${reason}`);
+}
+
+function prepareDesktopShellEnvironmentForBackend(): "cache-hit" | "cache-miss" {
+  markDesktopStartupPhase("desktop.shell-env.prepare.start");
+  const cached = readShellEnvironmentCache(SHELL_ENVIRONMENT_CACHE_PATH);
+  if (cached.kind === "hit") {
+    applyShellEnvironmentCache(process.env, cached.record);
+    markDesktopStartupPhase(
+      "desktop.shell-env.cache.hit",
+      `capturedAt=${cached.record.capturedAt}`,
+    );
+    return "cache-hit";
+  }
+
+  markDesktopStartupPhase("desktop.shell-env.cache.miss", `reason=${cached.reason}`);
+  synchronizeDesktopShellEnvironment("cache-miss");
+  return "cache-miss";
+}
+
+function scheduleDesktopShellEnvironmentRefresh(reason: string): void {
+  setTimeout(() => {
+    try {
+      synchronizeDesktopShellEnvironment(reason);
+    } catch (error) {
+      writeDesktopLogHeader(
+        `shell environment refresh failed reason=${reason} message=${sanitizeLogValue(formatErrorMessage(error))}`,
+      );
+    }
+  }, 5000);
 }
 
 function getDesktopServerExposureState(): DesktopServerExposureState {
@@ -358,12 +419,12 @@ function getDesktopSecretStorage() {
 }
 
 function resolveAdvertisedHostOverride(): string | undefined {
-  const override = readEnv("S3CODE_DESKTOP_LAN_HOST")?.trim();
+  const override = readEnv("RYCO_DESKTOP_LAN_HOST")?.trim();
   return override && override.length > 0 ? override : undefined;
 }
 
 function resolveCustomHttpsEndpointUrls(): readonly string[] {
-  return (readEnv("S3CODE_DESKTOP_HTTPS_ENDPOINTS") ?? "")
+  return (readEnv("RYCO_DESKTOP_HTTPS_ENDPOINTS") ?? "")
     .split(",")
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
@@ -454,6 +515,20 @@ function relaunchDesktopApp(reason: string): void {
 function writeDesktopLogHeader(message: string): void {
   if (!desktopLogSink) return;
   desktopLogSink.write(`[${logTimestamp()}] [${logScope("desktop")}] ${message}\n`);
+}
+
+function writeDesktopStartupTimingEntry(entry: ReturnType<typeof desktopStartupTiming.mark>): void {
+  writeDesktopLogHeader(formatStartupTimingEntry(entry));
+}
+
+function markDesktopStartupPhase(phase: string, detail?: string): void {
+  writeDesktopStartupTimingEntry(desktopStartupTiming.mark(phase, detail));
+}
+
+function flushDesktopStartupTimingEntries(): void {
+  for (const entry of desktopStartupTiming.entries()) {
+    writeDesktopStartupTimingEntry(entry);
+  }
 }
 
 function writeBackendSessionBoundary(phase: "START" | "END", details: string): void {
@@ -553,6 +628,7 @@ function ensureDevelopmentInitialWindowOpen(): void {
 
   const nextOpen = waitForDevelopmentWindowReady()
     .then((source) => {
+      markDesktopStartupPhase("desktop.backend.listening", `source=${source}`);
       writeDesktopLogHeader(`bootstrap development resources ready backendSource=${source}`);
     })
     .catch((error) => {
@@ -585,6 +661,7 @@ function ensureInitialBackendWindowOpen(): void {
 
   const nextOpen = waitForBackendWindowReady(backendHttpUrl)
     .then((source) => {
+      markDesktopStartupPhase("desktop.backend.listening", `source=${source}`);
       writeDesktopLogHeader(`bootstrap backend ready source=${source}`);
       if (mainWindow ?? BrowserWindow.getAllWindows()[0]) {
         return;
@@ -680,6 +757,7 @@ function initializePackagedLogging(): void {
     });
     installStdIoCapture();
     writeDesktopLogHeader(`runtime log capture enabled logDir=${LOG_DIR}`);
+    flushDesktopStartupTimingEntries();
   } catch (error) {
     // Logging setup should never block app startup.
     console.error("[desktop] failed to initialize packaged logging", error);
@@ -824,8 +902,8 @@ function resolveEmbeddedCommitHash(): string | null {
 
   try {
     const raw = FS.readFileSync(packageJsonPath, "utf8");
-    const parsed = JSON.parse(raw) as { s3codeCommitHash?: unknown };
-    return normalizeCommitHash(parsed.s3codeCommitHash);
+    const parsed = JSON.parse(raw) as { rycoCommitHash?: unknown };
+    return normalizeCommitHash(parsed.rycoCommitHash);
   } catch {
     return null;
   }
@@ -836,7 +914,7 @@ function resolveAboutCommitHash(): string | null {
     return aboutCommitHashCache;
   }
 
-  const envCommitHash = normalizeCommitHash(readEnv("S3CODE_COMMIT_HASH"));
+  const envCommitHash = normalizeCommitHash(readEnv("RYCO_COMMIT_HASH"));
   if (envCommitHash) {
     aboutCommitHashCache = envCommitHash;
     return aboutCommitHashCache;
@@ -920,7 +998,7 @@ function handleFatalStartupError(stage: string, error: unknown): void {
   console.error(`[desktop] fatal startup error (${stage})`, error);
   if (!isQuitting) {
     isQuitting = true;
-    dialog.showErrorBox("S3Code failed to start", `Stage: ${stage}\n${message}${detail}`);
+    dialog.showErrorBox("Ryco failed to start", `Stage: ${stage}\n${message}${detail}`);
   }
   stopBackend();
   restoreStdIoCapture?.();
@@ -991,13 +1069,13 @@ function dispatchMenuAction(action: string): void {
 
 function handleCheckForUpdatesMenuClick(): void {
   const hasUpdateFeedConfig =
-    readAppUpdateYml() !== null || Boolean(readEnv("S3CODE_DESKTOP_MOCK_UPDATES"));
+    readAppUpdateYml() !== null || Boolean(readEnv("RYCO_DESKTOP_MOCK_UPDATES"));
   const disabledReason = getAutoUpdateDisabledReason({
     isDevelopment,
     isPackaged: app.isPackaged,
     platform: process.platform,
     appImage: process.env.APPIMAGE,
-    disabledByEnv: readEnv("S3CODE_DISABLE_AUTO_UPDATE") === "1",
+    disabledByEnv: readEnv("RYCO_DISABLE_AUTO_UPDATE") === "1",
     hasUpdateFeedConfig,
   });
   if (disabledReason) {
@@ -1025,7 +1103,7 @@ async function checkForUpdatesFromMenu(): Promise<void> {
     void dialog.showMessageBox({
       type: "info",
       title: "You're up to date!",
-      message: `S3Code ${updateState.currentVersion} is currently the newest version available.`,
+      message: `Ryco ${updateState.currentVersion} is currently the newest version available.`,
       buttons: ["OK"],
     });
   } else if (updateState.status === "error") {
@@ -1154,9 +1232,9 @@ function resolveIconPath(ext: "ico" | "icns" | "png"): string | null {
  * Resolve the Electron userData directory path.
  *
  * Electron derives the default userData path from `productName` in
- * package.json. We override it to a clean lowercase `s3code` so the
+ * package.json. We override it to a clean lowercase `ryco` so the
  * directory is shell-friendly and isolated from any other installs
- * (including upstream S3Code) on the same machine.
+ * (including upstream Ryco) on the same machine.
  */
 function resolveUserDataPath(): string {
   const appDataBase =
@@ -1215,6 +1293,7 @@ function revealWindow(window: BrowserWindow): void {
   }
 
   if (!window.isVisible()) {
+    markDesktopStartupPhase("desktop.window.first-reveal");
     window.show();
   }
 
@@ -1259,14 +1338,14 @@ function applyAutoUpdaterChannel(channel: DesktopUpdateChannel): void {
 
 function shouldEnableAutoUpdates(): boolean {
   const hasUpdateFeedConfig =
-    readAppUpdateYml() !== null || Boolean(readEnv("S3CODE_DESKTOP_MOCK_UPDATES"));
+    readAppUpdateYml() !== null || Boolean(readEnv("RYCO_DESKTOP_MOCK_UPDATES"));
   return (
     getAutoUpdateDisabledReason({
       isDevelopment,
       isPackaged: app.isPackaged,
       platform: process.platform,
       appImage: process.env.APPIMAGE,
-      disabledByEnv: readEnv("S3CODE_DISABLE_AUTO_UPDATE") === "1",
+      disabledByEnv: readEnv("RYCO_DISABLE_AUTO_UPDATE") === "1",
       hasUpdateFeedConfig,
     }) === null
   );
@@ -1358,7 +1437,7 @@ async function installDownloadedUpdate(): Promise<{
 
 function configureAutoUpdater(): void {
   const githubToken =
-    readEnv("S3CODE_DESKTOP_UPDATE_GITHUB_TOKEN")?.trim() || process.env.GH_TOKEN?.trim() || "";
+    readEnv("RYCO_DESKTOP_UPDATE_GITHUB_TOKEN")?.trim() || process.env.GH_TOKEN?.trim() || "";
   if (githubToken) {
     // When a token is provided, re-configure the feed with `private: true` so
     // electron-updater uses the GitHub API (api.github.com) instead of the
@@ -1374,10 +1453,10 @@ function configureAutoUpdater(): void {
     }
   }
 
-  if (readEnv("S3CODE_DESKTOP_MOCK_UPDATES")) {
+  if (readEnv("RYCO_DESKTOP_MOCK_UPDATES")) {
     autoUpdater.setFeedURL({
       provider: "generic",
-      url: `http://localhost:${readEnv("S3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT") ?? 3000}`,
+      url: `http://localhost:${readEnv("RYCO_DESKTOP_MOCK_UPDATE_SERVER_PORT") ?? 3000}`,
     });
   }
 
@@ -1504,6 +1583,7 @@ function startBackend(): void {
     return;
   }
 
+  markDesktopStartupPhase("desktop.backend.spawn", `port=${backendPort}`);
   const child = ChildProcess.spawn(process.execPath, [backendEntry, "--bootstrap-fd", "3"], {
     cwd: resolveBackendCwd(),
     // In Electron main, process.execPath points to the Electron binary.
@@ -1556,6 +1636,7 @@ function startBackend(): void {
   captureBackendOutput(child);
 
   child.once("spawn", () => {
+    markDesktopStartupPhase("desktop.backend.spawned", `pid=${child.pid ?? "unknown"}`);
     restartAttempt = 0;
   });
 
@@ -2070,6 +2151,7 @@ function syncAllWindowAppearance(): void {
 nativeTheme.on("updated", syncAllWindowAppearance);
 
 function createWindow(): BrowserWindow {
+  markDesktopStartupPhase("desktop.window.create");
   const window = new BrowserWindow({
     width: 1100,
     height: 780,
@@ -2205,10 +2287,10 @@ app.setPath("userData", resolveUserDataPath());
 configureAppIdentity();
 
 async function bootstrap(): Promise<void> {
-  writeDesktopLogHeader("bootstrap start");
-  const configuredBackendPort = resolveConfiguredDesktopBackendPort(readEnv("S3CODE_PORT"));
+  markDesktopStartupPhase("desktop.bootstrap.start");
+  const configuredBackendPort = resolveConfiguredDesktopBackendPort(readEnv("RYCO_PORT"));
   if (isDevelopment && configuredBackendPort === undefined) {
-    throw new Error("S3CODE_PORT is required in desktop development.");
+    throw new Error("RYCO_PORT is required in desktop development.");
   }
 
   backendPort =
@@ -2248,7 +2330,11 @@ async function bootstrap(): Promise<void> {
 
   registerIpcHandlers();
   writeDesktopLogHeader("bootstrap ipc handlers registered");
+  const shellEnvironmentPrepareResult = prepareDesktopShellEnvironmentForBackend();
   startBackend();
+  if (shellEnvironmentPrepareResult === "cache-hit") {
+    scheduleDesktopShellEnvironmentRefresh("deferred-refresh");
+  }
   writeDesktopLogHeader("bootstrap backend start requested");
 
   if (isDevelopment) {
@@ -2273,7 +2359,7 @@ app.on("before-quit", () => {
 app
   .whenReady()
   .then(() => {
-    writeDesktopLogHeader("app ready");
+    markDesktopStartupPhase("desktop.ready");
     configureAppIdentity();
     configureApplicationMenu();
     registerDesktopProtocol();

@@ -20,8 +20,8 @@ import type {
   VcsStatusRemoteResult,
   VcsStatusResult,
   VcsStatusStreamEvent,
-} from "@s3tools/contracts";
-import { mergeGitStatusParts } from "@s3tools/shared/git";
+} from "@ryco/contracts";
+import { mergeGitStatusParts } from "@ryco/shared/git";
 
 import * as GitWorkflowService from "../git/GitWorkflowService.ts";
 

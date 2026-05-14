@@ -12,11 +12,11 @@ import {
   type ServerProvider,
   type ServerProviderSlashCommand,
   type ServerSettings as ContractServerSettings,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import * as PlatformError from "effect/PlatformError";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import { deepMerge } from "@s3tools/shared/Struct";
-import { createModelCapabilities } from "@s3tools/shared/model";
+import { deepMerge } from "@ryco/shared/Struct";
+import { createModelCapabilities } from "@ryco/shared/model";
 
 import { checkCodexProviderStatus, type CodexAppServerProviderSnapshot } from "./CodexProvider.ts";
 import { checkClaudeProviderStatus } from "./ClaudeProvider.ts";
@@ -40,7 +40,7 @@ const disabledCodexSettings: CodexSettings = Schema.decodeSync(CodexSettings)({
   enabled: false,
 });
 
-process.env.S3CODE_CURSOR_ENABLED = "1";
+process.env.RYCO_CURSOR_ENABLED = "1";
 
 // ── Test helpers ────────────────────────────────────────────────────
 
@@ -837,7 +837,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest()))(
       // assertions below fail.
       it.effect("propagates real Codex probe failures to the aggregator at boot", () =>
         Effect.gen(function* () {
-          const missingBinary = `s3code_codex_missing_${process.pid}_${Date.now()}`;
+          const missingBinary = `ryco_codex_missing_${process.pid}_${Date.now()}`;
           const serverSettings = yield* makeMutableServerSettingsService(
             Schema.decodeSync(ServerSettings)(
               deepMerge(DEFAULT_SERVER_SETTINGS, {
@@ -954,8 +954,8 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest()))(
       // top-level `live` export from `@effect/vitest` is the equivalent.
       live("re-probes when settings change the codex binaryPath", () =>
         Effect.gen(function* () {
-          const firstMissing = `s3code_codex_first_${process.pid}_${Date.now()}`;
-          const secondMissing = `s3code_codex_second_${process.pid}_${Date.now()}`;
+          const firstMissing = `ryco_codex_first_${process.pid}_${Date.now()}`;
+          const secondMissing = `ryco_codex_second_${process.pid}_${Date.now()}`;
           const serverSettings = yield* makeMutableServerSettingsService(
             Schema.decodeSync(ServerSettings)(
               deepMerge(DEFAULT_SERVER_SETTINGS, {
@@ -1185,12 +1185,13 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest()))(
               assert.deepStrictEqual(providers.map((provider) => provider.instanceId).toSorted(), [
                 "claudeAgent",
                 "codex",
+                "copilot",
                 "cursor",
                 "opencode",
               ]);
               assert.strictEqual(cursorProvider?.enabled, false);
               assert.strictEqual(cursorProvider?.status, "disabled");
-              assert.strictEqual(cursorProvider?.message, "Cursor is disabled in S3Code settings.");
+              assert.strictEqual(cursorProvider?.message, "Cursor is disabled in Ryco settings.");
               assert.strictEqual(cursorSpawned, false);
             }).pipe(Effect.provide(runtimeServices));
           }),
@@ -1204,7 +1205,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest()))(
           assert.strictEqual(status.enabled, false);
           assert.strictEqual(status.status, "disabled");
           assert.strictEqual(status.installed, false);
-          assert.strictEqual(status.message, "Codex is disabled in S3Code settings.");
+          assert.strictEqual(status.message, "Codex is disabled in Ryco settings.");
         }),
       );
     });
@@ -1456,7 +1457,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest()))(
       );
 
       it.effect("runs Claude status probes with the configured Claude HOME", () => {
-        const claudeHome = "/tmp/s3code-claude-home";
+        const claudeHome = "/tmp/ryco-claude-home";
         const recorded = recordingMockSpawnerLayer((args) => {
           const joined = args.join(" ");
           if (joined === "--version") return { stdout: "1.0.0\n", stderr: "", code: 0 };

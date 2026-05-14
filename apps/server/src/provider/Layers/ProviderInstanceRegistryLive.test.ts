@@ -32,7 +32,7 @@ import {
   ProviderDriverKind,
   type ProviderInstanceConfigMap,
   ProviderInstanceId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect, Layer } from "effect";
 
 import { ServerConfig } from "../../config.ts";

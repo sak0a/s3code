@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DesktopUpdateState } from "@s3tools/contracts";
+import type { DesktopUpdateState } from "@ryco/contracts";
 
 import {
   getCanRetryAfterDownloadFailure,
@@ -113,7 +113,7 @@ describe("getAutoUpdateDisabledReason", () => {
         disabledByEnv: true,
         hasUpdateFeedConfig: true,
       }),
-    ).toContain("S3CODE_DISABLE_AUTO_UPDATE");
+    ).toContain("RYCO_DISABLE_AUTO_UPDATE");
   });
 
   it("reports linux non-AppImage builds as disabled", () => {

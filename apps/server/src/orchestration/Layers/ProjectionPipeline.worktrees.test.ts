@@ -1,4 +1,4 @@
-import { CommandId, EventId, ProjectId, WorktreeId } from "@s3tools/contracts";
+import { CommandId, EventId, ProjectId, WorktreeId } from "@ryco/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer, Option } from "effect";
@@ -8,6 +8,7 @@ import { SqlitePersistenceMemory } from "../../persistence/Layers/Sqlite.ts";
 import { ProjectionWorktreeRepositoryLive } from "../../persistence/Layers/ProjectionWorktrees.ts";
 import { ProjectionWorktreeRepository } from "../../persistence/Services/ProjectionWorktrees.ts";
 import { OrchestrationEventStore } from "../../persistence/Services/OrchestrationEventStore.ts";
+import { ProjectAvatarStore } from "../../project/Services/ProjectAvatarStore.ts";
 import { ServerConfig } from "../../config.ts";
 import {
   ORCHESTRATION_PROJECTOR_NAMES,
@@ -15,12 +16,19 @@ import {
 } from "./ProjectionPipeline.ts";
 import { OrchestrationProjectionPipeline } from "../Services/ProjectionPipeline.ts";
 
+const MockProjectAvatarStoreLive = Layer.succeed(ProjectAvatarStore, {
+  write: () => Effect.die("ProjectAvatarStore.write not implemented in test"),
+  read: () => Effect.succeed(null),
+  remove: () => Effect.void,
+});
+
 const layer = it.layer(
   OrchestrationProjectionPipelineLive.pipe(
     Layer.provideMerge(OrchestrationEventStoreLive),
     Layer.provideMerge(ProjectionWorktreeRepositoryLive),
     Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "s3-worktree-proj-" })),
     Layer.provideMerge(SqlitePersistenceMemory),
+    Layer.provideMerge(MockProjectAvatarStoreLive),
     Layer.provideMerge(NodeServices.layer),
   ),
 );

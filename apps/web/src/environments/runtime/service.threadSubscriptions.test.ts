@@ -6,7 +6,7 @@ import {
   ThreadId,
   TurnId,
   type OrchestrationShellSnapshot,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockSubscribeThread = vi.fn();
@@ -351,6 +351,7 @@ describe("retainThreadDetailSubscription", () => {
 
     const stop = startEnvironmentConnectionService(new QueryClient());
     savedEnvironmentRegistryListener?.();
+    await vi.advanceTimersByTimeAsync(2500);
     await vi.waitFor(() => {
       expect(mockCreateEnvironmentConnection).toHaveBeenCalledTimes(2);
       expect(

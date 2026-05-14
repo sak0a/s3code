@@ -1,4 +1,4 @@
-import type { AuthClientMetadata, AuthClientSession, AuthPairingLink } from "@s3tools/contracts";
+import type { AuthClientMetadata, AuthClientSession, AuthPairingLink } from "@ryco/contracts";
 import { DateTime } from "effect";
 
 import type { IssuedBearerSession, IssuedPairingLink } from "./auth/Services/AuthControlPlane.ts";

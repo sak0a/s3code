@@ -1,4 +1,4 @@
-import type { ScopedThreadRef, ThreadId } from "@s3tools/contracts";
+import type { ScopedThreadRef, ThreadId } from "@ryco/contracts";
 
 export function shouldHideCollapsedToastContent(
   visibleToastIndex: number,

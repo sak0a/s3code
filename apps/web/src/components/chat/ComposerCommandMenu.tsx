@@ -5,7 +5,7 @@ import {
   type ServerProviderSkill,
   type ServerProviderSlashCommand,
   type SourceControlIssueSummary,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { BotIcon, CircleDotIcon, GitBranchIcon } from "lucide-react";
 import { memo, useLayoutEffect, useMemo, useRef } from "react";
 

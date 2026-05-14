@@ -1,5 +1,5 @@
-import { scopeThreadRef, scopedThreadKey } from "@s3tools/client-runtime";
-import { ThreadId, type TerminalEvent } from "@s3tools/contracts";
+import { scopeThreadRef, scopedThreadKey } from "@ryco/client-runtime";
+import { ThreadId, type TerminalEvent } from "@ryco/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {

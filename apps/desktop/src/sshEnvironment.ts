@@ -2,7 +2,7 @@ import * as Crypto from "node:crypto";
 
 import * as NodeHttpClient from "@effect/platform-node/NodeHttpClient";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { NetService } from "@s3tools/shared/Net";
+import { NetService } from "@ryco/shared/Net";
 import type {
   AuthBearerBootstrapResult,
   AuthSessionState,
@@ -11,22 +11,22 @@ import type {
   DesktopSshEnvironmentTarget,
   DesktopSshPasswordPromptRequest,
   ExecutionEnvironmentDescriptor,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   SshPasswordPrompt,
   type SshPasswordPromptShape,
   type SshPasswordRequest,
-} from "@s3tools/ssh/auth";
-import { discoverSshHosts } from "@s3tools/ssh/config";
-import { SshPasswordPromptError } from "@s3tools/ssh/errors";
+} from "@ryco/ssh/auth";
+import { discoverSshHosts } from "@ryco/ssh/config";
+import { SshPasswordPromptError } from "@ryco/ssh/errors";
 import {
   fetchLoopbackSshJson,
   SshEnvironmentManager,
   type RemoteS3RunnerOptions,
-} from "@s3tools/ssh/tunnel";
+} from "@ryco/ssh/tunnel";
 import { Effect, Exit, Layer, ManagedRuntime, Scope } from "effect";
 
-export { resolveRemoteS3CliPackageSpec } from "@s3tools/ssh/command";
+export { resolveRemoteS3CliPackageSpec } from "@ryco/ssh/command";
 
 const DISCOVER_SSH_HOSTS_CHANNEL = "desktop:discover-ssh-hosts";
 const ENSURE_SSH_ENVIRONMENT_CHANNEL = "desktop:ensure-ssh-environment";
@@ -368,7 +368,7 @@ export class DesktopSshEnvironmentBridge {
   private async requestPasswordFromRenderer(input: SshPasswordRequest): Promise<string | null> {
     const window = this.options.getMainWindow();
     if (!window || window.isDestroyed()) {
-      throw new Error("S3Code window is not available for SSH authentication.");
+      throw new Error("Ryco window is not available for SSH authentication.");
     }
 
     const request: DesktopSshPasswordPromptRequest = {
@@ -395,24 +395,24 @@ export class DesktopSshEnvironmentBridge {
 
       try {
         if (window.isDestroyed()) {
-          throw new Error("S3Code window is not available for SSH authentication.");
+          throw new Error("Ryco window is not available for SSH authentication.");
         }
         window.webContents.send(SSH_PASSWORD_PROMPT_CHANNEL, request);
         if (window.isDestroyed()) {
-          throw new Error("S3Code window is not available for SSH authentication.");
+          throw new Error("Ryco window is not available for SSH authentication.");
         }
         if (window.isMinimized()) {
           window.restore();
         }
         if (window.isDestroyed()) {
-          throw new Error("S3Code window is not available for SSH authentication.");
+          throw new Error("Ryco window is not available for SSH authentication.");
         }
         window.focus();
       } catch (error) {
         rejectPrompt(
           error instanceof Error
             ? error
-            : new Error("S3Code window is not available for SSH authentication."),
+            : new Error("Ryco window is not available for SSH authentication."),
         );
       }
     });

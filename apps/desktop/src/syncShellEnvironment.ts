@@ -4,12 +4,12 @@ import {
   readPathFromLaunchctl,
   readEnvironmentFromLoginShell,
   resolveWindowsEnvironment,
-} from "@s3tools/shared/shell";
+} from "@ryco/shared/shell";
 import type {
   CommandAvailabilityOptions,
   ShellEnvironmentReader,
   WindowsShellEnvironmentReader,
-} from "@s3tools/shared/shell";
+} from "@ryco/shared/shell";
 
 type WindowsCommandAvailabilityChecker = (
   command: string,

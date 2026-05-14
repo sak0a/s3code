@@ -4,6 +4,21 @@ import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
 
 import { OpenError, OpenInEditorInput } from "./editor.ts";
 import { AuthAccessStreamEvent, AuthRpcError } from "./auth.ts";
+import {
+  AtlassianConnectionError,
+  AtlassianConnectionSummary,
+  AtlassianDisconnectInput,
+  AtlassianGetProjectLinkInput,
+  AtlassianListResourcesInput,
+  AtlassianProjectLink,
+  AtlassianRefreshInput,
+  AtlassianResourceSummary,
+  AtlassianSaveManualBitbucketTokenInput,
+  AtlassianSaveManualJiraTokenInput,
+  AtlassianSaveProjectLinkInput,
+  AtlassianStartOAuthInput,
+  AtlassianStartOAuthResult,
+} from "./atlassian.ts";
 import { ProjectId, ThreadId } from "./baseSchemas.ts";
 import {
   FilesystemBrowseInput,
@@ -36,6 +51,26 @@ import {
   VcsStatusStreamEvent,
 } from "./git.ts";
 import { KeybindingsConfigError } from "./keybindings.ts";
+import {
+  McpListServersInput,
+  McpListServersResult,
+  McpListWorkspacesResult,
+  McpOauthLoginInput,
+  McpOauthLoginResult,
+  McpServerEnabledInput,
+  McpServerRemoveInput,
+  McpServerUpsertInput,
+  McpServersReloadInput,
+  McpSettingsError,
+} from "./mcp.ts";
+import {
+  OpinionatedPluginCheckInput,
+  OpinionatedPluginError,
+  OpinionatedPluginInstallInput,
+  OpinionatedPluginInstallResult,
+  OpinionatedPluginListResult,
+  OpinionatedPluginStatusResult,
+} from "./opinionatedPlugins.ts";
 import {
   ClientOrchestrationCommand,
   ORCHESTRATION_WS_METHODS,
@@ -101,6 +136,18 @@ import {
 } from "./sourceControl.ts";
 import { VcsError } from "./vcs.ts";
 import {
+  WorkItemAddCommentInput,
+  WorkItemDetail,
+  WorkItemGetInput,
+  WorkItemListInput,
+  WorkItemListTransitionsInput,
+  WorkItemProviderError,
+  WorkItemSearchInput,
+  WorkItemSummary,
+  WorkItemTransition,
+  WorkItemTransitionInput,
+} from "./workItems.ts";
+import {
   CreateWorktreeIntent,
   StatusBucket,
   WorktreeCheckoutLocation,
@@ -164,6 +211,18 @@ export const WS_METHODS = {
   serverGetSettings: "server.getSettings",
   serverUpdateSettings: "server.updateSettings",
   serverDiscoverSourceControl: "server.discoverSourceControl",
+  serverListOpinionatedPlugins: "server.listOpinionatedPlugins",
+  serverCheckOpinionatedPlugins: "server.checkOpinionatedPlugins",
+  serverInstallOpinionatedPlugin: "server.installOpinionatedPlugin",
+
+  // MCP settings methods
+  mcpListWorkspaces: "mcp.listWorkspaces",
+  mcpListServers: "mcp.listServers",
+  mcpUpsertServer: "mcp.upsertServer",
+  mcpSetServerEnabled: "mcp.setServerEnabled",
+  mcpRemoveServer: "mcp.removeServer",
+  mcpReloadServers: "mcp.reloadServers",
+  mcpStartOauthLogin: "mcp.startOauthLogin",
 
   // Source control methods
   sourceControlLookupRepository: "sourceControl.lookupRepository",
@@ -172,9 +231,29 @@ export const WS_METHODS = {
   sourceControlListIssues: "sourceControl.listIssues",
   sourceControlGetIssue: "sourceControl.getIssue",
   sourceControlSearchIssues: "sourceControl.searchIssues",
+  sourceControlListChangeRequests: "sourceControl.listChangeRequests",
   sourceControlSearchChangeRequests: "sourceControl.searchChangeRequests",
   sourceControlGetChangeRequestDetail: "sourceControl.getChangeRequestDetail",
   sourceControlGetChangeRequestDiff: "sourceControl.getChangeRequestDiff",
+
+  // Atlassian connection methods
+  atlassianListConnections: "atlassian.listConnections",
+  atlassianStartOAuth: "atlassian.startOAuth",
+  atlassianDisconnect: "atlassian.disconnect",
+  atlassianRefresh: "atlassian.refresh",
+  atlassianListResources: "atlassian.listResources",
+  atlassianGetProjectLink: "atlassian.getProjectLink",
+  atlassianSaveProjectLink: "atlassian.saveProjectLink",
+  atlassianSaveManualBitbucketToken: "atlassian.saveManualBitbucketToken",
+  atlassianSaveManualJiraToken: "atlassian.saveManualJiraToken",
+
+  // Work item methods
+  workItemsList: "workItems.list",
+  workItemsSearch: "workItems.search",
+  workItemsGet: "workItems.get",
+  workItemsAddComment: "workItems.addComment",
+  workItemsListTransitions: "workItems.listTransitions",
+  workItemsTransition: "workItems.transition",
 
   // Streaming subscriptions
   subscribeVcsStatus: "subscribeVcsStatus",
@@ -297,6 +376,72 @@ export const WsServerDiscoverSourceControlRpc = Rpc.make(WS_METHODS.serverDiscov
   error: AuthRpcError,
 });
 
+export const WsServerListOpinionatedPluginsRpc = Rpc.make(WS_METHODS.serverListOpinionatedPlugins, {
+  payload: Schema.Struct({}),
+  success: OpinionatedPluginListResult,
+  error: OpinionatedPluginError,
+});
+
+export const WsServerCheckOpinionatedPluginsRpc = Rpc.make(
+  WS_METHODS.serverCheckOpinionatedPlugins,
+  {
+    payload: OpinionatedPluginCheckInput,
+    success: OpinionatedPluginStatusResult,
+    error: OpinionatedPluginError,
+  },
+);
+
+export const WsServerInstallOpinionatedPluginRpc = Rpc.make(
+  WS_METHODS.serverInstallOpinionatedPlugin,
+  {
+    payload: OpinionatedPluginInstallInput,
+    success: OpinionatedPluginInstallResult,
+    error: OpinionatedPluginError,
+  },
+);
+
+export const WsMcpListWorkspacesRpc = Rpc.make(WS_METHODS.mcpListWorkspaces, {
+  payload: Schema.Struct({}),
+  success: McpListWorkspacesResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpListServersRpc = Rpc.make(WS_METHODS.mcpListServers, {
+  payload: McpListServersInput,
+  success: McpListServersResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpUpsertServerRpc = Rpc.make(WS_METHODS.mcpUpsertServer, {
+  payload: McpServerUpsertInput,
+  success: McpListServersResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpSetServerEnabledRpc = Rpc.make(WS_METHODS.mcpSetServerEnabled, {
+  payload: McpServerEnabledInput,
+  success: McpListServersResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpRemoveServerRpc = Rpc.make(WS_METHODS.mcpRemoveServer, {
+  payload: McpServerRemoveInput,
+  success: McpListServersResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpReloadServersRpc = Rpc.make(WS_METHODS.mcpReloadServers, {
+  payload: McpServersReloadInput,
+  success: McpListServersResult,
+  error: McpSettingsError,
+});
+
+export const WsMcpStartOauthLoginRpc = Rpc.make(WS_METHODS.mcpStartOauthLogin, {
+  payload: McpOauthLoginInput,
+  success: McpOauthLoginResult,
+  error: McpSettingsError,
+});
+
 export const WsSourceControlLookupRepositoryRpc = Rpc.make(
   WS_METHODS.sourceControlLookupRepository,
   {
@@ -351,6 +496,20 @@ export const WsSourceControlSearchIssuesRpc = Rpc.make(WS_METHODS.sourceControlS
   error: Schema.Union([SourceControlProviderError, AuthRpcError]),
 });
 
+export const WsSourceControlListChangeRequestsRpc = Rpc.make(
+  WS_METHODS.sourceControlListChangeRequests,
+  {
+    payload: Schema.Struct({
+      cwd: Schema.String,
+      state: Schema.Literals(["open", "closed", "merged", "all"]),
+      limit: Schema.optional(Schema.Number),
+      query: Schema.optional(Schema.String),
+    }),
+    success: Schema.Array(ChangeRequest),
+    error: SourceControlProviderError,
+  },
+);
+
 export const WsSourceControlSearchChangeRequestsRpc = Rpc.make(
   WS_METHODS.sourceControlSearchChangeRequests,
   {
@@ -388,6 +547,99 @@ export const WsSourceControlGetChangeRequestDiffRpc = Rpc.make(
     error: Schema.Union([SourceControlProviderError, AuthRpcError]),
   },
 );
+
+export const WsAtlassianListConnectionsRpc = Rpc.make(WS_METHODS.atlassianListConnections, {
+  payload: Schema.Struct({}),
+  success: Schema.Array(AtlassianConnectionSummary),
+  error: AtlassianConnectionError,
+});
+
+export const WsAtlassianStartOAuthRpc = Rpc.make(WS_METHODS.atlassianStartOAuth, {
+  payload: AtlassianStartOAuthInput,
+  success: AtlassianStartOAuthResult,
+  error: AtlassianConnectionError,
+});
+
+export const WsAtlassianDisconnectRpc = Rpc.make(WS_METHODS.atlassianDisconnect, {
+  payload: AtlassianDisconnectInput,
+  success: EmptyRpcResult,
+  error: AtlassianConnectionError,
+});
+
+export const WsAtlassianRefreshRpc = Rpc.make(WS_METHODS.atlassianRefresh, {
+  payload: AtlassianRefreshInput,
+  success: AtlassianConnectionSummary,
+  error: AtlassianConnectionError,
+});
+
+export const WsAtlassianListResourcesRpc = Rpc.make(WS_METHODS.atlassianListResources, {
+  payload: AtlassianListResourcesInput,
+  success: Schema.Array(AtlassianResourceSummary),
+  error: AtlassianConnectionError,
+});
+
+export const WsAtlassianGetProjectLinkRpc = Rpc.make(WS_METHODS.atlassianGetProjectLink, {
+  payload: AtlassianGetProjectLinkInput,
+  success: Schema.NullOr(AtlassianProjectLink),
+  error: AtlassianConnectionError,
+});
+
+export const WsAtlassianSaveProjectLinkRpc = Rpc.make(WS_METHODS.atlassianSaveProjectLink, {
+  payload: AtlassianSaveProjectLinkInput,
+  success: AtlassianProjectLink,
+  error: AtlassianConnectionError,
+});
+
+export const WsAtlassianSaveManualBitbucketTokenRpc = Rpc.make(
+  WS_METHODS.atlassianSaveManualBitbucketToken,
+  {
+    payload: AtlassianSaveManualBitbucketTokenInput,
+    success: AtlassianConnectionSummary,
+    error: AtlassianConnectionError,
+  },
+);
+
+export const WsAtlassianSaveManualJiraTokenRpc = Rpc.make(WS_METHODS.atlassianSaveManualJiraToken, {
+  payload: AtlassianSaveManualJiraTokenInput,
+  success: AtlassianConnectionSummary,
+  error: AtlassianConnectionError,
+});
+
+export const WsWorkItemsListRpc = Rpc.make(WS_METHODS.workItemsList, {
+  payload: WorkItemListInput,
+  success: Schema.Array(WorkItemSummary),
+  error: WorkItemProviderError,
+});
+
+export const WsWorkItemsSearchRpc = Rpc.make(WS_METHODS.workItemsSearch, {
+  payload: WorkItemSearchInput,
+  success: Schema.Array(WorkItemSummary),
+  error: WorkItemProviderError,
+});
+
+export const WsWorkItemsGetRpc = Rpc.make(WS_METHODS.workItemsGet, {
+  payload: WorkItemGetInput,
+  success: WorkItemDetail,
+  error: WorkItemProviderError,
+});
+
+export const WsWorkItemsAddCommentRpc = Rpc.make(WS_METHODS.workItemsAddComment, {
+  payload: WorkItemAddCommentInput,
+  success: WorkItemDetail,
+  error: WorkItemProviderError,
+});
+
+export const WsWorkItemsListTransitionsRpc = Rpc.make(WS_METHODS.workItemsListTransitions, {
+  payload: WorkItemListTransitionsInput,
+  success: Schema.Array(WorkItemTransition),
+  error: WorkItemProviderError,
+});
+
+export const WsWorkItemsTransitionRpc = Rpc.make(WS_METHODS.workItemsTransition, {
+  payload: WorkItemTransitionInput,
+  success: WorkItemDetail,
+  error: WorkItemProviderError,
+});
 
 export const WsProjectsSearchEntriesRpc = Rpc.make(WS_METHODS.projectsSearchEntries, {
   payload: ProjectSearchEntriesInput,
@@ -663,15 +915,41 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerGetSettingsRpc,
   WsServerUpdateSettingsRpc,
   WsServerDiscoverSourceControlRpc,
+  WsServerListOpinionatedPluginsRpc,
+  WsServerCheckOpinionatedPluginsRpc,
+  WsServerInstallOpinionatedPluginRpc,
+  WsMcpListWorkspacesRpc,
+  WsMcpListServersRpc,
+  WsMcpUpsertServerRpc,
+  WsMcpSetServerEnabledRpc,
+  WsMcpRemoveServerRpc,
+  WsMcpReloadServersRpc,
+  WsMcpStartOauthLoginRpc,
   WsSourceControlLookupRepositoryRpc,
   WsSourceControlCloneRepositoryRpc,
   WsSourceControlPublishRepositoryRpc,
   WsSourceControlListIssuesRpc,
   WsSourceControlGetIssueRpc,
   WsSourceControlSearchIssuesRpc,
+  WsSourceControlListChangeRequestsRpc,
   WsSourceControlSearchChangeRequestsRpc,
   WsSourceControlGetChangeRequestDetailRpc,
   WsSourceControlGetChangeRequestDiffRpc,
+  WsAtlassianListConnectionsRpc,
+  WsAtlassianStartOAuthRpc,
+  WsAtlassianDisconnectRpc,
+  WsAtlassianRefreshRpc,
+  WsAtlassianListResourcesRpc,
+  WsAtlassianGetProjectLinkRpc,
+  WsAtlassianSaveProjectLinkRpc,
+  WsAtlassianSaveManualBitbucketTokenRpc,
+  WsAtlassianSaveManualJiraTokenRpc,
+  WsWorkItemsListRpc,
+  WsWorkItemsSearchRpc,
+  WsWorkItemsGetRpc,
+  WsWorkItemsAddCommentRpc,
+  WsWorkItemsListTransitionsRpc,
+  WsWorkItemsTransitionRpc,
   WsProjectsListEntriesRpc,
   WsProjectsSearchEntriesRpc,
   WsProjectsReadFileRpc,

@@ -4,8 +4,8 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Effect, FileSystem, Path } from "effect";
 import { describe, expect, it } from "vitest";
 import type * as EffectAcpSchema from "effect-acp/schema";
-import type { CursorSettings, ServerProviderModel } from "@s3tools/contracts";
-import { createModelCapabilities } from "@s3tools/shared/model";
+import type { CursorSettings, ServerProviderModel } from "@ryco/contracts";
+import { createModelCapabilities } from "@ryco/shared/model";
 
 import {
   buildCursorProviderSnapshot,

@@ -5,9 +5,9 @@ import {
   ProviderDriverKind,
   type ProviderInstanceConfig,
   type ProviderInstanceId,
-} from "@s3tools/contracts";
-import { DEFAULT_UNIFIED_SETTINGS } from "@s3tools/contracts/settings";
-import { createModelSelection } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { DEFAULT_UNIFIED_SETTINGS } from "@ryco/contracts/settings";
+import { createModelSelection } from "@ryco/shared/model";
 import { Equal } from "effect";
 
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";

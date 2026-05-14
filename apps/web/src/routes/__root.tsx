@@ -1,5 +1,5 @@
-import { type ServerLifecycleWelcomePayload } from "@s3tools/contracts";
-import { scopedProjectKey, scopeProjectRef } from "@s3tools/client-runtime";
+import { type ServerLifecycleWelcomePayload } from "@ryco/contracts";
+import { scopedProjectKey, scopeProjectRef } from "@ryco/client-runtime";
 import {
   Outlet,
   createRootRouteWithContext,
@@ -60,12 +60,15 @@ import {
   updatePrimaryEnvironmentDescriptor,
 } from "../environments/primary";
 import { hasHostedPairingRequest, isHostedStaticApp } from "../hostedPairing";
+import { markStartupPhase, measureStartupPhase } from "../perf/startupInstrumentation";
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
 }>()({
   beforeLoad: async ({ location }) => {
+    markStartupPhase("root-before-load-start");
     if (location.pathname === "/pair" && hasHostedPairingRequest(new URL(window.location.href))) {
+      markStartupPhase("root-before-load-ready");
       return {
         authGateState: {
           status: "hosted-pairing",
@@ -75,6 +78,7 @@ export const Route = createRootRouteWithContext<{
 
     if (isHostedStaticApp(new URL(window.location.href))) {
       await waitForSavedEnvironmentRegistryHydration();
+      markStartupPhase("root-before-load-ready");
       return {
         authGateState: {
           status: "hosted-static",
@@ -86,6 +90,8 @@ export const Route = createRootRouteWithContext<{
       ensurePrimaryEnvironmentReady(),
       resolveInitialServerAuthGateState(),
     ]);
+    markStartupPhase("root-before-load-ready");
+    measureStartupPhase("root-before-load", "root-before-load-start", "root-before-load-ready");
     return {
       authGateState,
     };

@@ -8,8 +8,8 @@ import {
   ProviderSession,
   ProviderDriverKind,
   ProviderInstanceId,
-} from "@s3tools/contracts";
-import { createModelSelection } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { createModelSelection } from "@ryco/shared/model";
 import {
   ApprovalRequestId,
   CommandId,
@@ -19,12 +19,12 @@ import {
   ProjectId,
   ThreadId,
   TurnId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect, Exit, Layer, ManagedRuntime, PubSub, Scope, Stream } from "effect";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { deriveServerPaths, ServerConfig } from "../../config.ts";
-import { TextGenerationError } from "@s3tools/contracts";
+import { TextGenerationError } from "@ryco/contracts";
 import { ProviderAdapterRequestError } from "../../provider/Errors.ts";
 import { OrchestrationEventStoreLive } from "../../persistence/Layers/OrchestrationEventStore.ts";
 import { OrchestrationCommandReceiptRepositoryLive } from "../../persistence/Layers/OrchestrationCommandReceipts.ts";
@@ -34,6 +34,7 @@ import {
   type ProviderServiceShape,
 } from "../../provider/Services/ProviderService.ts";
 import { TextGeneration, type TextGenerationShape } from "../../textGeneration/TextGeneration.ts";
+import { ProjectAvatarStore } from "../../project/Services/ProjectAvatarStore.ts";
 import { RepositoryIdentityResolverLive } from "../../project/Layers/RepositoryIdentityResolver.ts";
 import { OrchestrationEngineLive } from "./OrchestrationEngine.ts";
 import { OrchestrationProjectionPipelineLive } from "./ProjectionPipeline.ts";
@@ -136,7 +137,7 @@ describe("ProviderCommandReactor", () => {
     readonly sessionModelSwitch?: "unsupported" | "in-session";
   }) {
     const now = new Date().toISOString();
-    const baseDir = input?.baseDir ?? fs.mkdtempSync(path.join(os.tmpdir(), "s3code-reactor-"));
+    const baseDir = input?.baseDir ?? fs.mkdtempSync(path.join(os.tmpdir(), "ryco-reactor-"));
     createdBaseDirs.add(baseDir);
     const { stateDir } = deriveServerPathsSync(baseDir, undefined);
     createdStateDirs.add(stateDir);
@@ -314,6 +315,13 @@ describe("ProviderCommandReactor", () => {
     const orchestrationLayer = OrchestrationEngineLive.pipe(
       Layer.provide(OrchestrationProjectionSnapshotQueryLive),
       Layer.provide(OrchestrationProjectionPipelineLive),
+      Layer.provide(
+        Layer.succeed(ProjectAvatarStore, {
+          write: () => Effect.die("ProjectAvatarStore.write not implemented in test"),
+          read: () => Effect.succeed(null),
+          remove: () => Effect.void,
+        }),
+      ),
       Layer.provide(OrchestrationEventStoreLive),
       Layer.provide(OrchestrationCommandReceiptRepositoryLive),
       Layer.provide(RepositoryIdentityResolverLive),
@@ -595,7 +603,7 @@ describe("ProviderCommandReactor", () => {
         type: "thread.meta.update",
         commandId: CommandId.make("cmd-thread-branch"),
         threadId: ThreadId.make("thread-1"),
-        branch: "s3code/1234abcd",
+        branch: "ryco/1234abcd",
         worktreePath: "/tmp/provider-project-worktree",
       }),
     );

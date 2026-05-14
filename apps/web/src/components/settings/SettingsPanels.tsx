@@ -6,9 +6,9 @@ import {
   EDITORS,
   type EditorId,
   type ScopedThreadRef,
-} from "@s3tools/contracts";
-import { scopeThreadRef } from "@s3tools/client-runtime";
-import { DEFAULT_UNIFIED_SETTINGS } from "@s3tools/contracts/settings";
+} from "@ryco/contracts";
+import { scopeThreadRef } from "@ryco/client-runtime";
+import { DEFAULT_UNIFIED_SETTINGS } from "@ryco/contracts/settings";
 import { Equal } from "effect";
 import { APP_VERSION } from "../../branding";
 import {
@@ -922,7 +922,14 @@ export function ArchivedThreadsPanel() {
           <SettingsSection
             key={project.id}
             title={project.name}
-            icon={<ProjectFavicon environmentId={project.environmentId} cwd={project.cwd} />}
+            icon={
+              <ProjectFavicon
+                environmentId={project.environmentId}
+                cwd={project.cwd}
+                projectId={project.id}
+                customAvatarContentHash={project.customAvatarContentHash ?? null}
+              />
+            }
           >
             {projectThreads.map((thread) => (
               <div

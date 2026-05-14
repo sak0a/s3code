@@ -1,7 +1,6 @@
 import {
   ArchiveIcon,
   ArrowUpDownIcon,
-  ChevronRightIcon,
   CloudIcon,
   CircleDotIcon,
   CopyIcon,
@@ -10,12 +9,13 @@ import {
   FolderPlusIcon,
   FolderOpenIcon,
   GitPullRequestIcon,
-  ImageIcon,
-  MapPinIcon,
   MoreHorizontalIcon,
   PlusIcon,
   SearchIcon,
+  Settings2Icon,
   SettingsIcon,
+  SparklesIcon,
+  SlidersHorizontalIcon,
   TerminalIcon,
   Trash2Icon,
   TriangleAlertIcon,
@@ -32,6 +32,7 @@ import { ProjectFavicon } from "./ProjectFavicon";
 import {
   AzureDevOpsIcon,
   BitbucketIcon,
+  ForgejoIcon,
   GitHubIcon,
   GitIcon,
   GitLabIcon,
@@ -65,26 +66,29 @@ import {
   type DesktopUpdateState,
   PROJECT_CUSTOM_SYSTEM_PROMPT_MAX_CHARS,
   ProjectId,
+  type AtlassianConnectionId,
+  type AtlassianConnectionSummary,
+  type AtlassianProjectLink,
   type RepositoryIdentity,
   type ScopedThreadRef,
   type SidebarProjectGroupingMode,
   type ThreadEnvMode,
   ThreadId,
   WorktreeId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   parseScopedThreadKey,
   scopedProjectKey,
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@s3tools/client-runtime";
+} from "@ryco/client-runtime";
 import { Link, useNavigate, useParams, useRouter } from "@tanstack/react-router";
-import { useQueries } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type SidebarProjectSortOrder,
   type SidebarThreadSortOrder,
-} from "@s3tools/contracts/settings";
+} from "@ryco/contracts/settings";
 import { usePrimaryEnvironmentId } from "../environments/primary";
 import { isElectron } from "../env";
 import { APP_STAGE_LABEL, APP_VERSION } from "../branding";
@@ -149,6 +153,7 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { Input } from "./ui/input";
+import { ScrollArea } from "./ui/scroll-area";
 import { Textarea } from "./ui/textarea";
 import {
   Menu,
@@ -161,6 +166,7 @@ import {
   MenuTrigger,
 } from "./ui/menu";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "./ui/select";
+import { Switch } from "./ui/switch";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import {
   SidebarContent,
@@ -228,10 +234,12 @@ import {
   getProjectOrderKey,
 } from "../logicalProject";
 import {
+  readEnvironmentConnection,
   useSavedEnvironmentRegistryStore,
   useSavedEnvironmentRuntimeStore,
+  resolveEnvironmentHttpUrl,
 } from "../environments/runtime";
-import type { SidebarThreadSummary, SidebarWorktreeSummary } from "../types";
+import type { SidebarThreadSummary } from "../types";
 import {
   buildPhysicalToLogicalProjectKeyMap,
   buildSidebarProjectSnapshots,
@@ -1150,6 +1158,8 @@ function formatRepositoryProviderLabel(provider: string | undefined): string {
       return "GitHub";
     case "gitlab":
       return "GitLab";
+    case "forgejo":
+      return "Forgejo";
     case "azure-devops":
       return "Azure DevOps";
     case "bitbucket":
@@ -1165,6 +1175,8 @@ function resolveRepositoryProviderIcon(provider: string | undefined): Icon {
       return GitHubIcon;
     case "gitlab":
       return GitLabIcon;
+    case "forgejo":
+      return ForgejoIcon;
     case "azure-devops":
       return AzureDevOpsIcon;
     case "bitbucket":
@@ -1174,17 +1186,27 @@ function resolveRepositoryProviderIcon(provider: string | undefined): Icon {
   }
 }
 
-function ProjectRemoteProviderMark(props: { readonly provider: string | undefined }) {
-  const ProviderIcon = resolveRepositoryProviderIcon(props.provider);
-  return (
-    <span className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-background text-foreground shadow-xs">
-      <ProviderIcon className="size-5" aria-hidden />
-    </span>
-  );
-}
-
 function stripGitSuffix(path: string): string {
   return path.replace(/\/+$/g, "").replace(/\.git$/i, "");
+}
+
+function rewriteAzureDevOpsBrowserUrl(host: string, pathSegments: string[]): string | null {
+  // Azure DevOps SSH form: ssh://git@ssh.dev.azure.com/v3/<org>/<project>/<repo>
+  // scp form:              git@ssh.dev.azure.com:v3/<org>/<project>/<repo>
+  // Both produce pathSegments starting with "v3". The browse URL is
+  // https://dev.azure.com/<org>/<project>/_git/<repo>.
+  if (host !== "ssh.dev.azure.com") {
+    return null;
+  }
+  const v3Index = pathSegments.indexOf("v3");
+  if (v3Index === -1 || pathSegments.length < v3Index + 4) {
+    return null;
+  }
+  const org = pathSegments[v3Index + 1];
+  const project = pathSegments[v3Index + 2];
+  const repo = pathSegments[v3Index + 3];
+  if (!org || !project || !repo) return null;
+  return `https://dev.azure.com/${org}/${project}/_git/${repo}`;
 }
 
 function resolveRemoteUrlToBrowserUrl(remoteUrl: string): string | null {
@@ -1208,10 +1230,12 @@ function resolveRemoteUrlToBrowserUrl(remoteUrl: string): string | null {
   if (/^(?:ssh|git):\/\//i.test(trimmed)) {
     try {
       const url = new URL(trimmed);
-      const repositoryPath = stripGitSuffix(url.pathname)
+      const segments = stripGitSuffix(url.pathname)
         .split("/")
-        .filter((segment) => segment.length > 0)
-        .join("/");
+        .filter((segment) => segment.length > 0);
+      const azureBrowserUrl = rewriteAzureDevOpsBrowserUrl(url.hostname, segments);
+      if (azureBrowserUrl) return azureBrowserUrl;
+      const repositoryPath = segments.join("/");
       return url.hostname && repositoryPath ? `https://${url.hostname}/${repositoryPath}` : null;
     } catch {
       return null;
@@ -1220,7 +1244,12 @@ function resolveRemoteUrlToBrowserUrl(remoteUrl: string): string | null {
 
   const scpStyleRemote = /^git@([^:/\s]+)[:/]([^#?\s]+)$/i.exec(trimmed);
   if (scpStyleRemote?.[1] && scpStyleRemote[2]) {
-    return `https://${scpStyleRemote[1]}/${stripGitSuffix(scpStyleRemote[2])}`;
+    const host = scpStyleRemote[1];
+    const path = stripGitSuffix(scpStyleRemote[2]);
+    const segments = path.split("/").filter((s) => s.length > 0);
+    const azureBrowserUrl = rewriteAzureDevOpsBrowserUrl(host, segments);
+    if (azureBrowserUrl) return azureBrowserUrl;
+    return `https://${host}/${path}`;
   }
 
   return null;
@@ -1228,20 +1257,38 @@ function resolveRemoteUrlToBrowserUrl(remoteUrl: string): string | null {
 
 function resolveProjectRemoteLink(
   repositoryIdentity: RepositoryIdentity | null | undefined,
+  preferredRemoteName: string | null | undefined,
 ): ProjectRemoteLink | null {
-  const remoteUrl = repositoryIdentity?.locator.remoteUrl;
-  if (!remoteUrl) {
-    return null;
-  }
-  const url = resolveRemoteUrlToBrowserUrl(remoteUrl);
-  if (!url) {
-    return null;
-  }
+  if (!repositoryIdentity) return null;
+
+  const candidate = (() => {
+    if (preferredRemoteName) {
+      const match = (repositoryIdentity.remotes ?? []).find(
+        (remote) => remote.name === preferredRemoteName,
+      );
+      if (match) {
+        return {
+          url: match.url,
+          label: match.ownerRepo ?? match.url,
+          provider: match.provider ?? undefined,
+        };
+      }
+    }
+    const locatorUrl = repositoryIdentity.locator.remoteUrl;
+    return {
+      url: locatorUrl,
+      label: repositoryIdentity.displayName ?? repositoryIdentity.canonicalKey,
+      provider: repositoryIdentity.provider ?? undefined,
+    };
+  })();
+
+  const url = resolveRemoteUrlToBrowserUrl(candidate.url);
+  if (!url) return null;
   return {
     url,
-    label: repositoryIdentity.displayName ?? repositoryIdentity.canonicalKey,
-    provider: repositoryIdentity.provider,
-    providerLabel: formatRepositoryProviderLabel(repositoryIdentity.provider),
+    label: candidate.label,
+    provider: candidate.provider,
+    providerLabel: formatRepositoryProviderLabel(candidate.provider),
   };
 }
 
@@ -1255,7 +1302,10 @@ function ProjectSettingsMenu(props: {
   onSettings: (member: SidebarProjectGroupMember) => void;
 }) {
   const renderActions = (member: SidebarProjectGroupMember) => {
-    const remoteLink = resolveProjectRemoteLink(member.repositoryIdentity);
+    const remoteLink = resolveProjectRemoteLink(
+      member.repositoryIdentity,
+      member.preferredRemoteName,
+    );
     const RemoteIcon = resolveRepositoryProviderIcon(remoteLink?.provider);
     return (
       <>
@@ -1314,240 +1364,845 @@ function ProjectSettingsMenu(props: {
   );
 }
 
-function ProjectSettingsDialog(props: {
-  onClose: () => void;
-  onCopyPath: (path: string) => void;
-  onPickWorkspaceRoot: () => void;
-  onOpenRemote: (member: SidebarProjectGroupMember) => void;
-  onSave: () => void;
+type ProjectSettingsSection = "general" | "location" | "atlassian" | "ai";
+
+interface ProjectSettingsDialogProps {
   open: boolean;
   saving: boolean;
   target: SidebarProjectGroupMember | null;
+  // General section
   title: string;
-  customSystemPrompt: string;
+  customAvatarContentHash: string | null;
+  preferredRemoteName: string | null;
+  // Location section
   workspaceRoot: string;
-  projectMetadataDir: string;
-  worktrees: readonly SidebarWorktreeSummary[];
-  onCustomSystemPromptChange: (value: string) => void;
-  onProjectMetadataDirChange: (value: string) => void;
+  // AI section
+  customSystemPrompt: string;
+  // Handlers
+  onClose: () => void;
+  onSave: () => void;
   onTitleChange: (value: string) => void;
   onWorkspaceRootChange: (value: string) => void;
+  onCustomSystemPromptChange: (value: string) => void;
+  onPreferredRemoteChange: (value: string | null) => void;
+  onPickWorkspaceRoot: () => void;
+  onOpenRemote: (member: SidebarProjectGroupMember, remoteName: string) => void;
+  onUploadAvatar: (file: File) => Promise<void>;
+  onRemoveAvatar: () => Promise<void>;
+}
+
+function ProjectSettingsGeneralSection(props: {
+  target: SidebarProjectGroupMember;
+  title: string;
+  customAvatarContentHash: string | null;
+  preferredRemoteName: string | null;
+  onTitleChange: (value: string) => void;
+  onPreferredRemoteChange: (value: string | null) => void;
+  onUploadAvatar: (file: File) => Promise<void>;
+  onRemoveAvatar: () => Promise<void>;
+  onOpenRemote: (member: SidebarProjectGroupMember, remoteName: string) => void;
 }) {
+  const remotes = props.target.repositoryIdentity?.remotes ?? [];
+  const autoRemoteName = props.target.repositoryIdentity?.locator.remoteName ?? null;
+  const selectedRemoteName =
+    props.preferredRemoteName && remotes.some((r) => r.name === props.preferredRemoteName)
+      ? props.preferredRemoteName
+      : null; // null means auto
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const triggerUpload = () => fileInputRef.current?.click();
+  const handleFile = async (file: File) => {
+    setUploading(true);
+    try {
+      await props.onUploadAvatar(file);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <section className="flex items-start gap-4">
+        <div className="relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-secondary text-muted-foreground shadow-xs">
+          <ProjectFavicon
+            environmentId={props.target.environmentId}
+            cwd={props.target.cwd}
+            projectId={props.target.id}
+            customAvatarContentHash={props.customAvatarContentHash}
+            fillContainer
+          />
+          {uploading ? (
+            <div className="absolute inset-0 grid place-items-center bg-background/60 text-xs">
+              …
+            </div>
+          ) : null}
+        </div>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="text-xs font-medium text-foreground">Project image</div>
+          <p className="text-[11px] text-muted-foreground">
+            {props.customAvatarContentHash
+              ? "PNG, JPG, or WebP · up to 2 MB"
+              : "Using auto-detected favicon · upload to override"}
+          </p>
+          <div className="flex gap-2 pt-1">
+            <Button size="xs" variant="outline" onClick={triggerUpload} disabled={uploading}>
+              Upload
+            </Button>
+            <Button
+              size="xs"
+              variant="ghost"
+              onClick={() => void props.onRemoveAvatar()}
+              disabled={!props.customAvatarContentHash || uploading}
+            >
+              Remove
+            </Button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void handleFile(file);
+              event.target.value = "";
+            }}
+          />
+        </div>
+      </section>
+
+      <section className="space-y-1.5">
+        <label htmlFor="project-display-name" className="text-xs font-medium text-foreground">
+          Display name
+        </label>
+        <Input
+          id="project-display-name"
+          aria-label="Project display name"
+          value={props.title}
+          onChange={(event) => props.onTitleChange(event.target.value)}
+        />
+      </section>
+
+      {remotes.length > 0 ? (
+        <section className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-medium text-foreground">Linked repositories</div>
+            {remotes.length > 1 ? (
+              <span className="text-[11px] text-muted-foreground">{remotes.length} remotes</span>
+            ) : null}
+          </div>
+          {remotes.length > 1 ? (
+            <p className="text-[11px] text-muted-foreground">
+              Pick which remote the sidebar "Open remote" uses.
+            </p>
+          ) : null}
+          <div className="overflow-hidden rounded-lg border border-border/70">
+            {remotes.length > 1 ? (
+              <button
+                type="button"
+                onClick={() => props.onPreferredRemoteChange(null)}
+                className={cn(
+                  "flex w-full items-center gap-3 border-b border-border/70 px-3 py-2 text-left",
+                  selectedRemoteName === null && "bg-accent/50",
+                )}
+              >
+                <span
+                  className={cn(
+                    "grid size-4 shrink-0 place-items-center rounded-full border",
+                    selectedRemoteName === null
+                      ? "border-foreground"
+                      : "border-muted-foreground/40",
+                  )}
+                  aria-hidden="true"
+                >
+                  {selectedRemoteName === null ? (
+                    <span className="size-2 rounded-full bg-foreground" />
+                  ) : null}
+                </span>
+                <span className="text-xs">
+                  Auto-detect{autoRemoteName ? ` (currently: ${autoRemoteName})` : ""}
+                </span>
+              </button>
+            ) : null}
+            {remotes.map((remote, index) => {
+              const isSelected =
+                selectedRemoteName === remote.name ||
+                (selectedRemoteName === null &&
+                  remote.name === autoRemoteName &&
+                  remotes.length === 1);
+              const ProviderIcon = resolveRepositoryProviderIcon(remote.provider ?? undefined);
+              return (
+                <div
+                  key={remote.name}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2",
+                    index > 0 || remotes.length > 1 ? "border-t border-border/70" : "",
+                    isSelected && "bg-accent/50",
+                  )}
+                >
+                  {remotes.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => props.onPreferredRemoteChange(remote.name)}
+                      className="shrink-0"
+                      aria-label={`Use ${remote.name} as primary`}
+                    >
+                      <span
+                        className={cn(
+                          "grid size-4 place-items-center rounded-full border",
+                          isSelected ? "border-foreground" : "border-muted-foreground/40",
+                        )}
+                      >
+                        {isSelected ? <span className="size-2 rounded-full bg-foreground" /> : null}
+                      </span>
+                    </button>
+                  ) : null}
+                  <ProviderIcon className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium">{remote.name}</span>
+                      {isSelected && remotes.length > 1 ? (
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                          primary
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="truncate font-mono text-[11px] text-muted-foreground">
+                      {remote.ownerRepo ?? remote.url}
+                    </div>
+                  </div>
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => props.onOpenRemote(props.target, remote.name)}
+                  >
+                    <ExternalLinkIcon className="size-3.5" />
+                    Open
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function ProjectSettingsLocationSection(props: {
+  workspaceRoot: string;
+  projectId: string;
+  onWorkspaceRootChange: (value: string) => void;
+  onPickWorkspaceRoot: () => void;
+  onSave: () => void;
+}) {
+  const worktreesPath = `~/.ryco/worktrees/${props.projectId}/`;
+  return (
+    <div className="space-y-6">
+      <section className="space-y-1.5">
+        <label htmlFor="project-root" className="text-xs font-medium text-foreground">
+          Project root
+        </label>
+        <p className="text-[11px] text-muted-foreground">
+          The absolute path the project is anchored to.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            id="project-root"
+            aria-label="Project root"
+            value={props.workspaceRoot}
+            onChange={(event) => props.onWorkspaceRootChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                props.onSave();
+              }
+            }}
+          />
+          <Button variant="outline" onClick={props.onPickWorkspaceRoot}>
+            <FolderOpenIcon className="size-4" />
+            Browse
+          </Button>
+        </div>
+      </section>
+
+      <section className="space-y-1.5">
+        <div className="text-xs font-medium text-foreground">Worktrees location</div>
+        <p className="text-[11px] text-muted-foreground">
+          New worktrees for this project are created here. Each one is named{" "}
+          <span className="font-mono">{"<branch>__<word>"}</span>, where{" "}
+          <span className="font-mono">{"<word>"}</span> is a random 5-letter suffix that
+          disambiguates multiple checkouts of the same branch.
+        </p>
+        <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-3 py-2">
+          <div className="truncate font-mono text-xs">{worktreesPath}</div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ProjectSettingsAiSection(props: {
+  customSystemPrompt: string;
+  onCustomSystemPromptChange: (value: string) => void;
+}) {
+  const length = props.customSystemPrompt.length;
+  const limit = PROJECT_CUSTOM_SYSTEM_PROMPT_MAX_CHARS;
+  const warnThreshold = Math.floor(limit * 0.9);
+  const counterClass =
+    length >= limit
+      ? "text-destructive"
+      : length >= warnThreshold
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-muted-foreground";
+  return (
+    <div className="space-y-2">
+      <label htmlFor="project-custom-system-prompt" className="text-xs font-medium text-foreground">
+        Custom system prompt
+      </label>
+      <p className="text-[11px] text-muted-foreground">
+        Appended to every assistant prompt for this project.
+      </p>
+      <div className="relative">
+        <Textarea
+          id="project-custom-system-prompt"
+          aria-label="Custom system prompt"
+          value={props.customSystemPrompt}
+          maxLength={limit}
+          placeholder="Always use TypeScript."
+          className="min-h-32 resize-y pr-20"
+          onChange={(event) => props.onCustomSystemPromptChange(event.target.value)}
+        />
+        <span
+          className={cn("pointer-events-none absolute bottom-2 right-3 text-[11px]", counterClass)}
+        >
+          {length} / {limit}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ProjectSettingsDialog(props: ProjectSettingsDialogProps) {
+  const [section, setSection] = useState<ProjectSettingsSection>("general");
+  useEffect(() => {
+    if (props.open) setSection("general");
+  }, [props.open, props.target?.id]);
   const target = props.target;
-  const visibleWorktrees = props.worktrees.slice(0, 5);
-  const archivedWorktreeCount = props.worktrees.filter((worktree) => worktree.archivedAt).length;
-  const activeWorktreeCount = props.worktrees.length - archivedWorktreeCount;
-  const remoteLink = resolveProjectRemoteLink(target?.repositoryIdentity);
+  if (!target) return null;
+
+  const headerSubtitle = target.environmentLabel
+    ? `${target.name} · ${target.environmentLabel}`
+    : target.name;
 
   return (
     <Dialog
       open={props.open}
       onOpenChange={(open) => {
-        if (!open) {
-          props.onClose();
-        }
+        if (!open) props.onClose();
       }}
     >
-      <DialogPopup className="max-w-5xl">
-        <DialogHeader className="border-border/70 border-b px-6 py-5">
-          <div className="flex min-w-0 items-start gap-4">
-            <div className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-secondary text-muted-foreground shadow-xs">
-              <ImageIcon className="size-6" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <DialogTitle className="truncate text-base">Project settings</DialogTitle>
-              <DialogDescription className="mt-1 truncate">
-                {target?.environmentLabel
-                  ? `${target.environmentLabel} · ${target.cwd}`
-                  : target?.cwd}
-              </DialogDescription>
-            </div>
+      <DialogPopup
+        className="h-[min(70vh,620px)] max-w-[760px] overflow-hidden p-0"
+        bottomStickOnMobile={false}
+        showCloseButton={true}
+      >
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-5">
+          <div className="min-w-0">
+            <DialogTitle className="text-base font-semibold">Project settings</DialogTitle>
+            <p className="truncate text-xs text-muted-foreground">{headerSubtitle}</p>
           </div>
-        </DialogHeader>
-        <DialogPanel className="px-6 py-5">
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
-            <section className="space-y-4">
-              <div className="grid gap-1.5">
-                <span className="text-xs font-medium text-foreground">Display name</span>
-                <Input
-                  aria-label="Project display name"
-                  value={props.title}
-                  onChange={(event) => props.onTitleChange(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      props.onSave();
-                    }
-                  }}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <span className="text-xs font-medium text-foreground">Active project root</span>
-                <div className="flex min-w-0 gap-2">
-                  <Input
-                    aria-label="Active project root"
-                    value={props.workspaceRoot}
-                    onChange={(event) => props.onWorkspaceRootChange(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        props.onSave();
-                      }
-                    }}
+        </header>
+
+        <div className="flex min-h-0 flex-1 flex-row">
+          <nav className="flex w-12 shrink-0 flex-col gap-1 border-r border-border p-2 sm:w-48">
+            {(
+              [
+                { id: "general", label: "General", Icon: Settings2Icon },
+                { id: "location", label: "Location", Icon: FolderOpenIcon },
+                { id: "atlassian", label: "Atlassian", Icon: SlidersHorizontalIcon },
+                { id: "ai", label: "AI", Icon: SparklesIcon },
+              ] as const
+            ).map(({ id, label, Icon }) => {
+              const isActive = section === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setSection(id)}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-md px-2 py-2 text-left text-[13px] outline-hidden ring-ring transition-colors focus-visible:ring-2",
+                    isActive
+                      ? "bg-accent font-medium text-foreground"
+                      : "text-muted-foreground/70 hover:text-foreground/80",
+                  )}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <Icon
+                    className={cn(
+                      "size-4 shrink-0",
+                      isActive ? "text-foreground" : "text-muted-foreground/60",
+                    )}
                   />
-                  <Button variant="outline" onClick={props.onPickWorkspaceRoot}>
-                    <FolderOpenIcon className="size-4" />
-                    Browse
-                  </Button>
-                </div>
-              </div>
-              <div className="grid gap-1.5">
-                <span className="text-xs font-medium text-foreground">Custom system prompt</span>
-                <Textarea
-                  aria-label="Custom system prompt"
-                  value={props.customSystemPrompt}
-                  maxLength={PROJECT_CUSTOM_SYSTEM_PROMPT_MAX_CHARS}
-                  placeholder="Always use TypeScript."
-                  className="min-h-28 resize-y"
-                  onChange={(event) => props.onCustomSystemPromptChange(event.target.value)}
+                  <span className="hidden truncate sm:inline">{label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <ScrollArea className="min-h-0 flex-1 min-w-0">
+            <div className="mx-auto max-w-[520px] px-6 py-6">
+              {section === "general" ? (
+                <ProjectSettingsGeneralSection
+                  target={target}
+                  title={props.title}
+                  customAvatarContentHash={props.customAvatarContentHash}
+                  preferredRemoteName={props.preferredRemoteName}
+                  onTitleChange={props.onTitleChange}
+                  onPreferredRemoteChange={props.onPreferredRemoteChange}
+                  onUploadAvatar={props.onUploadAvatar}
+                  onRemoveAvatar={props.onRemoveAvatar}
+                  onOpenRemote={props.onOpenRemote}
                 />
-              </div>
-              <div className="grid gap-1.5">
-                <span className="text-xs font-medium text-foreground">Project metadata folder</span>
-                <Input
-                  aria-label="Project metadata folder"
-                  value={props.projectMetadataDir}
-                  placeholder=".s3code"
-                  onChange={(event) => props.onProjectMetadataDirChange(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      props.onSave();
-                    }
-                  }}
+              ) : section === "location" ? (
+                <ProjectSettingsLocationSection
+                  workspaceRoot={props.workspaceRoot}
+                  projectId={target.id}
+                  onWorkspaceRootChange={props.onWorkspaceRootChange}
+                  onPickWorkspaceRoot={props.onPickWorkspaceRoot}
+                  onSave={props.onSave}
                 />
-                <p className="text-[11px] text-muted-foreground">
-                  Worktrees will be created under{" "}
-                  <code>
-                    {props.workspaceRoot || "project-root"}/{props.projectMetadataDir || ".s3code"}
-                    /worktrees
-                  </code>
-                </p>
-              </div>
-            </section>
-            <aside className="space-y-4">
-              <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex size-14 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-background text-muted-foreground">
-                    <ImageIcon className="size-6" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium text-foreground">Project image</div>
-                    <div className="mt-1 truncate text-[11px] text-muted-foreground">
-                      Default project image
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {target && remoteLink ? (
-                <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-                  <div className="flex min-w-0 items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <ProjectRemoteProviderMark provider={remoteLink.provider} />
-                      <div className="min-w-0">
-                        <div className="flex min-w-0 items-center gap-2 text-xs font-medium text-foreground">
-                          <span className="truncate">{remoteLink.providerLabel} repository</span>
-                        </div>
-                        <div className="mt-1 truncate text-[11px] text-muted-foreground">
-                          {remoteLink.label}
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      className="shrink-0"
-                      onClick={() => props.onOpenRemote(target)}
-                    >
-                      <ExternalLinkIcon className="size-3.5" />
-                      Open
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-              <div className="rounded-lg border border-border/70 bg-muted/20">
-                <div className="flex items-center justify-between gap-3 border-border/70 border-b px-3 py-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <MapPinIcon className="size-4 shrink-0 text-muted-foreground" />
-                    <span className="truncate text-xs font-medium text-foreground">
-                      Worktree location
-                    </span>
-                  </div>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">
-                    {activeWorktreeCount} active
-                  </span>
-                </div>
-                <div className="space-y-2 p-3">
-                  <ProjectPathRow
-                    label="Base workspace"
-                    path={target?.cwd ?? ""}
-                    onCopy={props.onCopyPath}
-                  />
-                  {visibleWorktrees.map((worktree) => (
-                    <ProjectPathRow
-                      key={`${worktree.environmentId}:${worktree.id}`}
-                      label={worktree.title?.trim() || worktree.branch}
-                      path={worktree.worktreePath ?? target?.cwd ?? ""}
-                      muted={worktree.archivedAt !== null}
-                      onCopy={props.onCopyPath}
-                    />
-                  ))}
-                  {props.worktrees.length > visibleWorktrees.length ? (
-                    <div className="px-2 text-[11px] text-muted-foreground">
-                      {props.worktrees.length - visibleWorktrees.length} more worktrees
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </aside>
-          </div>
-        </DialogPanel>
-        <DialogFooter className="border-border/70 border-t px-6 py-4">
+              ) : section === "atlassian" ? (
+                <ProjectAtlassianSettingsSection target={target} />
+              ) : (
+                <ProjectSettingsAiSection
+                  customSystemPrompt={props.customSystemPrompt}
+                  onCustomSystemPromptChange={props.onCustomSystemPromptChange}
+                />
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+
+        <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-5 py-3">
           <Button variant="outline" onClick={props.onClose}>
             Cancel
           </Button>
-          <Button onClick={props.onSave} disabled={props.saving}>
-            {props.saving ? "Saving..." : "Save changes"}
-          </Button>
-        </DialogFooter>
+          {section === "atlassian" ? null : (
+            <Button onClick={props.onSave} disabled={props.saving}>
+              {props.saving ? "Saving…" : "Save changes"}
+            </Button>
+          )}
+        </footer>
       </DialogPopup>
     </Dialog>
   );
 }
 
-function ProjectPathRow(props: {
-  label: string;
-  path: string;
-  muted?: boolean | undefined;
-  onCopy: (path: string) => void;
-}) {
+const ATLASSIAN_NONE_VALUE = "Not configured";
+
+function atlassianConnectionValue(value: AtlassianConnectionId | null | undefined): string {
+  return value ?? ATLASSIAN_NONE_VALUE;
+}
+
+function nullableAtlassianConnectionId(value: string): AtlassianConnectionId | null {
+  return value === ATLASSIAN_NONE_VALUE || value.trim().length === 0
+    ? null
+    : (value as AtlassianConnectionId);
+}
+
+function splitAtlassianProjectKeys(value: string): string[] {
+  return value
+    .split(/[,\s]+/u)
+    .map((part) => part.trim().toUpperCase())
+    .filter(Boolean);
+}
+
+function bitbucketRemoteSuggestion(repositoryIdentity: RepositoryIdentity | null | undefined): {
+  workspace: string;
+  repoSlug: string;
+} {
+  if (repositoryIdentity?.provider?.toLowerCase() !== "bitbucket") {
+    return { workspace: "", repoSlug: "" };
+  }
+  return {
+    workspace: repositoryIdentity.owner ?? "",
+    repoSlug: repositoryIdentity.name ?? "",
+  };
+}
+
+function connectionProductFilter(product: "jira" | "bitbucket") {
+  return (connection: AtlassianConnectionSummary) =>
+    connection.status === "connected" && connection.products.includes(product);
+}
+
+function ProjectAtlassianSettingsSection(props: { target: SidebarProjectGroupMember | null }) {
+  const target = props.target;
+  const queryClient = useQueryClient();
+  const connection = target ? readEnvironmentConnection(target.environmentId) : null;
+  const client = connection?.client ?? null;
+  const [jiraConnectionValue, setJiraConnectionValue] = useState(ATLASSIAN_NONE_VALUE);
+  const [bitbucketConnectionValue, setBitbucketConnectionValue] = useState(ATLASSIAN_NONE_VALUE);
+  const [jiraSiteUrl, setJiraSiteUrl] = useState("");
+  const [jiraProjectKeys, setJiraProjectKeys] = useState("");
+  const [bitbucketWorkspace, setBitbucketWorkspace] = useState("");
+  const [bitbucketRepoSlug, setBitbucketRepoSlug] = useState("");
+  const [defaultIssueTypeName, setDefaultIssueTypeName] = useState("");
+  const [branchNameTemplate, setBranchNameTemplate] = useState("{issueKey}-{titleSlug}");
+  const [commitMessageTemplate, setCommitMessageTemplate] = useState("{issueKey}: {summary}");
+  const [pullRequestTitleTemplate, setPullRequestTitleTemplate] = useState("{issueKey}: {summary}");
+  const [smartLinkingEnabled, setSmartLinkingEnabled] = useState(true);
+  const [autoAttachWorkItems, setAutoAttachWorkItems] = useState(true);
+  const dirtyRef = useRef(false);
+  const initializedTargetRef = useRef<string | null>(null);
+
+  const projectLinkQuery = useQuery({
+    queryKey: ["atlassian", "project-link", target?.environmentId ?? null, target?.id ?? null],
+    queryFn: async (): Promise<AtlassianProjectLink | null> => {
+      if (!client || !target) return null;
+      return client.atlassian.getProjectLink({ projectId: target.id });
+    },
+    enabled: client !== null && target !== null,
+  });
+
+  const connectionsQuery = useQuery({
+    queryKey: ["atlassian", "connections", target?.environmentId ?? null],
+    queryFn: async () => {
+      if (!client) return [];
+      return client.atlassian.listConnections();
+    },
+    enabled: client !== null,
+  });
+
+  const jiraConnections = useMemo(
+    () => (connectionsQuery.data ?? []).filter(connectionProductFilter("jira")),
+    [connectionsQuery.data],
+  );
+  const bitbucketConnections = useMemo(
+    () => (connectionsQuery.data ?? []).filter(connectionProductFilter("bitbucket")),
+    [connectionsQuery.data],
+  );
+
+  useEffect(() => {
+    if (!target) return;
+    const targetKey = `${target.environmentId}:${target.id}`;
+    if (initializedTargetRef.current !== targetKey) {
+      initializedTargetRef.current = targetKey;
+      dirtyRef.current = false;
+    }
+    if (dirtyRef.current) return;
+    const link = projectLinkQuery.data;
+    const remote = bitbucketRemoteSuggestion(target.repositoryIdentity);
+    setJiraConnectionValue(
+      atlassianConnectionValue(link?.jiraConnectionId ?? jiraConnections[0]?.connectionId),
+    );
+    setBitbucketConnectionValue(
+      atlassianConnectionValue(
+        link?.bitbucketConnectionId ?? bitbucketConnections[0]?.connectionId,
+      ),
+    );
+    setJiraSiteUrl(link?.jiraSiteUrl ?? jiraConnections[0]?.baseUrl ?? "");
+    setJiraProjectKeys(link?.jiraProjectKeys.join(", ") ?? "");
+    setBitbucketWorkspace(link?.bitbucketWorkspace ?? remote.workspace);
+    setBitbucketRepoSlug(link?.bitbucketRepoSlug ?? remote.repoSlug);
+    setDefaultIssueTypeName(link?.defaultIssueTypeName ?? "");
+    setBranchNameTemplate(link?.branchNameTemplate ?? "{issueKey}-{titleSlug}");
+    setCommitMessageTemplate(link?.commitMessageTemplate ?? "{issueKey}: {summary}");
+    setPullRequestTitleTemplate(link?.pullRequestTitleTemplate ?? "{issueKey}: {summary}");
+    setSmartLinkingEnabled(link?.smartLinkingEnabled ?? true);
+    setAutoAttachWorkItems(link?.autoAttachWorkItems ?? true);
+  }, [bitbucketConnections, jiraConnections, projectLinkQuery.data, target]);
+
+  const markDirty = () => {
+    dirtyRef.current = true;
+  };
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (!client || !target) throw new Error("Project connection is unavailable.");
+      const branchTemplate = branchNameTemplate.trim();
+      const commitTemplate = commitMessageTemplate.trim();
+      const prTemplate = pullRequestTitleTemplate.trim();
+      if (!branchTemplate || !commitTemplate || !prTemplate) {
+        throw new Error("Branch, commit, and pull request templates cannot be empty.");
+      }
+      return client.atlassian.saveProjectLink({
+        projectId: target.id,
+        jiraConnectionId: nullableAtlassianConnectionId(jiraConnectionValue),
+        bitbucketConnectionId: nullableAtlassianConnectionId(bitbucketConnectionValue),
+        jiraCloudId: projectLinkQuery.data?.jiraCloudId ?? null,
+        jiraSiteUrl: jiraSiteUrl.trim() || null,
+        jiraProjectKeys: splitAtlassianProjectKeys(jiraProjectKeys),
+        bitbucketWorkspace: bitbucketWorkspace.trim() || null,
+        bitbucketRepoSlug: bitbucketRepoSlug.trim() || null,
+        defaultIssueTypeName: defaultIssueTypeName.trim() || null,
+        branchNameTemplate: branchTemplate,
+        commitMessageTemplate: commitTemplate,
+        pullRequestTitleTemplate: prTemplate,
+        smartLinkingEnabled,
+        autoAttachWorkItems,
+      });
+    },
+    onSuccess: () => {
+      dirtyRef.current = false;
+      void queryClient.invalidateQueries({ queryKey: ["atlassian"] });
+      void queryClient.invalidateQueries({ queryKey: ["workItems"] });
+      toastManager.add(
+        stackedThreadToast({
+          type: "success",
+          title: "Atlassian project settings saved",
+          description: "Jira and Bitbucket defaults were updated for this project.",
+        }),
+      );
+    },
+    onError: (error) => {
+      toastManager.add(
+        stackedThreadToast({
+          type: "error",
+          title: "Could not save Atlassian project settings",
+          description: error instanceof Error ? error.message : "The project link was not saved.",
+        }),
+      );
+    },
+  });
+
+  const isLoading = projectLinkQuery.isLoading || connectionsQuery.isLoading;
+  const disabled = client === null || target === null || saveMutation.isPending;
+
   return (
-    <div className="flex min-w-0 items-center gap-2 rounded-md bg-background px-2 py-1.5">
-      <div className="min-w-0 flex-1">
-        <div className={cn("truncate text-xs font-medium", props.muted && "text-muted-foreground")}>
-          {props.label}
+    <div className="space-y-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <SlidersHorizontalIcon className="size-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0">
+            <div className="truncate text-xs font-medium text-foreground">Atlassian workflow</div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Project-scoped Jira, Bitbucket, and smart-link defaults.
+            </p>
+          </div>
         </div>
-        <div className="truncate font-mono text-[11px] text-muted-foreground">{props.path}</div>
+        {isLoading ? (
+          <span className="text-[11px] text-muted-foreground">Loading</span>
+        ) : (
+          <span className="rounded bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            Project defaults
+          </span>
+        )}
       </div>
-      <Button
-        size="icon-xs"
-        variant="ghost"
-        aria-label={`Copy path for ${props.label}`}
-        onClick={() => props.onCopy(props.path)}
-      >
-        <CopyIcon className="size-3.5" />
-      </Button>
+
+      <section className="space-y-3">
+        <div className="text-xs font-medium text-foreground">Connections</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Jira connection</label>
+            <Select
+              value={jiraConnectionValue}
+              onValueChange={(value) => {
+                if (typeof value === "string") {
+                  markDirty();
+                  setJiraConnectionValue(value);
+                }
+              }}
+            >
+              <SelectTrigger size="sm" disabled={disabled}>
+                <SelectValue placeholder="Select Jira connection" />
+              </SelectTrigger>
+              <SelectPopup>
+                <SelectItem value={ATLASSIAN_NONE_VALUE}>Not configured</SelectItem>
+                {jiraConnections.map((item) => (
+                  <SelectItem key={item.connectionId} value={item.connectionId}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Bitbucket connection</label>
+            <Select
+              value={bitbucketConnectionValue}
+              onValueChange={(value) => {
+                if (typeof value === "string") {
+                  markDirty();
+                  setBitbucketConnectionValue(value);
+                }
+              }}
+            >
+              <SelectTrigger size="sm" disabled={disabled}>
+                <SelectValue placeholder="Select Bitbucket connection" />
+              </SelectTrigger>
+              <SelectPopup>
+                <SelectItem value={ATLASSIAN_NONE_VALUE}>Not configured</SelectItem>
+                {bitbucketConnections.map((item) => (
+                  <SelectItem key={item.connectionId} value={item.connectionId}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="text-xs font-medium text-foreground">Repository mapping</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ProjectSettingsField label="Jira site URL">
+            <Input
+              size="sm"
+              value={jiraSiteUrl}
+              inputMode="url"
+              disabled={disabled}
+              placeholder="https://your-team.atlassian.net"
+              onChange={(event) => {
+                markDirty();
+                setJiraSiteUrl(event.currentTarget.value);
+              }}
+            />
+          </ProjectSettingsField>
+          <ProjectSettingsField label="Jira project keys">
+            <Input
+              size="sm"
+              value={jiraProjectKeys}
+              disabled={disabled}
+              placeholder="WEB, API"
+              onChange={(event) => {
+                markDirty();
+                setJiraProjectKeys(event.currentTarget.value);
+              }}
+            />
+          </ProjectSettingsField>
+          <ProjectSettingsField label="Bitbucket workspace">
+            <Input
+              size="sm"
+              value={bitbucketWorkspace}
+              disabled={disabled}
+              placeholder="workspace"
+              onChange={(event) => {
+                markDirty();
+                setBitbucketWorkspace(event.currentTarget.value);
+              }}
+            />
+          </ProjectSettingsField>
+          <ProjectSettingsField label="Bitbucket repo slug">
+            <Input
+              size="sm"
+              value={bitbucketRepoSlug}
+              disabled={disabled}
+              placeholder="repo-slug"
+              onChange={(event) => {
+                markDirty();
+                setBitbucketRepoSlug(event.currentTarget.value);
+              }}
+            />
+          </ProjectSettingsField>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="text-xs font-medium text-foreground">Templates</div>
+        <div className="grid gap-3">
+          <ProjectSettingsField label="Default issue type">
+            <Input
+              size="sm"
+              value={defaultIssueTypeName}
+              disabled={disabled}
+              placeholder="Task"
+              onChange={(event) => {
+                markDirty();
+                setDefaultIssueTypeName(event.currentTarget.value);
+              }}
+            />
+          </ProjectSettingsField>
+          <ProjectSettingsField label="Branch template">
+            <Input
+              size="sm"
+              value={branchNameTemplate}
+              disabled={disabled}
+              onChange={(event) => {
+                markDirty();
+                setBranchNameTemplate(event.currentTarget.value);
+              }}
+            />
+          </ProjectSettingsField>
+          <ProjectSettingsField label="Commit template">
+            <Input
+              size="sm"
+              value={commitMessageTemplate}
+              disabled={disabled}
+              onChange={(event) => {
+                markDirty();
+                setCommitMessageTemplate(event.currentTarget.value);
+              }}
+            />
+          </ProjectSettingsField>
+          <ProjectSettingsField label="PR title template">
+            <Input
+              size="sm"
+              value={pullRequestTitleTemplate}
+              disabled={disabled}
+              onChange={(event) => {
+                markDirty();
+                setPullRequestTitleTemplate(event.currentTarget.value);
+              }}
+            />
+          </ProjectSettingsField>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="text-xs font-medium text-foreground">Automation</div>
+        <div className="grid gap-2">
+          <label className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/60 px-3 py-2 text-xs">
+            <span>Smart-link Jira keys in branches, commits, and PRs</span>
+            <Switch
+              checked={smartLinkingEnabled}
+              disabled={disabled}
+              onCheckedChange={(checked) => {
+                markDirty();
+                setSmartLinkingEnabled(Boolean(checked));
+              }}
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/60 px-3 py-2 text-xs">
+            <span>Attach linked work items to project explorer workflows</span>
+            <Switch
+              checked={autoAttachWorkItems}
+              disabled={disabled}
+              onCheckedChange={(checked) => {
+                markDirty();
+                setAutoAttachWorkItems(Boolean(checked));
+              }}
+            />
+          </label>
+        </div>
+      </section>
+
+      <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-4">
+        <p className="text-[11px] text-muted-foreground">
+          Tokens live in Source Control settings. These defaults belong only to this project.
+        </p>
+        <Button
+          type="button"
+          size="sm"
+          className="h-8 shrink-0"
+          disabled={disabled}
+          onClick={() => saveMutation.mutate()}
+        >
+          {saveMutation.isPending ? "Saving..." : "Save Atlassian"}
+        </Button>
+      </div>
     </div>
+  );
+}
+
+function ProjectSettingsField(props: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="grid gap-1.5">
+      <span className="text-xs font-medium text-foreground">{props.label}</span>
+      {props.children}
+    </label>
   );
 }
 
@@ -1747,11 +2402,19 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   >("inherit");
   const [projectSettingsTarget, setProjectSettingsTarget] =
     useState<SidebarProjectGroupMember | null>(null);
+  const projectSettingsTargetRef = useRef<SidebarProjectGroupMember | null>(null);
+  useEffect(() => {
+    projectSettingsTargetRef.current = projectSettingsTarget;
+  }, [projectSettingsTarget]);
   const [projectSettingsTitle, setProjectSettingsTitle] = useState("");
   const [projectSettingsWorkspaceRoot, setProjectSettingsWorkspaceRoot] = useState("");
   const [projectSettingsCustomSystemPrompt, setProjectSettingsCustomSystemPrompt] = useState("");
-  const [projectSettingsProjectMetadataDir, setProjectSettingsProjectMetadataDir] = useState("");
   const [projectSettingsSaving, setProjectSettingsSaving] = useState(false);
+  const [projectSettingsCustomAvatarContentHash, setProjectSettingsCustomAvatarContentHash] =
+    useState<string | null>(null);
+  const [projectSettingsPreferredRemoteName, setProjectSettingsPreferredRemoteName] = useState<
+    string | null
+  >(null);
   const renamingCommittedRef = useRef(false);
   const renamingInputRef = useRef<HTMLInputElement | null>(null);
   const confirmArchiveButtonRefs = useRef(new Map<string, HTMLButtonElement>());
@@ -1929,17 +2592,6 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       ),
     ]);
   }, [pinnedCollapsedThread, projectExpanded]);
-  const projectSettingsWorktrees = useMemo(() => {
-    if (!projectSettingsTarget) {
-      return [];
-    }
-    return sidebarWorktrees.filter(
-      (worktree) =>
-        worktree.environmentId === projectSettingsTarget.environmentId &&
-        worktree.projectId === projectSettingsTarget.id,
-    );
-  }, [projectSettingsTarget, sidebarWorktrees]);
-
   const handleProjectButtonClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       if (suppressProjectClickForContextMenuRef.current) {
@@ -2026,12 +2678,16 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     setProjectSettingsTitle(member.name);
     setProjectSettingsWorkspaceRoot(member.cwd);
     setProjectSettingsCustomSystemPrompt(member.customSystemPrompt ?? "");
-    setProjectSettingsProjectMetadataDir(member.projectMetadataDir ?? ".s3code");
     setProjectSettingsSaving(false);
+    setProjectSettingsCustomAvatarContentHash(member.customAvatarContentHash ?? null);
+    setProjectSettingsPreferredRemoteName(member.preferredRemoteName ?? null);
   }, []);
 
   const openProjectRemoteLink = useCallback((member: SidebarProjectGroupMember) => {
-    const remoteLink = resolveProjectRemoteLink(member.repositoryIdentity);
+    const remoteLink = resolveProjectRemoteLink(
+      member.repositoryIdentity,
+      member.preferredRemoteName,
+    );
     if (!remoteLink) {
       toastManager.add({
         type: "warning",
@@ -2277,7 +2933,9 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         };
 
         const hasAnyRemoteLink = project.memberProjects.some(
-          (member) => resolveProjectRemoteLink(member.repositoryIdentity) !== null,
+          (member) =>
+            resolveProjectRemoteLink(member.repositoryIdentity, member.preferredRemoteName) !==
+            null,
         );
         const menuItems: ContextMenuItem<string>[] = [
           buildTargetedItem("settings", "Project settings"),
@@ -2285,7 +2943,10 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
             ? [
                 buildTargetedItem("open-remote", "Open remote", {
                   isDisabled: (member) =>
-                    resolveProjectRemoteLink(member.repositoryIdentity) === null,
+                    resolveProjectRemoteLink(
+                      member.repositoryIdentity,
+                      member.preferredRemoteName,
+                    ) === null,
                 }),
               ]
             : []),
@@ -2954,8 +3615,9 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     setProjectSettingsTitle("");
     setProjectSettingsWorkspaceRoot("");
     setProjectSettingsCustomSystemPrompt("");
-    setProjectSettingsProjectMetadataDir("");
     setProjectSettingsSaving(false);
+    setProjectSettingsCustomAvatarContentHash(null);
+    setProjectSettingsPreferredRemoteName(null);
   }, []);
 
   const pickProjectSettingsWorkspaceRoot = useCallback(async () => {
@@ -2984,7 +3646,6 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     const title = projectSettingsTitle.trim();
     const workspaceRoot = projectSettingsWorkspaceRoot.trim();
     const customSystemPrompt = projectSettingsCustomSystemPrompt.trim();
-    const projectMetadataDir = projectSettingsProjectMetadataDir.trim();
     if (title.length === 0) {
       toastManager.add({
         type: "warning",
@@ -2999,25 +3660,18 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       });
       return;
     }
-    if (projectMetadataDir.length === 0) {
-      toastManager.add({
-        type: "warning",
-        title: "Project metadata folder cannot be empty",
-      });
-      return;
-    }
 
     const titleChanged = title !== projectSettingsTarget.name;
     const workspaceRootChanged = workspaceRoot !== projectSettingsTarget.cwd;
-    const projectMetadataDirChanged =
-      projectMetadataDir !== (projectSettingsTarget.projectMetadataDir ?? ".s3code");
     const currentCustomSystemPrompt = projectSettingsTarget.customSystemPrompt?.trim() ?? "";
     const customSystemPromptChanged = customSystemPrompt !== currentCustomSystemPrompt;
+    const preferredRemoteNameChanged =
+      projectSettingsPreferredRemoteName !== (projectSettingsTarget.preferredRemoteName ?? null);
     if (
       !titleChanged &&
       !workspaceRootChanged &&
-      !projectMetadataDirChanged &&
-      !customSystemPromptChanged
+      !customSystemPromptChanged &&
+      !preferredRemoteNameChanged
     ) {
       closeProjectSettingsDialog();
       return;
@@ -3043,9 +3697,11 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         projectId: projectSettingsTarget.id,
         ...(titleChanged ? { title } : {}),
         ...(workspaceRootChanged ? { workspaceRoot } : {}),
-        ...(projectMetadataDirChanged ? { projectMetadataDir } : {}),
         ...(customSystemPromptChanged
           ? { customSystemPrompt: customSystemPrompt.length > 0 ? customSystemPrompt : null }
+          : {}),
+        ...(preferredRemoteNameChanged
+          ? { preferredRemoteName: projectSettingsPreferredRemoteName }
           : {}),
       });
       closeProjectSettingsDialog();
@@ -3063,7 +3719,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     closeProjectSettingsDialog,
     projectSettingsSaving,
     projectSettingsCustomSystemPrompt,
-    projectSettingsProjectMetadataDir,
+    projectSettingsPreferredRemoteName,
     projectSettingsTarget,
     projectSettingsTitle,
     projectSettingsWorkspaceRoot,
@@ -3118,6 +3774,101 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       );
     }
   }, [closeProjectRenameDialog, projectRenameTarget, projectRenameTitle]);
+
+  const uploadProjectAvatar = useCallback(
+    async (file: File) => {
+      const initiating = projectSettingsTarget;
+      if (!initiating) return;
+      const api = readEnvironmentApi(initiating.environmentId);
+      if (!api) return;
+      const httpUrl = resolveEnvironmentHttpUrl({
+        environmentId: initiating.environmentId,
+        pathname: "/api/project-avatar/upload",
+        searchParams: { projectId: initiating.id },
+      });
+      const formData = new FormData();
+      formData.append("avatar", file);
+      try {
+        const response = await fetch(httpUrl, {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+        if (!response.ok) {
+          const text = await response.text().catch(() => "");
+          throw new Error(text || `Upload failed: ${response.status}`);
+        }
+        const { contentHash } = (await response.json()) as { contentHash: string };
+        await api.orchestration.dispatchCommand({
+          type: "project.avatar.set",
+          commandId: newCommandId(),
+          projectId: initiating.id,
+          contentHash,
+        });
+        if (projectSettingsTargetRef.current?.id === initiating.id) {
+          setProjectSettingsCustomAvatarContentHash(contentHash);
+        }
+      } catch (error) {
+        if (projectSettingsTargetRef.current?.id !== initiating.id) return;
+        toastManager.add(
+          stackedThreadToast({
+            type: "error",
+            title: "Failed to upload avatar",
+            description: error instanceof Error ? error.message : "An error occurred.",
+          }),
+        );
+      }
+    },
+    [projectSettingsTarget],
+  );
+
+  const removeProjectAvatar = useCallback(async () => {
+    const initiating = projectSettingsTarget;
+    if (!initiating) return;
+    const api = readEnvironmentApi(initiating.environmentId);
+    if (!api) return;
+    try {
+      await api.orchestration.dispatchCommand({
+        type: "project.avatar.set",
+        commandId: newCommandId(),
+        projectId: initiating.id,
+        contentHash: null,
+      });
+      if (projectSettingsTargetRef.current?.id === initiating.id) {
+        setProjectSettingsCustomAvatarContentHash(null);
+      }
+    } catch (error) {
+      if (projectSettingsTargetRef.current?.id !== initiating.id) return;
+      toastManager.add(
+        stackedThreadToast({
+          type: "error",
+          title: "Failed to remove avatar",
+          description: error instanceof Error ? error.message : "An error occurred.",
+        }),
+      );
+    }
+  }, [projectSettingsTarget]);
+
+  const openProjectRemoteByName = useCallback(
+    (member: SidebarProjectGroupMember, remoteName: string) => {
+      const remote = (member.repositoryIdentity?.remotes ?? []).find((r) => r.name === remoteName);
+      if (!remote) return;
+      const url = resolveRemoteUrlToBrowserUrl(remote.url);
+      if (!url) return;
+      const api = readLocalApi();
+      if (!api) return;
+      void api.shell.openExternal(url).catch((error) => {
+        toastManager.add(
+          stackedThreadToast({
+            type: "error",
+            title: "Unable to open remote repository",
+            description: error instanceof Error ? error.message : "An error occurred.",
+          }),
+        );
+      });
+    },
+    [],
+  );
 
   const closeProjectGroupingDialog = useCallback(() => {
     setProjectGroupingTarget(null);
@@ -3263,23 +4014,20 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
               title={projectStatus.label}
               className={`-ml-0.5 relative inline-flex size-3.5 shrink-0 items-center justify-center ${projectStatus.colorClass}`}
             >
-              <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-150 group-hover/project-header:opacity-0">
-                <span
-                  className={`size-[9px] rounded-full ${projectStatus.dotClass} ${
-                    projectStatus.pulse ? "animate-pulse" : ""
-                  }`}
-                />
-              </span>
-              <ChevronRightIcon className="absolute inset-0 m-auto size-3.5 text-muted-foreground/70 opacity-0 transition-opacity duration-150 group-hover/project-header:opacity-100" />
+              <span
+                className={`size-[9px] rounded-full ${projectStatus.dotClass} ${
+                  projectStatus.pulse ? "animate-pulse" : ""
+                }`}
+              />
             </span>
-          ) : (
-            <ChevronRightIcon
-              className={`-ml-0.5 size-3.5 shrink-0 text-muted-foreground/70 transition-transform duration-150 ${
-                projectExpanded ? "rotate-90" : ""
-              }`}
-            />
-          )}
-          <ProjectFavicon environmentId={project.environmentId} cwd={project.cwd} />
+          ) : null}
+          <ProjectFavicon
+            environmentId={project.environmentId}
+            cwd={project.cwd}
+            projectId={project.id}
+            customAvatarContentHash={project.customAvatarContentHash ?? null}
+            className="size-[18px]"
+          />
           <span className="flex min-w-0 flex-1 items-center gap-2">
             <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground/90">
               {project.displayName}
@@ -3484,22 +4232,21 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         open={projectSettingsTarget !== null}
         target={projectSettingsTarget}
         title={projectSettingsTitle}
-        customSystemPrompt={projectSettingsCustomSystemPrompt}
+        customAvatarContentHash={projectSettingsCustomAvatarContentHash}
+        preferredRemoteName={projectSettingsPreferredRemoteName}
         workspaceRoot={projectSettingsWorkspaceRoot}
-        projectMetadataDir={projectSettingsProjectMetadataDir}
-        worktrees={projectSettingsWorktrees}
+        customSystemPrompt={projectSettingsCustomSystemPrompt}
         saving={projectSettingsSaving}
-        onCustomSystemPromptChange={setProjectSettingsCustomSystemPrompt}
-        onProjectMetadataDirChange={setProjectSettingsProjectMetadataDir}
-        onOpenRemote={openProjectRemoteLink}
+        onClose={closeProjectSettingsDialog}
+        onSave={() => void submitProjectSettings()}
         onTitleChange={setProjectSettingsTitle}
         onWorkspaceRootChange={setProjectSettingsWorkspaceRoot}
+        onCustomSystemPromptChange={setProjectSettingsCustomSystemPrompt}
+        onPreferredRemoteChange={setProjectSettingsPreferredRemoteName}
         onPickWorkspaceRoot={() => void pickProjectSettingsWorkspaceRoot()}
-        onCopyPath={(path) => {
-          copyPathToClipboard(path, { path });
-        }}
-        onSave={() => void submitProjectSettings()}
-        onClose={closeProjectSettingsDialog}
+        onOpenRemote={openProjectRemoteByName}
+        onUploadAvatar={uploadProjectAvatar}
+        onRemoveAvatar={removeProjectAvatar}
       />
 
       <Dialog

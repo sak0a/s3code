@@ -14,7 +14,7 @@ import {
   SetProjectionWorktreeManualPositionInput,
   UpdateProjectionWorktreeMetaInput,
 } from "../Services/ProjectionWorktrees.ts";
-import { WorktreeId } from "@s3tools/contracts";
+import { WorktreeId } from "@ryco/contracts";
 
 const makeProjectionWorktreeRepository = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;

@@ -13,7 +13,7 @@ import {
   type ServerLifecycleWelcomePayload,
   type ThreadId,
   WS_METHODS,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { RouterProvider, createMemoryHistory } from "@tanstack/react-router";
 import { ws, http, HttpResponse } from "msw";
 import { setupWorker } from "msw/browser";
@@ -69,7 +69,7 @@ function createBaseServerConfig(): ServerConfig {
       sessionCookieName: "t3_session",
     },
     cwd: "/repo/project",
-    keybindingsConfigPath: "/repo/project/.s3code-keybindings.json",
+    keybindingsConfigPath: "/repo/project/.ryco-keybindings.json",
     keybindings: [],
     issues: [],
     providers: [
@@ -117,6 +117,11 @@ function createBaseServerConfig(): ServerConfig {
           customModels: [],
           launchArgs: "",
         },
+        copilot: {
+          enabled: true,
+          binaryPath: "",
+          customModels: [],
+        },
         cursor: { enabled: true, binaryPath: "", apiEndpoint: "", customModels: [] },
         opencode: {
           enabled: true,
@@ -138,7 +143,7 @@ function createMinimalSnapshot(): OrchestrationReadModel {
         id: PROJECT_ID,
         title: "Project",
         workspaceRoot: "/repo/project",
-        projectMetadataDir: ".s3code",
+        projectMetadataDir: ".ryco",
         defaultModelSelection: {
           instanceId: ProviderInstanceId.make("codex"),
           model: "gpt-5",
@@ -278,7 +283,7 @@ const worker = setupWorker(
     client.addEventListener("message", (event) => {
       const rawData = event.data;
       if (typeof rawData !== "string") return;
-      void rpcHarness.onMessage(rawData);
+      void rpcHarness.onMessage(rawData, client);
     });
   }),
   ...createAuthenticatedSessionHandlers(() => fixture.serverConfig.auth),

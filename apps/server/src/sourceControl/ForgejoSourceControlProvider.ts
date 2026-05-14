@@ -1,0 +1,258 @@
+import { DateTime, Effect, Layer, Option } from "effect";
+import {
+  SourceControlProviderError,
+  truncateSourceControlDetailContent,
+  type ChangeRequest,
+  type SourceControlChangeRequestDetail,
+  type SourceControlIssueDetail,
+  type SourceControlIssueSummary,
+} from "@ryco/contracts";
+
+import * as ForgejoApi from "./ForgejoApi.ts";
+import * as ForgejoIssues from "./forgejoIssues.ts";
+import * as ForgejoPullRequests from "./forgejoPullRequests.ts";
+import * as SourceControlProvider from "./SourceControlProvider.ts";
+import { makeForgejoDiscovery } from "./SourceControlProviderDiscoveryCatalog.ts";
+
+function providerError(
+  operation: string,
+  cause: ForgejoApi.ForgejoApiError,
+): SourceControlProviderError {
+  return new SourceControlProviderError({
+    provider: "forgejo",
+    operation,
+    detail: cause.detail,
+    cause,
+  });
+}
+
+function toChangeRequest(
+  summary: ForgejoPullRequests.NormalizedForgejoPullRequestRecord,
+): ChangeRequest {
+  return {
+    provider: "forgejo",
+    number: summary.number,
+    title: summary.title,
+    url: summary.url,
+    baseRefName: summary.baseRefName,
+    headRefName: summary.headRefName,
+    state: summary.state,
+    updatedAt: summary.updatedAt,
+    ...(summary.isCrossRepository !== undefined
+      ? { isCrossRepository: summary.isCrossRepository }
+      : {}),
+    ...(summary.isDraft !== undefined ? { isDraft: summary.isDraft } : {}),
+    ...(summary.author ? { author: summary.author } : {}),
+    ...(typeof summary.commentsCount === "number" ? { commentsCount: summary.commentsCount } : {}),
+    ...(summary.headRepositoryNameWithOwner !== null
+      ? { headRepositoryNameWithOwner: summary.headRepositoryNameWithOwner }
+      : {}),
+    ...(summary.headRepositoryOwnerLogin !== null
+      ? { headRepositoryOwnerLogin: summary.headRepositoryOwnerLogin }
+      : {}),
+  };
+}
+
+function toIssueSummary(
+  raw: ForgejoIssues.NormalizedForgejoIssueRecord,
+): SourceControlIssueSummary {
+  return {
+    provider: "forgejo",
+    number: raw.number,
+    title: raw.title,
+    url: raw.url,
+    state: raw.state,
+    ...(raw.author ? { author: raw.author } : {}),
+    updatedAt: raw.updatedAt.pipe(Option.map((s) => DateTime.fromDateUnsafe(new Date(s)))),
+    ...(raw.labels.length > 0 ? { labels: raw.labels } : {}),
+    ...(raw.assignees.length > 0 ? { assignees: raw.assignees } : {}),
+    ...(typeof raw.commentsCount === "number" ? { commentsCount: raw.commentsCount } : {}),
+  };
+}
+
+function toIssueDetail(
+  raw: ForgejoIssues.NormalizedForgejoIssueDetail,
+  options: { readonly fullContent: boolean },
+): SourceControlIssueDetail {
+  const content = options.fullContent
+    ? { body: raw.body, comments: raw.comments, truncated: false }
+    : truncateSourceControlDetailContent({ body: raw.body, comments: raw.comments });
+  return {
+    ...toIssueSummary(raw),
+    body: content.body,
+    comments: content.comments.map((comment) => ({
+      author: comment.author,
+      body: comment.body,
+      createdAt: DateTime.fromDateUnsafe(new Date(comment.createdAt)),
+    })),
+    truncated: content.truncated,
+  };
+}
+
+function toChangeRequestDetail(
+  raw: ForgejoPullRequests.NormalizedForgejoPullRequestDetail,
+  options: { readonly fullContent: boolean },
+): SourceControlChangeRequestDetail {
+  const content = options.fullContent
+    ? { body: raw.body, comments: raw.comments, truncated: false }
+    : truncateSourceControlDetailContent({ body: raw.body, comments: raw.comments });
+  return {
+    ...toChangeRequest(raw),
+    body: content.body,
+    comments: content.comments.map((comment) => ({
+      author: comment.author,
+      body: comment.body,
+      createdAt: DateTime.fromDateUnsafe(new Date(comment.createdAt)),
+    })),
+    truncated: content.truncated,
+    ...(raw.commits.length > 0 ? { commits: raw.commits } : {}),
+    additions: raw.additions,
+    deletions: raw.deletions,
+    changedFiles: raw.changedFiles,
+    ...(raw.files.length > 0 ? { files: raw.files } : {}),
+  };
+}
+
+export const make = Effect.fn("makeForgejoSourceControlProvider")(function* () {
+  const forgejo = yield* ForgejoApi.ForgejoApi;
+
+  return SourceControlProvider.SourceControlProvider.of({
+    kind: "forgejo",
+    listChangeRequests: (input) => {
+      const source = SourceControlProvider.sourceControlRefFromInput(input);
+      return forgejo
+        .listPullRequests({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+          headSelector: input.headSelector,
+          ...(source ? { source } : {}),
+          state: input.state,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toChangeRequest)),
+          Effect.mapError((error) => providerError("listChangeRequests", error)),
+        );
+    },
+    getChangeRequest: (input) =>
+      forgejo.getPullRequest(input).pipe(
+        Effect.map(toChangeRequest),
+        Effect.mapError((error) => providerError("getChangeRequest", error)),
+      ),
+    createChangeRequest: (input) => {
+      const source = SourceControlProvider.sourceControlRefFromInput(input);
+      return forgejo
+        .createPullRequest({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+          baseBranch: input.baseRefName,
+          headSelector: input.headSelector,
+          ...(source ? { source } : {}),
+          ...(input.target ? { target: input.target } : {}),
+          title: input.title,
+          bodyFile: input.bodyFile,
+        })
+        .pipe(Effect.mapError((error) => providerError("createChangeRequest", error)));
+    },
+    getRepositoryCloneUrls: (input) =>
+      forgejo
+        .getRepositoryCloneUrls(input)
+        .pipe(Effect.mapError((error) => providerError("getRepositoryCloneUrls", error))),
+    createRepository: (input) =>
+      forgejo
+        .createRepository(input)
+        .pipe(Effect.mapError((error) => providerError("createRepository", error))),
+    getDefaultBranch: (input) =>
+      forgejo
+        .getDefaultBranch({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+        })
+        .pipe(Effect.mapError((error) => providerError("getDefaultBranch", error))),
+    checkoutChangeRequest: (input) =>
+      forgejo
+        .checkoutPullRequest({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+          reference: input.reference,
+          ...(input.force !== undefined ? { force: input.force } : {}),
+        })
+        .pipe(Effect.mapError((error) => providerError("checkoutChangeRequest", error))),
+    listIssues: (input) =>
+      forgejo
+        .listIssues({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+          state: input.state,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toIssueSummary)),
+          Effect.mapError((error) => providerError("listIssues", error)),
+        ),
+    getIssue: (input) =>
+      forgejo
+        .getIssue({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+          reference: input.reference,
+        })
+        .pipe(
+          Effect.map((raw) => toIssueDetail(raw, { fullContent: input.fullContent ?? false })),
+          Effect.mapError((error) => providerError("getIssue", error)),
+        ),
+    searchIssues: (input) =>
+      forgejo
+        .searchIssues({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+          query: input.query,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toIssueSummary)),
+          Effect.mapError((error) => providerError("searchIssues", error)),
+        ),
+    searchChangeRequests: (input) =>
+      forgejo
+        .searchPullRequests({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+          query: input.query,
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        })
+        .pipe(
+          Effect.map((items) => items.map(toChangeRequest)),
+          Effect.mapError((error) => providerError("searchChangeRequests", error)),
+        ),
+    getChangeRequestDetail: (input) =>
+      forgejo
+        .getPullRequestDetail({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+          reference: input.reference,
+        })
+        .pipe(
+          Effect.map((raw) =>
+            toChangeRequestDetail(raw, { fullContent: input.fullContent ?? false }),
+          ),
+          Effect.mapError((error) => providerError("getChangeRequestDetail", error)),
+        ),
+    getChangeRequestDiff: (input) =>
+      forgejo
+        .getPullRequestDiff({
+          cwd: input.cwd,
+          ...(input.context ? { context: input.context } : {}),
+          reference: input.reference,
+        })
+        .pipe(Effect.mapError((error) => providerError("getChangeRequestDiff", error))),
+  });
+});
+
+export const layer = Layer.effect(SourceControlProvider.SourceControlProvider, make());
+
+export const makeDiscovery = Effect.fn("makeForgejoSourceControlProviderDiscovery")(function* () {
+  const forgejo = yield* ForgejoApi.ForgejoApi;
+
+  return makeForgejoDiscovery(forgejo);
+});

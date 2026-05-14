@@ -275,7 +275,7 @@ it.effect("accepts bootstrap metadata in thread.turn.start", () =>
         prepareWorktree: {
           projectCwd: "/tmp/workspace",
           baseBranch: "main",
-          branch: "s3code/example",
+          branch: "ryco/example",
         },
         runSetupScript: true,
       },

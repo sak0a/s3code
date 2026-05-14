@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { DateTime, Option, Schema } from "effect";
 import {
   truncateSourceControlDetailContent,
   SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES,
   SOURCE_CONTROL_DETAIL_MAX_COMMENTS,
+  SourceControlChangeRequestDetail,
 } from "./sourceControl.ts";
 
 describe("truncateSourceControlDetailContent", () => {
@@ -57,5 +59,67 @@ describe("truncateSourceControlDetailContent", () => {
     const result = truncateSourceControlDetailContent({ body: "body", comments });
     expect(result.comments[0]?.authorAssociation).toBe("OWNER");
     expect(result.comments[1]?.authorAssociation).toBe("MEMBER");
+  });
+});
+
+describe("SourceControlChangeRequestDetail", () => {
+  it("decodes rich Bitbucket pull request detail fields", () => {
+    const updatedAt = DateTime.fromDateUnsafe(new Date("2026-05-12T12:00:00.000Z"));
+    const commentCreatedAt = DateTime.fromDateUnsafe(new Date("2026-05-12T11:00:00.000Z"));
+
+    const decoded = Schema.decodeUnknownSync(SourceControlChangeRequestDetail)({
+      provider: "bitbucket",
+      number: 42,
+      title: "PROJ-123 add Atlassian workflow",
+      url: "https://bitbucket.org/acme/ryco/pull-requests/42",
+      baseRefName: "main",
+      headRefName: "feature/proj-123",
+      state: "open",
+      updatedAt: Option.some(updatedAt),
+      isDraft: false,
+      author: "Alice",
+      assignees: ["Bob"],
+      labels: [{ name: "backend", color: "0052cc" }],
+      commentsCount: 2,
+      body: "Adds a richer Bitbucket and Jira workflow.",
+      comments: [
+        {
+          author: "Reviewer",
+          body: "Looks good.",
+          createdAt: commentCreatedAt,
+        },
+      ],
+      truncated: false,
+      linkedIssueNumbers: [17],
+      linkedWorkItemKeys: ["PROJ-123"],
+      reviewers: ["Reviewer"],
+      participants: [
+        {
+          displayName: "Reviewer",
+          username: "reviewer",
+          role: "REVIEWER",
+          approved: true,
+        },
+      ],
+      tasksCount: 1,
+      commits: [
+        {
+          oid: "abcdef123456",
+          shortOid: "abcdef1",
+          messageHeadline: "PROJ-123 add workflow",
+          author: "Alice",
+        },
+      ],
+      additions: 120,
+      deletions: 12,
+      changedFiles: 4,
+      files: [
+        { path: "apps/server/src/sourceControl/BitbucketApi.ts", additions: 80, deletions: 4 },
+      ],
+    });
+
+    expect(decoded.linkedWorkItemKeys).toEqual(["PROJ-123"]);
+    expect(decoded.participants?.[0]?.approved).toBe(true);
+    expect(decoded.tasksCount).toBe(1);
   });
 });

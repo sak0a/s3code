@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ProviderDriverKind } from "@s3tools/contracts";
+import { ProviderDriverKind } from "@ryco/contracts";
 
 import type { ComposerCommandItem } from "./ComposerCommandMenu";
 import { searchSlashCommandItems } from "./composerSlashCommandSearch";

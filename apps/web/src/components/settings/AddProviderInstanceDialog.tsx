@@ -7,13 +7,13 @@ import {
   ProviderInstanceId,
   ProviderDriverKind,
   type ProviderInstanceConfig,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import { useSettings, useUpdateSettings } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
 import { normalizeProviderAccentColor } from "../../providerInstances";
 import { Button } from "../ui/button";
-import { ACPRegistryIcon, Gemini, GithubCopilotIcon, PiAgentIcon, type Icon } from "../Icons";
+import { ACPRegistryIcon, Gemini, PiAgentIcon, type Icon } from "../Icons";
 import {
   Dialog,
   DialogDescription,
@@ -44,7 +44,7 @@ const PROVIDER_ACCENT_SWATCHES = [
  * The full id is formed by prefixing the driver slug — e.g. label "Work" on
  * driver "codex" becomes `codex_work`. Output is trimmed to 48 chars so the
  * final composed id stays under the 64-char slug cap enforced by
- * `ProviderInstanceId` in `@s3tools/contracts`.
+ * `ProviderInstanceId` in `@ryco/contracts`.
  */
 function slugifyLabel(value: string): string {
   return value
@@ -71,11 +71,6 @@ interface ComingSoonDriverOption {
 }
 
 const COMING_SOON_DRIVER_OPTIONS: readonly ComingSoonDriverOption[] = [
-  {
-    value: ProviderDriverKind.make("githubCopilot"),
-    label: "Github Copilot",
-    icon: GithubCopilotIcon,
-  },
   {
     value: ProviderDriverKind.make("gemini"),
     label: "Gemini",

@@ -20,9 +20,9 @@ describe("branding", () => {
       value: {
         desktopBridge: {
           getAppBranding: () => ({
-            baseName: "S3Code",
+            baseName: "Ryco",
             stageLabel: "Nightly",
-            displayName: "S3Code (Nightly)",
+            displayName: "Ryco (Nightly)",
           }),
         },
       },
@@ -30,8 +30,8 @@ describe("branding", () => {
 
     const branding = await import("./branding");
 
-    expect(branding.APP_BASE_NAME).toBe("S3Code");
+    expect(branding.APP_BASE_NAME).toBe("Ryco");
     expect(branding.APP_STAGE_LABEL).toBe("Nightly");
-    expect(branding.APP_DISPLAY_NAME).toBe("S3Code (Nightly)");
+    expect(branding.APP_DISPLAY_NAME).toBe("Ryco (Nightly)");
   });
 });

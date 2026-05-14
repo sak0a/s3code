@@ -1,4 +1,4 @@
-import { AuthRpcError } from "@s3tools/contracts";
+import { AuthRpcError } from "@ryco/contracts";
 import { Effect } from "effect";
 
 import type { AuthenticatedSession } from "./Services/ServerAuth.ts";

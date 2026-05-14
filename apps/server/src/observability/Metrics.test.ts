@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest";
-import { ProviderDriverKind } from "@s3tools/contracts";
+import { ProviderDriverKind } from "@ryco/contracts";
 import { Effect, Metric } from "effect";
 
 import { withMetrics } from "./Metrics.ts";

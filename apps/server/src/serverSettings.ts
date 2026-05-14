@@ -23,7 +23,7 @@ import {
   ServerSettings,
   ServerSettingsError,
   type ServerSettingsPatch,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   Cache,
   Deferred,
@@ -46,9 +46,9 @@ import {
 import * as Semaphore from "effect/Semaphore";
 import { writeFileStringAtomically } from "./atomicWrite.ts";
 import { ServerConfig } from "./config.ts";
-import { type DeepPartial, deepMerge } from "@s3tools/shared/Struct";
-import { fromLenientJson } from "@s3tools/shared/schemaJson";
-import { applyServerSettingsPatch } from "@s3tools/shared/serverSettings";
+import { type DeepPartial, deepMerge } from "@ryco/shared/Struct";
+import { fromLenientJson } from "@ryco/shared/schemaJson";
+import { applyServerSettingsPatch } from "@ryco/shared/serverSettings";
 import { ServerSecretStoreLive } from "./auth/Layers/ServerSecretStore.ts";
 import { ServerSecretStore } from "./auth/Services/ServerSecretStore.ts";
 

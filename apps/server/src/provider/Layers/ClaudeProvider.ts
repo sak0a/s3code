@@ -6,7 +6,7 @@ import {
   type ServerProviderModel,
   type ServerProviderRateLimits,
   type ServerProviderSlashCommand,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect, Option, Path, Result } from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 import {
@@ -14,7 +14,7 @@ import {
   getModelSelectionStringOptionValue,
   getProviderOptionCurrentValue,
   getProviderOptionDescriptors,
-} from "@s3tools/shared/model";
+} from "@ryco/shared/model";
 import {
   query as claudeQuery,
   type SlashCommand as ClaudeSlashCommand,
@@ -554,7 +554,7 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
         version: null,
         status: "warning",
         auth: { status: "unknown" },
-        message: "Claude is disabled in S3Code settings.",
+        message: "Claude is disabled in Ryco settings.",
       },
     });
   }
@@ -705,7 +705,7 @@ export const makePendingClaudeProvider = (claudeSettings: ClaudeSettings): Serve
         version: null,
         status: "warning",
         auth: { status: "unknown" },
-        message: "Claude is disabled in S3Code settings.",
+        message: "Claude is disabled in Ryco settings.",
       },
     });
   }

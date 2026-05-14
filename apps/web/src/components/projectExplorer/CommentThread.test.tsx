@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { DateTime } from "effect";
-import type { SourceControlIssueComment } from "@s3tools/contracts";
+import type { SourceControlIssueComment } from "@ryco/contracts";
 import { CommentThread } from "./CommentThread";
 
 function comment(

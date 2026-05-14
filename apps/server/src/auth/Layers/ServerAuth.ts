@@ -5,7 +5,7 @@ import {
   type AuthPairingCredentialResult,
   type AuthSessionState,
   type AuthWebSocketTokenResult,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { DateTime, Effect, Layer, Option } from "effect";
 import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest";
 
@@ -64,6 +64,34 @@ function hostnameFromHostHeader(value: string | undefined): string | null {
   }
 }
 
+function defaultPortForProtocol(protocol: string): string | null {
+  switch (protocol) {
+    case "http:":
+      return "80";
+    case "https:":
+      return "443";
+    default:
+      return null;
+  }
+}
+
+function resolvedOriginPort(origin: URL): string | null {
+  return origin.port || defaultPortForProtocol(origin.protocol);
+}
+
+function portFromHostHeader(value: string | undefined): string | null {
+  const host = normalizeHost(value);
+  if (host === null) {
+    return null;
+  }
+  try {
+    return new URL(`http://${host}`).port || null;
+  } catch {
+    const port = host.split(":")[1];
+    return port && /^\d+$/u.test(port) ? port : null;
+  }
+}
+
 function isAcceptedWebSocketOrigin(input: {
   readonly origin: string | undefined;
   readonly host: string | undefined;
@@ -90,17 +118,23 @@ function isAcceptedWebSocketOrigin(input: {
 
   const configuredHost = normalizeHost(input.config.host);
   const configuredPort = String(input.config.port);
+  const originPort = resolvedOriginPort(origin);
   if (
     configuredHost !== null &&
     origin.hostname.toLowerCase() === configuredHost &&
-    (!origin.port || origin.port === configuredPort)
+    originPort === configuredPort
   ) {
     return true;
   }
 
   const requestHostname = hostnameFromHostHeader(input.host);
+  const requestPort = portFromHostHeader(input.host);
   return (
-    requestHostname !== null && isLoopbackHost(origin.hostname) && isLoopbackHost(requestHostname)
+    requestHostname !== null &&
+    requestPort !== null &&
+    originPort === requestPort &&
+    isLoopbackHost(origin.hostname) &&
+    isLoopbackHost(requestHostname)
   );
 }
 

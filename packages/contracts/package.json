@@ -1,6 +1,6 @@
 {
-  "name": "@s3tools/contracts",
-  "version": "0.0.23",
+  "name": "@ryco/contracts",
+  "version": "0.0.26",
   "private": true,
   "files": [
     "dist"

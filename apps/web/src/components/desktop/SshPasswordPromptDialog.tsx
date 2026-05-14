@@ -1,4 +1,4 @@
-import type { DesktopSshPasswordPromptRequest } from "@s3tools/contracts";
+import type { DesktopSshPasswordPromptRequest } from "@ryco/contracts";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "../ui/button";
@@ -159,9 +159,9 @@ export function SshPasswordPromptDialog() {
         <DialogHeader>
           <DialogTitle>SSH Password Required</DialogTitle>
           <DialogDescription>
-            S3Code needs your SSH password to connect to{" "}
+            Ryco needs your SSH password to connect to{" "}
             {target ? <code>{target}</code> : "the remote host"}. The password is passed to the
-            local SSH process for this connection attempt and is not saved by S3Code.
+            local SSH process for this connection attempt and is not saved by Ryco.
           </DialogDescription>
         </DialogHeader>
         <DialogPanel className="space-y-3" scrollFade={false}>

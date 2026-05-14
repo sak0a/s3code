@@ -14,7 +14,7 @@ import { Context } from "effect";
 import type { Effect } from "effect";
 
 import type { CheckpointStoreError } from "../Errors.ts";
-import { CheckpointRef } from "@s3tools/contracts";
+import { CheckpointRef } from "@ryco/contracts";
 
 export interface CaptureCheckpointInput {
   readonly cwd: string;

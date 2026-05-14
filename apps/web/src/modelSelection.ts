@@ -6,14 +6,14 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ServerProvider,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   createModelSelection,
   normalizeModelSlug,
   resolveSelectableModel,
-} from "@s3tools/shared/model";
+} from "@ryco/shared/model";
 import { getComposerProviderState } from "./components/chat/composerProviderState";
-import { UnifiedSettings } from "@s3tools/contracts/settings";
+import { UnifiedSettings } from "@ryco/contracts/settings";
 import {
   getDefaultServerModel,
   getProviderModels,

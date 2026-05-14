@@ -47,6 +47,9 @@ import Migration0030 from "./Migrations/030_Worktrees.ts";
 import Migration0031 from "./Migrations/031_WorktreeTitles.ts";
 import Migration0032 from "./Migrations/032_ProjectCustomSystemPrompt.ts";
 import Migration0033 from "./Migrations/033_ProjectMetadataDir.ts";
+import Migration0034 from "./Migrations/034_ProjectAvatarAndPreferredRemote.ts";
+import Migration0035 from "./Migrations/035_ProjectionThreadsTokenMode.ts";
+import Migration0036 from "./Migrations/036_AtlassianConnections.ts";
 
 /**
  * Migration loader with all migrations defined inline.
@@ -92,6 +95,9 @@ export const migrationEntries = [
   [31, "WorktreeTitles", Migration0031],
   [32, "ProjectCustomSystemPrompt", Migration0032],
   [33, "ProjectMetadataDir", Migration0033],
+  [34, "ProjectAvatarAndPreferredRemote", Migration0034],
+  [35, "ProjectionThreadsTokenMode", Migration0035],
+  [36, "AtlassianConnections", Migration0036],
 ] as const;
 
 export const makeMigrationLoader = (throughId?: number) =>
@@ -136,6 +142,75 @@ export const repairProjectionWorktreeTitleColumn = Effect.fn("repairProjectionWo
   },
 );
 
+export const repairProjectionProjectAvatarColumns = Effect.fn(
+  "repairProjectionProjectAvatarColumns",
+)(function* () {
+  const sql = yield* SqlClient.SqlClient;
+  const tables = yield* sql<{ readonly name: string }>`
+    SELECT name FROM sqlite_master
+    WHERE type = 'table' AND name = 'projection_projects'
+  `;
+  if (tables.length === 0) {
+    return;
+  }
+
+  const columns = yield* sql<{ readonly name: string }>`
+    PRAGMA table_info(projection_projects)
+  `;
+  const columnNames = new Set(columns.map((column) => column.name));
+
+  if (!columnNames.has("custom_avatar_content_hash")) {
+    yield* sql`ALTER TABLE projection_projects ADD COLUMN custom_avatar_content_hash TEXT`;
+    yield* Effect.log("Repaired projection_projects.custom_avatar_content_hash column");
+  }
+
+  if (!columnNames.has("preferred_remote_name")) {
+    yield* sql`ALTER TABLE projection_projects ADD COLUMN preferred_remote_name TEXT`;
+    yield* Effect.log("Repaired projection_projects.preferred_remote_name column");
+  }
+});
+
+export const repairProjectionTokenModeColumns = Effect.fn("repairProjectionTokenModeColumns")(
+  function* () {
+    const sql = yield* SqlClient.SqlClient;
+    const projectionThreadTables = yield* sql<{ readonly name: string }>`
+    SELECT name FROM sqlite_master
+    WHERE type = 'table' AND name = 'projection_threads'
+  `;
+    if (projectionThreadTables.length > 0) {
+      const columns = yield* sql<{ readonly name: string }>`
+      PRAGMA table_info(projection_threads)
+    `;
+      if (!columns.some((column) => column.name === "token_mode")) {
+        yield* sql`
+        ALTER TABLE projection_threads
+        ADD COLUMN token_mode TEXT NOT NULL DEFAULT 'balanced'
+      `;
+        yield* Effect.log("Repaired projection_threads.token_mode column");
+      }
+    }
+
+    const projectionThreadSessionTables = yield* sql<{ readonly name: string }>`
+    SELECT name FROM sqlite_master
+    WHERE type = 'table' AND name = 'projection_thread_sessions'
+  `;
+    if (projectionThreadSessionTables.length === 0) {
+      return;
+    }
+
+    const sessionColumns = yield* sql<{ readonly name: string }>`
+    PRAGMA table_info(projection_thread_sessions)
+  `;
+    if (!sessionColumns.some((column) => column.name === "token_mode")) {
+      yield* sql`
+      ALTER TABLE projection_thread_sessions
+      ADD COLUMN token_mode TEXT NOT NULL DEFAULT 'balanced'
+    `;
+      yield* Effect.log("Repaired projection_thread_sessions.token_mode column");
+    }
+  },
+);
+
 /**
  * Run all pending migrations.
  *
@@ -157,6 +232,12 @@ export const runMigrations = Effect.fn("runMigrations")(function* ({
   const executedMigrations = yield* run({ loader: makeMigrationLoader(toMigrationInclusive) });
   if (toMigrationInclusive === undefined || toMigrationInclusive >= 31) {
     yield* repairProjectionWorktreeTitleColumn();
+  }
+  if (toMigrationInclusive === undefined || toMigrationInclusive >= 34) {
+    yield* repairProjectionProjectAvatarColumns();
+  }
+  if (toMigrationInclusive === undefined || toMigrationInclusive >= 35) {
+    yield* repairProjectionTokenModeColumns();
   }
   yield* Effect.log("Migrations ran successfully").pipe(
     Effect.annotateLogs({ migrations: executedMigrations.map(([id, name]) => `${id}_${name}`) }),

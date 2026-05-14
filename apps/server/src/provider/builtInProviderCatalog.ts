@@ -1,4 +1,4 @@
-import type { ProviderDriverKind, ProviderInstanceId, ServerProvider } from "@s3tools/contracts";
+import type { ProviderDriverKind, ProviderInstanceId, ServerProvider } from "@ryco/contracts";
 import type { Stream } from "effect";
 import type { ServerProviderShape } from "./Services/ServerProvider.ts";
 

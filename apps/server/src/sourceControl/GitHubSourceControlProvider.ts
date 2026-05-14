@@ -7,7 +7,7 @@ import {
   type SourceControlChangeRequestDetail,
   type SourceControlIssueDetail,
   type SourceControlIssueSummary,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import * as GitHubCli from "./GitHubCli.ts";
 import * as GitHubIssues from "./gitHubIssues.ts";
@@ -122,11 +122,12 @@ export const make = Effect.fn("makeGitHubSourceControlProvider")(function* () {
 
   const listChangeRequests: SourceControlProvider.SourceControlProviderShape["listChangeRequests"] =
     (input) => {
-      if (input.state === "open") {
+      const headSelector = input.headSelector.trim();
+      if (input.state === "open" && headSelector.length > 0) {
         return github
           .listOpenPullRequests({
             cwd: input.cwd,
-            headSelector: input.headSelector,
+            headSelector,
             ...(input.limit !== undefined ? { limit: input.limit } : {}),
           })
           .pipe(
@@ -142,8 +143,7 @@ export const make = Effect.fn("makeGitHubSourceControlProvider")(function* () {
           args: [
             "pr",
             "list",
-            "--head",
-            input.headSelector,
+            ...(headSelector.length > 0 ? ["--head", headSelector] : []),
             "--state",
             stateArg,
             "--limit",

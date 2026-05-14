@@ -1,4 +1,4 @@
-import type { RepositoryIdentity } from "@s3tools/contracts";
+import type { RepositoryIdentity } from "@ryco/contracts";
 import { Context } from "effect";
 import type { Effect } from "effect";
 

@@ -1,4 +1,4 @@
-import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@s3tools/contracts";
+import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@ryco/contracts";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { describe, expect, it, vi } from "vitest";

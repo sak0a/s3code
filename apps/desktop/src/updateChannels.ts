@@ -1,4 +1,4 @@
-import type { DesktopUpdateChannel } from "@s3tools/contracts";
+import type { DesktopUpdateChannel } from "@ryco/contracts";
 
 const NIGHTLY_VERSION_PATTERN = /-nightly\.\d{8}\.\d+$/;
 

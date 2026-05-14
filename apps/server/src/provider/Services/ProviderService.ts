@@ -23,7 +23,7 @@ import type {
   ProviderStopSessionInput,
   ThreadId,
   ProviderTurnStartResult,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Context } from "effect";
 import type { Effect, Stream } from "effect";
 

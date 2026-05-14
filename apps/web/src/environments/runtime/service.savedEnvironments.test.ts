@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { EnvironmentId } from "@s3tools/contracts";
+import { EnvironmentId } from "@ryco/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockCreateEnvironmentConnection = vi.fn();
@@ -307,6 +307,7 @@ describe("saved environment startup", () => {
 
     registryListener?.();
     finishHydration();
+    await vi.advanceTimersByTimeAsync(2500);
     await vi.waitFor(() => {
       expect(mockReadSavedEnvironmentBearerToken).toHaveBeenCalledTimes(1);
     });

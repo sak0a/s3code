@@ -1,7 +1,7 @@
 import { expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 
-import { AuthSessionId } from "@s3tools/contracts";
+import { AuthSessionId } from "@ryco/contracts";
 import { authorizeWsRpc } from "./wsAuthorization.ts";
 import type { AuthenticatedSession } from "./Services/ServerAuth.ts";
 

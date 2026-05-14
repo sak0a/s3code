@@ -1,5 +1,5 @@
-import { type KeybindingCommand, type FilesystemBrowseEntry } from "@s3tools/contracts";
-import type { SidebarThreadSortOrder } from "@s3tools/contracts/settings";
+import { type KeybindingCommand, type FilesystemBrowseEntry } from "@ryco/contracts";
+import type { SidebarThreadSortOrder } from "@ryco/contracts/settings";
 import { type ReactNode } from "react";
 import { sortThreads } from "../lib/threadSort";
 import { formatRelativeTimeLabel } from "../timestampFormat";

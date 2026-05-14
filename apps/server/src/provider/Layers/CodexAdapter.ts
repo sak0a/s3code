@@ -8,6 +8,7 @@
  * @module CodexAdapterLive
  */
 import {
+  type AgentTokenMode,
   type CanonicalItemType,
   type CanonicalRequestType,
   type CodexSettings,
@@ -23,7 +24,8 @@ import {
   ProviderApprovalDecision,
   ThreadId,
   ProviderSendTurnInput,
-} from "@s3tools/contracts";
+  DEFAULT_AGENT_TOKEN_MODE,
+} from "@ryco/contracts";
 import { Effect, Exit, Fiber, FileSystem, Queue, Schema, Scope, Stream } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import * as CodexErrors from "effect-codex-app-server/errors";
@@ -32,8 +34,8 @@ import * as EffectCodexSchema from "effect-codex-app-server/schema";
 import {
   getModelSelectionBooleanOptionValue,
   getModelSelectionStringOptionValue,
-} from "@s3tools/shared/model";
-import { formatSourceControlContextsForAgent } from "@s3tools/shared/sourceControlContextFormatter";
+} from "@ryco/shared/model";
+import { formatSourceControlContextsForAgent } from "@ryco/shared/sourceControlContextFormatter";
 
 import {
   ProviderAdapterRequestError,
@@ -46,6 +48,7 @@ import {
 import { type CodexAdapterShape } from "../Services/CodexAdapter.ts";
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import { ServerConfig } from "../../config.ts";
+import { buildTokenReductionInstructions, checkRtkAvailability } from "../../tokenReduction.ts";
 import {
   CodexResumeCursorSchema,
   CodexSessionRuntimeThreadIdMissingError,
@@ -86,7 +89,7 @@ function formatCodexRuntimeErrorDetail(error: Error): string {
   if (!serviceTierSchemaMismatch) {
     return error.message;
   }
-  return `${error.message}. This usually means the installed Codex CLI returned a newer service tier name than S3Code's generated app-server schema knows about. Rebuild effect-codex-app-server before rebuilding the server bundle.`;
+  return `${error.message}. This usually means the installed Codex CLI returned a newer service tier name than Ryco's generated app-server schema knows about. Rebuild effect-codex-app-server before rebuilding the server bundle.`;
 }
 
 function mapCodexRuntimeError(
@@ -150,6 +153,17 @@ const FATAL_CODEX_STDERR_SNIPPETS = ["failed to connect to websocket"];
 function isFatalCodexProcessStderrMessage(message: string): boolean {
   const normalized = message.toLowerCase();
   return FATAL_CODEX_STDERR_SNIPPETS.some((snippet) => normalized.includes(snippet));
+}
+
+function readTokenReductionInstructions(tokenMode: AgentTokenMode) {
+  return Effect.promise(() => checkRtkAvailability()).pipe(
+    Effect.map((availability) =>
+      buildTokenReductionInstructions({
+        tokenMode,
+        rtkInstalled: availability.installed,
+      }),
+    ),
+  );
 }
 
 function normalizeCodexTokenUsage(
@@ -1377,17 +1391,21 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
           yield* Effect.suspend(() => stopSessionInternal(existing));
         }
 
+        const tokenMode = input.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE;
+        const tokenReductionInstructions = yield* readTokenReductionInstructions(tokenMode);
         const runtimeInput: CodexSessionRuntimeOptions = {
           threadId: input.threadId,
           providerInstanceId: boundInstanceId,
           cwd: input.cwd ?? process.cwd(),
           binaryPath: codexConfig.binaryPath,
+          ...(tokenReductionInstructions ? { tokenReductionInstructions } : {}),
           ...(options?.environment ? { environment: options.environment } : {}),
           ...(codexConfig.homePath ? { homePath: codexConfig.homePath } : {}),
           ...(Schema.is(CodexResumeCursorSchema)(input.resumeCursor)
             ? { resumeCursor: input.resumeCursor }
             : {}),
           runtimeMode: input.runtimeMode,
+          tokenMode,
           ...(input.modelSelection?.instanceId === boundInstanceId
             ? { model: input.modelSelection.model }
             : {}),

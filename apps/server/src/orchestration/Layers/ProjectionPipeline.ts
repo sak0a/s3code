@@ -1,10 +1,11 @@
 import {
   ApprovalRequestId,
   type ChatAttachment,
+  DEFAULT_AGENT_TOKEN_MODE,
   DEFAULT_PROJECT_METADATA_DIR,
   type OrchestrationEvent,
   ThreadId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect, FileSystem, Layer, Option, Path, Stream } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
@@ -40,6 +41,7 @@ import { ProjectionThreadSessionRepositoryLive } from "../../persistence/Layers/
 import { ProjectionTurnRepositoryLive } from "../../persistence/Layers/ProjectionTurns.ts";
 import { ProjectionThreadRepositoryLive } from "../../persistence/Layers/ProjectionThreads.ts";
 import { ProjectionWorktreeRepositoryLive } from "../../persistence/Layers/ProjectionWorktrees.ts";
+import { ProjectAvatarStore } from "../../project/Services/ProjectAvatarStore.ts";
 import { ServerConfig } from "../../config.ts";
 import {
   OrchestrationProjectionPipeline,
@@ -460,6 +462,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
     const serverConfig = yield* ServerConfig;
+    const projectAvatarStore = yield* ProjectAvatarStore;
 
     const applyProjectsProjection: ProjectorDefinition["apply"] = Effect.fn(
       "applyProjectsProjection",
@@ -473,6 +476,8 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
             projectMetadataDir: event.payload.projectMetadataDir ?? DEFAULT_PROJECT_METADATA_DIR,
             defaultModelSelection: event.payload.defaultModelSelection,
             customSystemPrompt: event.payload.customSystemPrompt ?? null,
+            customAvatarContentHash: null,
+            preferredRemoteName: null,
             scripts: event.payload.scripts,
             createdAt: event.payload.createdAt,
             updatedAt: event.payload.updatedAt,
@@ -503,8 +508,29 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
               ? { customSystemPrompt: event.payload.customSystemPrompt }
               : {}),
             ...(event.payload.scripts !== undefined ? { scripts: event.payload.scripts } : {}),
+            ...(event.payload.preferredRemoteName !== undefined
+              ? { preferredRemoteName: event.payload.preferredRemoteName }
+              : {}),
             updatedAt: event.payload.updatedAt,
           });
+          return;
+        }
+
+        case "project.avatar-set": {
+          const existingAvatarRow = yield* projectionProjectRepository.getById({
+            projectId: event.payload.projectId,
+          });
+          if (Option.isNone(existingAvatarRow)) {
+            return;
+          }
+          yield* projectionProjectRepository.upsert({
+            ...existingAvatarRow.value,
+            customAvatarContentHash: event.payload.contentHash,
+            updatedAt: event.payload.updatedAt,
+          });
+          if (event.payload.contentHash === null) {
+            yield* projectAvatarStore.remove(event.payload.projectId);
+          }
           return;
         }
 
@@ -520,6 +546,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
             deletedAt: event.payload.deletedAt,
             updatedAt: event.payload.deletedAt,
           });
+          yield* projectAvatarStore.remove(event.payload.projectId);
           return;
         }
 
@@ -582,6 +609,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
             modelSelection: event.payload.modelSelection,
             runtimeMode: event.payload.runtimeMode,
             interactionMode: event.payload.interactionMode,
+            tokenMode: event.payload.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
             branch: event.payload.branch,
             worktreePath: event.payload.worktreePath,
             worktreeId: null,
@@ -676,6 +704,21 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
           yield* projectionThreadRepository.upsert({
             ...existingRow.value,
             interactionMode: event.payload.interactionMode,
+            updatedAt: event.payload.updatedAt,
+          });
+          return;
+        }
+
+        case "thread.token-mode-set": {
+          const existingRow = yield* projectionThreadRepository.getById({
+            threadId: event.payload.threadId,
+          });
+          if (Option.isNone(existingRow)) {
+            return;
+          }
+          yield* projectionThreadRepository.upsert({
+            ...existingRow.value,
+            tokenMode: event.payload.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
             updatedAt: event.payload.updatedAt,
           });
           return;
@@ -1082,6 +1125,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
         providerName: event.payload.session.providerName,
         providerInstanceId: event.payload.session.providerInstanceId ?? null,
         runtimeMode: event.payload.session.runtimeMode,
+        tokenMode: event.payload.session.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
         activeTurnId: event.payload.session.activeTurnId,
         lastError: event.payload.session.lastError,
         updatedAt: event.payload.session.updatedAt,

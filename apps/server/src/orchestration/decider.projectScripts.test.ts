@@ -6,8 +6,8 @@ import {
   ProjectId,
   ThreadId,
   ProviderInstanceId,
-} from "@s3tools/contracts";
-import { createModelSelection } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { createModelSelection } from "@ryco/shared/model";
 import { describe, expect, it } from "vitest";
 import { Effect } from "effect";
 

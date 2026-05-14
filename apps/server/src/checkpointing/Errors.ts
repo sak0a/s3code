@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 import type { ProjectionRepositoryError } from "../persistence/Errors.ts";
-import type { VcsError } from "@s3tools/contracts";
+import type { VcsError } from "@ryco/contracts";
 
 /**
  * CheckpointUnavailableError - Expected checkpoint does not exist.

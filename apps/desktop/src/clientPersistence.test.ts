@@ -6,7 +6,7 @@ import {
   EnvironmentId,
   type ClientSettings,
   type PersistedSavedEnvironmentRecord,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {

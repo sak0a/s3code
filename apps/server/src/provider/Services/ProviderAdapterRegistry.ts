@@ -19,7 +19,7 @@
  *
  * @module ProviderAdapterRegistry
  */
-import type { ProviderDriverKind, ProviderInstanceId } from "@s3tools/contracts";
+import type { ProviderDriverKind, ProviderInstanceId } from "@ryco/contracts";
 import { Context } from "effect";
 import type { Effect, PubSub, Scope, Stream } from "effect";
 

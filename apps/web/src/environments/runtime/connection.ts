@@ -5,8 +5,8 @@ import type {
   ServerConfig,
   ServerLifecycleWelcomePayload,
   TerminalEvent,
-} from "@s3tools/contracts";
-import type { KnownEnvironment } from "@s3tools/client-runtime";
+} from "@ryco/contracts";
+import type { KnownEnvironment } from "@ryco/client-runtime";
 
 import type { WsRpcClient } from "~/rpc/wsRpcClient";
 

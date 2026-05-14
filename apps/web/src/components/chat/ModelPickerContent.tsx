@@ -2,8 +2,8 @@ import {
   type ProviderInstanceId,
   type ProviderDriverKind,
   type ResolvedKeybindingsConfig,
-} from "@s3tools/contracts";
-import { resolveSelectableModel } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { resolveSelectableModel } from "@ryco/shared/model";
 import { memo, useMemo, useState, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { SearchIcon } from "lucide-react";
 import { ModelListRow } from "./ModelListRow";

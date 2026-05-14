@@ -16,7 +16,7 @@ import {
   type DesktopSshEnvironmentTarget,
   type DesktopServerExposureState,
   type EnvironmentId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { DateTime } from "effect";
 
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
@@ -2503,8 +2503,8 @@ export function ConnectionsSettings() {
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {pendingDesktopServerExposureMode === "network-accessible"
-                    ? "S3Code will restart to expose this environment over the network."
-                    : "S3Code will restart and limit this environment back to this machine."}
+                    ? "Ryco will restart to expose this environment over the network."
+                    : "Ryco will restart and limit this environment back to this machine."}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -2548,7 +2548,7 @@ export function ConnectionsSettings() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Disable Tailscale HTTPS?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  S3Code will restart the local backend without Tailscale Serve.
+                  Ryco will restart the local backend without Tailscale Serve.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -2586,8 +2586,8 @@ export function ConnectionsSettings() {
               <DialogHeader>
                 <DialogTitle>Set up Tailscale HTTPS?</DialogTitle>
                 <DialogDescription>
-                  S3Code will restart the local backend with Tailscale Serve enabled and ask
-                  Tailscale to proxy HTTPS traffic to this backend.
+                  Ryco will restart the local backend with Tailscale Serve enabled and ask Tailscale
+                  to proxy HTTPS traffic to this backend.
                 </DialogDescription>
               </DialogHeader>
               <DialogPanel className="space-y-4">

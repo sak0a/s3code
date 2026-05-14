@@ -2,7 +2,7 @@ import {
   type SourceControlDiscoveryResult,
   type VcsDiscoveryItem,
   type VcsDriverKind,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Cache, Context, Duration, Effect, Layer, Option } from "effect";
 
 import { ServerConfig } from "../config.ts";

@@ -3,7 +3,7 @@ import type {
   AuthClientSession,
   AuthPairingLink,
   AuthSessionId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Data, DateTime, Duration, Effect, Context } from "effect";
 import type { SessionRole } from "./SessionCredentialService.ts";
 

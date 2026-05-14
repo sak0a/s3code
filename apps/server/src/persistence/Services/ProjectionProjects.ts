@@ -12,7 +12,7 @@ import {
   ProjectId,
   ProjectMetadataDir,
   ProjectScript,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Option, Schema, Context } from "effect";
 import type { Effect } from "effect";
 
@@ -25,6 +25,8 @@ export const ProjectionProject = Schema.Struct({
   projectMetadataDir: ProjectMetadataDir,
   defaultModelSelection: Schema.NullOr(ModelSelection),
   customSystemPrompt: Schema.optional(Schema.NullOr(Schema.String)),
+  customAvatarContentHash: Schema.NullOr(Schema.String),
+  preferredRemoteName: Schema.NullOr(Schema.String),
   scripts: Schema.Array(ProjectScript),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,

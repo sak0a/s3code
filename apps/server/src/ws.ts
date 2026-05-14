@@ -25,13 +25,15 @@ import {
   ProjectSearchEntriesError,
   ProjectWriteFileError,
   OrchestrationReplayEventsError,
+  OpinionatedPluginError,
   FilesystemBrowseError,
   ThreadId,
   type TerminalEvent,
   WorktreeId,
   WS_METHODS,
   WsRpcGroup,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
+import { buildTemporaryWorktreeBranchName } from "@ryco/shared/git";
 import { clamp } from "effect/Number";
 import { HttpRouter, HttpServerRequest } from "effect/unstable/http";
 import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
@@ -39,7 +41,13 @@ import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
 import { CheckpointDiffQuery } from "./checkpointing/Services/CheckpointDiffQuery.ts";
 import { ServerConfig } from "./config.ts";
 import { Keybindings } from "./keybindings.ts";
+import { makeCodexMcpService } from "./mcp/CodexMcpService.ts";
 import { Open, resolveAvailableEditors } from "./open.ts";
+import {
+  checkOpinionatedPlugins,
+  installOpinionatedPlugin,
+  listOpinionatedPlugins,
+} from "./opinionatedPlugins.ts";
 import { normalizeDispatchCommand } from "./orchestration/Normalizer.ts";
 import { OrchestrationEngineService } from "./orchestration/Services/OrchestrationEngine.ts";
 import { ProjectionSnapshotQuery } from "./orchestration/Services/ProjectionSnapshotQuery.ts";
@@ -70,6 +78,7 @@ import * as SourceControlDiscoveryLayer from "./sourceControl/SourceControlDisco
 import { SourceControlRepositoryService } from "./sourceControl/SourceControlRepositoryService.ts";
 import * as AzureDevOpsCli from "./sourceControl/AzureDevOpsCli.ts";
 import * as BitbucketApi from "./sourceControl/BitbucketApi.ts";
+import * as ForgejoApi from "./sourceControl/ForgejoApi.ts";
 import * as GitHubCli from "./sourceControl/GitHubCli.ts";
 import * as GitLabCli from "./sourceControl/GitLabCli.ts";
 import * as SourceControlProviderRegistry from "./sourceControl/SourceControlProviderRegistry.ts";
@@ -87,6 +96,8 @@ import {
 } from "./auth/Services/SessionCredentialService.ts";
 import { respondToAuthError } from "./auth/http.ts";
 import { authorizeWsRpc, type WsRpcAccess } from "./auth/wsAuthorization.ts";
+import { AtlassianConnectionService } from "./atlassian/AtlassianConnectionService.ts";
+import { JiraWorkItemService } from "./atlassian/JiraWorkItemService.ts";
 
 function isThreadDetailEvent(event: OrchestrationEvent): event is Extract<
   OrchestrationEvent,
@@ -133,6 +144,16 @@ function isAlreadyMissingGitResourceError(error: GitManagerServiceError): boolea
     text.includes("not a working tree") ||
     text.includes("is not a valid working tree")
   );
+}
+
+function toOpinionatedPluginRpcError(cause: unknown): OpinionatedPluginError {
+  if (Schema.is(OpinionatedPluginError)(cause)) {
+    return cause;
+  }
+  return new OpinionatedPluginError({
+    detail: cause instanceof Error ? cause.message : "Opinionated plugin operation failed.",
+    ...(cause !== undefined ? { cause } : {}),
+  });
 }
 
 const ignoreAlreadyMissingGitResource = (
@@ -211,6 +232,7 @@ const makeWsRpcLayer = (session: AuthenticatedSession) =>
       const config = yield* ServerConfig;
       const lifecycleEvents = yield* ServerLifecycleEvents;
       const serverSettings = yield* ServerSettingsService;
+      const codexMcp = yield* makeCodexMcpService;
       const startup = yield* ServerRuntimeStartup;
       const workspaceEntries = yield* WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem;
@@ -225,6 +247,8 @@ const makeWsRpcLayer = (session: AuthenticatedSession) =>
       const bootstrapCredentials = yield* BootstrapCredentialService;
       const sessions = yield* SessionCredentialService;
       const projectionWorktrees = yield* ProjectionWorktreeRepository;
+      const atlassian = yield* AtlassianConnectionService;
+      const workItems = yield* JiraWorkItemService;
       const serverCommandId = (tag: string) =>
         CommandId.make(`server:${tag}:${crypto.randomUUID()}`);
 
@@ -838,7 +862,8 @@ const makeWsRpcLayer = (session: AuthenticatedSession) =>
             if (existing !== null) {
               const existingWorktree = yield* loadWorktreeForGitWorkflow(operation, existing);
               const project = yield* loadProjectForGitWorkflow(operation, input.projectId);
-              if (project.defaultModelSelection === null) {
+              const modelSelection = project.defaultModelSelection;
+              if (modelSelection === null) {
                 return yield* failGitWorkflow(
                   operation,
                   `Project ${input.projectId} has no default model selection.`,
@@ -856,7 +881,7 @@ const makeWsRpcLayer = (session: AuthenticatedSession) =>
                     existingWorktree.prTitle ??
                     existingWorktree.issueTitle ??
                     existingWorktree.branch,
-                  modelSelection: project.defaultModelSelection,
+                  modelSelection,
                   runtimeMode: "full-access",
                   interactionMode: "default",
                   branch: existingWorktree.branch,
@@ -880,7 +905,8 @@ const makeWsRpcLayer = (session: AuthenticatedSession) =>
           }
 
           const project = yield* loadProjectForGitWorkflow(operation, input.projectId);
-          if (project.defaultModelSelection === null) {
+          const modelSelection = project.defaultModelSelection;
+          if (modelSelection === null) {
             return yield* failGitWorkflow(
               operation,
               `Project ${input.projectId} has no default model selection.`,
@@ -899,12 +925,16 @@ const makeWsRpcLayer = (session: AuthenticatedSession) =>
           let issueNumber: number | null = null;
           let prTitle: string | null = null;
           let issueTitle: string | null = null;
+          let preparedWorktreePath: string | null = null;
+          let ownedWorktreePath: string | null = null;
+          let ownedBranchName: string | null = null;
 
           switch (input.intent.kind) {
             case "branch":
-              branch = input.intent.branchName ?? "HEAD";
-              refName = branch;
-              title = branch;
+              refName = input.intent.branchName;
+              branch = buildTemporaryWorktreeBranchName();
+              newRefName = branch;
+              title = refName;
               break;
             case "newBranch":
               branch = input.intent.branchName ?? `task/${randomShortId(6)}`;
@@ -914,16 +944,43 @@ const makeWsRpcLayer = (session: AuthenticatedSession) =>
               break;
             case "pr": {
               const number = input.intent.number ?? 0;
-              const resolved = yield* gitWorkflow.resolvePullRequest({
+              const [existingWorktreePaths, existingBranchNames] = yield* Effect.all(
+                [
+                  gitWorkflow.listWorktreePaths(project.workspaceRoot),
+                  gitWorkflow.listLocalBranchNames(project.workspaceRoot),
+                ],
+                { concurrency: 2 },
+              );
+              const prepared = yield* gitWorkflow.preparePullRequestThread({
                 cwd: project.workspaceRoot,
                 reference: String(number),
+                mode: "worktree",
+                projectId: input.projectId,
+                worktreeLocation: input.worktreeLocation,
+                worktreesDir:
+                  input.worktreeLocation === "projectMetadata"
+                    ? resolveProjectWorktreesDir(project.workspaceRoot, project.projectMetadataDir)
+                    : path.join(config.worktreesDir, input.projectId),
               });
-              branch = resolved.pullRequest.headBranch;
+              if (prepared.worktreePath === null) {
+                return yield* failGitWorkflow(
+                  operation,
+                  `Failed to create worktree for PR #${number}.`,
+                );
+              }
+              preparedWorktreePath = prepared.worktreePath;
+              branch = prepared.branch;
+              if (!existingWorktreePaths.includes(prepared.worktreePath)) {
+                ownedWorktreePath = prepared.worktreePath;
+              }
+              if (!existingBranchNames.includes(prepared.branch)) {
+                ownedBranchName = prepared.branch;
+              }
               refName = branch;
-              title = resolved.pullRequest.title;
+              title = prepared.pullRequest.title;
               origin = "pr";
-              prNumber = resolved.pullRequest.number;
-              prTitle = resolved.pullRequest.title;
+              prNumber = prepared.pullRequest.number;
+              prTitle = prepared.pullRequest.title;
               break;
             }
             case "issue": {
@@ -939,73 +996,126 @@ const makeWsRpcLayer = (session: AuthenticatedSession) =>
             }
           }
 
-          const worktree = yield* gitWorkflow.createWorktree({
-            cwd: project.workspaceRoot,
-            refName,
-            ...(newRefName !== undefined ? { newRefName } : {}),
-            path: resolveWorktreeCheckoutPath({
-              location: input.worktreeLocation,
-              appWorktreesRoot: config.worktreesDir,
-              projectId: input.projectId,
-              workspaceRoot: project.workspaceRoot,
-              projectMetadataDir: project.projectMetadataDir,
-              branchName: branch,
-            }),
-          });
+          const worktreePath =
+            preparedWorktreePath ??
+            (yield* gitWorkflow.createWorktree({
+              cwd: project.workspaceRoot,
+              refName,
+              ...(newRefName !== undefined ? { newRefName } : {}),
+              path: resolveWorktreeCheckoutPath({
+                location: input.worktreeLocation,
+                appWorktreesRoot: config.worktreesDir,
+                projectId: input.projectId,
+                workspaceRoot: project.workspaceRoot,
+                projectMetadataDir: project.projectMetadataDir,
+                branchName: branch,
+              }),
+            })).worktree.path;
 
-          yield* dispatchWorktreeCommand(
-            {
-              type: "worktree.create",
-              commandId: serverCommandId("worktree-create"),
-              worktreeId,
-              projectId: input.projectId,
-              branch,
-              worktreePath: worktree.worktree.path,
-              origin,
-              prNumber,
-              issueNumber,
-              prTitle,
-              issueTitle,
-              createdAt: now,
-            },
-            operation,
+          if (preparedWorktreePath === null) {
+            ownedWorktreePath = worktreePath;
+            if (newRefName !== undefined) {
+              ownedBranchName = newRefName;
+            }
+          }
+
+          const cleanupOwnedCheckout = Effect.gen(function* () {
+            if (ownedWorktreePath !== null) {
+              yield* ignoreAlreadyMissingGitResource(
+                gitWorkflow.removeWorktree({
+                  cwd: project.workspaceRoot,
+                  path: ownedWorktreePath,
+                  force: true,
+                }),
+                {
+                  operation,
+                  action: "remove-worktree",
+                  target: ownedWorktreePath,
+                },
+              );
+            }
+            if (ownedBranchName !== null) {
+              yield* ignoreAlreadyMissingGitResource(
+                gitWorkflow.deleteBranch({
+                  cwd: project.workspaceRoot,
+                  refName: ownedBranchName,
+                  force: true,
+                }),
+                {
+                  operation,
+                  action: "delete-branch",
+                  target: ownedBranchName,
+                },
+              );
+            }
+          }).pipe(
+            Effect.catch((cleanupError) =>
+              Effect.logWarning("failed to clean up worktree creation after dispatch failure", {
+                operation,
+                worktreePath: ownedWorktreePath,
+                branch: ownedBranchName,
+                detail: cleanupError.message,
+              }).pipe(Effect.asVoid),
+            ),
           );
 
-          yield* dispatchWorktreeCommand(
-            {
-              type: "thread.create",
-              commandId: serverCommandId("worktree-thread-create"),
+          yield* Effect.gen(function* () {
+            yield* dispatchWorktreeCommand(
+              {
+                type: "worktree.create",
+                commandId: serverCommandId("worktree-create"),
+                worktreeId,
+                projectId: input.projectId,
+                branch,
+                worktreePath,
+                origin,
+                prNumber,
+                issueNumber,
+                prTitle,
+                issueTitle,
+                createdAt: now,
+              },
+              operation,
+            );
+
+            yield* dispatchWorktreeCommand(
+              {
+                type: "thread.create",
+                commandId: serverCommandId("worktree-thread-create"),
+                threadId,
+                projectId: input.projectId,
+                title,
+                modelSelection,
+                runtimeMode: "full-access",
+                interactionMode: "default",
+                branch,
+                worktreePath,
+                createdAt: now,
+              },
+              operation,
+            );
+
+            yield* dispatchWorktreeCommand(
+              {
+                type: "thread.attach-to-worktree",
+                commandId: serverCommandId("worktree-thread-attach"),
+                threadId,
+                worktreeId,
+                attachedAt: now,
+              },
+              operation,
+            );
+
+            yield* launchSetupScriptForWorktreeInBackground({
               threadId,
               projectId: input.projectId,
-              title,
-              modelSelection: project.defaultModelSelection,
-              runtimeMode: "full-access",
-              interactionMode: "default",
-              branch,
-              worktreePath: worktree.worktree.path,
-              createdAt: now,
-            },
-            operation,
+              projectCwd: project.workspaceRoot,
+              worktreePath,
+            });
+            yield* refreshGitStatus(worktreePath);
+          }).pipe(
+            Effect.catch((error) => cleanupOwnedCheckout.pipe(Effect.andThen(Effect.fail(error)))),
           );
-
-          yield* dispatchWorktreeCommand(
-            {
-              type: "thread.attach-to-worktree",
-              commandId: serverCommandId("worktree-thread-attach"),
-              threadId,
-              worktreeId,
-              attachedAt: now,
-            },
-            operation,
-          );
-
-          yield* launchSetupScriptForWorktreeInBackground({
-            threadId,
-            projectId: input.projectId,
-            projectCwd: project.workspaceRoot,
-            worktreePath: worktree.worktree.path,
-          });
-          yield* refreshGitStatus(worktree.worktree.path);
           return { worktreeId, sessionId: threadId };
         });
 
@@ -1228,7 +1338,8 @@ const makeWsRpcLayer = (session: AuthenticatedSession) =>
         [ORCHESTRATION_WS_METHODS.dispatchCommand]: (command) =>
           observeRpcEffect(
             ORCHESTRATION_WS_METHODS.dispatchCommand,
-            ownerEffect(
+            withAccess(
+              "authenticated",
               ORCHESTRATION_WS_METHODS.dispatchCommand,
               Effect.gen(function* () {
                 const normalizedCommand = yield* normalizeDispatchCommand(command);
@@ -1493,6 +1604,89 @@ const makeWsRpcLayer = (session: AuthenticatedSession) =>
               "rpc.aggregate": "server",
             },
           ),
+        [WS_METHODS.serverListOpinionatedPlugins]: (_input) =>
+          observeRpcEffect(
+            WS_METHODS.serverListOpinionatedPlugins,
+            Effect.sync(() => listOpinionatedPlugins()),
+            {
+              "rpc.aggregate": "server",
+            },
+          ),
+        [WS_METHODS.serverCheckOpinionatedPlugins]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.serverCheckOpinionatedPlugins,
+            Effect.gen(function* () {
+              const settings = yield* serverSettings.getSettings.pipe(
+                Effect.mapError(toOpinionatedPluginRpcError),
+              );
+              const providers = yield* providerRegistry.getProviders;
+              return yield* Effect.tryPromise({
+                try: () =>
+                  checkOpinionatedPlugins({
+                    settings,
+                    providers,
+                    ...(input.pluginId ? { pluginId: input.pluginId } : {}),
+                  }),
+                catch: toOpinionatedPluginRpcError,
+              });
+            }),
+            {
+              "rpc.aggregate": "server",
+            },
+          ),
+        [WS_METHODS.serverInstallOpinionatedPlugin]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.serverInstallOpinionatedPlugin,
+            Effect.gen(function* () {
+              const settings = yield* serverSettings.getSettings.pipe(
+                Effect.mapError(toOpinionatedPluginRpcError),
+              );
+              const providers = yield* providerRegistry.getProviders;
+              const result = yield* Effect.tryPromise({
+                try: () =>
+                  installOpinionatedPlugin({
+                    request: input,
+                    settings,
+                    providers,
+                    cwd: config.cwd,
+                  }),
+                catch: toOpinionatedPluginRpcError,
+              });
+              yield* providerRegistry.refresh().pipe(Effect.ignore);
+              return result;
+            }),
+            {
+              "rpc.aggregate": "server",
+            },
+          ),
+        [WS_METHODS.mcpListWorkspaces]: (_input) =>
+          observeRpcEffect(WS_METHODS.mcpListWorkspaces, codexMcp.listWorkspaces, {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpListServers]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpListServers, codexMcp.listServers(input), {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpUpsertServer]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpUpsertServer, codexMcp.upsertServer(input), {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpSetServerEnabled]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpSetServerEnabled, codexMcp.setServerEnabled(input), {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpRemoveServer]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpRemoveServer, codexMcp.removeServer(input), {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpReloadServers]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpReloadServers, codexMcp.reloadServers(input), {
+            "rpc.aggregate": "mcp",
+          }),
+        [WS_METHODS.mcpStartOauthLogin]: (input) =>
+          observeRpcEffect(WS_METHODS.mcpStartOauthLogin, codexMcp.startOauthLogin(input), {
+            "rpc.aggregate": "mcp",
+          }),
         [WS_METHODS.sourceControlLookupRepository]: (input) =>
           observeRpcEffect(
             WS_METHODS.sourceControlLookupRepository,
@@ -1585,6 +1779,31 @@ const makeWsRpcLayer = (session: AuthenticatedSession) =>
               "rpc.aggregate": "source-control",
             },
           ),
+        [WS_METHODS.sourceControlListChangeRequests]: ({ cwd, state, limit, query }) =>
+          observeRpcEffect(
+            WS_METHODS.sourceControlListChangeRequests,
+            sourceControlRegistry.resolve({ cwd }).pipe(
+              Effect.flatMap((provider) => {
+                const trimmedQuery = query?.trim() ?? "";
+                if (trimmedQuery.length > 0) {
+                  return provider.searchChangeRequests({
+                    cwd,
+                    query: trimmedQuery,
+                    ...(limit !== undefined ? { limit } : {}),
+                  });
+                }
+                return provider.listChangeRequests({
+                  cwd,
+                  headSelector: "",
+                  state,
+                  ...(limit !== undefined ? { limit } : {}),
+                });
+              }),
+            ),
+            {
+              "rpc.aggregate": "source-control",
+            },
+          ),
         [WS_METHODS.sourceControlSearchChangeRequests]: ({ cwd, query, limit }) =>
           observeRpcEffect(
             WS_METHODS.sourceControlSearchChangeRequests,
@@ -1638,6 +1857,78 @@ const makeWsRpcLayer = (session: AuthenticatedSession) =>
               "rpc.aggregate": "source-control",
             },
           ),
+        [WS_METHODS.atlassianListConnections]: (_input) =>
+          observeRpcEffect(WS_METHODS.atlassianListConnections, atlassian.listConnections, {
+            "rpc.aggregate": "atlassian",
+          }),
+        [WS_METHODS.atlassianStartOAuth]: (input) =>
+          observeRpcEffect(WS_METHODS.atlassianStartOAuth, atlassian.startOAuth(input), {
+            "rpc.aggregate": "atlassian",
+          }),
+        [WS_METHODS.atlassianDisconnect]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.atlassianDisconnect,
+            atlassian.disconnect(input).pipe(Effect.as({})),
+            {
+              "rpc.aggregate": "atlassian",
+            },
+          ),
+        [WS_METHODS.atlassianRefresh]: (input) =>
+          observeRpcEffect(WS_METHODS.atlassianRefresh, atlassian.refresh(input), {
+            "rpc.aggregate": "atlassian",
+          }),
+        [WS_METHODS.atlassianListResources]: (input) =>
+          observeRpcEffect(WS_METHODS.atlassianListResources, atlassian.listResources(input), {
+            "rpc.aggregate": "atlassian",
+          }),
+        [WS_METHODS.atlassianGetProjectLink]: (input) =>
+          observeRpcEffect(WS_METHODS.atlassianGetProjectLink, atlassian.getProjectLink(input), {
+            "rpc.aggregate": "atlassian",
+          }),
+        [WS_METHODS.atlassianSaveProjectLink]: (input) =>
+          observeRpcEffect(WS_METHODS.atlassianSaveProjectLink, atlassian.saveProjectLink(input), {
+            "rpc.aggregate": "atlassian",
+          }),
+        [WS_METHODS.atlassianSaveManualBitbucketToken]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.atlassianSaveManualBitbucketToken,
+            atlassian.saveManualBitbucketToken(input),
+            {
+              "rpc.aggregate": "atlassian",
+            },
+          ),
+        [WS_METHODS.atlassianSaveManualJiraToken]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.atlassianSaveManualJiraToken,
+            atlassian.saveManualJiraToken(input),
+            {
+              "rpc.aggregate": "atlassian",
+            },
+          ),
+        [WS_METHODS.workItemsList]: (input) =>
+          observeRpcEffect(WS_METHODS.workItemsList, workItems.list(input), {
+            "rpc.aggregate": "work-items",
+          }),
+        [WS_METHODS.workItemsSearch]: (input) =>
+          observeRpcEffect(WS_METHODS.workItemsSearch, workItems.search(input), {
+            "rpc.aggregate": "work-items",
+          }),
+        [WS_METHODS.workItemsGet]: (input) =>
+          observeRpcEffect(WS_METHODS.workItemsGet, workItems.get(input), {
+            "rpc.aggregate": "work-items",
+          }),
+        [WS_METHODS.workItemsAddComment]: (input) =>
+          observeRpcEffect(WS_METHODS.workItemsAddComment, workItems.addComment(input), {
+            "rpc.aggregate": "work-items",
+          }),
+        [WS_METHODS.workItemsListTransitions]: (input) =>
+          observeRpcEffect(WS_METHODS.workItemsListTransitions, workItems.listTransitions(input), {
+            "rpc.aggregate": "work-items",
+          }),
+        [WS_METHODS.workItemsTransition]: (input) =>
+          observeRpcEffect(WS_METHODS.workItemsTransition, workItems.transition(input), {
+            "rpc.aggregate": "work-items",
+          }),
         [WS_METHODS.projectsSearchEntries]: (input) =>
           observeRpcEffect(
             WS_METHODS.projectsSearchEntries,
@@ -2196,6 +2487,7 @@ export const websocketRpcRouteLayer = Layer.unwrap(
                         Layer.mergeAll(
                           AzureDevOpsCli.layer,
                           BitbucketApi.layer,
+                          ForgejoApi.layer,
                           GitHubCli.layer,
                           GitLabCli.layer,
                         ),

@@ -1,8 +1,4 @@
-import type {
-  ProjectScript,
-  ProjectScriptIcon,
-  ResolvedKeybindingsConfig,
-} from "@s3tools/contracts";
+import type { ProjectScript, ProjectScriptIcon, ResolvedKeybindingsConfig } from "@ryco/contracts";
 import {
   BugIcon,
   ChevronDownIcon,

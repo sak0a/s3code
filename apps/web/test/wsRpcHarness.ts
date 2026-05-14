@@ -1,5 +1,5 @@
 import { Effect, Exit, PubSub, Scope, Stream } from "effect";
-import { ORCHESTRATION_WS_METHODS, WS_METHODS, WsRpcGroup } from "@s3tools/contracts";
+import { ORCHESTRATION_WS_METHODS, WS_METHODS, WsRpcGroup } from "@ryco/contracts";
 import { RpcMessage, RpcSerialization, RpcServer } from "effect/unstable/rpc";
 
 type RpcServerInstance = RpcServer.RpcServer<any>;
@@ -7,6 +7,12 @@ type RpcServerInstance = RpcServer.RpcServer<any>;
 type BrowserWsClient = {
   send: (data: string) => void;
 };
+
+interface BrowserWsConnection {
+  readonly client: BrowserWsClient;
+  readonly scope: Scope.Closeable;
+  readonly serverReady: Promise<RpcServerInstance>;
+}
 
 export type NormalizedWsRpcRequestBody = {
   _tag: string;
@@ -55,9 +61,9 @@ export class BrowserWsRpcHarness {
   readonly requests: Array<NormalizedWsRpcRequestBody> = [];
 
   private readonly parser = RpcSerialization.json.makeUnsafe();
-  private client: BrowserWsClient | null = null;
-  private scope: Scope.Closeable | null = null;
-  private serverReady: Promise<RpcServerInstance> | null = null;
+  private connections = new WeakMap<BrowserWsClient, BrowserWsConnection>();
+  private activeConnections = new Set<BrowserWsConnection>();
+  private latestConnection: BrowserWsConnection | null = null;
   private resolveUnary: NonNullable<BrowserWsRpcHarnessOptions["resolveUnary"]> = () => ({});
   private getInitialStreamValues: NonNullable<
     BrowserWsRpcHarnessOptions["getInitialStreamValues"]
@@ -73,32 +79,53 @@ export class BrowserWsRpcHarness {
   }
 
   connect(client: BrowserWsClient): void {
-    if (this.scope) {
-      void Effect.runPromise(Scope.close(this.scope, Exit.void)).catch(() => undefined);
-    }
     if (this.streamPubSubs.size === 0) {
       this.initializeStreamPubSubs();
     }
-    this.client = client;
-    this.scope = Effect.runSync(Scope.make());
-    this.serverReady = Effect.runPromise(
-      Scope.provide(this.scope)(
-        RpcServer.makeNoSerialization(WsRpcGroup, this.makeServerOptions()),
-      ).pipe(Effect.provide(this.makeLayer())),
-    ) as Promise<RpcServerInstance>;
+
+    const scope = Effect.runSync(Scope.make());
+    const connection: BrowserWsConnection = {
+      client,
+      scope,
+      serverReady: Effect.runPromise(
+        Scope.provide(scope)(
+          RpcServer.makeNoSerialization(WsRpcGroup, this.makeServerOptions(client)),
+        ).pipe(Effect.provide(this.makeLayer())),
+      ) as Promise<RpcServerInstance>,
+    };
+    this.connections.set(client, connection);
+    this.activeConnections.add(connection);
+    this.latestConnection = connection;
+  }
+
+  async disconnectClient(client: BrowserWsClient): Promise<void> {
+    const connection = this.connections.get(client);
+    if (!connection) {
+      return;
+    }
+    this.connections.delete(client);
+    this.activeConnections.delete(connection);
+    if (this.latestConnection === connection) {
+      this.latestConnection = Array.from(this.activeConnections).at(-1) ?? null;
+    }
+    await Effect.runPromise(Scope.close(connection.scope, Exit.void)).catch(() => undefined);
   }
 
   async disconnect(): Promise<void> {
-    if (this.scope) {
-      await Effect.runPromise(Scope.close(this.scope, Exit.void)).catch(() => undefined);
-      this.scope = null;
-    }
+    const connections = Array.from(this.activeConnections);
+    this.connections = new WeakMap();
+    this.activeConnections.clear();
+    this.latestConnection = null;
+
+    await Promise.all(
+      connections.map((connection) =>
+        Effect.runPromise(Scope.close(connection.scope, Exit.void)).catch(() => undefined),
+      ),
+    );
     for (const pubsub of this.streamPubSubs.values()) {
       Effect.runSync(PubSub.shutdown(pubsub));
     }
     this.streamPubSubs.clear();
-    this.serverReady = null;
-    this.client = null;
   }
 
   private initializeStreamPubSubs(): void {
@@ -107,17 +134,18 @@ export class BrowserWsRpcHarness {
     );
   }
 
-  async onMessage(rawData: string): Promise<void> {
-    const server = await this.serverReady;
-    if (!server) {
+  async onMessage(rawData: string, client?: BrowserWsClient): Promise<void> {
+    const connection = client ? this.connections.get(client) : this.latestConnection;
+    if (!connection) {
       return;
     }
+    const server = await connection.serverReady;
     const messages = this.parser.decode(rawData);
     for (const message of messages) {
       if (message && typeof message === "object" && "_tag" in message && message._tag === "Ping") {
         const encoded = this.parser.encode(RpcMessage.constPong);
         if (typeof encoded === "string") {
-          this.client?.send(encoded);
+          connection.client.send(encoded);
         }
         continue;
       }
@@ -143,16 +171,13 @@ export class BrowserWsRpcHarness {
     return WsRpcGroup.toLayer(handlers as never);
   }
 
-  private makeServerOptions() {
+  private makeServerOptions(client: BrowserWsClient) {
     return {
       onFromServer: (response: unknown) =>
         Effect.sync(() => {
-          if (!this.client) {
-            return;
-          }
           const encoded = this.parser.encode(response);
           if (typeof encoded === "string") {
-            this.client.send(encoded);
+            client.send(encoded);
           }
         }),
     };

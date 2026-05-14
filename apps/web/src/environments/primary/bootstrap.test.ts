@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EnvironmentId } from "@s3tools/contracts";
+import { EnvironmentId } from "@ryco/contracts";
 
 import {
   getPrimaryKnownEnvironment,

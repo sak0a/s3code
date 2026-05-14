@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { DEFAULT_PROJECT_METADATA_DIR } from "@s3tools/contracts";
+import { DEFAULT_PROJECT_METADATA_DIR } from "@ryco/contracts";
 
 export function resolveProjectMetadataDir(
   workspaceRoot: string,

@@ -5,7 +5,7 @@ import {
   AuthRevokeClientSessionInput,
   AuthRevokePairingLinkInput,
   type AuthWebSocketTokenResult,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { DateTime, Effect, Schema } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 
@@ -34,13 +34,11 @@ function shouldSetSecureSessionCookie(
   request: HttpServerRequest.HttpServerRequest,
   config: ServerConfigShape,
 ): boolean {
-  const forwardedProto = request.headers["x-forwarded-proto"]?.toLowerCase();
-  if (
-    forwardedProto
-      ?.split(",")
-      .map((entry) => entry.trim())
-      .includes("https")
-  ) {
+  const forwardedProto = request.headers["x-forwarded-proto"]
+    ?.split(",", 1)[0]
+    ?.trim()
+    .toLowerCase();
+  if (forwardedProto === "https") {
     return true;
   }
 

@@ -3,7 +3,7 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ProviderInstanceConfig,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { describe, expect, it } from "vitest";
 import { buildProviderInstanceUpdatePatch } from "./SettingsPanels.logic";
 

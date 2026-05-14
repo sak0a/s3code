@@ -1,8 +1,10 @@
 import type {
+  AgentTokenMode,
   OrchestrationCommand,
   OrchestrationEvent,
   OrchestrationReadModel,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
+import { DEFAULT_AGENT_TOKEN_MODE } from "@ryco/contracts";
 import { Effect } from "effect";
 
 import { OrchestrationCommandInvariantError } from "./Errors.ts";
@@ -54,6 +56,9 @@ function withEventBase(
 
 type PlannedOrchestrationEvent = Omit<OrchestrationEvent, "sequence">;
 
+const normalizeTokenMode = (mode: AgentTokenMode | undefined): AgentTokenMode =>
+  mode ?? DEFAULT_AGENT_TOKEN_MODE;
+
 type DecideOrchestrationCommandResult =
   | PlannedOrchestrationEvent
   | ReadonlyArray<PlannedOrchestrationEvent>;
@@ -102,7 +107,6 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
         command,
         projectId: command.projectId,
       });
-
       return {
         ...withEventBase({
           aggregateKind: "project",
@@ -154,6 +158,32 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
             ? { customSystemPrompt: command.customSystemPrompt }
             : {}),
           ...(command.scripts !== undefined ? { scripts: command.scripts } : {}),
+          ...(command.preferredRemoteName !== undefined
+            ? { preferredRemoteName: command.preferredRemoteName }
+            : {}),
+          updatedAt: occurredAt,
+        },
+      };
+    }
+
+    case "project.avatar.set": {
+      yield* requireProject({
+        readModel,
+        command,
+        projectId: command.projectId,
+      });
+      const occurredAt = nowIso();
+      return {
+        ...withEventBase({
+          aggregateKind: "project",
+          aggregateId: command.projectId,
+          occurredAt,
+          commandId: command.commandId,
+        }),
+        type: "project.avatar-set",
+        payload: {
+          projectId: command.projectId,
+          contentHash: command.contentHash,
           updatedAt: occurredAt,
         },
       };
@@ -221,6 +251,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
         command,
         threadId: command.threadId,
       });
+      const tokenMode = normalizeTokenMode(command.tokenMode);
       return {
         ...withEventBase({
           aggregateKind: "thread",
@@ -236,6 +267,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
           modelSelection: command.modelSelection,
           runtimeMode: command.runtimeMode,
           interactionMode: command.interactionMode,
+          tokenMode,
           branch: command.branch,
           worktreePath: command.worktreePath,
           createdAt: command.createdAt,
@@ -390,6 +422,29 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
       };
     }
 
+    case "thread.token-mode.set": {
+      yield* requireThread({
+        readModel,
+        command,
+        threadId: command.threadId,
+      });
+      const occurredAt = nowIso();
+      return {
+        ...withEventBase({
+          aggregateKind: "thread",
+          aggregateId: command.threadId,
+          occurredAt,
+          commandId: command.commandId,
+        }),
+        type: "thread.token-mode-set",
+        payload: {
+          threadId: command.threadId,
+          tokenMode: command.tokenMode,
+          updatedAt: occurredAt,
+        },
+      };
+    }
+
     case "thread.turn.start": {
       const targetThread = yield* requireThread({
         readModel,
@@ -458,6 +513,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
           ...(command.titleSeed !== undefined ? { titleSeed: command.titleSeed } : {}),
           runtimeMode: targetThread.runtimeMode,
           interactionMode: targetThread.interactionMode,
+          tokenMode: normalizeTokenMode(targetThread.tokenMode),
           ...(sourceProposedPlan !== undefined ? { sourceProposedPlan } : {}),
           createdAt: command.createdAt,
         },

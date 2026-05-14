@@ -8,7 +8,7 @@ import {
   type ResolvedKeybindingRule,
   type ResolvedKeybindingsConfig,
   THREAD_JUMP_KEYBINDING_COMMANDS,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 type WhenToken =
   | { type: "identifier"; value: string }

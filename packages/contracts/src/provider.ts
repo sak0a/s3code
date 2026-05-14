@@ -21,6 +21,7 @@ import {
   ProviderSandboxMode,
   ProviderUserInputAnswers,
   RuntimeMode,
+  AgentTokenMode,
 } from "./orchestration.ts";
 import { ProviderInstanceId, ProviderDriverKind } from "./providerInstance.ts";
 import { ComposerSourceControlContext } from "./sourceControl.ts";
@@ -43,6 +44,7 @@ export const ProviderSession = Schema.Struct({
   providerInstanceId: Schema.optional(ProviderInstanceId),
   status: ProviderSessionStatus,
   runtimeMode: RuntimeMode,
+  tokenMode: Schema.optionalKey(AgentTokenMode),
   cwd: Schema.optional(TrimmedNonEmptyString),
   model: Schema.optional(TrimmedNonEmptyString),
   threadId: ThreadId,
@@ -65,6 +67,7 @@ export const ProviderSessionStartInput = Schema.Struct({
   approvalPolicy: Schema.optional(ProviderApprovalPolicy),
   sandboxMode: Schema.optional(ProviderSandboxMode),
   runtimeMode: RuntimeMode,
+  tokenMode: Schema.optionalKey(AgentTokenMode),
   customSystemPrompt: Schema.optional(ProjectCustomSystemPrompt),
 });
 export type ProviderSessionStartInput = typeof ProviderSessionStartInput.Type;
@@ -84,6 +87,7 @@ export const ProviderSendTurnInput = Schema.Struct({
   ),
   modelSelection: Schema.optional(ModelSelection),
   interactionMode: Schema.optional(ProviderInteractionMode),
+  tokenMode: Schema.optionalKey(AgentTokenMode),
   customSystemPrompt: Schema.optional(ProjectCustomSystemPrompt),
 });
 export type ProviderSendTurnInput = typeof ProviderSendTurnInput.Type;

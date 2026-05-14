@@ -16,7 +16,7 @@ import {
   ResolvedKeybindingRule,
   ResolvedKeybindingsConfig,
   type ServerConfigIssue,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   Array,
   Cache,
@@ -43,14 +43,14 @@ import {
 import * as Semaphore from "effect/Semaphore";
 import { ServerConfig } from "./config.ts";
 import { writeFileStringAtomically } from "./atomicWrite.ts";
-import { fromLenientJson } from "@s3tools/shared/schemaJson";
+import { fromLenientJson } from "@ryco/shared/schemaJson";
 import {
   DEFAULT_KEYBINDINGS,
   DEFAULT_RESOLVED_KEYBINDINGS,
   compileResolvedKeybindingRule,
   compileResolvedKeybindingsConfig,
   parseKeybindingShortcut,
-} from "@s3tools/shared/keybindings";
+} from "@ryco/shared/keybindings";
 
 export {
   DEFAULT_KEYBINDINGS,

@@ -7,7 +7,7 @@ import {
   VcsProcessExitError,
   VcsProcessSpawnError,
   VcsProcessTimeoutError,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 export interface VcsProcessInput {
   readonly operation: string;

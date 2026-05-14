@@ -2,21 +2,18 @@ import type { NetworkInterfaceInfo } from "node:os";
 
 import * as NodeHttpClient from "@effect/platform-node/NodeHttpClient";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import {
-  createAdvertisedEndpoint,
-  type CreateAdvertisedEndpointInput,
-} from "@s3tools/client-runtime";
-import type { AdvertisedEndpoint, AdvertisedEndpointProvider } from "@s3tools/contracts";
+import { createAdvertisedEndpoint, type CreateAdvertisedEndpointInput } from "@ryco/client-runtime";
+import type { AdvertisedEndpoint, AdvertisedEndpointProvider } from "@ryco/contracts";
 import {
   buildTailscaleHttpsBaseUrl,
   isTailscaleIpv4Address,
   parseTailscaleMagicDnsName,
   probeTailscaleHttpsEndpoint,
   readTailscaleStatus,
-} from "@s3tools/tailscale";
+} from "@ryco/tailscale";
 import { Effect, Layer } from "effect";
 
-export { isTailscaleIpv4Address, parseTailscaleMagicDnsName } from "@s3tools/tailscale";
+export { isTailscaleIpv4Address, parseTailscaleMagicDnsName } from "@ryco/tailscale";
 
 const TailscaleDesktopLayer = Layer.mergeAll(NodeServices.layer, NodeHttpClient.layerUndici);
 

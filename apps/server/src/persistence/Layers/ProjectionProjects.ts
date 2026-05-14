@@ -2,7 +2,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import { Effect, Layer, Schema, Struct } from "effect";
 
-import { ModelSelection, ProjectScript } from "@s3tools/contracts";
+import { ModelSelection, ProjectScript } from "@ryco/contracts";
 import { toPersistenceSqlError } from "../Errors.ts";
 import {
   DeleteProjectionProjectInput,
@@ -34,6 +34,8 @@ const makeProjectionProjectRepository = Effect.gen(function* () {
           project_metadata_dir,
           default_model_selection_json,
           custom_system_prompt,
+          custom_avatar_content_hash,
+          preferred_remote_name,
           scripts_json,
           created_at,
           updated_at,
@@ -46,6 +48,8 @@ const makeProjectionProjectRepository = Effect.gen(function* () {
           ${row.projectMetadataDir},
           ${row.defaultModelSelection !== null ? JSON.stringify(row.defaultModelSelection) : null},
           ${row.customSystemPrompt ?? null},
+          ${row.customAvatarContentHash ?? null},
+          ${row.preferredRemoteName ?? null},
           ${JSON.stringify(row.scripts)},
           ${row.createdAt},
           ${row.updatedAt},
@@ -58,6 +62,8 @@ const makeProjectionProjectRepository = Effect.gen(function* () {
           project_metadata_dir = excluded.project_metadata_dir,
           default_model_selection_json = excluded.default_model_selection_json,
           custom_system_prompt = excluded.custom_system_prompt,
+          custom_avatar_content_hash = excluded.custom_avatar_content_hash,
+          preferred_remote_name = excluded.preferred_remote_name,
           scripts_json = excluded.scripts_json,
           created_at = excluded.created_at,
           updated_at = excluded.updated_at,
@@ -77,6 +83,8 @@ const makeProjectionProjectRepository = Effect.gen(function* () {
           project_metadata_dir AS "projectMetadataDir",
           default_model_selection_json AS "defaultModelSelection",
           custom_system_prompt AS "customSystemPrompt",
+          custom_avatar_content_hash AS "customAvatarContentHash",
+          preferred_remote_name AS "preferredRemoteName",
           scripts_json AS "scripts",
           created_at AS "createdAt",
           updated_at AS "updatedAt",
@@ -98,6 +106,8 @@ const makeProjectionProjectRepository = Effect.gen(function* () {
           project_metadata_dir AS "projectMetadataDir",
           default_model_selection_json AS "defaultModelSelection",
           custom_system_prompt AS "customSystemPrompt",
+          custom_avatar_content_hash AS "customAvatarContentHash",
+          preferred_remote_name AS "preferredRemoteName",
           scripts_json AS "scripts",
           created_at AS "createdAt",
           updated_at AS "updatedAt",

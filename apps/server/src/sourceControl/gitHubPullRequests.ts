@@ -1,6 +1,6 @@
 import { Cause, DateTime, Exit, Option, Result, Schema } from "effect";
-import { PositiveInt, TrimmedNonEmptyString } from "@s3tools/contracts";
-import { decodeJsonResult, formatSchemaError } from "@s3tools/shared/schemaJson";
+import { PositiveInt, TrimmedNonEmptyString } from "@ryco/contracts";
+import { decodeJsonResult, formatSchemaError } from "@ryco/shared/schemaJson";
 
 export interface NormalizedGitHubLabel {
   readonly name: string;

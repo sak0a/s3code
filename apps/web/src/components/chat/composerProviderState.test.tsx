@@ -4,7 +4,7 @@ import {
   type ProviderOptionDescriptor,
   type ProviderOptionSelection,
   type ServerProviderModel,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   getComposerProviderState,
   renderProviderTraitsChips,

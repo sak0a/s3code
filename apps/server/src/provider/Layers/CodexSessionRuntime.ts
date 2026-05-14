@@ -1,5 +1,6 @@
 import {
   ApprovalRequestId,
+  type AgentTokenMode,
   DEFAULT_MODEL,
   EventId,
   ProviderDriverKind,
@@ -15,8 +16,8 @@ import {
   RuntimeMode,
   ThreadId,
   TurnId,
-} from "@s3tools/contracts";
-import { normalizeModelSlug } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { normalizeModelSlug } from "@ryco/shared/model";
 import { Deferred, Effect, Exit, Layer, Queue, Ref, Scope, Random, Schema, Stream } from "effect";
 import * as SchemaIssue from "effect/SchemaIssue";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
@@ -83,8 +84,10 @@ export interface CodexSessionRuntimeOptions {
   readonly environment?: NodeJS.ProcessEnv;
   readonly cwd: string;
   readonly runtimeMode: RuntimeMode;
+  readonly tokenMode: AgentTokenMode;
   readonly model?: string;
   readonly serviceTier?: EffectCodexSchema.V2ThreadStartParams__ServiceTier | undefined;
+  readonly tokenReductionInstructions?: string | undefined;
   readonly resumeCursor?: CodexResumeCursor;
 }
 
@@ -307,15 +310,19 @@ function buildCodexCollaborationMode(input: {
   readonly model?: string;
   readonly effort?: EffectCodexSchema.V2TurnStartParams__ReasoningEffort;
   readonly customSystemPrompt?: string;
+  readonly tokenReductionInstructions?: string;
 }): EffectCodexSchema.V2TurnStartParams__CollaborationMode | undefined {
   if (input.interactionMode === undefined) {
     return undefined;
   }
   const model = normalizeCodexModelSlug(input.model) ?? DEFAULT_MODEL;
   const developerInstructions = appendProjectCustomSystemPrompt(
-    input.interactionMode === "plan"
-      ? CODEX_PLAN_MODE_DEVELOPER_INSTRUCTIONS
-      : CODEX_DEFAULT_MODE_DEVELOPER_INSTRUCTIONS,
+    appendProjectCustomSystemPrompt(
+      input.interactionMode === "plan"
+        ? CODEX_PLAN_MODE_DEVELOPER_INSTRUCTIONS
+        : CODEX_DEFAULT_MODE_DEVELOPER_INSTRUCTIONS,
+      input.tokenReductionInstructions,
+    ),
     input.customSystemPrompt,
   );
   return {
@@ -341,6 +348,7 @@ export function buildTurnStartParams(input: {
   readonly effort?: EffectCodexSchema.V2TurnStartParams__ReasoningEffort;
   readonly interactionMode?: ProviderInteractionMode;
   readonly customSystemPrompt?: string;
+  readonly tokenReductionInstructions?: string;
 }): Effect.Effect<
   CodexTurnStartParamsWithCollaborationMode,
   CodexErrors.CodexAppServerProtocolParseError
@@ -362,6 +370,9 @@ export function buildTurnStartParams(input: {
     ...(input.model ? { model: input.model } : {}),
     ...(input.effort ? { effort: input.effort } : {}),
     ...(input.customSystemPrompt ? { customSystemPrompt: input.customSystemPrompt } : {}),
+    ...(input.tokenReductionInstructions
+      ? { tokenReductionInstructions: input.tokenReductionInstructions }
+      : {}),
   });
 
   return Schema.decodeUnknownEffect(CodexTurnStartParamsWithCollaborationMode)({
@@ -737,6 +748,7 @@ export const makeCodexSessionRuntime = (
       ...(options.providerInstanceId ? { providerInstanceId: options.providerInstanceId } : {}),
       status: "connecting",
       runtimeMode: options.runtimeMode,
+      tokenMode: options.tokenMode,
       cwd: options.cwd,
       ...(options.model ? { model: options.model } : {}),
       threadId: options.threadId,
@@ -1237,6 +1249,9 @@ export const makeCodexSessionRuntime = (
             ...(input.effort ? { effort: input.effort } : {}),
             ...(input.interactionMode ? { interactionMode: input.interactionMode } : {}),
             ...(input.customSystemPrompt ? { customSystemPrompt: input.customSystemPrompt } : {}),
+            ...(options.tokenReductionInstructions
+              ? { tokenReductionInstructions: options.tokenReductionInstructions }
+              : {}),
           });
           const rawResponse = yield* client.raw.request("turn/start", params);
           const response = yield* Schema.decodeUnknownEffect(EffectCodexSchema.V2TurnStartResponse)(

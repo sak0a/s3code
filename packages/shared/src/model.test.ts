@@ -4,7 +4,7 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ModelCapabilities,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import {
   applyClaudePromptEffortPrefix,

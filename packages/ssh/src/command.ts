@@ -1,6 +1,6 @@
 import * as Crypto from "node:crypto";
 
-import type { DesktopSshEnvironmentTarget, DesktopUpdateChannel } from "@s3tools/contracts";
+import type { DesktopSshEnvironmentTarget, DesktopUpdateChannel } from "@ryco/contracts";
 import { Duration, Effect, FileSystem, Option, Path, Scope, Stream } from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
@@ -326,12 +326,12 @@ export function resolveRemoteS3CliPackageSpec(input: {
 }): string {
   const appVersion = input.appVersion.trim();
   if (!input.isDevelopment && PUBLISHABLE_S3_VERSION_PATTERN.test(appVersion)) {
-    return `s3@${appVersion}`;
+    return `ryco@${appVersion}`;
   }
 
   if (input.isDevelopment) {
-    return "s3@nightly";
+    return "ryco@nightly";
   }
 
-  return input.updateChannel === "nightly" ? "s3@nightly" : "s3@latest";
+  return input.updateChannel === "nightly" ? "ryco@nightly" : "ryco@latest";
 }

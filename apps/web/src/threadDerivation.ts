@@ -1,4 +1,4 @@
-import type { MessageId, ThreadId, TurnId } from "@s3tools/contracts";
+import type { MessageId, ThreadId, TurnId } from "@ryco/contracts";
 import type { EnvironmentState } from "./store";
 import type {
   ChatMessage,

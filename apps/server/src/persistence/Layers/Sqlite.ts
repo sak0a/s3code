@@ -28,10 +28,14 @@ const makeRuntimeSqliteLayer = Effect.fn("makeRuntimeSqliteLayer")(function* (
 
 const setup = Layer.effectDiscard(
   Effect.gen(function* () {
+    const startedAt = Date.now();
     const sql = yield* SqlClient.SqlClient;
     yield* sql`PRAGMA journal_mode = WAL;`;
     yield* sql`PRAGMA foreign_keys = ON;`;
     yield* runMigrations();
+    yield* Effect.logDebug("startup sqlite setup complete", {
+      durationMs: Date.now() - startedAt,
+    });
   }),
 );
 

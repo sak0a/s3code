@@ -4,15 +4,15 @@ import { parsePullRequestReference } from "./pullRequestReference";
 
 describe("parsePullRequestReference", () => {
   it("accepts GitHub pull request URLs", () => {
-    expect(parsePullRequestReference("https://github.com/pingdotgg/s3code/pull/42")).toBe(
-      "https://github.com/pingdotgg/s3code/pull/42",
+    expect(parsePullRequestReference("https://github.com/pingdotgg/ryco/pull/42")).toBe(
+      "https://github.com/pingdotgg/ryco/pull/42",
     );
   });
 
   it("accepts Azure DevOps pull request URLs", () => {
     expect(
-      parsePullRequestReference("https://dev.azure.com/acme/project/_git/s3code/pullrequest/42"),
-    ).toBe("https://dev.azure.com/acme/project/_git/s3code/pullrequest/42");
+      parsePullRequestReference("https://dev.azure.com/acme/project/_git/ryco/pullrequest/42"),
+    ).toBe("https://dev.azure.com/acme/project/_git/ryco/pullrequest/42");
   });
 
   it("accepts GitLab merge request URLs", () => {
@@ -21,10 +21,16 @@ describe("parsePullRequestReference", () => {
     );
   });
 
+  it("accepts Forgejo pull request URLs", () => {
+    expect(parsePullRequestReference("https://codeberg.org/owner/repo/pulls/42")).toBe(
+      "https://codeberg.org/owner/repo/pulls/42",
+    );
+  });
+
   it("accepts legacy Azure DevOps pull request URLs", () => {
     expect(
-      parsePullRequestReference("https://acme.visualstudio.com/project/_git/s3code/pullrequest/42"),
-    ).toBe("https://acme.visualstudio.com/project/_git/s3code/pullrequest/42");
+      parsePullRequestReference("https://acme.visualstudio.com/project/_git/ryco/pullrequest/42"),
+    ).toBe("https://acme.visualstudio.com/project/_git/ryco/pullrequest/42");
   });
 
   it("accepts raw numbers", () => {
@@ -45,8 +51,8 @@ describe("parsePullRequestReference", () => {
 
   it("accepts gh pr checkout commands with GitHub pull request URLs", () => {
     expect(
-      parsePullRequestReference("gh pr checkout https://github.com/pingdotgg/s3code/pull/42"),
-    ).toBe("https://github.com/pingdotgg/s3code/pull/42");
+      parsePullRequestReference("gh pr checkout https://github.com/pingdotgg/ryco/pull/42"),
+    ).toBe("https://github.com/pingdotgg/ryco/pull/42");
   });
 
   it("accepts glab mr checkout commands with raw numbers", () => {

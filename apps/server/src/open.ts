@@ -8,8 +8,8 @@
  */
 import { spawn } from "node:child_process";
 
-import { EDITORS, OpenError, type EditorId } from "@s3tools/contracts";
-import { isCommandAvailable, type CommandAvailabilityOptions } from "@s3tools/shared/shell";
+import { EDITORS, OpenError, type EditorId } from "@ryco/contracts";
+import { isCommandAvailable, type CommandAvailabilityOptions } from "@ryco/shared/shell";
 import { Context, Effect, Layer } from "effect";
 
 // ==============================
@@ -17,7 +17,7 @@ import { Context, Effect, Layer } from "effect";
 // ==============================
 
 export { OpenError };
-export { isCommandAvailable } from "@s3tools/shared/shell";
+export { isCommandAvailable } from "@ryco/shared/shell";
 
 export interface OpenInEditorInput {
   readonly cwd: string;
@@ -258,7 +258,10 @@ export const launchDetached = (launch: EditorLaunch) =>
     yield* Effect.callback<void, OpenError>((resume) => {
       let child;
       try {
-        child = spawn(launch.command, [...launch.args], {
+        const spawnCommand = process.platform === "win32" ? "cmd.exe" : launch.command;
+        const spawnArgs =
+          process.platform === "win32" ? ["/c", launch.command, ...launch.args] : [...launch.args];
+        child = spawn(spawnCommand, spawnArgs, {
           detached: true,
           stdio: "ignore",
           shell: false,

@@ -15,32 +15,32 @@ const bitbucketPullRequest = {
   updated_on: "2026-01-02T00:00:00.000Z",
   links: {
     html: {
-      href: "https://bitbucket.org/pingdotgg/s3code/pull-requests/42",
+      href: "https://bitbucket.org/pingdotgg/ryco/pull-requests/42",
     },
   },
   source: {
     branch: { name: "feature/source-control" },
     repository: {
-      full_name: "octocat/s3code",
+      full_name: "octocat/ryco",
       workspace: { slug: "octocat" },
     },
   },
   destination: {
     branch: { name: "main" },
     repository: {
-      full_name: "pingdotgg/s3code",
+      full_name: "pingdotgg/ryco",
       workspace: { slug: "pingdotgg" },
     },
   },
 };
 
 const repositoryJson = {
-  full_name: "pingdotgg/s3code",
+  full_name: "pingdotgg/ryco",
   links: {
-    html: { href: "https://bitbucket.org/pingdotgg/s3code" },
+    html: { href: "https://bitbucket.org/pingdotgg/ryco" },
     clone: [
-      { name: "https", href: "https://bitbucket.org/pingdotgg/s3code.git" },
-      { name: "ssh", href: "git@bitbucket.org:pingdotgg/s3code.git" },
+      { name: "https", href: "https://bitbucket.org/pingdotgg/ryco.git" },
+      { name: "ssh", href: "git@bitbucket.org:pingdotgg/ryco.git" },
     ],
   },
   mainbranch: { name: "main" },
@@ -55,7 +55,7 @@ function makeLayer(input: {
   );
   const gitMock = {
     readConfigValue: vi.fn<GitVcsDriver.GitVcsDriverShape["readConfigValue"]>(() =>
-      Effect.succeed<string | null>("git@bitbucket.org:pingdotgg/s3code.git"),
+      Effect.succeed<string | null>("git@bitbucket.org:pingdotgg/ryco.git"),
     ),
     resolvePrimaryRemoteName: vi.fn<GitVcsDriver.GitVcsDriverShape["resolvePrimaryRemoteName"]>(
       () => Effect.succeed("origin"),
@@ -90,7 +90,7 @@ function makeLayer(input: {
         remotes: [
           {
             name: "origin",
-            url: "git@bitbucket.org:pingdotgg/s3code.git",
+            url: "git@bitbucket.org:pingdotgg/ryco.git",
             pushUrl: Option.none(),
             isPrimary: true,
           },
@@ -134,9 +134,9 @@ function makeLayer(input: {
       ConfigProvider.layer(
         ConfigProvider.fromEnv({
           env: {
-            S3CODE_BITBUCKET_API_BASE_URL: "https://api.test.local/2.0",
-            S3CODE_BITBUCKET_EMAIL: "user@example.com",
-            S3CODE_BITBUCKET_API_TOKEN: "token",
+            RYCO_BITBUCKET_API_BASE_URL: "https://api.test.local/2.0",
+            RYCO_BITBUCKET_EMAIL: "user@example.com",
+            RYCO_BITBUCKET_API_TOKEN: "token",
           },
         }),
       ),
@@ -165,18 +165,18 @@ it.effect("parses pull request responses from the Bitbucket REST API", () => {
     assert.deepStrictEqual(result, {
       number: 42,
       title: "Add Bitbucket provider",
-      url: "https://bitbucket.org/pingdotgg/s3code/pull-requests/42",
+      url: "https://bitbucket.org/pingdotgg/ryco/pull-requests/42",
       baseRefName: "main",
       headRefName: "feature/source-control",
       state: "open",
       updatedAt: Option.some(DateTime.makeUnsafe("2026-01-02T00:00:00.000Z")),
       isCrossRepository: true,
-      headRepositoryNameWithOwner: "octocat/s3code",
+      headRepositoryNameWithOwner: "octocat/ryco",
       headRepositoryOwnerLogin: "octocat",
     });
     assert.strictEqual(
       execute.mock.calls[0]?.[0].url,
-      "https://api.test.local/2.0/repositories/pingdotgg/s3code/pullrequests/42",
+      "https://api.test.local/2.0/repositories/pingdotgg/ryco/pullrequests/42",
     );
   }).pipe(Effect.provide(layer));
 });
@@ -192,7 +192,7 @@ it.effect("lists pull requests with Bitbucket state and source branch query para
             state: "MERGED",
             source: {
               branch: { name: "feature/merged" },
-              repository: { full_name: "pingdotgg/s3code" },
+              repository: { full_name: "pingdotgg/ryco" },
             },
           },
         ],
@@ -212,7 +212,7 @@ it.effect("lists pull requests with Bitbucket state and source branch query para
     const request = execute.mock.calls[0]?.[0];
     assert.strictEqual(
       request?.url,
-      "https://api.test.local/2.0/repositories/pingdotgg/s3code/pullrequests",
+      "https://api.test.local/2.0/repositories/pingdotgg/ryco/pullrequests",
     );
     assert.deepStrictEqual(request?.urlParams.params, [
       ["pagelen", "10"],
@@ -249,6 +249,32 @@ it.effect("lists closed pull requests with both closed Bitbucket states", () => 
       ],
       ["state", "DECLINED"],
       ["state", "SUPERSEDED"],
+    ]);
+  }).pipe(Effect.provide(layer));
+});
+
+it.effect("lists repository pull requests without a source-branch filter", () => {
+  const { execute, layer } = makeLayer({
+    response: () =>
+      Response.json({
+        values: [],
+      }),
+  });
+
+  return Effect.gen(function* () {
+    const bitbucket = yield* BitbucketApi.BitbucketApi;
+    yield* bitbucket.listPullRequests({
+      cwd: "/repo",
+      headSelector: "",
+      state: "open",
+      limit: 10,
+    });
+
+    assert.deepStrictEqual(execute.mock.calls[0]?.[0].urlParams.params, [
+      ["pagelen", "10"],
+      ["sort", "-updated_on"],
+      ["q", 'state = "OPEN"'],
+      ["state", "OPEN"],
     ]);
   }).pipe(Effect.provide(layer));
 });
@@ -305,14 +331,14 @@ it.effect("reads repository clone URLs and default branch", () => {
     const bitbucket = yield* BitbucketApi.BitbucketApi;
     const cloneUrls = yield* bitbucket.getRepositoryCloneUrls({
       cwd: "/repo",
-      repository: "pingdotgg/s3code",
+      repository: "pingdotgg/ryco",
     });
     const defaultBranch = yield* bitbucket.getDefaultBranch({ cwd: "/repo" });
 
     assert.deepStrictEqual(cloneUrls, {
-      nameWithOwner: "pingdotgg/s3code",
-      url: "https://bitbucket.org/pingdotgg/s3code.git",
-      sshUrl: "git@bitbucket.org:pingdotgg/s3code.git",
+      nameWithOwner: "pingdotgg/ryco",
+      url: "https://bitbucket.org/pingdotgg/ryco.git",
+      sshUrl: "git@bitbucket.org:pingdotgg/ryco.git",
     });
     assert.strictEqual(defaultBranch, "main");
   }).pipe(Effect.provide(layer));
@@ -344,8 +370,8 @@ it.effect(
       assert.deepStrictEqual(
         execute.mock.calls.map((call) => call[0].url).toSorted(),
         [
-          "https://api.test.local/2.0/repositories/pingdotgg/s3code",
-          "https://api.test.local/2.0/repositories/pingdotgg/s3code/branching-model",
+          "https://api.test.local/2.0/repositories/pingdotgg/ryco",
+          "https://api.test.local/2.0/repositories/pingdotgg/ryco/branching-model",
         ].toSorted(),
       );
     }).pipe(Effect.provide(layer));
@@ -407,18 +433,18 @@ it.effect("creates repositories through the Bitbucket REST API", () => {
     const bitbucket = yield* BitbucketApi.BitbucketApi;
     const cloneUrls = yield* bitbucket.createRepository({
       cwd: "/repo",
-      repository: "pingdotgg/s3code",
+      repository: "pingdotgg/ryco",
       visibility: "private",
     });
 
     assert.deepStrictEqual(cloneUrls, {
-      nameWithOwner: "pingdotgg/s3code",
-      url: "https://bitbucket.org/pingdotgg/s3code.git",
-      sshUrl: "git@bitbucket.org:pingdotgg/s3code.git",
+      nameWithOwner: "pingdotgg/ryco",
+      url: "https://bitbucket.org/pingdotgg/ryco.git",
+      sshUrl: "git@bitbucket.org:pingdotgg/ryco.git",
     });
 
     const request = execute.mock.calls[0]?.[0];
-    assert.strictEqual(request?.url, "https://api.test.local/2.0/repositories/pingdotgg/s3code");
+    assert.strictEqual(request?.url, "https://api.test.local/2.0/repositories/pingdotgg/ryco");
     assert.strictEqual(request?.method, "POST");
     assert.ok(request);
     const rawBody = (request.body as { readonly body?: Uint8Array }).body;
@@ -452,7 +478,7 @@ it.effect("creates pull requests using the official REST payload shape", () => {
     const request = execute.mock.calls[0]?.[0];
     assert.strictEqual(
       request?.url,
-      "https://api.test.local/2.0/repositories/pingdotgg/s3code/pullrequests",
+      "https://api.test.local/2.0/repositories/pingdotgg/ryco/pullrequests",
     );
     assert.strictEqual(request?.method, "POST");
     assert.ok(request);
@@ -463,7 +489,7 @@ it.effect("creates pull requests using the official REST payload shape", () => {
       description: "PR body",
       source: {
         branch: { name: "feature/provider" },
-        repository: { full_name: "owner/s3code" },
+        repository: { full_name: "owner/ryco" },
       },
       destination: {
         branch: { name: "main" },
@@ -498,7 +524,7 @@ it.effect("checks out same-repository pull requests with the existing Bitbucket 
         source: {
           branch: { name: "feature/source-control" },
           repository: {
-            full_name: "pingdotgg/s3code",
+            full_name: "pingdotgg/ryco",
             workspace: { slug: "pingdotgg" },
           },
         },
@@ -516,7 +542,7 @@ it.effect("checks out same-repository pull requests with the existing Bitbucket 
           baseUrl: "https://bitbucket.org",
         },
         remoteName: "origin",
-        remoteUrl: "git@bitbucket.org:pingdotgg/s3code.git",
+        remoteUrl: "git@bitbucket.org:pingdotgg/ryco.git",
       },
       reference: "42",
       force: true,
@@ -545,15 +571,15 @@ it.effect("checks out same-repository pull requests with the existing Bitbucket 
 it.effect("checks out fork pull requests through an ensured fork remote", () => {
   const { git, layer } = makeLayer({
     response: (request) => {
-      if (request.url.endsWith("/repositories/octocat/s3code")) {
+      if (request.url.endsWith("/repositories/octocat/ryco")) {
         return Response.json({
           ...repositoryJson,
-          full_name: "octocat/s3code",
+          full_name: "octocat/ryco",
           links: {
-            html: { href: "https://bitbucket.org/octocat/s3code" },
+            html: { href: "https://bitbucket.org/octocat/ryco" },
             clone: [
-              { name: "https", href: "https://bitbucket.org/octocat/s3code.git" },
-              { name: "ssh", href: "git@bitbucket.org:octocat/s3code.git" },
+              { name: "https", href: "https://bitbucket.org/octocat/ryco.git" },
+              { name: "ssh", href: "git@bitbucket.org:octocat/ryco.git" },
             ],
           },
         });
@@ -563,7 +589,7 @@ it.effect("checks out fork pull requests through an ensured fork remote", () => 
         source: {
           branch: { name: "main" },
           repository: {
-            full_name: "octocat/s3code",
+            full_name: "octocat/ryco",
             workspace: { slug: "octocat" },
           },
         },
@@ -582,23 +608,23 @@ it.effect("checks out fork pull requests through an ensured fork remote", () => 
     assert.deepStrictEqual(git.ensureRemote.mock.calls[0]?.[0], {
       cwd: "/repo",
       preferredName: "octocat",
-      url: "git@bitbucket.org:octocat/s3code.git",
+      url: "git@bitbucket.org:octocat/ryco.git",
     });
     assert.deepStrictEqual(git.fetchRemoteBranch.mock.calls[0]?.[0], {
       cwd: "/repo",
       remoteName: "octocat",
       remoteBranch: "main",
-      localBranch: "s3code/pr-42/main",
+      localBranch: "ryco/pr-42/main",
     });
     assert.deepStrictEqual(git.setBranchUpstream.mock.calls[0]?.[0], {
       cwd: "/repo",
-      branch: "s3code/pr-42/main",
+      branch: "ryco/pr-42/main",
       remoteName: "octocat",
       remoteBranch: "main",
     });
     assert.deepStrictEqual(git.switchRef.mock.calls[0]?.[0], {
       cwd: "/repo",
-      refName: "s3code/pr-42/main",
+      refName: "ryco/pr-42/main",
     });
   }).pipe(Effect.provide(layer));
 });
@@ -635,7 +661,7 @@ it.effect("getIssue returns body and comments via two REST calls", () => {
         state: "open",
         content: { raw: "issue body" },
         reporter: { username: "alice", display_name: "Alice" },
-        links: { html: { href: "https://bitbucket.org/pingdotgg/s3code/issues/42" } },
+        links: { html: { href: "https://bitbucket.org/pingdotgg/ryco/issues/42" } },
       });
     },
   });
@@ -661,7 +687,7 @@ it.effect("searchIssues forwards BBQL to /issues endpoint", () => {
             id: 5,
             title: "memory leak in parser",
             state: "open",
-            links: { html: { href: "https://bitbucket.org/pingdotgg/s3code/issues/5" } },
+            links: { html: { href: "https://bitbucket.org/pingdotgg/ryco/issues/5" } },
           },
         ],
       }),
@@ -675,7 +701,7 @@ it.effect("searchIssues forwards BBQL to /issues endpoint", () => {
     const request = execute.mock.calls[0]?.[0];
     assert.strictEqual(
       request?.url,
-      "https://api.test.local/2.0/repositories/pingdotgg/s3code/issues",
+      "https://api.test.local/2.0/repositories/pingdotgg/ryco/issues",
     );
     assert.deepStrictEqual(request?.urlParams.params, [
       ["q", 'title ~ "memory leak"'],
@@ -695,15 +721,15 @@ it.effect("searchPullRequests forwards BBQL to /pullrequests endpoint", () => {
             title: "fix memory leak in parser",
             state: "OPEN",
             links: {
-              html: { href: "https://bitbucket.org/pingdotgg/s3code/pull-requests/12" },
+              html: { href: "https://bitbucket.org/pingdotgg/ryco/pull-requests/12" },
             },
             source: {
               branch: { name: "fix/leak" },
-              repository: { full_name: "pingdotgg/s3code" },
+              repository: { full_name: "pingdotgg/ryco" },
             },
             destination: {
               branch: { name: "main" },
-              repository: { full_name: "pingdotgg/s3code" },
+              repository: { full_name: "pingdotgg/ryco" },
             },
           },
         ],
@@ -718,7 +744,7 @@ it.effect("searchPullRequests forwards BBQL to /pullrequests endpoint", () => {
     const request = execute.mock.calls[0]?.[0];
     assert.strictEqual(
       request?.url,
-      "https://api.test.local/2.0/repositories/pingdotgg/s3code/pullrequests",
+      "https://api.test.local/2.0/repositories/pingdotgg/ryco/pullrequests",
     );
     assert.deepStrictEqual(request?.urlParams.params, [
       ["q", 'title ~ "memory leak"'],
@@ -744,19 +770,30 @@ it.effect("getPullRequestDetail returns body and comments via two REST calls", (
       }
       return Response.json({
         id: 12,
-        title: "Add feature",
+        title: "S3-123 Add feature",
         state: "OPEN",
-        summary: { raw: "PR body text" },
+        summary: { raw: "PR body text for OPS-9" },
+        author: { display_name: "Alice" },
+        reviewers: [{ display_name: "Reviewer" }],
+        participants: [
+          {
+            user: { display_name: "Reviewer", nickname: "reviewer" },
+            role: "REVIEWER",
+            approved: true,
+          },
+        ],
+        comment_count: 3,
+        task_count: 1,
         links: {
-          html: { href: "https://bitbucket.org/pingdotgg/s3code/pull-requests/12" },
+          html: { href: "https://bitbucket.org/pingdotgg/ryco/pull-requests/12" },
         },
         source: {
           branch: { name: "feature/add" },
-          repository: { full_name: "pingdotgg/s3code" },
+          repository: { full_name: "pingdotgg/ryco" },
         },
         destination: {
           branch: { name: "main" },
-          repository: { full_name: "pingdotgg/s3code" },
+          repository: { full_name: "pingdotgg/ryco" },
         },
       });
     },
@@ -766,11 +803,45 @@ it.effect("getPullRequestDetail returns body and comments via two REST calls", (
     const bitbucket = yield* BitbucketApi.BitbucketApi;
     const detail = yield* bitbucket.getPullRequestDetail({ cwd: "/repo", reference: "12" });
     assert.strictEqual(detail.number, 12);
-    assert.strictEqual(detail.body, "PR body text");
+    assert.strictEqual(detail.body, "PR body text for OPS-9");
     assert.strictEqual(detail.comments.length, 1);
     assert.strictEqual(detail.comments[0]?.author, "reviewer");
+    assert.strictEqual(detail.author, "Alice");
+    assert.strictEqual(detail.commentsCount, 3);
+    assert.strictEqual(detail.tasksCount, 1);
+    assert.deepStrictEqual(detail.reviewers, ["Reviewer"]);
+    assert.deepStrictEqual(detail.linkedWorkItemKeys, ["S3-123", "OPS-9"]);
+    assert.deepStrictEqual(detail.participants[0], {
+      displayName: "Reviewer",
+      username: "reviewer",
+      role: "REVIEWER",
+      approved: true,
+    });
     // Two calls: PR + comments
     assert.strictEqual(execute.mock.calls.length, 2);
+  }).pipe(Effect.provide(layer));
+});
+
+it.effect("getPullRequestDiff returns the raw Bitbucket diff text", () => {
+  const { execute, layer } = makeLayer({
+    response: (request) => {
+      if (request.url.endsWith("/diff")) {
+        return new Response("diff --git a/file.ts b/file.ts\n+added\n", {
+          headers: { "content-type": "text/plain" },
+        });
+      }
+      return Response.json(bitbucketPullRequest);
+    },
+  });
+
+  return Effect.gen(function* () {
+    const bitbucket = yield* BitbucketApi.BitbucketApi;
+    const diff = yield* bitbucket.getPullRequestDiff({ cwd: "/repo", reference: "12" });
+    assert.include(diff, "diff --git");
+    assert.strictEqual(
+      execute.mock.calls[0]?.[0].url,
+      "https://api.test.local/2.0/repositories/pingdotgg/ryco/pullrequests/12/diff",
+    );
   }).pipe(Effect.provide(layer));
 });
 
@@ -785,7 +856,7 @@ it.effect("listIssues fetches open issues and returns normalized records", () =>
             state: "open",
             updated_on: "2026-03-14T10:00:00Z",
             reporter: { username: "alice", display_name: "Alice" },
-            links: { html: { href: "https://bitbucket.org/pingdotgg/s3code/issues/42" } },
+            links: { html: { href: "https://bitbucket.org/pingdotgg/ryco/issues/42" } },
           },
         ],
       }),
@@ -799,7 +870,7 @@ it.effect("listIssues fetches open issues and returns normalized records", () =>
     assert.strictEqual(issues[0]?.state, "open");
     assert.strictEqual(issues[0]?.author, "alice");
     const url = execute.mock.calls[0]?.[0].url ?? "";
-    assert.ok(url.includes("/repositories/pingdotgg/s3code/issues"), `URL was: ${url}`);
+    assert.ok(url.includes("/repositories/pingdotgg/ryco/issues"), `URL was: ${url}`);
   }).pipe(Effect.provide(layer));
 });
 
@@ -815,7 +886,7 @@ it.effect("getIssue parses issue ID from a trailing-slash URL", () => {
         state: "open",
         content: { raw: "issue body" },
         reporter: { username: "alice", display_name: "Alice" },
-        links: { html: { href: "https://bitbucket.org/pingdotgg/s3code/issues/42" } },
+        links: { html: { href: "https://bitbucket.org/pingdotgg/ryco/issues/42" } },
       });
     },
   });
@@ -851,15 +922,15 @@ it.effect("getPullRequestDetail parses PR ID from a trailing-slash URL", () => {
         state: "OPEN",
         summary: { raw: "PR body" },
         links: {
-          html: { href: "https://bitbucket.org/pingdotgg/s3code/pull-requests/42" },
+          html: { href: "https://bitbucket.org/pingdotgg/ryco/pull-requests/42" },
         },
         source: {
           branch: { name: "feature/add" },
-          repository: { full_name: "pingdotgg/s3code" },
+          repository: { full_name: "pingdotgg/ryco" },
         },
         destination: {
           branch: { name: "main" },
-          repository: { full_name: "pingdotgg/s3code" },
+          repository: { full_name: "pingdotgg/ryco" },
         },
       });
     },
@@ -898,7 +969,7 @@ it.effect(
           state: "open",
           content: { raw: "issue body text" },
           reporter: { username: "bob", display_name: "Bob" },
-          links: { html: { href: "https://bitbucket.org/pingdotgg/s3code/issues/7" } },
+          links: { html: { href: "https://bitbucket.org/pingdotgg/ryco/issues/7" } },
         });
       },
     });
@@ -927,15 +998,15 @@ it.effect(
           state: "OPEN",
           summary: { raw: "PR description" },
           links: {
-            html: { href: "https://bitbucket.org/pingdotgg/s3code/pull-requests/9" },
+            html: { href: "https://bitbucket.org/pingdotgg/ryco/pull-requests/9" },
           },
           source: {
             branch: { name: "fix/crash" },
-            repository: { full_name: "pingdotgg/s3code" },
+            repository: { full_name: "pingdotgg/ryco" },
           },
           destination: {
             branch: { name: "main" },
-            repository: { full_name: "pingdotgg/s3code" },
+            repository: { full_name: "pingdotgg/ryco" },
           },
         });
       },

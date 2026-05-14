@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@s3tools/contracts";
+import type { EnvironmentId } from "@ryco/contracts";
 import { useCallback, useState } from "react";
 import { Dialog, DialogPopup, DialogTitle } from "../ui/dialog";
 import { IssueDetail } from "../projectExplorer/IssueDetail";

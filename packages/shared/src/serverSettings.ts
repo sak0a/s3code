@@ -1,4 +1,4 @@
-import { ServerSettings, type ServerSettingsPatch } from "@s3tools/contracts";
+import { ServerSettings, type ServerSettingsPatch } from "@ryco/contracts";
 import { Schema } from "effect";
 import { deepMerge } from "./Struct.ts";
 import { fromLenientJson } from "./schemaJson.ts";

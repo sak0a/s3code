@@ -6,7 +6,7 @@ import {
   ProjectId,
   ProviderInstanceId,
   ThreadId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   Data,
   Deferred,
@@ -280,6 +280,7 @@ const runStartupPhase = <A, E, R>(phase: string, effect: Effect.Effect<A, E, R>)
   );
 
 export const makeServerRuntimeStartup = Effect.gen(function* () {
+  const runtimeStartedAt = Date.now();
   const serverConfig = yield* ServerConfig;
   const keybindings = yield* Keybindings;
   const orchestrationReactor = yield* OrchestrationReactor;
@@ -415,10 +416,15 @@ export const makeServerRuntimeStartup = Effect.gen(function* () {
         return;
       }
 
-      yield* Effect.logDebug("Accepting commands");
+      yield* Effect.logInfo("startup command gate ready", {
+        durationMs: Date.now() - runtimeStartedAt,
+      });
       yield* commandGate.signalCommandReady;
       yield* Effect.logDebug("startup phase: waiting for http listener");
       yield* runStartupPhase("http.wait", Deferred.await(httpListening));
+      yield* Effect.logInfo("startup http listener ready", {
+        durationMs: Date.now() - runtimeStartedAt,
+      });
       yield* Effect.logDebug("startup phase: publishing ready event");
       yield* runStartupPhase(
         "ready.publish",
@@ -445,19 +451,24 @@ export const makeServerRuntimeStartup = Effect.gen(function* () {
         yield* Effect.logDebug("startup phase: browser open check");
         const startupBrowserTarget = yield* resolveStartupBrowserTarget;
         if (serverConfig.mode !== "desktop") {
-          yield* Effect.logInfo("Authentication required. Open S3Code using the pairing URL.").pipe(
+          yield* Effect.logInfo("Authentication required. Open Ryco using the pairing URL.").pipe(
             Effect.annotateLogs({ pairingUrl: startupBrowserTarget }),
           );
         }
         yield* runStartupPhase("browser.open", maybeOpenBrowser(startupBrowserTarget));
       }
-      yield* Effect.logDebug("startup phase: complete");
+      yield* Effect.logInfo("startup phase complete", {
+        durationMs: Date.now() - runtimeStartedAt,
+      });
     }),
   );
 
   return {
     awaitCommandReady: commandGate.awaitCommandReady,
-    markHttpListening: Deferred.succeed(httpListening, undefined),
+    markHttpListening: Effect.gen(function* () {
+      yield* Effect.logDebug("startup http listener marked");
+      yield* Deferred.succeed(httpListening, undefined);
+    }),
     enqueueCommand: commandGate.enqueueCommand,
   } satisfies ServerRuntimeStartupShape;
 });

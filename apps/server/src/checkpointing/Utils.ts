@@ -1,5 +1,5 @@
 import { Encoding } from "effect";
-import { CheckpointRef, ProjectId, type ThreadId } from "@s3tools/contracts";
+import { CheckpointRef, ProjectId, type ThreadId } from "@ryco/contracts";
 
 export const CHECKPOINT_REFS_PREFIX = "refs/s3/checkpoints";
 

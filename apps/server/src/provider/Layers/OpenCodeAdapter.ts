@@ -1,4 +1,5 @@
 import {
+  DEFAULT_AGENT_TOKEN_MODE,
   EventId,
   type OpenCodeSettings,
   ProviderDriverKind,
@@ -11,11 +12,11 @@ import {
   type ToolLifecycleItemType,
   TurnId,
   type UserInputQuestion,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Cause, Effect, Exit, Queue, Random, Ref, Scope, Stream } from "effect";
 import type { OpencodeClient, Part, PermissionRequest, QuestionRequest } from "@opencode-ai/sdk/v2";
-import { getModelSelectionStringOptionValue } from "@s3tools/shared/model";
-import { formatSourceControlContextsForAgent } from "@s3tools/shared/sourceControlContextFormatter";
+import { getModelSelectionStringOptionValue } from "@ryco/shared/model";
+import { formatSourceControlContextsForAgent } from "@ryco/shared/sourceControlContextFormatter";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import { ServerConfig } from "../../config.ts";
@@ -1045,7 +1046,7 @@ export function makeOpenCodeAdapter(
               });
               const openCodeSession = yield* runOpenCodeSdk("session.create", () =>
                 client.session.create({
-                  title: `S3Code ${input.threadId}`,
+                  title: `Ryco ${input.threadId}`,
                   permission: buildOpenCodePermissionRules(input.runtimeMode),
                 }),
               );
@@ -1086,11 +1087,13 @@ export function makeOpenCodeAdapter(
         }
 
         const createdAt = nowIso();
+        const tokenMode = input.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE;
         const session: ProviderSession = {
           provider: PROVIDER,
           providerInstanceId: boundInstanceId,
           status: "ready",
           runtimeMode: input.runtimeMode,
+          tokenMode,
           cwd: directory,
           ...(input.modelSelection ? { model: input.modelSelection.model } : {}),
           threadId: input.threadId,

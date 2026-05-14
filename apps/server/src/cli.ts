@@ -1,12 +1,12 @@
-import { NetService } from "@s3tools/shared/Net";
-import { parsePersistedServerObservabilitySettings } from "@s3tools/shared/serverSettings";
+import { NetService } from "@ryco/shared/Net";
+import { parsePersistedServerObservabilitySettings } from "@ryco/shared/serverSettings";
 import {
   AuthSessionId,
   CommandId,
   OrchestrationReadModel,
   ProjectId,
   type ClientOrchestrationCommand,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   Config,
   Console,
@@ -57,6 +57,7 @@ import { OrchestrationEngineService } from "./orchestration/Services/Orchestrati
 import { ProjectionSnapshotQuery } from "./orchestration/Services/ProjectionSnapshotQuery.ts";
 import { OrchestrationLayerLive } from "./orchestration/runtimeLayer.ts";
 import { layerConfig as SqlitePersistenceLayerLive } from "./persistence/Layers/Sqlite.ts";
+import { ProjectAvatarStoreLive } from "./project/Layers/ProjectAvatarStore.ts";
 import { RepositoryIdentityResolverLive } from "./project/Layers/RepositoryIdentityResolver.ts";
 import { getAutoBootstrapDefaultModelSelection } from "./serverRuntimeStartup.ts";
 import {
@@ -98,7 +99,7 @@ const hostFlag = Flag.string("host").pipe(
   Flag.optional,
 );
 const baseDirFlag = Flag.string("base-dir").pipe(
-  Flag.withDescription("Base directory path (equivalent to S3CODE_HOME)."),
+  Flag.withDescription("Base directory path (equivalent to RYCO_HOME)."),
   Flag.optional,
 );
 const devUrlFlag = Flag.string("dev-url").pipe(
@@ -123,7 +124,7 @@ const autoBootstrapProjectFromCwdFlag = Flag.boolean("auto-bootstrap-project-fro
 );
 const logWebSocketEventsFlag = Flag.boolean("log-websocket-events").pipe(
   Flag.withDescription(
-    "Emit server-side logs for outbound WebSocket push traffic (equivalent to S3CODE_LOG_WS_EVENTS).",
+    "Emit server-side logs for outbound WebSocket push traffic (equivalent to RYCO_LOG_WS_EVENTS).",
   ),
   Flag.withAlias("log-ws-events"),
   Flag.optional,
@@ -141,57 +142,55 @@ const tailscaleServePortFlag = Flag.integer("tailscale-serve-port").pipe(
 );
 
 const EnvServerConfig = Config.all({
-  logLevel: Config.logLevel("S3CODE_LOG_LEVEL").pipe(Config.withDefault("Info")),
-  traceMinLevel: Config.logLevel("S3CODE_TRACE_MIN_LEVEL").pipe(Config.withDefault("Info")),
-  traceTimingEnabled: Config.boolean("S3CODE_TRACE_TIMING_ENABLED").pipe(Config.withDefault(true)),
-  traceFile: Config.string("S3CODE_TRACE_FILE").pipe(
+  logLevel: Config.logLevel("RYCO_LOG_LEVEL").pipe(Config.withDefault("Info")),
+  traceMinLevel: Config.logLevel("RYCO_TRACE_MIN_LEVEL").pipe(Config.withDefault("Info")),
+  traceTimingEnabled: Config.boolean("RYCO_TRACE_TIMING_ENABLED").pipe(Config.withDefault(true)),
+  traceFile: Config.string("RYCO_TRACE_FILE").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  traceMaxBytes: Config.int("S3CODE_TRACE_MAX_BYTES").pipe(Config.withDefault(10 * 1024 * 1024)),
-  traceMaxFiles: Config.int("S3CODE_TRACE_MAX_FILES").pipe(Config.withDefault(10)),
-  traceBatchWindowMs: Config.int("S3CODE_TRACE_BATCH_WINDOW_MS").pipe(Config.withDefault(200)),
-  otlpTracesUrl: Config.string("S3CODE_OTLP_TRACES_URL").pipe(
+  traceMaxBytes: Config.int("RYCO_TRACE_MAX_BYTES").pipe(Config.withDefault(10 * 1024 * 1024)),
+  traceMaxFiles: Config.int("RYCO_TRACE_MAX_FILES").pipe(Config.withDefault(10)),
+  traceBatchWindowMs: Config.int("RYCO_TRACE_BATCH_WINDOW_MS").pipe(Config.withDefault(200)),
+  otlpTracesUrl: Config.string("RYCO_OTLP_TRACES_URL").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  otlpMetricsUrl: Config.string("S3CODE_OTLP_METRICS_URL").pipe(
+  otlpMetricsUrl: Config.string("RYCO_OTLP_METRICS_URL").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  otlpExportIntervalMs: Config.int("S3CODE_OTLP_EXPORT_INTERVAL_MS").pipe(
-    Config.withDefault(10_000),
-  ),
-  otlpServiceName: Config.string("S3CODE_OTLP_SERVICE_NAME").pipe(Config.withDefault("s3-server")),
-  mode: Config.schema(RuntimeMode, "S3CODE_MODE").pipe(
+  otlpExportIntervalMs: Config.int("RYCO_OTLP_EXPORT_INTERVAL_MS").pipe(Config.withDefault(10_000)),
+  otlpServiceName: Config.string("RYCO_OTLP_SERVICE_NAME").pipe(Config.withDefault("s3-server")),
+  mode: Config.schema(RuntimeMode, "RYCO_MODE").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  port: Config.port("S3CODE_PORT").pipe(Config.option, Config.map(Option.getOrUndefined)),
-  host: Config.string("S3CODE_HOST").pipe(Config.option, Config.map(Option.getOrUndefined)),
-  t3Home: Config.string("S3CODE_HOME").pipe(Config.option, Config.map(Option.getOrUndefined)),
+  port: Config.port("RYCO_PORT").pipe(Config.option, Config.map(Option.getOrUndefined)),
+  host: Config.string("RYCO_HOST").pipe(Config.option, Config.map(Option.getOrUndefined)),
+  t3Home: Config.string("RYCO_HOME").pipe(Config.option, Config.map(Option.getOrUndefined)),
   devUrl: Config.url("VITE_DEV_SERVER_URL").pipe(Config.option, Config.map(Option.getOrUndefined)),
-  noBrowser: Config.boolean("S3CODE_NO_BROWSER").pipe(
+  noBrowser: Config.boolean("RYCO_NO_BROWSER").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  bootstrapFd: Config.int("S3CODE_BOOTSTRAP_FD").pipe(
+  bootstrapFd: Config.int("RYCO_BOOTSTRAP_FD").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  autoBootstrapProjectFromCwd: Config.boolean("S3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD").pipe(
+  autoBootstrapProjectFromCwd: Config.boolean("RYCO_AUTO_BOOTSTRAP_PROJECT_FROM_CWD").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  logWebSocketEvents: Config.boolean("S3CODE_LOG_WS_EVENTS").pipe(
+  logWebSocketEvents: Config.boolean("RYCO_LOG_WS_EVENTS").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  tailscaleServeEnabled: Config.boolean("S3CODE_TAILSCALE_SERVE").pipe(
+  tailscaleServeEnabled: Config.boolean("RYCO_TAILSCALE_SERVE").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  tailscaleServePort: Config.port("S3CODE_TAILSCALE_SERVE_PORT").pipe(
+  tailscaleServePort: Config.port("RYCO_TAILSCALE_SERVE_PORT").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
@@ -241,6 +240,7 @@ export const resolveServerConfig = (
   },
 ) =>
   Effect.gen(function* () {
+    const startedAt = Date.now();
     const { findAvailablePort } = yield* NetService;
     const path = yield* Path.Path;
     const fs = yield* FileSystem.FileSystem;
@@ -291,6 +291,11 @@ export const resolveServerConfig = (
         },
       },
     );
+    yield* Effect.logDebug("startup config phase resolved port", {
+      durationMs: Date.now() - startedAt,
+      mode,
+      port,
+    });
     const devUrl = Option.getOrElse(
       resolveOptionPrecedence(
         normalizedFlags.devUrl,
@@ -311,8 +316,16 @@ export const resolveServerConfig = (
     const rawCwd = Option.getOrElse(normalizedFlags.cwd, () => process.cwd());
     const cwd = path.resolve(yield* expandHomePath(rawCwd.trim()));
     yield* fs.makeDirectory(cwd, { recursive: true });
+    yield* Effect.logDebug("startup config phase prepared cwd", {
+      durationMs: Date.now() - startedAt,
+      cwd,
+    });
     const derivedPaths = yield* deriveServerPaths(baseDir, devUrl);
     yield* ensureServerDirectories(derivedPaths);
+    yield* Effect.logDebug("startup config phase ensured directories", {
+      durationMs: Date.now() - startedAt,
+      baseDir,
+    });
     const persistedObservabilitySettings = yield* loadPersistedObservabilitySettings(
       derivedPaths.settingsPath,
     );
@@ -365,6 +378,11 @@ export const resolveServerConfig = (
       () => 443,
     );
     const staticDir = devUrl ? undefined : yield* resolveStaticDir();
+    yield* Effect.logDebug("startup config phase resolved static dir", {
+      durationMs: Date.now() - startedAt,
+      staticDir: staticDir ?? "none",
+      devUrl: devUrl?.toString() ?? "none",
+    });
     const host = Option.getOrElse(
       resolveOptionPrecedence(
         normalizedFlags.host,
@@ -534,10 +552,18 @@ type ProjectCliDispatchCommand = Extract<
   { type: "project.create" | "project.meta.update" | "project.delete" }
 >;
 
+const ProjectAvatarStoreFromConfigLayer = Layer.unwrap(
+  Effect.gen(function* () {
+    const config = yield* ServerConfig;
+    return ProjectAvatarStoreLive({ dataDir: config.stateDir });
+  }),
+);
+
 const ProjectCliRuntimeLive = Layer.mergeAll(
   WorkspacePathsLive,
   OrchestrationLayerLive.pipe(
     Layer.provideMerge(RepositoryIdentityResolverLive),
+    Layer.provideMerge(ProjectAvatarStoreFromConfigLayer),
     Layer.provideMerge(SqlitePersistenceLayerLive),
   ),
 );
@@ -1157,13 +1183,13 @@ const runServerCommand = (
   });
 
 const startCommand = Command.make("start", { ...sharedServerCommandFlags }).pipe(
-  Command.withDescription("Run the S3Code server."),
+  Command.withDescription("Run the Ryco server."),
   Command.withHandler((flags) => runServerCommand(flags)),
 );
 
 const serveCommand = Command.make("serve", { ...sharedServerCommandFlags }).pipe(
   Command.withDescription(
-    "Run the S3Code server without opening a browser and print headless pairing details.",
+    "Run the Ryco server without opening a browser and print headless pairing details.",
   ),
   Command.withHandler((flags) =>
     runServerCommand(flags, {
@@ -1174,7 +1200,7 @@ const serveCommand = Command.make("serve", { ...sharedServerCommandFlags }).pipe
 );
 
 export const cli = Command.make("s3", { ...sharedServerCommandFlags }).pipe(
-  Command.withDescription("Run the S3Code server."),
+  Command.withDescription("Run the Ryco server."),
   Command.withHandler((flags) => runServerCommand(flags)),
   Command.withSubcommands([startCommand, serveCommand, authCommand, projectCommand]),
 );

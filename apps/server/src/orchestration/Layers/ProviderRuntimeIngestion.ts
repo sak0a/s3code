@@ -2,6 +2,7 @@ import {
   ApprovalRequestId,
   type AssistantDeliveryMode,
   CommandId,
+  DEFAULT_AGENT_TOKEN_MODE,
   MessageId,
   type OrchestrationEvent,
   type OrchestrationMessage,
@@ -16,10 +17,10 @@ import {
   type OrchestrationThread,
   type OrchestrationThreadActivity,
   type ProviderRuntimeEvent,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Cache, Cause, Duration, Effect, Layer, Option, Stream } from "effect";
-import { makeDrainableWorker } from "@s3tools/shared/DrainableWorker";
-import { readEnv } from "@s3tools/shared/runtimeEnv";
+import { makeDrainableWorker } from "@ryco/shared/DrainableWorker";
+import { readEnv } from "@ryco/shared/runtimeEnv";
 
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { ProjectionTurnRepository } from "../../persistence/Services/ProjectionTurns.ts";
@@ -50,7 +51,7 @@ const BUFFERED_MESSAGE_TEXT_BY_MESSAGE_ID_TTL = Duration.minutes(120);
 const BUFFERED_PROPOSED_PLAN_BY_ID_CACHE_CAPACITY = 10_000;
 const BUFFERED_PROPOSED_PLAN_BY_ID_TTL = Duration.minutes(120);
 const MAX_BUFFERED_ASSISTANT_CHARS = 24_000;
-const STRICT_PROVIDER_LIFECYCLE_GUARD = readEnv("S3CODE_STRICT_PROVIDER_LIFECYCLE_GUARD") !== "0";
+const STRICT_PROVIDER_LIFECYCLE_GUARD = readEnv("RYCO_STRICT_PROVIDER_LIFECYCLE_GUARD") !== "0";
 
 type TurnStartRequestedDomainEvent = Extract<
   OrchestrationEvent,
@@ -1301,6 +1302,7 @@ const make = Effect.gen(function* () {
                 ? { providerInstanceId: event.providerInstanceId }
                 : {}),
               runtimeMode: thread.session?.runtimeMode ?? "full-access",
+              tokenMode: thread.session?.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
               activeTurnId: nextActiveTurnId,
               lastError,
               updatedAt: now,
@@ -1551,6 +1553,7 @@ const make = Effect.gen(function* () {
                 ? { providerInstanceId: event.providerInstanceId }
                 : {}),
               runtimeMode: thread.session?.runtimeMode ?? "full-access",
+              tokenMode: thread.session?.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
               activeTurnId: eventTurnId ?? null,
               lastError: runtimeErrorMessage,
               updatedAt: now,

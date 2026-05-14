@@ -1,4 +1,4 @@
-import { EditorId, type ResolvedKeybindingsConfig } from "@s3tools/contracts";
+import { EditorId, type ResolvedKeybindingsConfig } from "@ryco/contracts";
 import { memo, useCallback, useEffect, useMemo } from "react";
 import { isOpenFavoriteEditorShortcut, shortcutLabelForCommand } from "../../keybindings";
 import { usePreferredEditor } from "../../editorPreferences";

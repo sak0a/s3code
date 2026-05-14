@@ -4,7 +4,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it, describe } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Path, PlatformError, Scope } from "effect";
 
-import { GitCommandError } from "@s3tools/contracts";
+import { GitCommandError } from "@ryco/contracts";
 import { ServerConfig } from "../config.ts";
 import * as GitVcsDriver from "./GitVcsDriver.ts";
 

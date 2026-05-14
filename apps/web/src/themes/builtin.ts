@@ -5,7 +5,7 @@ export const DEFAULT_THEME_ID = "default";
 export const DEFAULT_THEME: ThemeDefinition = {
   id: DEFAULT_THEME_ID,
   name: "Default",
-  description: "The built-in S3Code light & dark palette.",
+  description: "The built-in Ryco light & dark palette.",
   builtIn: true,
   light: {
     radius: "0.625rem",

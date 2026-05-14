@@ -19,9 +19,10 @@ import {
   type SDKUserMessage,
   type ModelUsage,
 } from "@anthropic-ai/claude-agent-sdk";
-import { parseCliArgs } from "@s3tools/shared/cliArgs";
+import { parseCliArgs } from "@ryco/shared/cliArgs";
 import {
   ApprovalRequestId,
+  type AgentTokenMode,
   type CanonicalItemType,
   type CanonicalRequestType,
   type ClaudeSettings,
@@ -37,21 +38,22 @@ import {
   type ThreadTokenUsageSnapshot,
   type ProviderUserInputAnswers,
   type RuntimeContentStreamKind,
+  DEFAULT_AGENT_TOKEN_MODE,
   RuntimeItemId,
   RuntimeRequestId,
   RuntimeTaskId,
   ThreadId,
   TurnId,
   type UserInputQuestion,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   applyClaudePromptEffortPrefix,
   getModelSelectionBooleanOptionValue,
   getModelSelectionStringOptionValue,
   getProviderOptionDescriptors,
   resolvePromptInjectedEffort,
-} from "@s3tools/shared/model";
-import { formatSourceControlContextsForAgent } from "@s3tools/shared/sourceControlContextFormatter";
+} from "@ryco/shared/model";
+import { formatSourceControlContextsForAgent } from "@ryco/shared/sourceControlContextFormatter";
 import {
   Cause,
   DateTime,
@@ -69,6 +71,7 @@ import {
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import { ServerConfig } from "../../config.ts";
+import { buildTokenReductionInstructions, checkRtkAvailability } from "../../tokenReduction.ts";
 import { makeClaudeEnvironment } from "../Drivers/ClaudeHome.ts";
 import { formatProjectCustomSystemPrompt } from "../ProjectCustomSystemPrompt.ts";
 import {
@@ -243,6 +246,17 @@ function normalizeClaudeStreamMessages(cause: Cause.Cause<Error>): ReadonlyArray
 function getEffectiveClaudeAgentEffort(effort: string | null | undefined): ClaudeSdkEffort | null {
   const normalized = normalizeClaudeCliEffort(effort);
   return normalized ? (normalized as ClaudeSdkEffort) : null;
+}
+
+function readTokenReductionInstructions(tokenMode: AgentTokenMode) {
+  return Effect.promise(() => checkRtkAvailability()).pipe(
+    Effect.map((availability) =>
+      buildTokenReductionInstructions({
+        tokenMode,
+        rtkInstalled: availability.installed,
+      }),
+    ),
+  );
 }
 
 function isClaudeInterruptedMessage(message: string): boolean {
@@ -2573,7 +2587,7 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         // `id` MUST equal the full question text — Claude SDK >= 2.1.121 looks
         // up answers by question text in `mapToolResultToToolResultBlockParam`,
         // so the key the UI uses to keep its draft answer must match the SDK's
-        // expected lookup key. See https://github.com/pingdotgg/s3code/issues/2388
+        // expected lookup key. See https://github.com/sak0a/ryco/issues/2388
         const rawQuestions = Array.isArray(toolInput.questions) ? toolInput.questions : [];
         const questions: Array<UserInputQuestion> = rawQuestions.map(
           (q: Record<string, unknown>, idx: number) => ({
@@ -2876,15 +2890,19 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         ...(typeof thinking === "boolean" ? { alwaysThinkingEnabled: thinking } : {}),
         ...(fastMode ? { fastMode: true } : {}),
       };
+      const tokenMode = input.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE;
+      const tokenReductionInstructions = yield* readTokenReductionInstructions(tokenMode);
       const customSystemPrompt = formatProjectCustomSystemPrompt(input.customSystemPrompt);
+      const appendSystemPrompt = [tokenReductionInstructions, customSystemPrompt]
+        .map((part) => part?.trim())
+        .filter((part): part is string => part !== undefined && part.length > 0)
+        .join("\n\n");
       const queryOptions: ClaudeQueryOptions = {
         ...(input.cwd ? { cwd: input.cwd } : {}),
         ...(apiModelId ? { model: apiModelId } : {}),
         pathToClaudeCodeExecutable: claudeBinaryPath,
         systemPrompt: { type: "preset", preset: "claude_code" },
-        ...(customSystemPrompt
-          ? ({ appendSystemPrompt: customSystemPrompt } as Partial<ClaudeQueryOptions>)
-          : {}),
+        ...(appendSystemPrompt ? ({ appendSystemPrompt } as Partial<ClaudeQueryOptions>) : {}),
         settingSources: [...CLAUDE_SETTING_SOURCES],
         // The SDK type lags the CLI here: Opus 4.7 accepts `xhigh` even though
         // the published `Options["effort"]` union currently stops at `max`.
@@ -2953,6 +2971,7 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         providerInstanceId: boundInstanceId,
         status: "ready",
         runtimeMode: input.runtimeMode,
+        tokenMode,
         ...(input.cwd ? { cwd: input.cwd } : {}),
         ...(modelSelection?.model ? { model: modelSelection.model } : {}),
         ...(threadId ? { threadId } : {}),

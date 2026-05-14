@@ -4,13 +4,13 @@ import {
   type ClientSettings,
   type EnvironmentId as EnvironmentIdValue,
   type PersistedSavedEnvironmentRecord,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import * as Schema from "effect/Schema";
 
 import { getLocalStorageItem, setLocalStorageItem } from "./hooks/useLocalStorage";
 
-export const CLIENT_SETTINGS_STORAGE_KEY = "s3code:client-settings:v1";
-export const SAVED_ENVIRONMENT_REGISTRY_STORAGE_KEY = "s3code:saved-environment-registry:v1";
+export const CLIENT_SETTINGS_STORAGE_KEY = "ryco:client-settings:v1";
+export const SAVED_ENVIRONMENT_REGISTRY_STORAGE_KEY = "ryco:saved-environment-registry:v1";
 
 const BrowserSavedEnvironmentRecordSchema = Schema.Struct({
   environmentId: EnvironmentId,

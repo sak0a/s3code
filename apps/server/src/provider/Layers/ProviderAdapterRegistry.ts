@@ -19,7 +19,7 @@ import {
   defaultInstanceIdForDriver,
   ProviderInstanceId,
   type ProviderDriverKind,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect, Layer } from "effect";
 
 import { ProviderUnsupportedError } from "../Errors.ts";

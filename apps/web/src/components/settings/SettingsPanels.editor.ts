@@ -1,5 +1,5 @@
 import { FolderClosedIcon } from "lucide-react";
-import { EDITORS, type EditorId } from "@s3tools/contracts";
+import { EDITORS, type EditorId } from "@ryco/contracts";
 import {
   AntigravityIcon,
   CursorIcon,

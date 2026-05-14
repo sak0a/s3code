@@ -61,6 +61,14 @@ function isRetryableSubscriptionError(message: string): boolean {
   );
 }
 
+function isSubscriptionStreamDoneError(message: string): boolean {
+  return (
+    message.includes("SchemaError(Expected array") &&
+    message.includes('"_tag":"Done"') &&
+    message.includes("~effect/Cause/Done")
+  );
+}
+
 export class WsTransport {
   private readonly url: WsRpcProtocolSocketUrlProvider;
   private readonly lifecycleHandlers: WsProtocolLifecycleHandlers | undefined;
@@ -181,6 +189,9 @@ export class WsTransport {
           }
 
           const formattedError = formatErrorMessage(error);
+          if (isSubscriptionStreamDoneError(formattedError)) {
+            return;
+          }
           if (!isRetryableSubscriptionError(formattedError)) {
             console.warn("WebSocket RPC subscription failed", {
               error: formattedError,

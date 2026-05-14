@@ -2,8 +2,8 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it, afterEach, describe, expect, vi } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Option } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import { VcsProcessExitError } from "@s3tools/contracts";
-import type { VcsError } from "@s3tools/contracts";
+import { VcsProcessExitError } from "@ryco/contracts";
+import type { VcsError } from "@ryco/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as AzureDevOpsCli from "./AzureDevOpsCli.ts";
@@ -235,7 +235,7 @@ describe("AzureDevOpsCli.layer", () => {
   it.effect("creates pull requests using the body file as the Azure description", () =>
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
-      const bodyFile = `/tmp/s3code-azure-devops-cli-${Date.now()}.md`;
+      const bodyFile = `/tmp/ryco-azure-devops-cli-${Date.now()}.md`;
       yield* fileSystem.writeFileString(bodyFile, "Generated body");
       mockRun.mockReturnValueOnce(Effect.succeed(processOutput("{}")));
 

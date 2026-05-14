@@ -9,8 +9,8 @@ import {
   type ServerConfigStreamEvent,
   type ServerLifecycleStreamEvent,
   type ServerProvider,
-} from "@s3tools/contracts";
-import { DEFAULT_RESOLVED_KEYBINDINGS } from "@s3tools/shared/keybindings";
+} from "@ryco/contracts";
+import { DEFAULT_RESOLVED_KEYBINDINGS } from "@ryco/shared/keybindings";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -228,7 +228,7 @@ describe("serverState", () => {
       payload: {
         environment: baseEnvironment,
         cwd: "/tmp/workspace",
-        projectName: "s3-code",
+        projectName: "ryco",
         bootstrapProjectId: ProjectId.make("project-1"),
         bootstrapThreadId: ThreadId.make("thread-1"),
       },
@@ -237,7 +237,7 @@ describe("serverState", () => {
     expect(listener).toHaveBeenCalledWith({
       environment: baseEnvironment,
       cwd: "/tmp/workspace",
-      projectName: "s3-code",
+      projectName: "ryco",
       bootstrapProjectId: ProjectId.make("project-1"),
       bootstrapThreadId: ThreadId.make("thread-1"),
     });
@@ -247,7 +247,7 @@ describe("serverState", () => {
     expect(lateListener).toHaveBeenCalledWith({
       environment: baseEnvironment,
       cwd: "/tmp/workspace",
-      projectName: "s3-code",
+      projectName: "ryco",
       bootstrapProjectId: ProjectId.make("project-1"),
       bootstrapThreadId: ThreadId.make("thread-1"),
     });

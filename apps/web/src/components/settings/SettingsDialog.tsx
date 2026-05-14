@@ -6,7 +6,9 @@ import {
   GitBranchIcon,
   Link2Icon,
   PaletteIcon,
+  PlugZapIcon,
   RotateCcwIcon,
+  ServerIcon,
   Settings2Icon,
 } from "lucide-react";
 
@@ -17,6 +19,8 @@ import { Dialog, DialogPopup, DialogTitle } from "../ui/dialog";
 import { ScrollArea } from "../ui/scroll-area";
 import { AppearanceSettingsPanel } from "./AppearanceSettings";
 import { ConnectionsSettings } from "./ConnectionsSettings";
+import { McpServersSettings } from "./McpServersSettings";
+import { OpinionatedPluginsSettingsPanel } from "./OpinionatedPluginsSettings";
 import { ProvidersSettingsPanel } from "./ProvidersSettingsPanel";
 import { ArchivedThreadsPanel, GeneralSettingsPanel, useSettingsRestore } from "./SettingsPanels";
 import { SourceControlSettingsPanel } from "./SourceControlSettings";
@@ -30,6 +34,8 @@ interface NavItem {
 const NAV_ITEMS: ReadonlyArray<NavItem> = [
   { id: "general", label: "General", icon: Settings2Icon },
   { id: "providers", label: "Providers", icon: BlocksIcon },
+  { id: "opinionated-plugins", label: "Plugins", icon: PlugZapIcon },
+  { id: "mcp-servers", label: "MCP Servers", icon: ServerIcon },
   { id: "appearance", label: "Appearance", icon: PaletteIcon },
   { id: "source-control", label: "Source Control", icon: GitBranchIcon },
   { id: "connections", label: "Connections", icon: Link2Icon },
@@ -63,6 +69,10 @@ function SectionPanel({ section }: { section: SettingsSectionId }) {
       return <GeneralSettingsPanel />;
     case "providers":
       return <ProvidersSettingsPanel />;
+    case "opinionated-plugins":
+      return <OpinionatedPluginsSettingsPanel />;
+    case "mcp-servers":
+      return <McpServersSettings />;
     case "appearance":
       return <AppearanceSettingsPanel />;
     case "source-control":

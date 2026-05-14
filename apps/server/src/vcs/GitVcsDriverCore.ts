@@ -22,8 +22,8 @@ import {
 } from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
-import { GitCommandError, type VcsRef } from "@s3tools/contracts";
-import { dedupeRemoteBranchesWithLocalMatches } from "@s3tools/shared/git";
+import { GitCommandError, type VcsRef } from "@ryco/contracts";
+import { dedupeRemoteBranchesWithLocalMatches } from "@ryco/shared/git";
 import { compactTraceAttributes } from "../observability/Attributes.ts";
 import { gitCommandDuration, gitCommandsTotal, withMetrics } from "../observability/Metrics.ts";
 import * as GitVcsDriver from "./GitVcsDriver.ts";
@@ -33,7 +33,7 @@ import {
   parseRemoteRefWithRemoteNames,
 } from "../git/remoteRefs.ts";
 import { ServerConfig } from "../config.ts";
-import { decodeJsonResult } from "@s3tools/shared/schemaJson";
+import { decodeJsonResult } from "@ryco/shared/schemaJson";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_OUTPUT_BYTES = 1_000_000;
@@ -49,7 +49,7 @@ const STATUS_UPSTREAM_REFRESH_CACHE_CAPACITY = 2_048;
 const DEFAULT_BASE_BRANCH_CANDIDATES = ["main", "master"] as const;
 const GIT_LIST_BRANCHES_DEFAULT_LIMIT = 100;
 const DEPENDENCY_INSTALL_DIR_NAME = "node_modules";
-const DEPENDENCY_INSTALL_DIR_SCAN_SKIP_DIRS = new Set([".git", ".s3code"]);
+const DEPENDENCY_INSTALL_DIR_SCAN_SKIP_DIRS = new Set([".git", ".ryco"]);
 const NON_REPOSITORY_STATUS_DETAILS = Object.freeze<GitVcsDriver.GitStatusDetails>({
   isRepo: false,
   hasOriginRemote: false,
@@ -393,7 +393,7 @@ const createTrace2Monitor = Effect.fn("createTrace2Monitor")(function* (
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const traceFilePath = yield* fs.makeTempFileScoped({
-    prefix: `s3code-git-trace2-${process.pid}-`,
+    prefix: `ryco-git-trace2-${process.pid}-`,
     suffix: ".json",
   });
   const hookStartByChildKey = new Map<string, { hookName: string; startedAtMs: number }>();

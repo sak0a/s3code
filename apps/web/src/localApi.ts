@@ -1,4 +1,4 @@
-import type { ContextMenuItem, LocalApi } from "@s3tools/contracts";
+import type { ContextMenuItem, LocalApi } from "@ryco/contracts";
 
 import { resetGitStatusStateForTests } from "./lib/gitStatusState";
 import { resetSourceControlDiscoveryStateForTests } from "./lib/sourceControlDiscoveryState";
@@ -139,7 +139,62 @@ function createBrowserLocalApi(rpcClient?: WsRpcClient): LocalApi {
         rpcClient
           ? rpcClient.server.discoverSourceControl()
           : Promise.reject(unavailableLocalBackendError()),
+      listOpinionatedPlugins: () =>
+        rpcClient
+          ? rpcClient.server.listOpinionatedPlugins()
+          : Promise.reject(unavailableLocalBackendError()),
+      checkOpinionatedPlugins: (input) =>
+        rpcClient
+          ? rpcClient.server.checkOpinionatedPlugins(input)
+          : Promise.reject(unavailableLocalBackendError()),
+      installOpinionatedPlugin: (input) =>
+        rpcClient
+          ? rpcClient.server.installOpinionatedPlugin(input)
+          : Promise.reject(unavailableLocalBackendError()),
     },
+    ...(rpcClient
+      ? {
+          mcp: {
+            listWorkspaces: () => rpcClient.mcp.listWorkspaces(),
+            listServers: (input) => rpcClient.mcp.listServers(input),
+            upsertServer: (input) => rpcClient.mcp.upsertServer(input),
+            setServerEnabled: (input) => rpcClient.mcp.setServerEnabled(input),
+            removeServer: (input) => rpcClient.mcp.removeServer(input),
+            reloadServers: (input) => rpcClient.mcp.reloadServers(input),
+            startOauthLogin: (input) => rpcClient.mcp.startOauthLogin(input),
+          },
+        }
+      : {}),
+  };
+}
+
+function mergeLocalApiFallbacks(fallback: LocalApi, api: Partial<LocalApi>): LocalApi {
+  const mcp = api.mcp ?? fallback.mcp;
+
+  return {
+    ...fallback,
+    ...api,
+    dialogs: {
+      ...fallback.dialogs,
+      ...api.dialogs,
+    },
+    shell: {
+      ...fallback.shell,
+      ...api.shell,
+    },
+    contextMenu: {
+      ...fallback.contextMenu,
+      ...api.contextMenu,
+    },
+    persistence: {
+      ...fallback.persistence,
+      ...api.persistence,
+    },
+    server: {
+      ...fallback.server,
+      ...api.server,
+    },
+    ...(mcp ? { mcp } : {}),
   };
 }
 
@@ -152,7 +207,7 @@ export function readLocalApi(): LocalApi | undefined {
   if (cachedApi) return cachedApi;
 
   if (window.nativeApi) {
-    cachedApi = window.nativeApi;
+    cachedApi = mergeLocalApiFallbacks(createBrowserLocalApi(), window.nativeApi);
     return cachedApi;
   }
 

@@ -9,7 +9,7 @@ import type {
   AuthSessionId,
   AuthSessionState,
   AuthWebSocketTokenResult,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import {
   getPairingTokenFromUrl,
