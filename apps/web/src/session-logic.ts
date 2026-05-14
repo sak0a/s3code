@@ -11,7 +11,7 @@ import {
   type UserInputQuestion,
   type ThreadId,
   type TurnId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import type {
   ChatMessage,

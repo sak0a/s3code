@@ -1,4 +1,4 @@
-import type { DesktopRuntimeArch, DesktopRuntimeInfo } from "@s3tools/contracts";
+import type { DesktopRuntimeArch, DesktopRuntimeInfo } from "@ryco/contracts";
 
 interface ResolveDesktopRuntimeInfoInput {
   readonly platform: NodeJS.Platform;

@@ -64,23 +64,22 @@ describe("resolveMarkdownFileLinkTarget", () => {
   it("formats tooltip display paths relative to the cwd when possible", () => {
     expect(
       resolveMarkdownFileLinkMeta(
-        "file:///C:/Users/mike/dev-stuff/s3code/apps/web/src/session-logic.ts#L501",
-        "C:/Users/mike/dev-stuff/s3code",
+        "file:///C:/Users/mike/dev-stuff/ryco/apps/web/src/session-logic.ts#L501",
+        "C:/Users/mike/dev-stuff/ryco",
       ),
     ).toMatchObject({
-      displayPath: "s3code/apps/web/src/session-logic.ts:501",
+      displayPath: "ryco/apps/web/src/session-logic.ts:501",
     });
   });
 
   it("formats tooltip display paths relative to the cwd for slash-prefixed windows paths", () => {
     expect(
       resolveMarkdownFileLinkMeta(
-        "/C:/Users/mike/dev-stuff/s3code/apps/web/src/components/chat/MessagesTimeline.virtualization.browser.tsx",
-        "C:/Users/mike/dev-stuff/s3code",
+        "/C:/Users/mike/dev-stuff/ryco/apps/web/src/components/chat/MessagesTimeline.virtualization.browser.tsx",
+        "C:/Users/mike/dev-stuff/ryco",
       ),
     ).toMatchObject({
-      displayPath:
-        "s3code/apps/web/src/components/chat/MessagesTimeline.virtualization.browser.tsx",
+      displayPath: "ryco/apps/web/src/components/chat/MessagesTimeline.virtualization.browser.tsx",
     });
   });
 

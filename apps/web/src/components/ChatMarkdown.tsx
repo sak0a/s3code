@@ -1,6 +1,6 @@
 import { DiffsHighlighter, getSharedHighlighter, SupportedLanguages } from "@pierre/diffs";
 import { CheckIcon, CopyIcon } from "lucide-react";
-import type { ServerProviderSkill } from "@s3tools/contracts";
+import type { ServerProviderSkill } from "@ryco/contracts";
 import React, {
   Children,
   Suspense,

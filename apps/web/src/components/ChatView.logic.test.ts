@@ -1,4 +1,4 @@
-import { scopeThreadRef } from "@s3tools/client-runtime";
+import { scopeThreadRef } from "@ryco/client-runtime";
 import {
   EnvironmentId,
   MessageId,
@@ -7,7 +7,7 @@ import {
   ProviderInstanceId,
   ThreadId,
   TurnId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type EnvironmentState, useStore } from "../store";
 import { type ChatMessage, type Thread } from "../types";

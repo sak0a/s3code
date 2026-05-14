@@ -4,7 +4,7 @@ import {
   type AtlassianConnectionKind,
   type AtlassianConnectionStatus,
   type AtlassianConnectionId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import { Effect, Layer, Option, Schema } from "effect";
 

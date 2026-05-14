@@ -7,8 +7,8 @@ import {
   type ProviderInstanceId,
   type ServerProvider,
   type ServerProviderModel,
-} from "@s3tools/contracts";
-import { createModelCapabilities, normalizeModelSlug } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { createModelCapabilities, normalizeModelSlug } from "@ryco/shared/model";
 
 const EMPTY_CAPABILITIES: ModelCapabilities = createModelCapabilities({
   optionDescriptors: [],

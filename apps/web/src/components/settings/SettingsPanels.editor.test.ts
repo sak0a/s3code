@@ -1,4 +1,4 @@
-import { EDITORS, type EditorId } from "@s3tools/contracts";
+import { EDITORS, type EditorId } from "@ryco/contracts";
 import { describe, expect, it } from "vitest";
 
 import { EDITOR_ICONS, getEditorLabel } from "./SettingsPanels.editor";

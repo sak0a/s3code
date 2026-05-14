@@ -1,4 +1,4 @@
-import type { EnvironmentId, EnvironmentApi } from "@s3tools/contracts";
+import type { EnvironmentId, EnvironmentApi } from "@ryco/contracts";
 
 import type { WsRpcClient } from "./rpc/wsRpcClient";
 import { readEnvironmentConnection } from "./environments/runtime";

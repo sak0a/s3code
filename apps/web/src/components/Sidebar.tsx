@@ -75,20 +75,20 @@ import {
   type ThreadEnvMode,
   ThreadId,
   WorktreeId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   parseScopedThreadKey,
   scopedProjectKey,
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@s3tools/client-runtime";
+} from "@ryco/client-runtime";
 import { Link, useNavigate, useParams, useRouter } from "@tanstack/react-router";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type SidebarProjectSortOrder,
   type SidebarThreadSortOrder,
-} from "@s3tools/contracts/settings";
+} from "@ryco/contracts/settings";
 import { usePrimaryEnvironmentId } from "../environments/primary";
 import { isElectron } from "../env";
 import { APP_STAGE_LABEL, APP_VERSION } from "../branding";
@@ -1597,7 +1597,7 @@ function ProjectSettingsLocationSection(props: {
   onPickWorkspaceRoot: () => void;
   onSave: () => void;
 }) {
-  const worktreesPath = `~/.s3code/worktrees/${props.projectId}/`;
+  const worktreesPath = `~/.ryco/worktrees/${props.projectId}/`;
   return (
     <div className="space-y-6">
       <section className="space-y-1.5">

@@ -1,4 +1,4 @@
-import type { ChangeRequest } from "@s3tools/contracts";
+import type { ChangeRequest } from "@ryco/contracts";
 import { DateTime, Option } from "effect";
 import { memo } from "react";
 import { GitBranchIcon, MessageSquareIcon } from "lucide-react";

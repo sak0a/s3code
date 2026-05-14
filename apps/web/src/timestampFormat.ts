@@ -1,4 +1,4 @@
-import { type TimestampFormat } from "@s3tools/contracts/settings";
+import { type TimestampFormat } from "@ryco/contracts/settings";
 
 export function getTimestampFormatOptions(
   timestampFormat: TimestampFormat,

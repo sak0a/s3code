@@ -6,14 +6,14 @@ import {
   ProviderInstanceId,
   ProviderDriverKind,
   ThreadId,
-} from "@s3tools/contracts";
-import { scopedThreadKey, scopeThreadRef } from "@s3tools/client-runtime";
+} from "@ryco/contracts";
+import { scopedThreadKey, scopeThreadRef } from "@ryco/client-runtime";
 import "../../index.css";
 
 import { page } from "vitest/browser";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
-import { createModelCapabilities, createModelSelection } from "@s3tools/shared/model";
+import { createModelCapabilities, createModelSelection } from "@ryco/shared/model";
 
 import { CompactComposerControlsMenu } from "./CompactComposerControlsMenu";
 import { TraitsMenuContent } from "./TraitsPicker";

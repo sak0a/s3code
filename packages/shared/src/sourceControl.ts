@@ -1,4 +1,4 @@
-import type { SourceControlProviderInfo, SourceControlProviderKind } from "@s3tools/contracts";
+import type { SourceControlProviderInfo, SourceControlProviderKind } from "@ryco/contracts";
 
 export interface ChangeRequestPresentation {
   readonly icon: "github" | "gitlab" | "forgejo" | "azure-devops" | "bitbucket" | "change-request";

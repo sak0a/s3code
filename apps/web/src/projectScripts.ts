@@ -3,7 +3,7 @@ import {
   SCRIPT_RUN_COMMAND_PATTERN,
   type KeybindingCommand,
   type ProjectScript,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Schema } from "effect";
 
 function normalizeScriptId(value: string): string {

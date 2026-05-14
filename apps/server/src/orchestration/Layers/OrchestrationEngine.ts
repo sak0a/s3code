@@ -4,8 +4,8 @@ import type {
   ProjectId,
   ThreadId,
   WorktreeId,
-} from "@s3tools/contracts";
-import { OrchestrationCommand } from "@s3tools/contracts";
+} from "@ryco/contracts";
+import { OrchestrationCommand } from "@ryco/contracts";
 import {
   Cause,
   Deferred,

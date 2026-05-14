@@ -22,7 +22,7 @@ import {
   type McpProviderSupport,
   type McpServer,
   type McpWorkspace,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import { cn } from "../../lib/utils";
 import { ensureLocalApi } from "../../localApi";
@@ -304,7 +304,7 @@ function McpServerDialog({
                 <Textarea
                   value={form.httpHeadersText}
                   onChange={(event) => setField("httpHeadersText", event.target.value)}
-                  placeholder="X-Client=s3code"
+                  placeholder="X-Client=ryco"
                   spellCheck={false}
                 />
                 <TextareaHelp>Static headers as KEY=VALUE lines.</TextareaHelp>

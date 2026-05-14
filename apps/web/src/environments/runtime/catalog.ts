@@ -1,11 +1,11 @@
-import { getKnownEnvironmentHttpBaseUrl } from "@s3tools/client-runtime";
+import { getKnownEnvironmentHttpBaseUrl } from "@ryco/client-runtime";
 import type {
   AuthSessionRole,
   EnvironmentId,
   ExecutionEnvironmentDescriptor,
   PersistedSavedEnvironmentRecord,
   ServerConfig,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { create } from "zustand";
 
 import { ensureLocalApi } from "../../localApi";

@@ -28,7 +28,7 @@
  *
  * @module provider/Services/ProviderInstanceRegistryMutator
  */
-import type { ProviderInstanceConfigMap } from "@s3tools/contracts";
+import type { ProviderInstanceConfigMap } from "@ryco/contracts";
 import { Context } from "effect";
 import type { Effect } from "effect";
 

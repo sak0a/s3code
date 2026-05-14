@@ -1,9 +1,9 @@
-import { scopedProjectKey, scopeProjectRef } from "@s3tools/client-runtime";
+import { scopedProjectKey, scopeProjectRef } from "@ryco/client-runtime";
 import {
   DEFAULT_AGENT_TOKEN_MODE,
   DEFAULT_RUNTIME_MODE,
   type ScopedProjectRef,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { useParams, useRouter } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";

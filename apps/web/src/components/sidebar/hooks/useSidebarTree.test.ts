@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@s3tools/contracts";
+import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@ryco/contracts";
 import { DEFAULT_INTERACTION_MODE, type Project } from "../../../types";
 import { composeSidebarTree, type SidebarTreeThread, type SidebarWorktree } from "./useSidebarTree";
 
@@ -174,7 +174,7 @@ describe("composeSidebarTree", () => {
         makeThread({
           id: ThreadId.make("thread-worktree"),
           branch: "feature/materialized",
-          worktreePath: "/repo/.s3code/worktrees/feature-materialized",
+          worktreePath: "/repo/.ryco/worktrees/feature-materialized",
         }),
       ],
       worktrees: [],
@@ -182,7 +182,7 @@ describe("composeSidebarTree", () => {
 
     const worktree = tree.projects[0]?.worktrees[0];
     expect(worktree?.worktree.origin).toBe("branch");
-    expect(worktree?.worktree.worktreePath).toBe("/repo/.s3code/worktrees/feature-materialized");
+    expect(worktree?.worktree.worktreePath).toBe("/repo/.ryco/worktrees/feature-materialized");
     expect(worktree?.sessions.map((thread) => thread.id)).toEqual([
       ThreadId.make("thread-worktree"),
     ]);

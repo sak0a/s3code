@@ -1,5 +1,5 @@
-import { scopeProjectRef } from "@s3tools/client-runtime";
-import type { EnvironmentId, ScopedProjectRef } from "@s3tools/contracts";
+import { scopeProjectRef } from "@ryco/client-runtime";
+import type { EnvironmentId, ScopedProjectRef } from "@ryco/contracts";
 import {
   deriveLogicalProjectKeyFromSettings,
   derivePhysicalProjectKey,

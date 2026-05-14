@@ -2,8 +2,8 @@ import { it } from "@effect/vitest";
 import { Effect, PubSub, Result, Stream } from "effect";
 import { describe, expect } from "vitest";
 
-import { ProviderInstanceId } from "@s3tools/contracts";
-import { createModelSelection } from "@s3tools/shared/model";
+import { ProviderInstanceId } from "@ryco/contracts";
+import { createModelSelection } from "@ryco/shared/model";
 
 import type { ProviderInstance } from "../provider/ProviderDriver.ts";
 import type { ProviderInstanceRegistryShape } from "../provider/Services/ProviderInstanceRegistry.ts";

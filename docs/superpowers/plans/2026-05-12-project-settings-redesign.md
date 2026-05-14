@@ -85,7 +85,7 @@ The `withDecodingDefault(() => [])` ensures existing persisted snapshots without
 
 - [ ] **Step 2: Build the contracts package to type-check the change**
 
-Run: `bun --filter @s3tools/contracts build` (or `bun run -F @s3tools/contracts build`)
+Run: `bun --filter @ryco/contracts build` (or `bun run -F @ryco/contracts build`)
 Expected: SUCCESS
 
 - [ ] **Step 3: Commit**
@@ -131,7 +131,7 @@ export const OrchestrationProject = Schema.Struct({
 
 - [ ] **Step 2: Build to verify**
 
-Run: `bun --filter @s3tools/contracts build`
+Run: `bun --filter @ryco/contracts build`
 Expected: SUCCESS
 
 - [ ] **Step 3: Commit**
@@ -185,7 +185,7 @@ export const ProjectMetaUpdatedPayload = Schema.Struct({
 
 - [ ] **Step 2: Build to verify**
 
-Run: `bun --filter @s3tools/contracts build`
+Run: `bun --filter @ryco/contracts build`
 Expected: SUCCESS
 
 - [ ] **Step 3: Commit**
@@ -252,7 +252,7 @@ Locate the `OrchestrationEvent` union (search for `project.deleted` near line 12
 
 - [ ] **Step 4: Build to verify**
 
-Run: `bun --filter @s3tools/contracts build`
+Run: `bun --filter @ryco/contracts build`
 Expected: SUCCESS
 
 - [ ] **Step 5: Commit**
@@ -286,8 +286,8 @@ it.effect("populates all remotes in addition to the auto-picked locator", () =>
     });
 
     yield* git(cwd, ["init"]);
-    yield* git(cwd, ["remote", "add", "origin", "git@github.com:sak0a/s3code.git"]);
-    yield* git(cwd, ["remote", "add", "upstream", "git@github.com:S3Tools/s3code.git"]);
+    yield* git(cwd, ["remote", "add", "origin", "git@github.com:sak0a/ryco.git"]);
+    yield* git(cwd, ["remote", "add", "upstream", "git@github.com:Ryco/ryco.git"]);
 
     const resolver = yield* RepositoryIdentityResolver;
     const identity = yield* resolver.resolve(cwd);
@@ -298,7 +298,7 @@ it.effect("populates all remotes in addition to the auto-picked locator", () =>
     const remoteNames = (identity?.remotes ?? []).map((remote) => remote.name).toSorted();
     expect(remoteNames).toEqual(["origin", "upstream"]);
     const origin = identity?.remotes.find((remote) => remote.name === "origin");
-    expect(origin?.ownerRepo).toBe("sak0a/s3code");
+    expect(origin?.ownerRepo).toBe("sak0a/ryco");
     expect(origin?.provider).toBe("github");
   }).pipe(Effect.provide(RepositoryIdentityResolverLive)),
 );
@@ -436,7 +436,7 @@ Add the new migration to that registry in numerical order (immediately after `03
 
 - [ ] **Step 3: Build the server**
 
-Run: `bun --filter @s3tools/server build`
+Run: `bun --filter @ryco/server build`
 Expected: SUCCESS
 
 - [ ] **Step 4: Commit**
@@ -484,7 +484,7 @@ preferredRemoteName: Schema.NullOr(Schema.String),
 
 - [ ] **Step 3: Build**
 
-Run: `bun --filter @s3tools/server build`
+Run: `bun --filter @ryco/server build`
 Expected: SUCCESS
 
 - [ ] **Step 4: Commit**
@@ -528,7 +528,7 @@ If there are sibling mappers for the full-`OrchestrationProject` (not just the s
 
 - [ ] **Step 2: Build**
 
-Run: `bun --filter @s3tools/server build`
+Run: `bun --filter @ryco/server build`
 Expected: SUCCESS
 
 - [ ] **Step 3: Commit**
@@ -567,7 +567,7 @@ Add to the project update spread inside the `project.meta-updated` case:
 
 - [ ] **Step 3: Build**
 
-Run: `bun --filter @s3tools/server build`
+Run: `bun --filter @ryco/server build`
 Expected: SUCCESS
 
 - [ ] **Step 4: Commit**
@@ -635,11 +635,11 @@ case "project.avatar-set":
   );
 ```
 
-Make sure `ProjectAvatarSetPayload` is imported at the top of the file (same place `ProjectMetaUpdatedPayload` is imported from `@s3tools/contracts`).
+Make sure `ProjectAvatarSetPayload` is imported at the top of the file (same place `ProjectMetaUpdatedPayload` is imported from `@ryco/contracts`).
 
 - [ ] **Step 3: Build**
 
-Run: `bun --filter @s3tools/server build`
+Run: `bun --filter @ryco/server build`
 Expected: SUCCESS
 
 - [ ] **Step 4: Commit**
@@ -712,7 +712,7 @@ it.layer(NodeServices.layer)("ProjectAvatarStoreLive", (it) => {
 // apps/server/src/project/Services/ProjectAvatarStore.ts
 import { Context } from "effect";
 import type { Effect } from "effect";
-import type { ProjectId } from "@s3tools/contracts";
+import type { ProjectId } from "@ryco/contracts";
 
 export interface ProjectAvatarStoreShape {
   readonly write: (input: {
@@ -731,7 +731,7 @@ export class ProjectAvatarStoreError extends Error {
 }
 
 export const ProjectAvatarStore = Context.GenericTag<ProjectAvatarStoreShape>(
-  "@s3tools/server/ProjectAvatarStore",
+  "@ryco/server/ProjectAvatarStore",
 );
 ```
 
@@ -803,7 +803,7 @@ export const ProjectAvatarStoreLive = (options: { readonly dataDir: string }) =>
   Layer.effect(ProjectAvatarStore, makeProjectAvatarStore(options));
 ```
 
-If `sharp` is not yet a dependency, install it: `bun add -F @s3tools/server sharp`.
+If `sharp` is not yet a dependency, install it: `bun add -F @ryco/server sharp`.
 
 - [ ] **Step 4: Run the test**
 
@@ -904,7 +904,7 @@ Add to the imports at the top of `http.ts`:
 
 ```typescript
 import { ProjectAvatarStore } from "./project/Services/ProjectAvatarStore.ts";
-import type { ProjectId } from "@s3tools/contracts";
+import type { ProjectId } from "@ryco/contracts";
 import * as Schema from "effect/Schema";
 ```
 
@@ -922,7 +922,7 @@ Also include `ProjectAvatarStoreLive({ dataDir: <server-data-dir> })` in the dep
 
 - [ ] **Step 3: Build**
 
-Run: `bun --filter @s3tools/server build`
+Run: `bun --filter @ryco/server build`
 Expected: SUCCESS
 
 - [ ] **Step 4: Smoke test with curl**
@@ -930,7 +930,7 @@ Expected: SUCCESS
 In one terminal:
 
 ```bash
-bun --filter @s3tools/server dev
+bun --filter @ryco/server dev
 ```
 
 In another, create a small test PNG (`/tmp/test.png`), then:
@@ -1021,7 +1021,7 @@ function mapProject(
 
 - [ ] **Step 3: Build the web app**
 
-Run: `bun --filter @s3tools/web typecheck`
+Run: `bun --filter @ryco/web typecheck`
 Expected: SUCCESS
 
 - [ ] **Step 4: Commit**
@@ -1040,7 +1040,7 @@ git commit -m "feat(web): map customAvatarContentHash and preferredRemoteName on
 - [ ] **Step 1: Extend props and resolution chain**
 
 ```typescript
-import type { EnvironmentId, ProjectId } from "@s3tools/contracts";
+import type { EnvironmentId, ProjectId } from "@ryco/contracts";
 import { FolderIcon } from "lucide-react";
 import { useState } from "react";
 import { resolveEnvironmentHttpUrl } from "../environments/runtime";
@@ -1131,7 +1131,7 @@ Call sites that only have a `cwd` (e.g., a draft project) can omit `projectId` a
 
 - [ ] **Step 3: Build**
 
-Run: `bun --filter @s3tools/web typecheck`
+Run: `bun --filter @ryco/web typecheck`
 Expected: SUCCESS
 
 - [ ] **Step 4: Commit**
@@ -1190,7 +1190,7 @@ Update every callsite by adding the second argument (search for `resolveProjectR
 
 - [ ] **Step 3: Build**
 
-Run: `bun --filter @s3tools/web typecheck`
+Run: `bun --filter @ryco/web typecheck`
 Expected: SUCCESS
 
 - [ ] **Step 4: Commit**
@@ -1566,7 +1566,7 @@ function ProjectSettingsLocationSection(props: {
   onSave: () => void;
 }) {
   const preview = `${props.workspaceRoot || "<project-root>"}/${
-    props.projectMetadataDir || ".s3code"
+    props.projectMetadataDir || ".ryco"
   }/worktrees`;
   return (
     <div className="space-y-6">
@@ -1608,7 +1608,7 @@ function ProjectSettingsLocationSection(props: {
           id="project-metadata-dir"
           aria-label="Metadata folder"
           value={props.projectMetadataDir}
-          placeholder=".s3code"
+          placeholder=".ryco"
           onChange={(event) => props.onProjectMetadataDirChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
@@ -1673,7 +1673,7 @@ Delete `ProjectPathRow` (lines 1528–1552 of the original file) since the new d
 
 - [ ] **Step 4: Build the web app**
 
-Run: `bun --filter @s3tools/web typecheck`
+Run: `bun --filter @ryco/web typecheck`
 Expected: SUCCESS (some downstream call-site errors are expected and addressed in Task 17)
 
 - [ ] **Step 5: Commit**
@@ -1874,7 +1874,7 @@ Search for and delete:
 
 - [ ] **Step 8: Build**
 
-Run: `bun --filter @s3tools/web typecheck`
+Run: `bun --filter @ryco/web typecheck`
 Expected: SUCCESS
 
 - [ ] **Step 9: Commit**

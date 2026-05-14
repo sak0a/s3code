@@ -5,7 +5,7 @@ import {
   AtlassianConnectionStatus,
   AtlassianProduct,
   IsoDateTime,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Context, Option, Schema } from "effect";
 import type { Effect } from "effect";
 

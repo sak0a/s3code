@@ -21,20 +21,20 @@ import {
   RuntimeMode,
   AgentTokenMode,
   TerminalOpenInput,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   parseScopedThreadKey,
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@s3tools/client-runtime";
+} from "@ryco/client-runtime";
 import {
   applyClaudePromptEffortPrefix,
   createModelSelection,
   resolvePromptInjectedEffort,
-} from "@s3tools/shared/model";
-import { projectScriptCwd, projectScriptRuntimeEnv } from "@s3tools/shared/projectScripts";
-import { truncate } from "@s3tools/shared/String";
+} from "@ryco/shared/model";
+import { projectScriptCwd, projectScriptRuntimeEnv } from "@ryco/shared/projectScripts";
+import { truncate } from "@ryco/shared/String";
 import { Debouncer } from "@tanstack/react-pacer";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -113,7 +113,7 @@ import {
 import { useTheme } from "../hooks/useTheme";
 import { useTurnDiffSummaries } from "../hooks/useTurnDiffSummaries";
 import { useCommandPaletteStore } from "../commandPaletteStore";
-import { buildTemporaryWorktreeBranchName } from "@s3tools/shared/git";
+import { buildTemporaryWorktreeBranchName } from "@ryco/shared/git";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY } from "../rightPanelLayout";
 import { BranchToolbar } from "./BranchToolbar";

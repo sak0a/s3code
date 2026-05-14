@@ -13,7 +13,7 @@ import {
   ThreadId,
   TurnId,
   IsoDateTime,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Schema, Context } from "effect";
 import type { Option } from "effect";
 import type { Effect } from "effect";

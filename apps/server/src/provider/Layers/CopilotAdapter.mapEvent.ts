@@ -3,7 +3,7 @@ import {
   TurnId,
   type ProviderRuntimeEvent,
   type UserInputQuestion,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import type { SessionEvent } from "@github/copilot-sdk";
 import { Effect } from "effect";
 

@@ -1,4 +1,4 @@
-import { ThreadId } from "@s3tools/contracts";
+import { ThreadId } from "@ryco/contracts";
 import { describe, expect, it } from "vitest";
 
 import {

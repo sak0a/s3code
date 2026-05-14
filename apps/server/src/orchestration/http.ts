@@ -3,7 +3,7 @@ import {
   OrchestrationDispatchCommandError,
   OrchestrationGetSnapshotError,
   type OrchestrationReadModel,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 

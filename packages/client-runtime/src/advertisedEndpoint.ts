@@ -5,7 +5,7 @@ import type {
   AdvertisedEndpointReachability,
   AdvertisedEndpointSource,
   AdvertisedEndpointStatus,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 export interface CreateAdvertisedEndpointInput {
   readonly id: string;

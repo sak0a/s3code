@@ -1,4 +1,4 @@
-import type { SourceControlIssueComment, SourceControlReviewState } from "@s3tools/contracts";
+import type { SourceControlIssueComment, SourceControlReviewState } from "@ryco/contracts";
 import {
   CheckCircle2Icon,
   CodeIcon,

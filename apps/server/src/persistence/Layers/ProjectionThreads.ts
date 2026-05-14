@@ -14,7 +14,7 @@ import {
   SetProjectionThreadManualPositionInput,
   type ProjectionThreadRepositoryShape,
 } from "../Services/ProjectionThreads.ts";
-import { DEFAULT_AGENT_TOKEN_MODE, ModelSelection } from "@s3tools/contracts";
+import { DEFAULT_AGENT_TOKEN_MODE, ModelSelection } from "@ryco/contracts";
 
 const ProjectionThreadDbRow = ProjectionThread.mapFields(
   Struct.assign({

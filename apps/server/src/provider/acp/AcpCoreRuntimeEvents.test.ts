@@ -1,4 +1,4 @@
-import { ProviderDriverKind, RuntimeRequestId, TurnId } from "@s3tools/contracts";
+import { ProviderDriverKind, RuntimeRequestId, TurnId } from "@ryco/contracts";
 import { describe, expect, it } from "vitest";
 
 import {

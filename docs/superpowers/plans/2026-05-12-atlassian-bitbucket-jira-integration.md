@@ -369,7 +369,7 @@ If OAuth app credentials are not configured, the Settings UI should show manual 
 - [ ] Implement credential resolution order:
   1. project-linked Atlassian connection with Bitbucket capability
   2. default stored Bitbucket connection
-  3. env fallback from current `S3CODE_BITBUCKET_*` vars
+  3. env fallback from current `RYCO_BITBUCKET_*` vars
   4. unauthenticated
 - [ ] Expose credential shape:
   - bearer token
@@ -394,7 +394,7 @@ If OAuth app credentials are not configured, the Settings UI should show manual 
   - valid credential -> authenticated
   - invalid credential -> unauthenticated with clear detail
   - configured but probe failed for network reasons -> unknown
-- [ ] Preserve `S3CODE_BITBUCKET_API_BASE_URL`.
+- [ ] Preserve `RYCO_BITBUCKET_API_BASE_URL`.
 - [ ] Tests:
   - bearer auth header
   - basic auth header
@@ -1052,7 +1052,7 @@ Recent comments:
 
 - Same docs or release notes location if one exists.
 
-- [ ] State that existing `S3CODE_BITBUCKET_*` env vars continue to work.
+- [ ] State that existing `RYCO_BITBUCKET_*` env vars continue to work.
 - [ ] Explain Settings-stored credentials take precedence over env fallback.
 - [ ] Explain Jira workflow actions are opt-in per project.
 

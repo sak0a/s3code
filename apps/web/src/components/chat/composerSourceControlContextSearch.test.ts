@@ -1,6 +1,6 @@
 import { Option } from "effect";
 import { describe, expect, it } from "vitest";
-import type { SourceControlIssueSummary } from "@s3tools/contracts";
+import type { SourceControlIssueSummary } from "@ryco/contracts";
 import { searchSourceControlSummaries } from "./composerSourceControlContextSearch";
 
 const summaries: SourceControlIssueSummary[] = [

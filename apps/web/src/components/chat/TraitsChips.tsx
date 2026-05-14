@@ -4,12 +4,12 @@ import {
   type ProviderOptionSelection,
   type ScopedThreadRef,
   type ServerProviderModel,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   buildProviderOptionSelectionsFromDescriptors,
   getProviderOptionDescriptors,
   isClaudeUltrathinkPrompt,
-} from "@s3tools/shared/model";
+} from "@ryco/shared/model";
 import { memo, useCallback } from "react";
 
 import { useComposerDraftStore, type DraftId } from "../../composerDraftStore";

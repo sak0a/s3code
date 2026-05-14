@@ -1,7 +1,7 @@
 import "../../index.css";
 
-import { ProviderDriverKind } from "@s3tools/contracts";
-import { createModelCapabilities } from "@s3tools/shared/model";
+import { ProviderDriverKind } from "@ryco/contracts";
+import { createModelCapabilities } from "@ryco/shared/model";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";

@@ -10,7 +10,7 @@ Make multi-terminal usage discoverable and easy to manage:
    button in the top bar so the number of open terminals is visible without
    opening the drawer.
 
-Resolves issue [#21](https://github.com/sak0a/s3code/issues/21).
+Resolves issue [#21](https://github.com/sak0a/ryco/issues/21).
 
 ## Non-goals
 

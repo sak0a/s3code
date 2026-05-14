@@ -19,8 +19,8 @@ import {
   type RuntimeMode,
   ThreadId,
   ProviderInstanceId,
-} from "@s3tools/contracts";
-import { createModelSelection } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { createModelSelection } from "@ryco/shared/model";
 import { assert, describe, it } from "@effect/vitest";
 import { Context, Effect, Fiber, Layer, Random, Schema, Stream } from "effect";
 

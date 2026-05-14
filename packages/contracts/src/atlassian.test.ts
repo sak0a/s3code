@@ -107,7 +107,7 @@ describe("Atlassian contracts", () => {
       jiraSiteUrl: "https://acme.atlassian.net",
       jiraProjectKeys: ["S3", "OPS"],
       bitbucketWorkspace: "acme",
-      bitbucketRepoSlug: "s3code",
+      bitbucketRepoSlug: "ryco",
       defaultIssueTypeName: "Task",
       branchNameTemplate: "{key}-{summary}",
       commitMessageTemplate: "{key}: {summary}",
@@ -119,6 +119,6 @@ describe("Atlassian contracts", () => {
     });
 
     expect(decoded.jiraProjectKeys).toEqual(["S3", "OPS"]);
-    expect(decoded.bitbucketRepoSlug).toBe("s3code");
+    expect(decoded.bitbucketRepoSlug).toBe("ryco");
   });
 });

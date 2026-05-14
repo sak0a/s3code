@@ -3,7 +3,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Duration, Effect, Layer, Option, Ref } from "effect";
 import { TestClock } from "effect/testing";
 import { ChildProcessSpawner } from "effect/unstable/process";
-import { VcsProcessSpawnError } from "@s3tools/contracts";
+import { VcsProcessSpawnError } from "@ryco/contracts";
 
 import { ServerConfig } from "../config.ts";
 import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
@@ -124,7 +124,7 @@ Logged in to github.com account juliusmarminge (keyring)
             account: Option.none(),
             host: Option.some("bitbucket.org"),
             detail: Option.some(
-              "Set S3CODE_BITBUCKET_EMAIL and S3CODE_BITBUCKET_API_TOKEN, or S3CODE_BITBUCKET_ACCESS_TOKEN.",
+              "Set RYCO_BITBUCKET_EMAIL and RYCO_BITBUCKET_API_TOKEN, or RYCO_BITBUCKET_ACCESS_TOKEN.",
             ),
           }),
         },

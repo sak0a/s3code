@@ -1,4 +1,4 @@
-import { ProjectId } from "@s3tools/contracts";
+import { ProjectId } from "@ryco/contracts";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 
@@ -115,7 +115,7 @@ layer("AtlassianConnectionService", (it) => {
         jiraSiteUrl: null,
         jiraProjectKeys: ["S3"],
         bitbucketWorkspace: "acme",
-        bitbucketRepoSlug: "s3code",
+        bitbucketRepoSlug: "ryco",
         defaultIssueTypeName: "Task",
         branchNameTemplate: "{key}-{summary}",
         commitMessageTemplate: "{key}: {summary}",
@@ -127,7 +127,7 @@ layer("AtlassianConnectionService", (it) => {
 
       assert.equal(saved.bitbucketConnectionId, connection.connectionId);
       assert.deepStrictEqual(loaded?.jiraProjectKeys, ["S3"]);
-      assert.equal(loaded?.bitbucketRepoSlug, "s3code");
+      assert.equal(loaded?.bitbucketRepoSlug, "ryco");
     }),
   );
 });

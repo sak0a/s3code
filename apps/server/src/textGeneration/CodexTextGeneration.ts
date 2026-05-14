@@ -1,13 +1,13 @@
 import { Effect, FileSystem, Option, Path, Random, Schema, Scope, Stream } from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
-import { type CodexSettings, type ModelSelection } from "@s3tools/contracts";
-import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@s3tools/shared/git";
+import { type CodexSettings, type ModelSelection } from "@ryco/contracts";
+import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@ryco/shared/git";
 
 import { resolveAttachmentPath } from "../attachmentStore.ts";
 import { ServerConfig } from "../config.ts";
 import { expandHomePath } from "../pathExpansion.ts";
-import { TextGenerationError } from "@s3tools/contracts";
+import { TextGenerationError } from "@ryco/contracts";
 import {
   type BranchNameGenerationInput,
   type ThreadTitleGenerationResult,
@@ -29,7 +29,7 @@ import {
 import {
   getModelSelectionBooleanOptionValue,
   getModelSelectionStringOptionValue,
-} from "@s3tools/shared/model";
+} from "@ryco/shared/model";
 
 const CODEX_GIT_TEXT_GENERATION_REASONING_EFFORT = "low";
 const CODEX_TIMEOUT_MS = 180_000;
@@ -74,7 +74,7 @@ export const makeCodexTextGeneration = Effect.fn("makeCodexTextGeneration")(func
       const tempFileId = yield* Random.nextUUIDv4;
       return yield* fileSystem
         .makeTempFileScoped({
-          prefix: `s3code-${prefix}-${process.pid}-${tempFileId}.tmp`,
+          prefix: `ryco-${prefix}-${process.pid}-${tempFileId}.tmp`,
         })
         .pipe(Effect.tap((filePath) => fileSystem.writeFileString(filePath, content)));
     }).pipe(

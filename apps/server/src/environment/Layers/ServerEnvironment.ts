@@ -1,4 +1,4 @@
-import { EnvironmentId, type ExecutionEnvironmentDescriptor } from "@s3tools/contracts";
+import { EnvironmentId, type ExecutionEnvironmentDescriptor } from "@ryco/contracts";
 import { Effect, FileSystem, Layer, Path, Random } from "effect";
 
 import { ServerConfig } from "../../config.ts";

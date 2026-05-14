@@ -64,7 +64,7 @@ function cleanupStaleDevApps() {
     return;
   }
 
-  spawnSync("pkill", ["-f", "--", `--s3code-dev-root=${desktopDir}`], { stdio: "ignore" });
+  spawnSync("pkill", ["-f", "--", `--ryco-dev-root=${desktopDir}`], { stdio: "ignore" });
 }
 
 function startApp() {
@@ -75,7 +75,7 @@ function startApp() {
   const electronPath = resolveElectronPath();
   console.log(`[desktop-dev] launching electron path=${electronPath}`);
 
-  const app = spawn(electronPath, [`--s3code-dev-root=${desktopDir}`, "dist-electron/main.cjs"], {
+  const app = spawn(electronPath, [`--ryco-dev-root=${desktopDir}`, "dist-electron/main.cjs"], {
     cwd: desktopDir,
     env: childEnv,
     stdio: "inherit",

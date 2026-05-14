@@ -6,7 +6,7 @@ import { Effect, Layer, Schema } from "effect";
 import { beforeEach } from "vitest";
 import type { OpencodeClient } from "@opencode-ai/sdk/v2";
 
-import { OpenCodeSettings } from "@s3tools/contracts";
+import { OpenCodeSettings } from "@ryco/contracts";
 import { ServerConfig } from "../../config.ts";
 import {
   OpenCodeRuntime,

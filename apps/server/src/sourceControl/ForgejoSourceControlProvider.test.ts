@@ -22,7 +22,7 @@ it.effect("maps Forgejo PR summaries into provider-neutral change requests", () 
         Effect.succeed({
           number: 42,
           title: "Add Forgejo provider",
-          url: "https://codeberg.org/pingdotgg/s3code/pulls/42",
+          url: "https://codeberg.org/pingdotgg/ryco/pulls/42",
           baseRefName: "main",
           headRefName: "feature/source-control",
           headLabel: "fork:feature/source-control",
@@ -32,10 +32,10 @@ it.effect("maps Forgejo PR summaries into provider-neutral change requests", () 
           isDraft: false,
           author: "alice",
           commentsCount: 2,
-          headRepositoryNameWithOwner: "fork/s3code",
+          headRepositoryNameWithOwner: "fork/ryco",
           headRepositoryOwnerLogin: "fork",
-          headRepositoryCloneUrl: "https://codeberg.org/fork/s3code.git",
-          headRepositorySshUrl: "git@codeberg.org:fork/s3code.git",
+          headRepositoryCloneUrl: "https://codeberg.org/fork/ryco.git",
+          headRepositorySshUrl: "git@codeberg.org:fork/ryco.git",
         }),
     });
 
@@ -48,7 +48,7 @@ it.effect("maps Forgejo PR summaries into provider-neutral change requests", () 
       provider: "forgejo",
       number: 42,
       title: "Add Forgejo provider",
-      url: "https://codeberg.org/pingdotgg/s3code/pulls/42",
+      url: "https://codeberg.org/pingdotgg/ryco/pulls/42",
       baseRefName: "main",
       headRefName: "feature/source-control",
       state: "open",
@@ -57,7 +57,7 @@ it.effect("maps Forgejo PR summaries into provider-neutral change requests", () 
       isDraft: false,
       author: "alice",
       commentsCount: 2,
-      headRepositoryNameWithOwner: "fork/s3code",
+      headRepositoryNameWithOwner: "fork/ryco",
       headRepositoryOwnerLogin: "fork",
     });
   }),

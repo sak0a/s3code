@@ -1,4 +1,4 @@
-import type { McpServer, McpServerConfig, McpTransport } from "@s3tools/contracts";
+import type { McpServer, McpServerConfig, McpTransport } from "@ryco/contracts";
 
 export const MCP_SERVER_NAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
 

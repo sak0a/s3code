@@ -23,7 +23,7 @@ import { decodeOtlpTraceRecords } from "./observability/TraceRecord.ts";
 import { BrowserTraceCollector } from "./observability/Services/BrowserTraceCollector.ts";
 import { ProjectFaviconResolver } from "./project/Services/ProjectFaviconResolver.ts";
 import { ProjectAvatarStore } from "./project/Services/ProjectAvatarStore.ts";
-import type { ProjectId } from "@s3tools/contracts";
+import type { ProjectId } from "@ryco/contracts";
 import { ServerAuth } from "./auth/Services/ServerAuth.ts";
 import { respondToAuthError } from "./auth/http.ts";
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment.ts";

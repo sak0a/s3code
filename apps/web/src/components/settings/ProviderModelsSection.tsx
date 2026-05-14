@@ -15,8 +15,8 @@ import {
   ProviderDriverKind,
   type ProviderInstanceId,
   type ServerProviderModel,
-} from "@s3tools/contracts";
-import { normalizeModelSlug } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { normalizeModelSlug } from "@ryco/shared/model";
 
 import { cn } from "../../lib/utils";
 import { sortModelsForProviderInstance } from "../../modelOrdering";

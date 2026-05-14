@@ -25,7 +25,7 @@ import {
   ThreadId,
   ProviderSendTurnInput,
   DEFAULT_AGENT_TOKEN_MODE,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect, Exit, Fiber, FileSystem, Queue, Schema, Scope, Stream } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import * as CodexErrors from "effect-codex-app-server/errors";
@@ -34,8 +34,8 @@ import * as EffectCodexSchema from "effect-codex-app-server/schema";
 import {
   getModelSelectionBooleanOptionValue,
   getModelSelectionStringOptionValue,
-} from "@s3tools/shared/model";
-import { formatSourceControlContextsForAgent } from "@s3tools/shared/sourceControlContextFormatter";
+} from "@ryco/shared/model";
+import { formatSourceControlContextsForAgent } from "@ryco/shared/sourceControlContextFormatter";
 
 import {
   ProviderAdapterRequestError,
@@ -89,7 +89,7 @@ function formatCodexRuntimeErrorDetail(error: Error): string {
   if (!serviceTierSchemaMismatch) {
     return error.message;
   }
-  return `${error.message}. This usually means the installed Codex CLI returned a newer service tier name than S3Code's generated app-server schema knows about. Rebuild effect-codex-app-server before rebuilding the server bundle.`;
+  return `${error.message}. This usually means the installed Codex CLI returned a newer service tier name than Ryco's generated app-server schema knows about. Rebuild effect-codex-app-server before rebuilding the server bundle.`;
 }
 
 function mapCodexRuntimeError(

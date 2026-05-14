@@ -18,9 +18,9 @@ import {
   WS_METHODS,
   OrchestrationSessionStatus,
   DEFAULT_SERVER_SETTINGS,
-} from "@s3tools/contracts";
-import { scopedThreadKey, scopeThreadRef } from "@s3tools/client-runtime";
-import { createModelCapabilities, createModelSelection } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { scopedThreadKey, scopeThreadRef } from "@ryco/client-runtime";
+import { createModelCapabilities, createModelSelection } from "@ryco/shared/model";
 import { RouterProvider, createMemoryHistory } from "@tanstack/react-router";
 import { Option } from "effect";
 import { HttpResponse, http, ws } from "msw";
@@ -58,7 +58,7 @@ import { useUiStateStore } from "../uiStateStore";
 import { createAuthenticatedSessionHandlers } from "../../test/authHttpHandlers";
 import { BrowserWsRpcHarness, type NormalizedWsRpcRequestBody } from "../../test/wsRpcHarness";
 
-import { DEFAULT_CLIENT_SETTINGS } from "@s3tools/contracts/settings";
+import { DEFAULT_CLIENT_SETTINGS } from "@ryco/contracts/settings";
 
 vi.mock("../lib/gitStatusState", () => ({
   useGitStatus: () => ({ data: null, error: null, cause: null, isPending: false }),
@@ -207,7 +207,7 @@ function createBaseServerConfig(): ServerConfig {
       sessionCookieName: "t3_session",
     },
     cwd: "/repo/project",
-    keybindingsConfigPath: "/repo/project/.s3code-keybindings.json",
+    keybindingsConfigPath: "/repo/project/.ryco-keybindings.json",
     keybindings: [],
     issues: [],
     providers: [
@@ -370,7 +370,7 @@ function createSnapshotForTargetUser(options: {
         id: PROJECT_ID,
         title: "Project",
         workspaceRoot: "/repo/project",
-        projectMetadataDir: ".s3code",
+        projectMetadataDir: ".ryco",
         defaultModelSelection: {
           instanceId: ProviderInstanceId.make("codex"),
           model: "gpt-5",
@@ -874,7 +874,7 @@ function createSnapshotWithSecondaryProject(options?: {
         id: SECOND_PROJECT_ID,
         title: "Docs Portal",
         workspaceRoot: "/repo/clients/docs-portal",
-        projectMetadataDir: ".s3code",
+        projectMetadataDir: ".ryco",
         defaultModelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5" },
         scripts: [],
         createdAt: NOW_ISO,
@@ -2070,10 +2070,10 @@ describe("ChatView timeline estimator parity (full app)", () => {
             cwd: "/repo/project",
             worktreePath: null,
             env: {
-              S3CODE_PROJECT_ROOT: "/repo/project",
+              RYCO_PROJECT_ROOT: "/repo/project",
             },
           });
-          expect(openRequest?.env?.S3CODE_WORKTREE_PATH).toBeUndefined();
+          expect(openRequest?.env?.RYCO_WORKTREE_PATH).toBeUndefined();
         },
         { timeout: 8_000, interval: 16 },
       );
@@ -2287,7 +2287,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
   });
 
   it("falls back to the first installed editor when the stored favorite is unavailable", async () => {
-    localStorage.setItem("s3code:last-editor", JSON.stringify("vscodium"));
+    localStorage.setItem("ryco:last-editor", JSON.stringify("vscodium"));
     setDraftThreadWithoutWorktree();
 
     const mounted = await mountChatView({
@@ -2387,7 +2387,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             threadId: THREAD_ID,
             cwd: "/repo/project",
             env: {
-              S3CODE_PROJECT_ROOT: "/repo/project",
+              RYCO_PROJECT_ROOT: "/repo/project",
             },
           });
         },
@@ -2466,8 +2466,8 @@ describe("ChatView timeline estimator parity (full app)", () => {
             threadId: THREAD_ID,
             cwd: "/repo/worktrees/feature-draft",
             env: {
-              S3CODE_PROJECT_ROOT: "/repo/project",
-              S3CODE_WORKTREE_PATH: "/repo/worktrees/feature-draft",
+              RYCO_PROJECT_ROOT: "/repo/project",
+              RYCO_WORKTREE_PATH: "/repo/worktrees/feature-draft",
             },
           });
         },
@@ -2516,7 +2516,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             pullRequest: {
               number: 1359,
               title: "Add thread archiving and settings navigation",
-              url: "https://github.com/pingdotgg/s3code/pull/1359",
+              url: "https://github.com/sak0a/ryco/pull/1359",
               baseBranch: "main",
               headBranch: "archive-settings-overhaul",
               state: "open",
@@ -2528,7 +2528,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             pullRequest: {
               number: 1359,
               title: "Add thread archiving and settings navigation",
-              url: "https://github.com/pingdotgg/s3code/pull/1359",
+              url: "https://github.com/sak0a/ryco/pull/1359",
               baseBranch: "main",
               headBranch: "archive-settings-overhaul",
               state: "open",
@@ -2681,7 +2681,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
               prepareWorktree: {
                 projectCwd: "/repo/project",
                 baseBranch: "main",
-                branch: expect.stringMatching(/^s3code\/[0-9a-f]{8}$/),
+                branch: expect.stringMatching(/^ryco\/[0-9a-f]{8}$/),
               },
               runSetupScript: true,
             },
@@ -3823,7 +3823,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
 
   it("does not render a thread archive action for the active worktree session row", async () => {
     localStorage.setItem(
-      "s3code:client-settings:v1",
+      "ryco:client-settings:v1",
       JSON.stringify({
         ...DEFAULT_CLIENT_SETTINGS,
         confirmThreadArchive: true,
@@ -3851,7 +3851,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
         document.querySelector(`[data-testid="thread-archive-confirm-${THREAD_ID}"]`),
       ).toBeNull();
     } finally {
-      localStorage.removeItem("s3code:client-settings:v1");
+      localStorage.removeItem("ryco:client-settings:v1");
       await mounted.cleanup();
     }
   });
@@ -3950,7 +3950,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
           thread.id === THREAD_ID
             ? Object.assign({}, thread, {
                 branch: "feature/existing",
-                worktreePath: "/repo/.s3code/worktrees/existing",
+                worktreePath: "/repo/.ryco/worktrees/existing",
               })
             : thread,
         ),
@@ -4473,7 +4473,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             _tag: ORCHESTRATION_WS_METHODS.dispatchCommand,
             type: "project.create",
             workspaceRoot: "~/Development",
-            projectMetadataDir: ".s3code",
+            projectMetadataDir: ".ryco",
             title: "Development",
           });
         },
@@ -4790,7 +4790,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             _tag: ORCHESTRATION_WS_METHODS.dispatchCommand,
             type: "project.create",
             workspaceRoot: "~/Desktop/fresh-project",
-            projectMetadataDir: ".s3code",
+            projectMetadataDir: ".ryco",
             title: "fresh-project",
             createWorkspaceRootIfMissing: true,
           });
@@ -4885,7 +4885,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             _tag: ORCHESTRATION_WS_METHODS.dispatchCommand,
             type: "project.create",
             workspaceRoot: "~/Development/codex",
-            projectMetadataDir: ".s3code",
+            projectMetadataDir: ".ryco",
             title: "codex",
           });
         },
@@ -5005,7 +5005,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             expect.objectContaining({
               type: "project.create",
               workspaceRoot: "~/workspaces",
-              projectMetadataDir: ".s3code",
+              projectMetadataDir: ".ryco",
               title: "workspaces",
             }),
           );
@@ -5105,7 +5105,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             _tag: ORCHESTRATION_WS_METHODS.dispatchCommand,
             type: "project.create",
             workspaceRoot: "/Users/julius/Projects/finder-picked",
-            projectMetadataDir: ".s3code",
+            projectMetadataDir: ".ryco",
             title: "finder-picked",
           });
         },
@@ -5234,7 +5234,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             _tag: ORCHESTRATION_WS_METHODS.dispatchCommand,
             type: "project.create",
             workspaceRoot: "~/Development",
-            projectMetadataDir: ".s3code",
+            projectMetadataDir: ".ryco",
             title: "Development",
           });
         },
@@ -5748,7 +5748,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
           model: "gpt-5.3-codex-spark",
         },
         planMarkdown:
-          "# Imaginary Long-Range Plan: S3Code Adaptive Orchestration and Safe-Delay Execution Initiative",
+          "# Imaginary Long-Range Plan: Ryco Adaptive Orchestration and Safe-Delay Execution Initiative",
       }),
     });
 
@@ -5781,7 +5781,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
           model: "gpt-5.3-codex-spark",
         },
         planMarkdown:
-          "# Imaginary Long-Range Plan: S3Code Adaptive Orchestration and Safe-Delay Execution Initiative",
+          "# Imaginary Long-Range Plan: Ryco Adaptive Orchestration and Safe-Delay Execution Initiative",
       }),
     });
 

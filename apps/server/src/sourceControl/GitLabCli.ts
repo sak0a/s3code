@@ -10,7 +10,7 @@ import {
   type DateTime,
 } from "effect";
 
-import { TrimmedNonEmptyString, type SourceControlRepositoryVisibility } from "@s3tools/contracts";
+import { TrimmedNonEmptyString, type SourceControlRepositoryVisibility } from "@ryco/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as GitLabIssues from "./gitLabIssues.ts";

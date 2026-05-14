@@ -1,5 +1,5 @@
-import { scopeThreadRef } from "@s3tools/client-runtime";
-import type { EnvironmentId, ScopedThreadRef, ThreadId } from "@s3tools/contracts";
+import { scopeThreadRef } from "@ryco/client-runtime";
+import type { EnvironmentId, ScopedThreadRef, ThreadId } from "@ryco/contracts";
 import type { DraftId } from "./composerDraftStore";
 
 export type ThreadRouteTarget =

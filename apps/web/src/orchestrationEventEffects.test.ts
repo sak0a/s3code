@@ -7,7 +7,7 @@ import {
   ThreadId,
   TurnId,
   type OrchestrationEvent,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { describe, expect, it } from "vitest";
 
 import { deriveOrchestrationBatchEffects } from "./orchestrationEventEffects";

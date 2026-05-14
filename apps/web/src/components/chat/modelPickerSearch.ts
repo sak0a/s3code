@@ -1,4 +1,4 @@
-import { normalizeSearchQuery, scoreQueryMatch } from "@s3tools/shared/searchRanking";
+import { normalizeSearchQuery, scoreQueryMatch } from "@ryco/shared/searchRanking";
 
 type ModelPickerSearchableModel = {
   /** Driver kind — indexed so "codex" still matches a Codex Personal instance. */

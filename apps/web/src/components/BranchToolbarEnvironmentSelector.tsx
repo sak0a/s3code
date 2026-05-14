@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@s3tools/contracts";
+import type { EnvironmentId } from "@ryco/contracts";
 import { CloudIcon, MonitorIcon } from "lucide-react";
 import { memo, useMemo } from "react";
 

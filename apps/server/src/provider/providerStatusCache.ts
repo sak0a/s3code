@@ -3,7 +3,7 @@ import {
   type ProviderInstanceId,
   type ServerProvider,
   ServerProvider as ServerProviderSchema,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Cause, Effect, FileSystem, Path, Schema } from "effect";
 
 import { writeFileStringAtomically } from "../atomicWrite.ts";

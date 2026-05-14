@@ -1,4 +1,4 @@
-import { scopeThreadRef, scopedThreadKey } from "@s3tools/client-runtime";
+import { scopeThreadRef, scopedThreadKey } from "@ryco/client-runtime";
 import type { DraftThreadState } from "./composerDraftStore";
 import type { ChatSessionTabsItem } from "./components/chat/ChatSessionTabs";
 import {

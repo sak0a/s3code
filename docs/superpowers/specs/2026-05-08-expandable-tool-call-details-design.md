@@ -1,6 +1,6 @@
 # Expandable Tool Call & Terminal Command Details
 
-GitHub: [#23](https://github.com/sak0a/s3code/issues/23)
+GitHub: [#23](https://github.com/sak0a/ryco/issues/23)
 
 ## Goal
 

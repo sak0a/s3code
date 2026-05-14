@@ -1,4 +1,4 @@
-import { type ThreadId } from "@s3tools/contracts";
+import { type ThreadId } from "@ryco/contracts";
 
 export interface TerminalContextSelection {
   terminalId: string;

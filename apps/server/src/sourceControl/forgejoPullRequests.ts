@@ -4,8 +4,8 @@ import {
   TrimmedNonEmptyString,
   type SourceControlChangeRequestCommit,
   type SourceControlChangeRequestFile,
-} from "@s3tools/contracts";
-import { decodeJsonResult, formatSchemaError } from "@s3tools/shared/schemaJson";
+} from "@ryco/contracts";
+import { decodeJsonResult, formatSchemaError } from "@ryco/shared/schemaJson";
 
 import {
   ForgejoCommentListSchema,

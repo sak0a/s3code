@@ -14,10 +14,10 @@ import { randomUUID } from "node:crypto";
 import { Effect, Layer, FileSystem, Path } from "effect";
 
 import { CheckpointInvariantError } from "../Errors.ts";
-import { VcsProcessExitError } from "@s3tools/contracts";
+import { VcsProcessExitError } from "@ryco/contracts";
 import { VcsDriverRegistry } from "../../vcs/VcsDriverRegistry.ts";
 import { CheckpointStore, type CheckpointStoreShape } from "../Services/CheckpointStore.ts";
-import { CheckpointRef } from "@s3tools/contracts";
+import { CheckpointRef } from "@ryco/contracts";
 
 const CHECKPOINT_DIFF_MAX_OUTPUT_BYTES = 10_000_000;
 
@@ -113,10 +113,10 @@ const makeCheckpointStore = Effect.gen(function* () {
         const commitEnv: NodeJS.ProcessEnv = {
           ...process.env,
           GIT_INDEX_FILE: tempIndexPath,
-          GIT_AUTHOR_NAME: "S3Code",
-          GIT_AUTHOR_EMAIL: "s3code@users.noreply.github.com",
-          GIT_COMMITTER_NAME: "S3Code",
-          GIT_COMMITTER_EMAIL: "s3code@users.noreply.github.com",
+          GIT_AUTHOR_NAME: "Ryco",
+          GIT_AUTHOR_EMAIL: "ryco@users.noreply.github.com",
+          GIT_COMMITTER_NAME: "Ryco",
+          GIT_COMMITTER_EMAIL: "ryco@users.noreply.github.com",
         };
 
         const headExists = yield* hasHeadCommit(input.cwd);

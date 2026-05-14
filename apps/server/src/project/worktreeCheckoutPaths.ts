@@ -1,7 +1,7 @@
 import path from "node:path";
 
-import type { ProjectId, WorktreeCheckoutLocation } from "@s3tools/contracts";
-import { sanitizeBranchFragment } from "@s3tools/shared/git";
+import type { ProjectId, WorktreeCheckoutLocation } from "@ryco/contracts";
+import { sanitizeBranchFragment } from "@ryco/shared/git";
 import { resolveProjectWorktreesDir } from "./projectMetadataPaths.ts";
 
 const RANDOM_WORD_CONSONANTS = "bcdfghjklmnpqrstvwxz";
@@ -40,7 +40,7 @@ export function buildWorktreeCheckoutDirectoryName(
 /**
  * @deprecated Project-local worktrees put generated checkouts inside the
  * repository. Keep this for explicit compatibility only; prefer
- * resolveAppManagedWorktreeCheckoutPath for new S3Code-created worktrees.
+ * resolveAppManagedWorktreeCheckoutPath for new Ryco-created worktrees.
  */
 export function resolveProjectWorktreeCheckoutPath(
   workspaceRoot: string,

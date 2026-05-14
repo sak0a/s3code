@@ -1,5 +1,5 @@
-import { scopeProjectRef, scopedThreadKey, scopeThreadRef } from "@s3tools/client-runtime";
-import type { VcsStatusResult } from "@s3tools/contracts";
+import { scopeProjectRef, scopedThreadKey, scopeThreadRef } from "@ryco/client-runtime";
+import type { VcsStatusResult } from "@ryco/contracts";
 import { CloudIcon, GitPullRequestIcon, TerminalIcon } from "lucide-react";
 import { useMemo } from "react";
 import { usePrimaryEnvironmentId } from "../environments/primary";

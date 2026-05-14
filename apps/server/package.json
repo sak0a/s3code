@@ -1,14 +1,14 @@
 {
-  "name": "sakacode",
+  "name": "ryco",
   "version": "0.0.26",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sak0a/s3code.git",
+    "url": "git+https://github.com/sak0a/ryco.git",
     "directory": "apps/server"
   },
   "bin": {
-    "s3code": "dist/bin.mjs"
+    "ryco": "dist/bin.mjs"
   },
   "files": [
     "dist"
@@ -39,10 +39,10 @@
   "devDependencies": {
     "@effect/language-service": "catalog:",
     "@effect/vitest": "catalog:",
-    "@s3tools/contracts": "workspace:*",
-    "@s3tools/shared": "workspace:*",
-    "@s3tools/tailscale": "workspace:*",
-    "@s3tools/web": "workspace:*",
+    "@ryco/contracts": "workspace:*",
+    "@ryco/shared": "workspace:*",
+    "@ryco/tailscale": "workspace:*",
+    "@ryco/web": "workspace:*",
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
     "effect-acp": "workspace:*",

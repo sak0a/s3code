@@ -13,8 +13,8 @@ import type {
   OpinionatedPluginCatalogItem,
   OpinionatedPluginId,
   OpinionatedPluginStatus,
-} from "@s3tools/contracts";
-import { DEFAULT_AGENT_TOKEN_MODE } from "@s3tools/contracts";
+} from "@ryco/contracts";
+import { DEFAULT_AGENT_TOKEN_MODE } from "@ryco/contracts";
 
 import { cn } from "../../lib/utils";
 import { useSettings, useUpdateSettings } from "../../hooks/useSettings";
@@ -90,7 +90,7 @@ const tokenModeLabels: Record<AgentTokenMode, string> = {
 };
 
 const tokenModeDescriptions: Record<AgentTokenMode, string> = {
-  off: "No S3Code token-efficiency instructions are added.",
+  off: "No Ryco token-efficiency instructions are added.",
   balanced: "Concise responses and targeted reads while preserving important detail.",
   aggressive: "Shortest practical responses and strongest pressure to avoid large output copies.",
 };

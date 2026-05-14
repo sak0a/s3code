@@ -1,4 +1,4 @@
-import { AtlassianConnectionId, ProjectId } from "@s3tools/contracts";
+import { AtlassianConnectionId, ProjectId } from "@ryco/contracts";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer, Option } from "effect";
 
@@ -24,7 +24,7 @@ layer("ProjectAtlassianLinkRepository", (it) => {
         jiraSiteUrl: "https://acme.atlassian.net",
         jiraProjectKeys: ["S3", "OPS"],
         bitbucketWorkspace: "acme",
-        bitbucketRepoSlug: "s3code",
+        bitbucketRepoSlug: "ryco",
         defaultIssueTypeName: "Task",
         branchNameTemplate: "{key}-{summary}",
         commitMessageTemplate: "{key}: {summary}",
@@ -38,7 +38,7 @@ layer("ProjectAtlassianLinkRepository", (it) => {
       const row = yield* repo.getByProjectId({ projectId });
       assert.isTrue(Option.isSome(row));
       assert.deepStrictEqual(Option.getOrThrow(row).jiraProjectKeys, ["S3", "OPS"]);
-      assert.equal(Option.getOrThrow(row).bitbucketRepoSlug, "s3code");
+      assert.equal(Option.getOrThrow(row).bitbucketRepoSlug, "ryco");
     }),
   );
 

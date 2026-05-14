@@ -5,7 +5,7 @@ import {
   ProviderDriverKind,
   ThreadId,
   type OrchestrationEvent,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 

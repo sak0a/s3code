@@ -1,4 +1,4 @@
-import { scopeThreadRef } from "@s3tools/client-runtime";
+import { scopeThreadRef } from "@ryco/client-runtime";
 import {
   CheckpointRef,
   DEFAULT_MODEL,
@@ -11,7 +11,7 @@ import {
   TurnId,
   WorktreeId,
   type OrchestrationEvent,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -578,7 +578,7 @@ describe("incremental orchestration updates", () => {
         projectId: recreatedProjectId,
         title: "Project Recreated",
         workspaceRoot: "/tmp/project",
-        projectMetadataDir: ".s3code",
+        projectMetadataDir: ".ryco",
         defaultModelSelection: {
           instanceId: ProviderInstanceId.make("codex"),
           model: DEFAULT_MODEL,

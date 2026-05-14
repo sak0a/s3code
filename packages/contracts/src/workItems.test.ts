@@ -56,7 +56,7 @@ describe("work item contracts", () => {
           provider: "bitbucket",
           number: 42,
           title: "PROJ-123 add connection settings",
-          url: "https://bitbucket.org/acme/s3code/pull-requests/42",
+          url: "https://bitbucket.org/acme/ryco/pull-requests/42",
           state: "open",
         },
       ],

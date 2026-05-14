@@ -1,4 +1,4 @@
-import { type ResolvedKeybindingsConfig } from "@s3tools/contracts";
+import { type ResolvedKeybindingsConfig } from "@ryco/contracts";
 import { ChevronRightIcon } from "lucide-react";
 import { shortcutLabelForCommand } from "../keybindings";
 import {

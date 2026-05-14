@@ -27,7 +27,7 @@ import {
   CursorSettings,
   OpenCodeSettings,
   ProviderDriverKind,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect, Schema } from "effect";
 
 import type { ClaudeDriverEnv } from "./Drivers/ClaudeDriver.ts";

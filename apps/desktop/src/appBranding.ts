@@ -1,8 +1,8 @@
-import type { DesktopAppBranding, DesktopAppStageLabel } from "@s3tools/contracts";
+import type { DesktopAppBranding, DesktopAppStageLabel } from "@ryco/contracts";
 
 import { isNightlyDesktopVersion } from "./updateChannels.ts";
 
-const APP_BASE_NAME = "S3Code";
+const APP_BASE_NAME = "Ryco";
 
 export function resolveDesktopAppStageLabel(input: {
   readonly isDevelopment: boolean;

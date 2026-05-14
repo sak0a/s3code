@@ -3,7 +3,7 @@ import type {
   SourceControlIssueSummary,
   WorkItemStateFilter,
   WorkItemSummary,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SidebarProjectGroupMember } from "~/sidebarProjectGrouping";
 import { ContextPickerTabs } from "../chat/ContextPickerTabs";

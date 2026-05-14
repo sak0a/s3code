@@ -1,6 +1,6 @@
 # Codex
 
-This guide is for people who want to use more than one Codex account in S3Code.
+This guide is for people who want to use more than one Codex account in Ryco.
 
 Common reasons:
 
@@ -40,7 +40,7 @@ Recommended setup:
 
 The idea is:
 
-- both accounts can see the same S3Code/Codex sessions
+- both accounts can see the same Ryco/Codex sessions
 - each account keeps its own login
 - existing threads can continue with either account
 
@@ -54,7 +54,7 @@ codex login
 
 This is the account used by `~/.codex`.
 
-In S3Code Settings, name it something obvious:
+In Ryco Settings, name it something obvious:
 
 ```text
 Display name: Codex Work
@@ -71,7 +71,7 @@ mkdir -p ~/.codex_p
 CODEX_HOME=~/.codex_p codex login
 ```
 
-In S3Code Settings, add another Codex provider:
+In Ryco Settings, add another Codex provider:
 
 ```text
 Display name: Codex Personal
@@ -86,7 +86,7 @@ has a `Shadow home path`.
 
 Open Settings and look at the provider row.
 
-S3Code shows the authenticated email for providers that report one. Emails are blurred by default;
+Ryco shows the authenticated email for providers that report one. Emails are blurred by default;
 click the blurred email to reveal it.
 
 Use display names and accent colors to make accounts easy to tell apart in the model picker.
@@ -113,7 +113,7 @@ Codex Personal  CODEX_HOME path: ~/.codex, Shadow home path: ~/.codex_p
 Those two providers are considered compatible for continuation, so the locked model picker can show
 both.
 
-If you add a third Codex provider with a completely different `CODEX_HOME path`, S3Code treats it
+If you add a third Codex provider with a completely different `CODEX_HOME path`, Ryco treats it
 as a different workspace. It will not be offered for existing threads created under `~/.codex`.
 
 ## If Both Accounts Look The Same

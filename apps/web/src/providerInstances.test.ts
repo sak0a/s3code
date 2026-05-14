@@ -1,4 +1,4 @@
-import { ProviderDriverKind, ProviderInstanceId, type ServerProvider } from "@s3tools/contracts";
+import { ProviderDriverKind, ProviderInstanceId, type ServerProvider } from "@ryco/contracts";
 import { describe, expect, it } from "vitest";
 import {
   deriveProviderInstanceEntries,

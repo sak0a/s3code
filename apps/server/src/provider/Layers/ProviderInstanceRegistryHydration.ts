@@ -46,7 +46,7 @@ import {
   type ProviderInstanceConfig,
   type ProviderInstanceConfigMap,
   ServerSettings,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect, Layer, Stream } from "effect";
 
 import { ServerSettingsService } from "../../serverSettings.ts";

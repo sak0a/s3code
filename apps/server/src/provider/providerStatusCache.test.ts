@@ -4,8 +4,8 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ServerProvider,
-} from "@s3tools/contracts";
-import { createModelCapabilities } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { createModelCapabilities } from "@ryco/shared/model";
 import { assert, it } from "@effect/vitest";
 import { Effect, FileSystem } from "effect";
 
@@ -158,7 +158,7 @@ it.layer(NodeServices.layer)("providerStatusCache", (it) => {
       version: null,
       status: "disabled",
       auth: { status: "unknown" },
-      message: "Codex is disabled in S3Code settings.",
+      message: "Codex is disabled in Ryco settings.",
     });
 
     assert.deepStrictEqual(

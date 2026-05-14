@@ -1,5 +1,5 @@
-import { scopedProjectKey, scopeProjectRef } from "@s3tools/client-runtime";
-import type { ScopedProjectRef, SidebarProjectGroupingMode } from "@s3tools/contracts";
+import { scopedProjectKey, scopeProjectRef } from "@ryco/client-runtime";
+import type { ScopedProjectRef, SidebarProjectGroupingMode } from "@ryco/contracts";
 import { normalizeProjectPathForComparison } from "./lib/projectPaths";
 import type { Project } from "./types";
 

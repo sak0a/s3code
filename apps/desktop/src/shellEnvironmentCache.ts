@@ -1,7 +1,7 @@
 import * as FS from "node:fs";
 import * as Path from "node:path";
 
-import { mergePathEntries } from "@s3tools/shared/shell";
+import { mergePathEntries } from "@ryco/shared/shell";
 
 const CACHE_VERSION = 1;
 const DEFAULT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;

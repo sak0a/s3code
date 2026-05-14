@@ -1,4 +1,4 @@
-import { CommandId, EventId, ProjectId, WorktreeId } from "@s3tools/contracts";
+import { CommandId, EventId, ProjectId, WorktreeId } from "@ryco/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer, Option } from "effect";

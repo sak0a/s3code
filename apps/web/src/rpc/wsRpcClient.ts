@@ -10,8 +10,8 @@ import {
   type OpinionatedPluginInstallInput,
   type ServerSettingsPatch,
   WS_METHODS,
-} from "@s3tools/contracts";
-import { applyGitStatusStreamEvent } from "@s3tools/shared/git";
+} from "@ryco/contracts";
+import { applyGitStatusStreamEvent } from "@ryco/shared/git";
 import { Effect, Stream } from "effect";
 
 import { type WsRpcProtocolClient } from "./protocol";

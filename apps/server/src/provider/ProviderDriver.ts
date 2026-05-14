@@ -25,7 +25,7 @@ import type {
   ProviderDriverKind,
   ProviderInstanceEnvironment,
   ProviderInstanceId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import type { Effect, Schema, Scope } from "effect";
 
 import type { TextGenerationShape } from "../textGeneration/TextGeneration.ts";

@@ -8,7 +8,7 @@ import type {
   ProviderSendTurnInput,
   ProviderSession,
   ProviderTurnStartResult,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   ApprovalRequestId,
   EventId,
@@ -17,8 +17,8 @@ import {
   ProviderSessionStartInput,
   ThreadId,
   TurnId,
-} from "@s3tools/contracts";
-import { createModelSelection } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { createModelSelection } from "@ryco/shared/model";
 import { it, assert, vi } from "@effect/vitest";
 
 import { Effect, Exit, Fiber, Layer, Metric, Option, PubSub, Ref, Scope, Stream } from "effect";

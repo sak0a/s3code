@@ -5,7 +5,7 @@ import {
   ThreadId,
   TurnId,
   type ProviderRuntimeEvent,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import type { SessionEvent } from "@github/copilot-sdk";
 import { Effect } from "effect";
 

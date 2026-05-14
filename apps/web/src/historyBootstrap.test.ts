@@ -1,4 +1,4 @@
-import { MessageId } from "@s3tools/contracts";
+import { MessageId } from "@ryco/contracts";
 import { describe, expect, it } from "vitest";
 
 import { buildBootstrapInput } from "./historyBootstrap";

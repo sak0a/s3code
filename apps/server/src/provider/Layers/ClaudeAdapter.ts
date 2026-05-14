@@ -19,7 +19,7 @@ import {
   type SDKUserMessage,
   type ModelUsage,
 } from "@anthropic-ai/claude-agent-sdk";
-import { parseCliArgs } from "@s3tools/shared/cliArgs";
+import { parseCliArgs } from "@ryco/shared/cliArgs";
 import {
   ApprovalRequestId,
   type AgentTokenMode,
@@ -45,15 +45,15 @@ import {
   ThreadId,
   TurnId,
   type UserInputQuestion,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   applyClaudePromptEffortPrefix,
   getModelSelectionBooleanOptionValue,
   getModelSelectionStringOptionValue,
   getProviderOptionDescriptors,
   resolvePromptInjectedEffort,
-} from "@s3tools/shared/model";
-import { formatSourceControlContextsForAgent } from "@s3tools/shared/sourceControlContextFormatter";
+} from "@ryco/shared/model";
+import { formatSourceControlContextsForAgent } from "@ryco/shared/sourceControlContextFormatter";
 import {
   Cause,
   DateTime,
@@ -2587,7 +2587,7 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         // `id` MUST equal the full question text — Claude SDK >= 2.1.121 looks
         // up answers by question text in `mapToolResultToToolResultBlockParam`,
         // so the key the UI uses to keep its draft answer must match the SDK's
-        // expected lookup key. See https://github.com/pingdotgg/s3code/issues/2388
+        // expected lookup key. See https://github.com/sak0a/ryco/issues/2388
         const rawQuestions = Array.isArray(toolInput.questions) ? toolInput.questions : [];
         const questions: Array<UserInputQuestion> = rawQuestions.map(
           (q: Record<string, unknown>, idx: number) => ({

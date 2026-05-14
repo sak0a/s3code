@@ -7,7 +7,7 @@ import {
   type SourceControlChangeRequestDetail,
   type SourceControlIssueDetail,
   type SourceControlIssueSummary,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import * as GitHubCli from "./GitHubCli.ts";
 import * as GitHubIssues from "./gitHubIssues.ts";

@@ -10,7 +10,7 @@ import {
   type ProviderSendTurnInput,
   type ProviderSession,
   type ProviderTurnStartResult,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   CopilotClient,
   type CopilotClientOptions,
@@ -19,7 +19,7 @@ import {
   type SessionEvent,
 } from "@github/copilot-sdk";
 import { Effect } from "effect";
-import { getModelSelectionStringOptionValue } from "@s3tools/shared/model";
+import { getModelSelectionStringOptionValue } from "@ryco/shared/model";
 
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import {

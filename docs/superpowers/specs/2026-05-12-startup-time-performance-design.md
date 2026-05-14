@@ -2,11 +2,11 @@
 
 ## Goal
 
-Improve S3Code startup time without breaking existing desktop, server, or web
+Improve Ryco startup time without breaking existing desktop, server, or web
 behavior.
 
 Primary target: **desktop packaged cold start**, from app launch to a usable
-S3Code window with the primary environment connected.
+Ryco window with the primary environment connected.
 
 Supporting targets:
 

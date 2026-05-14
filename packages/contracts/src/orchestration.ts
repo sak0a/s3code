@@ -202,7 +202,7 @@ export const ProjectCustomSystemPrompt = TrimmedNonEmptyString.check(
 );
 export type ProjectCustomSystemPrompt = typeof ProjectCustomSystemPrompt.Type;
 
-export const DEFAULT_PROJECT_METADATA_DIR = ".s3code";
+export const DEFAULT_PROJECT_METADATA_DIR = ".ryco";
 export const ProjectMetadataDir = TrimmedNonEmptyString.check(
   Schema.isMaxLength(256),
   Schema.isPattern(/^(?![\\/])(?!~)(?![A-Za-z]:[\\/])(?!.*(?:^|[\\/])\.\.(?:[\\/]|$)).+$/),

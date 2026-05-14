@@ -3,7 +3,7 @@ import type {
   EnvironmentId,
   ProjectId,
   WorkItemDetail as WorkItemDetailModel,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { DateTime, Option } from "effect";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon, ExternalLinkIcon, GitPullRequestIcon, TicketCheckIcon } from "lucide-react";

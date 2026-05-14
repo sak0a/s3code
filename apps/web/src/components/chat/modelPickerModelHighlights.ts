@@ -1,4 +1,4 @@
-import type { ProviderDriverKind } from "@s3tools/contracts";
+import type { ProviderDriverKind } from "@ryco/contracts";
 
 /**
  * Model slugs that show a gold "NEW" chip in the model picker list.

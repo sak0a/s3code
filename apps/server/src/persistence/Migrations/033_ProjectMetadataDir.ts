@@ -13,6 +13,6 @@ export default Effect.gen(function* () {
 
   yield* sql`
     ALTER TABLE projection_projects
-    ADD COLUMN project_metadata_dir TEXT NOT NULL DEFAULT '.s3code'
+    ADD COLUMN project_metadata_dir TEXT NOT NULL DEFAULT '.ryco'
   `;
 });

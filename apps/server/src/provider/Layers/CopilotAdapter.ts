@@ -9,12 +9,12 @@ import {
   type ProviderSendTurnInput,
   type ProviderSession,
   type UserInputQuestion,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import type { PermissionRequestResult, SessionConfig, SessionEvent } from "@github/copilot-sdk";
 import { Effect, Queue, Random, Stream } from "effect";
 
 import { ServerConfig } from "../../config.ts";
-import { getProviderOptionStringSelectionValue } from "@s3tools/shared/model";
+import { getProviderOptionStringSelectionValue } from "@ryco/shared/model";
 import { makeEventNdjsonLogger } from "./EventNdjsonLogger.ts";
 import { ProviderAdapterRequestError, ProviderAdapterSessionNotFoundError } from "../Errors.ts";
 import type { CopilotAdapterShape } from "../Services/CopilotAdapter.ts";

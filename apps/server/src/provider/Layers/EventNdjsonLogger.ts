@@ -8,8 +8,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import type { ThreadId } from "@s3tools/contracts";
-import { RotatingFileSink } from "@s3tools/shared/logging";
+import type { ThreadId } from "@ryco/contracts";
+import { RotatingFileSink } from "@ryco/shared/logging";
 import { Effect, Exit, Logger, Scope, SynchronizedRef } from "effect";
 
 import { toSafeThreadAttachmentSegment } from "../../attachmentStore.ts";

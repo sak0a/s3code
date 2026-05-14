@@ -6,7 +6,7 @@
  *
  * @module OrchestrationProjectionPipeline
  */
-import type { OrchestrationEvent } from "@s3tools/contracts";
+import type { OrchestrationEvent } from "@ryco/contracts";
 import { Context } from "effect";
 import type { Effect } from "effect";
 

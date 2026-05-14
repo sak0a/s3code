@@ -1,4 +1,4 @@
-import type { ContextMenuItem, LocalApi } from "@s3tools/contracts";
+import type { ContextMenuItem, LocalApi } from "@ryco/contracts";
 
 import { resetGitStatusStateForTests } from "./lib/gitStatusState";
 import { resetSourceControlDiscoveryStateForTests } from "./lib/sourceControlDiscoveryState";

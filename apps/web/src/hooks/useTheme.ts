@@ -17,7 +17,7 @@ type ThemeSnapshot = {
   activeThemeId: string;
 };
 
-const STORAGE_KEY = "s3code:theme";
+const STORAGE_KEY = "ryco:theme";
 const MEDIA_QUERY = "(prefers-color-scheme: dark)";
 const DEFAULT_THEME_SNAPSHOT: ThemeSnapshot = {
   theme: "system",

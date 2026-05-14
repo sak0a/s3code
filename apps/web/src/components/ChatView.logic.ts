@@ -8,7 +8,7 @@ import {
   type ScopedThreadRef,
   type ThreadId,
   type TurnId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   type ChatMessage,
   DEFAULT_AGENT_TOKEN_MODE,
@@ -26,7 +26,7 @@ import {
 } from "../lib/terminalContext";
 import type { DraftThreadEnvMode } from "../composerDraftStore";
 
-export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY = "s3code:last-invoked-script-by-project";
+export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY = "ryco:last-invoked-script-by-project";
 export const MAX_HIDDEN_MOUNTED_TERMINAL_THREADS = 10;
 
 export const LastInvokedScriptByProjectSchema = Schema.Record(ProjectId, Schema.String);

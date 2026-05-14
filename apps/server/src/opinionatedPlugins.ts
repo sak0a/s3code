@@ -19,7 +19,7 @@ import {
   type ProviderInstanceId,
   type ServerProvider,
   type ServerSettings,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Schema } from "effect";
 
 import { expandHomePath } from "./pathExpansion.ts";
@@ -46,7 +46,7 @@ const CAVEMAN_CODEX_MANUAL_STEPS = [
 
 const TOKEN_OPTIMIZER_MANUAL_STEPS = [
   "Review the plugin's prompt changes before enabling it in any provider.",
-  "Prefer S3Code token mode first; only add Token Optimizer if you want stricter response shaping.",
+  "Prefer Ryco token mode first; only add Token Optimizer if you want stricter response shaping.",
 ] as const;
 
 const TOKEN_SAVIOR_MANUAL_STEPS = [
@@ -94,7 +94,7 @@ const CATALOG: ReadonlyArray<OpinionatedPluginCatalogItem> = [
     name: "Token Optimizer",
     summary: "Prompt-level response compression for stricter token budgets.",
     description:
-      "An assistant-output plugin pattern that nudges agents to produce shorter answers. S3Code surfaces it as a manual option because prompt-shaping plugins can overlap with token mode and provider-specific system prompts.",
+      "An assistant-output plugin pattern that nudges agents to produce shorter answers. Ryco surfaces it as a manual option because prompt-shaping plugins can overlap with token mode and provider-specific system prompts.",
     impact: "assistant-output",
     scope: "provider-instance",
     homepageUrl: "https://jean.build/docs/manage/opinionated-plugins",
@@ -107,7 +107,7 @@ const CATALOG: ReadonlyArray<OpinionatedPluginCatalogItem> = [
     name: "Token Savior",
     summary: "MCP/code-index context retrieval for large codebases.",
     description:
-      "A manual MCP-style option for reducing broad file reads by retrieving narrower repository context. S3Code does not auto-install it because indexing scope and cache placement should be project-specific.",
+      "A manual MCP-style option for reducing broad file reads by retrieving narrower repository context. Ryco does not auto-install it because indexing scope and cache placement should be project-specific.",
     impact: "tool-output",
     scope: "global",
     homepageUrl: "https://jean.build/docs/manage/opinionated-plugins",
@@ -347,7 +347,7 @@ export async function checkOpinionatedPlugins(input: {
       state: "not-installed",
       canInstall: false,
       checkedAt: nowIso(),
-      detail: "Tracked as a manual prompt/plugin option; S3Code token mode is built in.",
+      detail: "Tracked as a manual prompt/plugin option; Ryco token mode is built in.",
       manualSteps: [...TOKEN_OPTIMIZER_MANUAL_STEPS],
     });
   }

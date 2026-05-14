@@ -11,7 +11,7 @@ vi.mock("../wsRpcClient", () => ({
 }));
 
 import type { InfiniteData } from "@tanstack/react-query";
-import { EnvironmentId, type VcsListRefsResult } from "@s3tools/contracts";
+import { EnvironmentId, type VcsListRefsResult } from "@ryco/contracts";
 
 import {
   gitBranchSearchInfiniteQueryOptions,

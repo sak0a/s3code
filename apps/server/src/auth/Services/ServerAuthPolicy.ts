@@ -1,4 +1,4 @@
-import type { ServerAuthDescriptor } from "@s3tools/contracts";
+import type { ServerAuthDescriptor } from "@ryco/contracts";
 import { Context } from "effect";
 import type { Effect } from "effect";
 

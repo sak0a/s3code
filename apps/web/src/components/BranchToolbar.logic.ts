@@ -1,9 +1,9 @@
-import type { EnvironmentId, VcsRef, ProjectId } from "@s3tools/contracts";
+import type { EnvironmentId, VcsRef, ProjectId } from "@ryco/contracts";
 import { Schema } from "effect";
 export {
   dedupeRemoteBranchesWithLocalMatches,
   deriveLocalBranchNameFromRemoteRef,
-} from "@s3tools/shared/git";
+} from "@ryco/shared/git";
 
 export interface EnvironmentOption {
   environmentId: EnvironmentId;

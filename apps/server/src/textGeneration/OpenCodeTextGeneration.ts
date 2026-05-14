@@ -6,9 +6,9 @@ import {
   type ChatAttachment,
   type ModelSelection,
   type OpenCodeSettings,
-} from "@s3tools/contracts";
-import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@s3tools/shared/git";
-import { getModelSelectionStringOptionValue } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@ryco/shared/git";
+import { getModelSelectionStringOptionValue } from "@ryco/shared/model";
 
 import { ServerConfig } from "../config.ts";
 import { resolveAttachmentPath } from "../attachmentStore.ts";
@@ -310,7 +310,7 @@ export const makeOpenCodeTextGeneration = Effect.fn("makeOpenCodeTextGeneration"
         return yield* Effect.tryPromise({
           try: async () => {
             const session = await client.session.create({
-              title: `S3Code ${input.operation}`,
+              title: `Ryco ${input.operation}`,
               permission: [{ permission: "*", pattern: "*", action: "deny" }],
             });
             if (!session.data) {

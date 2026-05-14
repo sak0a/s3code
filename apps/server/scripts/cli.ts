@@ -62,7 +62,7 @@ const applyPublishIconOverrides = Effect.fn("applyPublishIconOverrides")(functio
 ) {
   const path = yield* Path.Path;
   const fs = yield* FileSystem.FileSystem;
-  const backupDir = yield* fs.makeTempDirectoryScoped({ prefix: "s3code-publish-icons-" });
+  const backupDir = yield* fs.makeTempDirectoryScoped({ prefix: "ryco-publish-icons-" });
   const backups: PublishIconBackup[] = [];
 
   for (const override of PUBLISH_ICON_OVERRIDES) {

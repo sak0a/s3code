@@ -1,4 +1,4 @@
-import { KeybindingCommand, KeybindingRule, KeybindingsConfig } from "@s3tools/contracts";
+import { KeybindingCommand, KeybindingRule, KeybindingsConfig } from "@ryco/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import { assertFailure } from "@effect/vitest/utils";
@@ -14,7 +14,7 @@ import {
   compileResolvedKeybindingsConfig,
   parseKeybindingShortcut,
 } from "./keybindings.ts";
-import { KeybindingsConfigError } from "@s3tools/contracts";
+import { KeybindingsConfigError } from "@ryco/contracts";
 
 const KeybindingsConfigJson = Schema.fromJsonString(KeybindingsConfig);
 const makeKeybindingsLayer = () => {
@@ -22,7 +22,7 @@ const makeKeybindingsLayer = () => {
     Layer.provideMerge(
       Layer.fresh(
         ServerConfig.layerTest(process.cwd(), {
-          prefix: "s3code-keybindings-test-",
+          prefix: "ryco-keybindings-test-",
         }),
       ),
     ),
