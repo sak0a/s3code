@@ -1,4 +1,4 @@
-import type { ProviderInstanceEnvironment } from "@s3tools/contracts";
+import type { ProviderInstanceEnvironment } from "@ryco/contracts";
 
 export function mergeProviderInstanceEnvironment(
   environment: ProviderInstanceEnvironment | undefined,

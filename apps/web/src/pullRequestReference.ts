@@ -2,6 +2,8 @@ const GITHUB_PULL_REQUEST_URL_PATTERN =
   /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/pull\/(\d+)(?:[/?#].*)?$/i;
 const GITLAB_MERGE_REQUEST_URL_PATTERN =
   /^https:\/\/[^/\s]*gitlab[^/\s]*\/.+\/-\/merge_requests\/(\d+)(?:[/?#].*)?$/i;
+const FORGEJO_PULL_REQUEST_URL_PATTERN =
+  /^https:\/\/[^/\s]+\/[^/\s]+\/[^/\s]+\/pulls\/(\d+)(?:[/?#].*)?$/i;
 const AZURE_DEVOPS_PULL_REQUEST_URL_PATTERN =
   /^https:\/\/(?:dev\.azure\.com\/[^/\s]+\/[^/\s]+|[^/\s]+\.visualstudio\.com\/[^/\s]+)\/_git\/[^/\s]+\/pullrequest\/(\d+)(?:[/?#].*)?$/i;
 const PULL_REQUEST_NUMBER_PATTERN = /^#?(\d+)$/;
@@ -45,6 +47,7 @@ export function parsePullRequestReference(input: string): string | null {
   const urlMatch =
     GITHUB_PULL_REQUEST_URL_PATTERN.exec(normalizedInput) ??
     GITLAB_MERGE_REQUEST_URL_PATTERN.exec(normalizedInput) ??
+    FORGEJO_PULL_REQUEST_URL_PATTERN.exec(normalizedInput) ??
     AZURE_DEVOPS_PULL_REQUEST_URL_PATTERN.exec(normalizedInput);
   if (urlMatch?.[1]) {
     return normalizedInput;

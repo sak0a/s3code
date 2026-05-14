@@ -3,6 +3,9 @@ import { assert, it } from "@effect/vitest";
 import { ConfigProvider, Effect, Option } from "effect";
 
 import {
+  COPILOT_SDK_PACKAGE_JSON_PATH,
+  DESKTOP_BUILD_FILES,
+  EXTERNALIZED_DESKTOP_DEPENDENCY_PATHS,
   resolveBuildOptions,
   resolveDesktopBuildIconAssets,
   resolveDesktopProductName,
@@ -19,8 +22,8 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
   });
 
   it("switches desktop packaging product names to nightly for nightly builds", () => {
-    assert.equal(resolveDesktopProductName("0.0.17"), "S3Code");
-    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "S3Code (Nightly)");
+    assert.equal(resolveDesktopProductName("0.0.17"), "Ryco");
+    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "Ryco (Nightly)");
   });
 
   it("switches desktop packaging icons to the nightly artwork for nightly versions", () => {
@@ -35,6 +38,29 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       linuxIconPng: BRAND_ASSET_PATHS.nightlyLinuxIconPng,
       windowsIconIco: BRAND_ASSET_PATHS.nightlyWindowsIconIco,
     });
+  });
+
+  it("excludes the bundled GitHub Copilot CLI from desktop artifacts", () => {
+    assert.deepStrictEqual(DESKTOP_BUILD_FILES, [
+      "**/*",
+      "!node_modules/@github/copilot/**",
+      "!node_modules/@github/copilot-darwin-arm64/**",
+      "!node_modules/@github/copilot-darwin-x64/**",
+      "!node_modules/@github/copilot-linux-arm64/**",
+      "!node_modules/@github/copilot-linux-x64/**",
+      "!node_modules/@github/copilot-win32-arm64/**",
+      "!node_modules/@github/copilot-win32-x64/**",
+    ]);
+    assert.deepStrictEqual(EXTERNALIZED_DESKTOP_DEPENDENCY_PATHS, [
+      "node_modules/@github/copilot",
+      "node_modules/@github/copilot-darwin-arm64",
+      "node_modules/@github/copilot-darwin-x64",
+      "node_modules/@github/copilot-linux-arm64",
+      "node_modules/@github/copilot-linux-x64",
+      "node_modules/@github/copilot-win32-arm64",
+      "node_modules/@github/copilot-win32-x64",
+    ]);
+    assert.equal(COPILOT_SDK_PACKAGE_JSON_PATH, "node_modules/@github/copilot-sdk/package.json");
   });
 
   it("falls back to the default mock update port when the configured port is blank", () => {
@@ -80,11 +106,11 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           ConfigProvider.layer(
             ConfigProvider.fromEnv({
               env: {
-                S3CODE_DESKTOP_SKIP_BUILD: "true",
-                S3CODE_DESKTOP_KEEP_STAGE: "true",
-                S3CODE_DESKTOP_SIGNED: "true",
-                S3CODE_DESKTOP_VERBOSE: "true",
-                S3CODE_DESKTOP_MOCK_UPDATES: "true",
+                RYCO_DESKTOP_SKIP_BUILD: "true",
+                RYCO_DESKTOP_KEEP_STAGE: "true",
+                RYCO_DESKTOP_SIGNED: "true",
+                RYCO_DESKTOP_VERBOSE: "true",
+                RYCO_DESKTOP_MOCK_UPDATES: "true",
               },
             }),
           ),

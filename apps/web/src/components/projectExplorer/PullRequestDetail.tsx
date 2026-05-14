@@ -3,7 +3,7 @@ import type {
   SourceControlChangeRequestCommit,
   SourceControlChangeRequestDetail,
   SourceControlChangeRequestFile,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { DateTime, Option } from "effect";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -45,6 +45,7 @@ interface PullRequestDetailProps {
   pullRequestNumber: number;
   onBack: () => void;
   onSelectLinkedIssue: (issueNumber: number) => void;
+  onSelectLinkedWorkItem?: ((workItemKey: string) => void) | undefined;
   onAttach?: ((mode: "local" | "worktree") => Promise<void> | void) | undefined;
   attachInProgress?: "local" | "worktree" | null;
 }
@@ -98,6 +99,7 @@ export function PullRequestDetail(props: PullRequestDetailProps) {
             environmentId={props.environmentId}
             cwd={props.cwd}
             onSelectLinkedIssue={props.onSelectLinkedIssue}
+            onSelectLinkedWorkItem={props.onSelectLinkedWorkItem}
           />
         ) : null}
       </div>
@@ -135,6 +137,7 @@ function PullRequestDetailBody(props: {
   environmentId: EnvironmentId | null;
   cwd: string | null;
   onSelectLinkedIssue: (issueNumber: number) => void;
+  onSelectLinkedWorkItem?: ((workItemKey: string) => void) | undefined;
 }) {
   const { detail } = props;
   const [activeTab, setActiveTab] = useState<PullRequestTab>("conversation");
@@ -232,7 +235,9 @@ function PullRequestDetailBody(props: {
         labels={detail.labels}
         reviewers={detail.reviewers ?? []}
         linkedIssueNumbers={detail.linkedIssueNumbers ?? []}
+        linkedWorkItemKeys={detail.linkedWorkItemKeys ?? []}
         onSelectLinkedIssue={props.onSelectLinkedIssue}
+        onSelectLinkedWorkItem={props.onSelectLinkedWorkItem}
       />
     </div>
   );

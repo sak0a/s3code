@@ -1,4 +1,4 @@
-import { WsRpcGroup } from "@s3tools/contracts";
+import { WsRpcGroup } from "@ryco/contracts";
 import { Duration, Effect, Layer, Schedule } from "effect";
 import { RpcClient, RpcSerialization } from "effect/unstable/rpc";
 import * as Socket from "effect/unstable/socket/Socket";

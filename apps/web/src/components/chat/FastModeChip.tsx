@@ -1,4 +1,4 @@
-import { type ProviderOptionDescriptor } from "@s3tools/contracts";
+import { type ProviderOptionDescriptor } from "@ryco/contracts";
 import { memo } from "react";
 import { ZapIcon } from "lucide-react";
 

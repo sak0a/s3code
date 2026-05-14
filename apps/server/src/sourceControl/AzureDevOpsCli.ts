@@ -3,7 +3,7 @@ import {
   TrimmedNonEmptyString,
   type SourceControlRepositoryVisibility,
   type VcsError,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as AzureDevOpsPullRequests from "./azureDevOpsPullRequests.ts";
@@ -300,8 +300,9 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
 
   return AzureDevOpsCli.of({
     execute,
-    listPullRequests: (input) =>
-      executeJson({
+    listPullRequests: (input) => {
+      const sourceBranch = SourceControlProvider.sourceBranch(input);
+      return executeJson({
         cwd: input.cwd,
         args: [
           "repos",
@@ -309,8 +310,7 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
           "list",
           "--detect",
           "true",
-          "--source-branch",
-          SourceControlProvider.sourceBranch(input),
+          ...(sourceBranch.length > 0 ? ["--source-branch", sourceBranch] : []),
           "--status",
           toAzureStatus(input.state),
           "--top",
@@ -339,7 +339,8 @@ export const make = Effect.fn("makeAzureDevOpsCli")(function* () {
                 }),
               ),
         ),
-      ),
+      );
+    },
     getPullRequest: (input) =>
       executeJson({
         cwd: input.cwd,

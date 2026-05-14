@@ -1,5 +1,5 @@
-import { parseScopedThreadKey, scopeProjectRef, scopeThreadRef } from "@s3tools/client-runtime";
-import { type ScopedThreadRef, ThreadId } from "@s3tools/contracts";
+import { parseScopedThreadKey, scopeProjectRef, scopeThreadRef } from "@ryco/client-runtime";
+import { type ScopedThreadRef, ThreadId } from "@ryco/contracts";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useRef } from "react";
 

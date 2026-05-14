@@ -20,7 +20,7 @@ import {
   type ServerProvider,
   type ServerProviderModel,
   type ServerProviderState,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import { formatProviderDriverKindLabel } from "./providerModels";
 

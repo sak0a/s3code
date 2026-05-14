@@ -1,5 +1,5 @@
-import { scopedThreadKey, scopeThreadRef } from "@s3tools/client-runtime";
-import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@s3tools/contracts";
+import { scopedThreadKey, scopeThreadRef } from "@ryco/client-runtime";
+import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@ryco/contracts";
 import { describe, expect, it } from "vitest";
 import type { DraftThreadState } from "../../composerDraftStore";
 import type { SidebarProjectSnapshot } from "../../sidebarProjectGrouping";

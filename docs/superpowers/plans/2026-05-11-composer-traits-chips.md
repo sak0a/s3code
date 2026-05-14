@@ -91,7 +91,7 @@ describe("uiStateStore — reasoningIndicatorStyle", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @s3code/web test uiStateStore.test`
+Run: `pnpm --filter @ryco/web test uiStateStore.test`
 Expected: FAIL with `setReasoningIndicatorStyle is not a function` or `reasoningIndicatorStyle` undefined.
 
 - [ ] **Step 3: Modify `apps/web/src/uiStateStore.ts`**
@@ -206,7 +206,7 @@ export const useUiStateStore = create<UiStateStore>((set) => ({
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm --filter @s3code/web test uiStateStore.test`
+Run: `pnpm --filter @ryco/web test uiStateStore.test`
 Expected: PASS — all four cases green.
 
 - [ ] **Step 5: Commit**
@@ -344,7 +344,7 @@ describe("applyDescriptorSelection", () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `pnpm --filter @s3code/web test traitsMenuLogic`
+Run: `pnpm --filter @ryco/web test traitsMenuLogic`
 Expected: FAIL with `Cannot find module './traitsMenuLogic'`.
 
 - [ ] **Step 3: Implement `traitsMenuLogic.ts`**
@@ -352,8 +352,8 @@ Expected: FAIL with `Cannot find module './traitsMenuLogic'`.
 Create `apps/web/src/components/chat/traitsMenuLogic.ts`:
 
 ```ts
-import { type ProviderOptionDescriptor } from "@s3tools/contracts";
-import { applyClaudePromptEffortPrefix } from "@s3tools/shared/model";
+import { type ProviderOptionDescriptor } from "@ryco/contracts";
+import { applyClaudePromptEffortPrefix } from "@ryco/shared/model";
 
 const ULTRATHINK_PROMPT_PREFIX = "Ultrathink:\n";
 
@@ -462,8 +462,8 @@ Keep the boolean descriptor handler as-is (it already uses `replaceDescriptorCur
 Run:
 
 ```
-pnpm --filter @s3code/web test traitsMenuLogic
-pnpm --filter @s3code/web test CompactComposerControlsMenu
+pnpm --filter @ryco/web test traitsMenuLogic
+pnpm --filter @ryco/web test CompactComposerControlsMenu
 ```
 
 Expected: PASS — helper tests pass; compact menu tests still pass (since logic is equivalent).
@@ -599,7 +599,7 @@ describe("ReasoningChip", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @s3code/web test:browser ReasoningChip`
+Run: `pnpm --filter @ryco/web test:browser ReasoningChip`
 Expected: FAIL with `Cannot find module './ReasoningChip'`.
 
 - [ ] **Step 3: Implement `ReasoningChip.tsx`**
@@ -607,7 +607,7 @@ Expected: FAIL with `Cannot find module './ReasoningChip'`.
 Create `apps/web/src/components/chat/ReasoningChip.tsx`:
 
 ```tsx
-import type { ProviderOptionDescriptor } from "@s3tools/contracts";
+import type { ProviderOptionDescriptor } from "@ryco/contracts";
 import { memo } from "react";
 import { BrainIcon, SparklesIcon } from "lucide-react";
 import { Button } from "../ui/button";
@@ -764,7 +764,7 @@ export const ReasoningChip = memo(function ReasoningChip(props: ReasoningChipPro
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm --filter @s3code/web test:browser ReasoningChip`
+Run: `pnpm --filter @ryco/web test:browser ReasoningChip`
 Expected: PASS — all four cases green.
 
 - [ ] **Step 5: Commit**
@@ -840,7 +840,7 @@ describe("FastModeChip", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @s3code/web test:browser FastModeChip`
+Run: `pnpm --filter @ryco/web test:browser FastModeChip`
 Expected: FAIL with `Cannot find module './FastModeChip'`.
 
 - [ ] **Step 3: Implement `FastModeChip.tsx`**
@@ -848,7 +848,7 @@ Expected: FAIL with `Cannot find module './FastModeChip'`.
 Create `apps/web/src/components/chat/FastModeChip.tsx`:
 
 ```tsx
-import type { ProviderOptionDescriptor } from "@s3tools/contracts";
+import type { ProviderOptionDescriptor } from "@ryco/contracts";
 import { memo } from "react";
 import { ZapIcon } from "lucide-react";
 import { Button } from "../ui/button";
@@ -892,7 +892,7 @@ export const FastModeChip = memo(function FastModeChip(props: FastModeChipProps)
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm --filter @s3code/web test:browser FastModeChip`
+Run: `pnpm --filter @ryco/web test:browser FastModeChip`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -959,7 +959,7 @@ describe("ContextWindowChip", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @s3code/web test:browser ContextWindowChip`
+Run: `pnpm --filter @ryco/web test:browser ContextWindowChip`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement `ContextWindowChip.tsx`**
@@ -967,7 +967,7 @@ Expected: FAIL.
 Create `apps/web/src/components/chat/ContextWindowChip.tsx`:
 
 ```tsx
-import type { ProviderOptionDescriptor } from "@s3tools/contracts";
+import type { ProviderOptionDescriptor } from "@ryco/contracts";
 import { memo } from "react";
 import { Button } from "../ui/button";
 import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../ui/menu";
@@ -1029,7 +1029,7 @@ export const ContextWindowChip = memo(function ContextWindowChip(props: ContextW
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm --filter @s3code/web test:browser ContextWindowChip`
+Run: `pnpm --filter @ryco/web test:browser ContextWindowChip`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1088,7 +1088,7 @@ describe("ThinkingChip", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @s3code/web test:browser ThinkingChip`
+Run: `pnpm --filter @ryco/web test:browser ThinkingChip`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement `ThinkingChip.tsx`**
@@ -1096,7 +1096,7 @@ Expected: FAIL.
 Create `apps/web/src/components/chat/ThinkingChip.tsx`:
 
 ```tsx
-import type { ProviderOptionDescriptor } from "@s3tools/contracts";
+import type { ProviderOptionDescriptor } from "@ryco/contracts";
 import { memo } from "react";
 import { BrainIcon } from "lucide-react";
 import { Button } from "../ui/button";
@@ -1140,7 +1140,7 @@ export const ThinkingChip = memo(function ThinkingChip(props: ThinkingChipProps)
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm --filter @s3code/web test:browser ThinkingChip`
+Run: `pnpm --filter @ryco/web test:browser ThinkingChip`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1205,7 +1205,7 @@ describe("AgentChip", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @s3code/web test:browser AgentChip`
+Run: `pnpm --filter @ryco/web test:browser AgentChip`
 Expected: FAIL.
 
 - [ ] **Step 3: Implement `AgentChip.tsx`**
@@ -1213,7 +1213,7 @@ Expected: FAIL.
 Create `apps/web/src/components/chat/AgentChip.tsx`:
 
 ```tsx
-import type { ProviderOptionDescriptor } from "@s3tools/contracts";
+import type { ProviderOptionDescriptor } from "@ryco/contracts";
 import { memo } from "react";
 import { Button } from "../ui/button";
 import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../ui/menu";
@@ -1275,7 +1275,7 @@ export const AgentChip = memo(function AgentChip(props: AgentChipProps) {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm --filter @s3code/web test:browser AgentChip`
+Run: `pnpm --filter @ryco/web test:browser AgentChip`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1307,14 +1307,14 @@ import {
   ProviderDriverKind,
   ThreadId,
   EnvironmentId,
-} from "@s3tools/contracts";
-import { scopeThreadRef, scopedThreadKey } from "@s3tools/client-runtime";
+} from "@ryco/contracts";
+import { scopeThreadRef, scopedThreadKey } from "@ryco/client-runtime";
 import {
   DEFAULT_MODEL,
   DEFAULT_MODEL_BY_PROVIDER,
   createModelCapabilities,
   createModelSelection,
-} from "@s3tools/shared/model";
+} from "@ryco/shared/model";
 import { afterEach, describe, expect, it } from "vitest";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
@@ -1455,7 +1455,7 @@ describe("TraitsChips", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @s3code/web test:browser TraitsChips`
+Run: `pnpm --filter @ryco/web test:browser TraitsChips`
 Expected: FAIL with `Cannot find module './TraitsChips'`.
 
 - [ ] **Step 3: Implement `TraitsChips.tsx`**
@@ -1469,12 +1469,12 @@ import {
   type ProviderOptionSelection,
   type ScopedThreadRef,
   type ServerProviderModel,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   buildProviderOptionSelectionsFromDescriptors,
   getProviderOptionDescriptors,
   isClaudeUltrathinkPrompt,
-} from "@s3tools/shared/model";
+} from "@ryco/shared/model";
 import { memo, useCallback } from "react";
 
 import { useComposerDraftStore, DraftId } from "../../composerDraftStore";
@@ -1611,7 +1611,7 @@ export const TraitsChips = memo(function TraitsChips(props: TraitsChipsProps) {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `pnpm --filter @s3code/web test:browser TraitsChips`
+Run: `pnpm --filter @ryco/web test:browser TraitsChips`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1721,16 +1721,16 @@ Run `grep -n renderProviderTraitsPicker apps/web/src/components/chat/composerPro
 Run:
 
 ```
-pnpm --filter @s3code/web typecheck
-pnpm --filter @s3code/web test:browser TraitsChips
-pnpm --filter @s3code/web test composerProviderState
+pnpm --filter @ryco/web typecheck
+pnpm --filter @ryco/web test:browser TraitsChips
+pnpm --filter @ryco/web test composerProviderState
 ```
 
 Expected: PASS — no TS errors, chip tests still green, composer state tests pass under the new name.
 
 - [ ] **Step 5: Manual smoke test**
 
-Run: `pnpm --filter @s3code/web dev` and open the chat composer.
+Run: `pnpm --filter @ryco/web dev` and open the chat composer.
 Confirm:
 
 - Reasoning chip appears for Opus 4.6 with current level dots (or text per setting).
@@ -1873,7 +1873,7 @@ Insert the new section before `<SettingsSection title="Color mode">`:
 
 - [ ] **Step 2: Manual smoke test**
 
-Run: `pnpm --filter @s3code/web dev`. Open Settings → Appearance. Confirm:
+Run: `pnpm --filter @ryco/web dev`. Open Settings → Appearance. Confirm:
 
 - "Reasoning indicator" section appears above "Color mode".
 - Both radio cards render with previews.
@@ -1882,7 +1882,7 @@ Run: `pnpm --filter @s3code/web dev`. Open Settings → Appearance. Confirm:
 
 - [ ] **Step 3: Run typecheck**
 
-Run: `pnpm --filter @s3code/web typecheck`
+Run: `pnpm --filter @ryco/web typecheck`
 Expected: PASS.
 
 - [ ] **Step 4: Commit**
@@ -1926,9 +1926,9 @@ Edit `apps/web/src/components/chat/TraitsPicker.tsx`:
 Run:
 
 ```
-pnpm --filter @s3code/web typecheck
-pnpm --filter @s3code/web test:browser CompactComposerControlsMenu
-pnpm --filter @s3code/web test:browser TraitsChips
+pnpm --filter @ryco/web typecheck
+pnpm --filter @ryco/web test:browser CompactComposerControlsMenu
+pnpm --filter @ryco/web test:browser TraitsChips
 ```
 
 Expected: PASS on all three.

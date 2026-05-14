@@ -16,7 +16,7 @@ Concrete issues observed in `apps/web/src/components/Sidebar.tsx:1317-1526`:
 1. The project root path appears three times: in the header subtitle (`environmentLabel · cwd`), as the "Active project root" input, and as the "Base workspace" row inside the worktree list.
 2. The header's `ImageIcon` and the right column's "Project image" card are both non-functional placeholders. There is no backend support for setting a project image today.
 3. The right column mixes a non-functional image card, a remote link card, and a worktree summary. None of these are settings.
-4. The "Project metadata folder" field (`.s3code`) is presented with the same visual weight as the display name even though most users never touch it.
+4. The "Project metadata folder" field (`.ryco`) is presented with the same visual weight as the display name even though most users never touch it.
 5. `max-w-5xl` (1024 px) is too wide for what is effectively four form fields.
 6. `resolveProjectRemoteLink` only surfaces the one auto-picked remote (priority: `upstream` > `origin` > alphabetical). Users with both an `origin` fork and an `upstream` parent have no way to see or pick between them from this dialog. The sidebar's "Open remote" then jumps to `upstream`, which surprises users whose primary working remote is `origin`.
 
@@ -94,7 +94,7 @@ Vertical stack inside the same `max-w-[520px]` column:
 
 **Project root.** `Input` with helper line `The absolute path the project is anchored to.` and a `Browse` button to its right that opens the native folder picker through the existing `api.dialogs.pickFolder` flow.
 
-**Metadata folder.** `Input` with helper line `Where worktrees and project data are stored.` and `.s3code` placeholder.
+**Metadata folder.** `Input` with helper line `Where worktrees and project data are stored.` and `.ryco` placeholder.
 
 **Worktree path preview.** A muted, monospaced read-only block below the two inputs showing `<root>/<metadataDir>/worktrees`. Updates live as either input changes.
 

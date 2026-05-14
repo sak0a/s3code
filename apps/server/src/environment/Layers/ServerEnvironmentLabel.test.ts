@@ -23,7 +23,7 @@ describe("resolveServerEnvironmentLabel", () => {
   it.effect("uses hostname fallback regardless of launch mode", () =>
     Effect.gen(function* () {
       const result = yield* resolveServerEnvironmentLabel({
-        cwdBaseName: "s3code",
+        cwdBaseName: "ryco",
         platform: "win32",
         hostname: "macbook-pro",
       }).pipe(Effect.provide(NoopFileSystemLayer));
@@ -43,7 +43,7 @@ describe("resolveServerEnvironmentLabel", () => {
       });
 
       const result = yield* resolveServerEnvironmentLabel({
-        cwdBaseName: "s3code",
+        cwdBaseName: "ryco",
         platform: "darwin",
         hostname: "macbook-pro",
       }).pipe(Effect.provide(NoopFileSystemLayer));
@@ -63,7 +63,7 @@ describe("resolveServerEnvironmentLabel", () => {
   it.effect("prefers Linux PRETTY_HOSTNAME from machine-info", () =>
     Effect.gen(function* () {
       const result = yield* resolveServerEnvironmentLabel({
-        cwdBaseName: "s3code",
+        cwdBaseName: "ryco",
         platform: "linux",
         hostname: "buildbox",
       }).pipe(
@@ -94,7 +94,7 @@ describe("resolveServerEnvironmentLabel", () => {
       });
 
       const result = yield* resolveServerEnvironmentLabel({
-        cwdBaseName: "s3code",
+        cwdBaseName: "ryco",
         platform: "linux",
         hostname: "runner-01",
       }).pipe(Effect.provide(NoopFileSystemLayer));
@@ -114,7 +114,7 @@ describe("resolveServerEnvironmentLabel", () => {
   it.effect("falls back to the hostname when friendly labels are unavailable", () =>
     Effect.gen(function* () {
       const result = yield* resolveServerEnvironmentLabel({
-        cwdBaseName: "s3code",
+        cwdBaseName: "ryco",
         platform: "win32",
         hostname: "JULIUS-LAPTOP",
       }).pipe(Effect.provide(NoopFileSystemLayer));
@@ -128,7 +128,7 @@ describe("resolveServerEnvironmentLabel", () => {
       mockedRunProcess.mockRejectedValueOnce(new Error("spawn scutil ENOENT"));
 
       const result = yield* resolveServerEnvironmentLabel({
-        cwdBaseName: "s3code",
+        cwdBaseName: "ryco",
         platform: "darwin",
         hostname: "macbook-pro",
       }).pipe(Effect.provide(NoopFileSystemLayer));
@@ -148,7 +148,7 @@ describe("resolveServerEnvironmentLabel", () => {
       });
 
       const result = yield* resolveServerEnvironmentLabel({
-        cwdBaseName: "s3code",
+        cwdBaseName: "ryco",
         platform: "darwin",
         hostname: "macbook-pro",
       }).pipe(Effect.provide(NoopFileSystemLayer));
@@ -176,12 +176,12 @@ describe("resolveServerEnvironmentLabel", () => {
       });
 
       const result = yield* resolveServerEnvironmentLabel({
-        cwdBaseName: "s3code",
+        cwdBaseName: "ryco",
         platform: "linux",
         hostname: "   ",
       }).pipe(Effect.provide(NoopFileSystemLayer));
 
-      expect(result).toBe("s3code");
+      expect(result).toBe("ryco");
     }),
   );
 });

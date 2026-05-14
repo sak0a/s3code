@@ -13,10 +13,10 @@ import type {
   ModelCapabilities,
   ServerProviderModel,
   ServerProviderSkill,
-} from "@s3tools/contracts";
-import { ServerSettingsError } from "@s3tools/contracts";
+} from "@ryco/contracts";
+import { ServerSettingsError } from "@ryco/contracts";
 
-import { createModelCapabilities } from "@s3tools/shared/model";
+import { createModelCapabilities } from "@ryco/shared/model";
 
 import { buildServerProvider, type ServerProviderDraft } from "../providerSnapshot.ts";
 import { expandHomePath } from "../../pathExpansion.ts";
@@ -278,8 +278,8 @@ const requestAllCodexModels = Effect.fn("requestAllCodexModels")(function* (
 export function buildCodexInitializeParams(): CodexSchema.V1InitializeParams {
   return {
     clientInfo: {
-      name: "s3code_desktop",
-      title: "S3Code Desktop",
+      name: "ryco_desktop",
+      title: "Ryco Desktop",
       version: packageJson.version,
     },
     capabilities: {
@@ -323,8 +323,8 @@ const probeCodexAppServerProvider = Effect.fn("probeCodexAppServerProvider")(fun
 
   const initialize = yield* client.request("initialize", {
     clientInfo: {
-      name: "s3code_desktop",
-      title: "S3Code Desktop",
+      name: "ryco_desktop",
+      title: "Ryco Desktop",
       version: "0.1.0",
     },
     capabilities: {
@@ -411,7 +411,7 @@ const makePendingCodexProvider = (codexSettings: CodexSettings): ServerProviderD
         version: null,
         status: "warning",
         auth: { status: "unknown" },
-        message: "Codex is disabled in S3Code settings.",
+        message: "Codex is disabled in Ryco settings.",
       },
     });
   }
@@ -495,7 +495,7 @@ export const checkCodexProviderStatus = Effect.fn("checkCodexProviderStatus")(fu
         version: null,
         status: "warning",
         auth: { status: "unknown" },
-        message: "Codex is disabled in S3Code settings.",
+        message: "Codex is disabled in Ryco settings.",
       },
     });
   }

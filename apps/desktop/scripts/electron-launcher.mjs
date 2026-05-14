@@ -1,4 +1,4 @@
-// This file mostly exists because we want dev mode to say "S3Code (Dev)" instead of "electron"
+// This file mostly exists because we want dev mode to say "Ryco (Dev)" instead of "electron"
 
 import { spawnSync } from "node:child_process";
 import {
@@ -17,8 +17,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
-const APP_DISPLAY_NAME = isDevelopment ? "S3Code (Dev)" : "S3Code";
-const APP_BUNDLE_ID = isDevelopment ? "com.sak0a.s3code.dev" : "com.sak0a.s3code";
+const APP_DISPLAY_NAME = isDevelopment ? "Ryco (Dev)" : "Ryco";
+const APP_BUNDLE_ID = isDevelopment ? "com.sak0a.ryco.dev" : "com.sak0a.ryco";
 const LAUNCHER_VERSION = 2;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

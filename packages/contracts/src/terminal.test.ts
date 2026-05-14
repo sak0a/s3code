@@ -74,19 +74,19 @@ describe("TerminalOpenInput", () => {
     const parsed = decodeSync(TerminalOpenInput, {
       threadId: "thread-1",
       cwd: "/tmp/project",
-      worktreePath: "/tmp/project/.s3code/worktrees/feature-a",
+      worktreePath: "/tmp/project/.ryco/worktrees/feature-a",
       cols: 100,
       rows: 24,
       env: {
-        S3CODE_PROJECT_ROOT: "/tmp/project",
+        RYCO_PROJECT_ROOT: "/tmp/project",
         CUSTOM_FLAG: "1",
       },
     });
     expect(parsed.env).toMatchObject({
-      S3CODE_PROJECT_ROOT: "/tmp/project",
+      RYCO_PROJECT_ROOT: "/tmp/project",
       CUSTOM_FLAG: "1",
     });
-    expect(parsed.worktreePath).toBe("/tmp/project/.s3code/worktrees/feature-a");
+    expect(parsed.worktreePath).toBe("/tmp/project/.ryco/worktrees/feature-a");
   });
 
   it("rejects invalid env keys", () => {
@@ -230,8 +230,8 @@ describe("TerminalEvent", () => {
         snapshot: {
           threadId: "thread-1",
           terminalId: DEFAULT_TERMINAL_ID,
-          cwd: "/tmp/project/.s3code/worktrees/feature-a",
-          worktreePath: "/tmp/project/.s3code/worktrees/feature-a",
+          cwd: "/tmp/project/.ryco/worktrees/feature-a",
+          worktreePath: "/tmp/project/.ryco/worktrees/feature-a",
           status: "running",
           pid: 1234,
           history: "",

@@ -1,4 +1,4 @@
-import type { ServerProvider } from "@s3tools/contracts";
+import type { ServerProvider } from "@ryco/contracts";
 import type { Effect, Stream } from "effect";
 
 export interface ServerProviderShape {

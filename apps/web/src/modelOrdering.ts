@@ -1,4 +1,4 @@
-import type { ProviderInstanceId } from "@s3tools/contracts";
+import type { ProviderInstanceId } from "@ryco/contracts";
 import * as Arr from "effect/Array";
 import * as Order from "effect/Order";
 

@@ -10,11 +10,7 @@
  *
  * @module unavailableProviderSnapshot
  */
-import {
-  ProviderDriverKind,
-  type ProviderInstanceId,
-  type ServerProvider,
-} from "@s3tools/contracts";
+import { ProviderDriverKind, type ProviderInstanceId, type ServerProvider } from "@ryco/contracts";
 
 import { buildServerProvider } from "./providerSnapshot.ts";
 

@@ -34,7 +34,7 @@ const TestLayer = Layer.empty.pipe(
 const makeTempDir = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   return yield* fileSystem.makeTempDirectoryScoped({
-    prefix: "s3code-workspace-files-",
+    prefix: "ryco-workspace-files-",
   });
 });
 

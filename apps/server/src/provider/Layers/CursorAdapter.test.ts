@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import { Context, Deferred, Effect, Fiber, Layer, Schema, Stream } from "effect";
-import { createModelSelection } from "@s3tools/shared/model";
+import { createModelSelection } from "@ryco/shared/model";
 
 import {
   ApprovalRequestId,
@@ -15,7 +15,7 @@ import {
   type ProviderRuntimeEvent,
   ThreadId,
   ProviderInstanceId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import { ServerConfig } from "../../config.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
@@ -137,7 +137,7 @@ const cursorAdapterTestLayer = it.layer(
     Layer.provideMerge(ServerSettingsService.layerTest()),
     Layer.provideMerge(
       ServerConfig.layerTest(process.cwd(), {
-        prefix: "s3code-cursor-adapter-test-",
+        prefix: "ryco-cursor-adapter-test-",
       }),
     ),
     Layer.provideMerge(NodeServices.layer),
@@ -613,7 +613,7 @@ cursorAdapterTestLayer("CursorAdapterLive", (it) => {
             Layer.provideMerge(ServerSettingsService.layerTest()),
             Layer.provideMerge(
               ServerConfig.layerTest(process.cwd(), {
-                prefix: "s3code-cursor-adapter-test-",
+                prefix: "ryco-cursor-adapter-test-",
               }),
             ),
             Layer.provideMerge(NodeServices.layer),
@@ -1249,7 +1249,7 @@ cursorAdapterTestLayer("CursorAdapterLive", (it) => {
         Layer.provideMerge(ServerSettingsService.layerTest()),
         Layer.provideMerge(
           ServerConfig.layerTest(process.cwd(), {
-            prefix: "s3code-cursor-adapter-custom-instance-",
+            prefix: "ryco-cursor-adapter-custom-instance-",
           }),
         ),
         Layer.provideMerge(NodeServices.layer),

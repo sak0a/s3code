@@ -1,7 +1,8 @@
-import type { EnvironmentId, ProjectId } from "@s3tools/contracts";
+import type { EnvironmentId, ProjectId } from "@ryco/contracts";
 import { FolderIcon } from "lucide-react";
 import { useState } from "react";
 import { resolveEnvironmentHttpUrl } from "../environments/runtime";
+import { cn } from "../lib/utils";
 
 const loadedProjectFaviconSrcs = new Set<string>();
 
@@ -36,16 +37,20 @@ export function ProjectFavicon(input: {
   );
 
   const fallbackClass = input.fillContainer
-    ? `size-full text-muted-foreground/50 ${input.className ?? ""}`
-    : `size-3.5 shrink-0 text-muted-foreground/50 ${input.className ?? ""}`;
+    ? cn("size-full text-muted-foreground/50", input.className)
+    : cn("size-3.5 shrink-0 text-muted-foreground/50", input.className);
 
   if (!src || status === "error") {
     return <FolderIcon className={fallbackClass} />;
   }
 
   const imgClass = input.fillContainer
-    ? `size-full object-cover ${status === "loaded" ? "" : "hidden"} ${input.className ?? ""}`
-    : `size-3.5 shrink-0 rounded-sm object-contain ${status === "loaded" ? "" : "hidden"} ${input.className ?? ""}`;
+    ? cn("size-full object-cover", status === "loaded" ? "" : "hidden", input.className)
+    : cn(
+        "size-3.5 shrink-0 rounded-sm object-contain",
+        status === "loaded" ? "" : "hidden",
+        input.className,
+      );
 
   return (
     <>

@@ -1,4 +1,4 @@
-import { EnvironmentId, type VcsRef } from "@s3tools/contracts";
+import { EnvironmentId, type VcsRef } from "@ryco/contracts";
 import { describe, expect, it } from "vitest";
 import {
   dedupeRemoteBranchesWithLocalMatches,
@@ -19,7 +19,7 @@ describe("resolveDraftEnvModeAfterBranchChange", () => {
     expect(
       resolveDraftEnvModeAfterBranchChange({
         nextWorktreePath: null,
-        currentWorktreePath: "/repo/.s3code/worktrees/feature-a",
+        currentWorktreePath: "/repo/.ryco/worktrees/feature-a",
         effectiveEnvMode: "worktree",
       }),
     ).toBe("local");
@@ -38,7 +38,7 @@ describe("resolveDraftEnvModeAfterBranchChange", () => {
   it("uses worktree mode when selecting a ref already attached to a worktree", () => {
     expect(
       resolveDraftEnvModeAfterBranchChange({
-        nextWorktreePath: "/repo/.s3code/worktrees/feature-a",
+        nextWorktreePath: "/repo/.ryco/worktrees/feature-a",
         currentWorktreePath: null,
         effectiveEnvMode: "local",
       }),
@@ -120,7 +120,7 @@ describe("resolveEffectiveEnvMode", () => {
   it("treats draft threads already attached to a worktree as current-checkout mode", () => {
     expect(
       resolveEffectiveEnvMode({
-        activeWorktreePath: "/repo/.s3code/worktrees/feature-a",
+        activeWorktreePath: "/repo/.ryco/worktrees/feature-a",
         hasServerThread: false,
         draftThreadEnvMode: "worktree",
       }),
@@ -266,15 +266,15 @@ describe("resolveBranchSelectionTarget", () => {
     expect(
       resolveBranchSelectionTarget({
         activeProjectCwd: "/repo",
-        activeWorktreePath: "/repo/.s3code/worktrees/feature-a",
+        activeWorktreePath: "/repo/.ryco/worktrees/feature-a",
         refName: {
           isDefault: false,
-          worktreePath: "/repo/.s3code/worktrees/feature-b",
+          worktreePath: "/repo/.ryco/worktrees/feature-b",
         },
       }),
     ).toEqual({
-      checkoutCwd: "/repo/.s3code/worktrees/feature-b",
-      nextWorktreePath: "/repo/.s3code/worktrees/feature-b",
+      checkoutCwd: "/repo/.ryco/worktrees/feature-b",
+      nextWorktreePath: "/repo/.ryco/worktrees/feature-b",
       reuseExistingWorktree: true,
     });
   });
@@ -283,7 +283,7 @@ describe("resolveBranchSelectionTarget", () => {
     expect(
       resolveBranchSelectionTarget({
         activeProjectCwd: "/repo",
-        activeWorktreePath: "/repo/.s3code/worktrees/feature-a",
+        activeWorktreePath: "/repo/.ryco/worktrees/feature-a",
         refName: {
           isDefault: true,
           worktreePath: "/repo",
@@ -300,7 +300,7 @@ describe("resolveBranchSelectionTarget", () => {
     expect(
       resolveBranchSelectionTarget({
         activeProjectCwd: "/repo",
-        activeWorktreePath: "/repo/.s3code/worktrees/feature-a",
+        activeWorktreePath: "/repo/.ryco/worktrees/feature-a",
         refName: {
           isDefault: true,
           worktreePath: null,
@@ -317,15 +317,15 @@ describe("resolveBranchSelectionTarget", () => {
     expect(
       resolveBranchSelectionTarget({
         activeProjectCwd: "/repo",
-        activeWorktreePath: "/repo/.s3code/worktrees/feature-a",
+        activeWorktreePath: "/repo/.ryco/worktrees/feature-a",
         refName: {
           isDefault: false,
           worktreePath: null,
         },
       }),
     ).toEqual({
-      checkoutCwd: "/repo/.s3code/worktrees/feature-a",
-      nextWorktreePath: "/repo/.s3code/worktrees/feature-a",
+      checkoutCwd: "/repo/.ryco/worktrees/feature-a",
+      nextWorktreePath: "/repo/.ryco/worktrees/feature-a",
       reuseExistingWorktree: false,
     });
   });

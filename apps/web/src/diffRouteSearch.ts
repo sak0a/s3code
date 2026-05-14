@@ -1,4 +1,4 @@
-import { TurnId } from "@s3tools/contracts";
+import { TurnId } from "@ryco/contracts";
 
 export interface DiffRouteSearch {
   diff?: "1" | undefined;

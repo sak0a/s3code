@@ -2,7 +2,7 @@ import {
   EnvironmentId,
   type ExecutionEnvironmentDescriptor,
   type ServerAuthDescriptor,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { HttpResponse, http } from "msw";
 
 const TEST_SESSION_EXPIRES_AT = "2026-05-01T12:00:00.000Z";

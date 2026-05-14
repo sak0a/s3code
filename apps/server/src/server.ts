@@ -30,6 +30,7 @@ import { CheckpointDiffQueryLive } from "./checkpointing/Layers/CheckpointDiffQu
 import { CheckpointStoreLive } from "./checkpointing/Layers/CheckpointStore.ts";
 import * as AzureDevOpsCli from "./sourceControl/AzureDevOpsCli.ts";
 import * as BitbucketApi from "./sourceControl/BitbucketApi.ts";
+import * as ForgejoApi from "./sourceControl/ForgejoApi.ts";
 import * as GitHubCli from "./sourceControl/GitHubCli.ts";
 import * as GitLabCli from "./sourceControl/GitLabCli.ts";
 import * as TextGeneration from "./textGeneration/TextGeneration.ts";
@@ -81,6 +82,11 @@ import {
 } from "./auth/http.ts";
 import { ServerSecretStoreLive } from "./auth/Layers/ServerSecretStore.ts";
 import { ServerAuthLive } from "./auth/Layers/ServerAuth.ts";
+import * as AtlassianConnectionService from "./atlassian/AtlassianConnectionService.ts";
+import * as JiraWorkItemService from "./atlassian/JiraWorkItemService.ts";
+import { AtlassianConnectionRepositoryLive } from "./persistence/Layers/AtlassianConnections.ts";
+import { AtlassianResourceRepositoryLive } from "./persistence/Layers/AtlassianResources.ts";
+import { ProjectAtlassianLinkRepositoryLive } from "./persistence/Layers/ProjectAtlassianLinks.ts";
 import { ProjectionWorktreeRepositoryLive } from "./persistence/Layers/ProjectionWorktrees.ts";
 import { OrchestrationLayerLive } from "./orchestration/runtimeLayer.ts";
 import {
@@ -92,8 +98,8 @@ import {
   orchestrationDispatchRouteLayer,
   orchestrationSnapshotRouteLayer,
 } from "./orchestration/http.ts";
-import { NetService } from "@s3tools/shared/Net";
-import { disableTailscaleServe, ensureTailscaleServe } from "@s3tools/tailscale";
+import { NetService } from "@ryco/shared/Net";
+import { disableTailscaleServe, ensureTailscaleServe } from "@ryco/tailscale";
 
 const PtyAdapterLive = Layer.unwrap(
   Effect.gen(function* () {
@@ -182,7 +188,13 @@ const VcsDriverRegistryLayerLive = VcsDriverRegistry.layer.pipe(
 
 const SourceControlProviderRegistryLayerLive = SourceControlProviderRegistry.layer.pipe(
   Layer.provide(
-    Layer.mergeAll(AzureDevOpsCli.layer, BitbucketApi.layer, GitHubCli.layer, GitLabCli.layer),
+    Layer.mergeAll(
+      AzureDevOpsCli.layer,
+      BitbucketApi.layer,
+      ForgejoApi.layer,
+      GitHubCli.layer,
+      GitLabCli.layer,
+    ),
   ),
   Layer.provideMerge(GitVcsDriver.layer),
   Layer.provideMerge(VcsDriverRegistryLayerLive),
@@ -261,12 +273,23 @@ const AuthLayerLive = ServerAuthLive.pipe(
   Layer.provide(ServerSecretStoreLive),
 );
 
+const AtlassianLayerLive = Layer.mergeAll(
+  AtlassianConnectionService.layer,
+  JiraWorkItemService.layer,
+).pipe(
+  Layer.provideMerge(AtlassianConnectionRepositoryLive),
+  Layer.provideMerge(AtlassianResourceRepositoryLive),
+  Layer.provideMerge(ProjectAtlassianLinkRepositoryLive),
+  Layer.provideMerge(PersistenceLayerLive),
+  Layer.provide(ServerSecretStoreLive),
+);
+
 const ProviderRuntimeLayerLive = ProviderSessionReaperLive.pipe(
   Layer.provideMerge(ProviderLayerLive),
   Layer.provideMerge(OrchestrationLayerLive),
 );
 
-const RuntimeCoreDependenciesLive = ReactorLayerLive.pipe(
+const RuntimeCoreBaseDependenciesLive = ReactorLayerLive.pipe(
   // Core Services
   Layer.provideMerge(CheckpointingLayerLive),
   Layer.provideMerge(SourceControlProviderRegistryLayerLive),
@@ -302,9 +325,13 @@ const RuntimeCoreDependenciesLive = ReactorLayerLive.pipe(
   Layer.provideMerge(WorkspaceLayerLive),
   Layer.provideMerge(ProjectFaviconResolverLive),
   Layer.provideMerge(ProjectAvatarStoreLayerLive),
+);
+
+const RuntimeCoreDependenciesLive = RuntimeCoreBaseDependenciesLive.pipe(
   Layer.provideMerge(RepositoryIdentityResolverLive),
   Layer.provideMerge(ServerEnvironmentLive),
   Layer.provideMerge(AuthLayerLive),
+  Layer.provideMerge(AtlassianLayerLive),
 );
 
 const RuntimeDependenciesLive = RuntimeCoreDependenciesLive.pipe(
@@ -319,7 +346,7 @@ const RuntimeServicesLive = ServerRuntimeStartupLive.pipe(
   Layer.provideMerge(RuntimeDependenciesLive),
 );
 
-export const makeRoutesLayer = Layer.mergeAll(
+const authRoutesLayer = Layer.mergeAll(
   authBearerBootstrapRouteLayer,
   authBootstrapRouteLayer,
   authClientsRevokeOthersRouteLayer,
@@ -330,13 +357,21 @@ export const makeRoutesLayer = Layer.mergeAll(
   authPairingCredentialRouteLayer,
   authSessionRouteLayer,
   authWebSocketTokenRouteLayer,
+);
+
+const projectAssetRoutesLayer = Layer.mergeAll(
+  projectFaviconRouteLayer,
+  projectAvatarUploadRouteLayer,
+  projectAvatarServeRouteLayer,
+);
+
+export const makeRoutesLayer = Layer.mergeAll(
+  authRoutesLayer,
   attachmentsRouteLayer,
   orchestrationDispatchRouteLayer,
   orchestrationSnapshotRouteLayer,
   otlpTracesProxyRouteLayer,
-  projectFaviconRouteLayer,
-  projectAvatarUploadRouteLayer,
-  projectAvatarServeRouteLayer,
+  projectAssetRoutesLayer,
   serverEnvironmentRouteLayer,
   staticAndDevRouteLayer,
   websocketRpcRouteLayer,

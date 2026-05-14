@@ -24,7 +24,7 @@ describe("VcsProjectConfig", () => {
     );
   });
 
-  it.layer(TestLayer)("discovers .s3code/vcs.json from nested workspaces", (it) => {
+  it.layer(TestLayer)("discovers .ryco/vcs.json from nested workspaces", (it) => {
     it.effect("returns the configured kind", () =>
       Effect.gen(function* () {
         const fileSystem = yield* FileSystem.FileSystem;
@@ -32,7 +32,7 @@ describe("VcsProjectConfig", () => {
         const root = yield* fileSystem.makeTempDirectoryScoped({
           prefix: "s3-vcs-config-test-",
         });
-        const configDir = path.join(root, ".s3code");
+        const configDir = path.join(root, ".ryco");
         const nested = path.join(root, "packages", "app");
         yield* fileSystem.makeDirectory(configDir, { recursive: true });
         yield* fileSystem.makeDirectory(nested, { recursive: true });

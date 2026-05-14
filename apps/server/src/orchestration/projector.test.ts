@@ -5,7 +5,7 @@ import {
   ProviderDriverKind,
   ThreadId,
   type OrchestrationEvent,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
@@ -82,6 +82,7 @@ describe("orchestration projector", () => {
           model: "gpt-5-codex",
         },
         runtimeMode: "full-access",
+        tokenMode: "balanced",
         interactionMode: "default",
         branch: null,
         worktreePath: null,

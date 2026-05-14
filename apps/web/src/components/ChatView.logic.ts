@@ -8,8 +8,14 @@ import {
   type ScopedThreadRef,
   type ThreadId,
   type TurnId,
-} from "@s3tools/contracts";
-import { type ChatMessage, type SessionPhase, type Thread, type ThreadSession } from "../types";
+} from "@ryco/contracts";
+import {
+  type ChatMessage,
+  DEFAULT_AGENT_TOKEN_MODE,
+  type SessionPhase,
+  type Thread,
+  type ThreadSession,
+} from "../types";
 import { type ComposerImageAttachment, type DraftThreadState } from "../composerDraftStore";
 import { DateTime, Schema } from "effect";
 import { selectThreadByRef, useStore } from "../store";
@@ -20,7 +26,7 @@ import {
 } from "../lib/terminalContext";
 import type { DraftThreadEnvMode } from "../composerDraftStore";
 
-export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY = "s3code:last-invoked-script-by-project";
+export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY = "ryco:last-invoked-script-by-project";
 export const MAX_HIDDEN_MOUNTED_TERMINAL_THREADS = 10;
 
 export const LastInvokedScriptByProjectSchema = Schema.Record(ProjectId, Schema.String);
@@ -40,6 +46,7 @@ export function buildLocalDraftThread(
     modelSelection: fallbackModelSelection,
     runtimeMode: draftThread.runtimeMode,
     interactionMode: draftThread.interactionMode,
+    tokenMode: draftThread.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
     session: null,
     messages: [],
     error,

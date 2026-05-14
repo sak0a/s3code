@@ -1,5 +1,5 @@
-import type { SourceControlLabel } from "@s3tools/contracts";
-import { CircleDotIcon, GitPullRequestIcon, UsersIcon } from "lucide-react";
+import type { SourceControlLabel } from "@ryco/contracts";
+import { CircleDotIcon, GitPullRequestIcon, TicketCheckIcon, UsersIcon } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { avatarUrlForAuthor, hashAuthorToHue } from "./CommentThread.logic";
 import { LabelChip } from "./LabelChip";
@@ -10,8 +10,10 @@ interface WorktreeItemSidebarProps {
   reviewers?: ReadonlyArray<string> | null | undefined;
   linkedIssueNumbers?: ReadonlyArray<number> | null | undefined;
   linkedChangeRequestNumbers?: ReadonlyArray<number> | null | undefined;
+  linkedWorkItemKeys?: ReadonlyArray<string> | null | undefined;
   onSelectLinkedIssue?: ((issueNumber: number) => void) | undefined;
   onSelectLinkedChangeRequest?: ((number: number) => void) | undefined;
+  onSelectLinkedWorkItem?: ((key: string) => void) | undefined;
 }
 
 export function WorktreeItemSidebar(props: WorktreeItemSidebarProps) {
@@ -46,6 +48,14 @@ export function WorktreeItemSidebar(props: WorktreeItemSidebarProps) {
           />
         </SidebarSection>
       ) : null}
+      {props.linkedWorkItemKeys !== undefined ? (
+        <SidebarSection title="Linked Jira">
+          <WorkItemKeyList
+            keys={props.linkedWorkItemKeys ?? []}
+            onSelect={props.onSelectLinkedWorkItem}
+          />
+        </SidebarSection>
+      ) : null}
       {props.linkedChangeRequestNumbers !== undefined ? (
         <SidebarSection title="Linked pull requests">
           <RefList
@@ -57,6 +67,39 @@ export function WorktreeItemSidebar(props: WorktreeItemSidebarProps) {
         </SidebarSection>
       ) : null}
     </aside>
+  );
+}
+
+function WorkItemKeyList(props: {
+  keys: ReadonlyArray<string>;
+  onSelect?: ((key: string) => void) | undefined;
+}) {
+  if (props.keys.length === 0) {
+    return <span className="text-muted-foreground/70 text-xs italic">None</span>;
+  }
+  return (
+    <ul className="flex flex-wrap gap-1">
+      {props.keys.map((key) => (
+        <li key={key}>
+          {props.onSelect ? (
+            <button
+              type="button"
+              onClick={() => props.onSelect?.(key)}
+              className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-1.5 py-0.5 text-foreground text-xs hover:bg-accent/60"
+              aria-label={`View Jira work item ${key}`}
+            >
+              <TicketCheckIcon className="size-3" />
+              <span>{key}</span>
+            </button>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-1.5 py-0.5 text-foreground text-xs">
+              <TicketCheckIcon className="size-3" />
+              <span>{key}</span>
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 

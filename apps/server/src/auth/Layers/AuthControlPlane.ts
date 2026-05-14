@@ -1,4 +1,4 @@
-import type { AuthClientSession, AuthPairingLink } from "@s3tools/contracts";
+import type { AuthClientSession, AuthPairingLink } from "@ryco/contracts";
 import { DateTime, Effect, Layer } from "effect";
 
 import { BootstrapCredentialServiceLive } from "./BootstrapCredentialService.ts";

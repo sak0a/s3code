@@ -1,11 +1,11 @@
-# S3Code
+# Ryco
 
-S3Code is a minimal web GUI for coding agents (currently Codex, Claude, and
+Ryco is a minimal web GUI for coding agents (currently Codex, Claude, and
 OpenCode, more coming soon).
 
-## Why S3Code?
+## Why Ryco?
 
-S3Code is aimed at being a small, practical coding-agent workspace with faster
+Ryco is aimed at being a small, practical coding-agent workspace with faster
 day-to-day use, clearer local customization, and better visibility into provider
 behavior.
 
@@ -36,7 +36,7 @@ Implemented fork improvements include:
 ## Installation
 
 > [!WARNING]
-> S3 Code currently supports Codex, Claude, OpenCode and (Early Access Cursor)
+> Ryco currently supports Codex, Claude, OpenCode and (Early Access Cursor)
 > Install and authenticate at least one provider before use:
 >
 > - Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
@@ -46,23 +46,23 @@ Implemented fork improvements include:
 ### Run without installing
 
 ```bash
-npx s3
+npx ryco
 ```
 
 ### Desktop app
 
-Install the latest version of the desktop app from [GitHub Releases](https://github.com/sak0a/s3code/releases), or from your favorite package registry:
+Install the latest version of the desktop app from [GitHub Releases](https://github.com/sak0a/ryco/releases), or from your favorite package registry:
 
 #### macOS (Homebrew)
 
 ```bash
-brew install --cask s3-code
+brew install --cask ryco
 ```
 
 #### Arch Linux (AUR)
 
 ```bash
-yay -S s3code-bin
+yay -S ryco-bin
 ```
 
 ## Some notes

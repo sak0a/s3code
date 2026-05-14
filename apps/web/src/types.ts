@@ -16,15 +16,17 @@ import type {
   CheckpointRef,
   ProviderInteractionMode,
   RuntimeMode,
+  AgentTokenMode,
   StatusBucket,
   WorktreeId,
   WorktreeOrigin,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 export type SessionPhase = "disconnected" | "connecting" | "ready" | "running";
 export const DEFAULT_RUNTIME_MODE: RuntimeMode = "full-access";
 
 export const DEFAULT_INTERACTION_MODE: ProviderInteractionMode = "default";
+export const DEFAULT_AGENT_TOKEN_MODE: AgentTokenMode = "balanced";
 export const DEFAULT_THREAD_TERMINAL_HEIGHT = 280;
 export const DEFAULT_THREAD_TERMINAL_ID = "default";
 export const MAX_TERMINALS_PER_GROUP = 4;
@@ -109,6 +111,7 @@ export interface Thread {
   modelSelection: ModelSelection;
   runtimeMode: RuntimeMode;
   interactionMode: ProviderInteractionMode;
+  tokenMode?: AgentTokenMode;
   session: ThreadSession | null;
   messages: ChatMessage[];
   proposedPlans: ProposedPlan[];
@@ -136,6 +139,7 @@ export interface ThreadShell {
   modelSelection: ModelSelection;
   runtimeMode: RuntimeMode;
   interactionMode: ProviderInteractionMode;
+  tokenMode?: AgentTokenMode;
   error: string | null;
   createdAt: string;
   archivedAt: string | null;
@@ -158,6 +162,7 @@ export interface SidebarThreadSummary {
   projectId: ProjectId;
   title: string;
   interactionMode: ProviderInteractionMode;
+  tokenMode?: AgentTokenMode;
   session: ThreadSession | null;
   createdAt: string;
   archivedAt: string | null;

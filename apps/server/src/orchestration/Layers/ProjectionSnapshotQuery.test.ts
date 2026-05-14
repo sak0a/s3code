@@ -6,7 +6,7 @@ import {
   ThreadId,
   TurnId,
   ProviderInstanceId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
@@ -259,7 +259,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           id: asProjectId("project-1"),
           title: "Project 1",
           workspaceRoot: "/tmp/project-1",
-          projectMetadataDir: ".s3code",
+          projectMetadataDir: ".ryco",
           repositoryIdentity: null,
           defaultModelSelection: {
             instanceId: ProviderInstanceId.make("codex"),
@@ -292,6 +292,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           },
           interactionMode: "default",
           runtimeMode: "full-access",
+          tokenMode: "balanced",
           branch: null,
           worktreePath: null,
           worktreeId: null,
@@ -362,6 +363,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
             status: "running",
             providerName: "codex",
             runtimeMode: "approval-required",
+            tokenMode: "balanced",
             activeTurnId: asTurnId("turn-1"),
             lastError: null,
             updatedAt: "2026-02-24T00:00:07.000Z",
@@ -376,7 +378,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           id: asProjectId("project-1"),
           title: "Project 1",
           workspaceRoot: "/tmp/project-1",
-          projectMetadataDir: ".s3code",
+          projectMetadataDir: ".ryco",
           repositoryIdentity: null,
           defaultModelSelection: {
             instanceId: ProviderInstanceId.make("codex"),
@@ -409,6 +411,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           },
           interactionMode: "default",
           runtimeMode: "full-access",
+          tokenMode: "balanced",
           branch: null,
           worktreePath: null,
           worktreeId: null,
@@ -434,6 +437,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
             status: "running",
             providerName: "codex",
             runtimeMode: "approval-required",
+            tokenMode: "balanced",
             activeTurnId: asTurnId("turn-1"),
             lastError: null,
             updatedAt: "2026-02-24T00:00:07.000Z",

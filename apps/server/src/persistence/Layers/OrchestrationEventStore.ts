@@ -11,7 +11,7 @@ import {
   ProjectId,
   ThreadId,
   WorktreeId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import { Effect, Layer, Schema, Stream } from "effect";

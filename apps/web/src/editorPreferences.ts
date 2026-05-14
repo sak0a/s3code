@@ -1,10 +1,10 @@
-import { EDITORS, EditorId, LocalApi } from "@s3tools/contracts";
+import { EDITORS, EditorId, LocalApi } from "@ryco/contracts";
 import { getLocalStorageItem, setLocalStorageItem, useLocalStorage } from "./hooks/useLocalStorage";
 import { useMemo } from "react";
 import { getClientSettings } from "./hooks/useSettings";
 import { useSettings } from "./hooks/useSettings";
 
-const LAST_EDITOR_KEY = "s3code:last-editor";
+const LAST_EDITOR_KEY = "ryco:last-editor";
 
 export function usePreferredEditor(availableEditors: ReadonlyArray<EditorId>) {
   const [lastEditor, setLastEditor] = useLocalStorage(LAST_EDITOR_KEY, null, EditorId);

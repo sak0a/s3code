@@ -1,8 +1,8 @@
 # Keybindings
 
-S3Code reads keybindings from:
+Ryco reads keybindings from:
 
-- `~/.s3code/userdata/keybindings.json`
+- `~/.ryco/userdata/keybindings.json`
 - legacy fallback: `~/.s3/userdata/keybindings.json`
 
 The file must be a JSON array of rules:

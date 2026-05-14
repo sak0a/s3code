@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "@s3tools/contracts/settings";
+import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "@ryco/contracts/settings";
 import {
   getThreadSortTimestamp,
   sortThreads,

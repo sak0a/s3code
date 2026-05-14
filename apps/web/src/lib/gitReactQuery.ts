@@ -5,7 +5,7 @@ import {
   type ProjectId,
   type SourceControlPublishRepositoryInput,
   type ThreadId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   infiniteQueryOptions,
   mutationOptions,

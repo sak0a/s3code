@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@s3tools/contracts";
+import type { EnvironmentId } from "@ryco/contracts";
 import { queryOptions } from "@tanstack/react-query";
 import { requireEnvironmentConnection } from "~/environments/runtime";
 
@@ -189,14 +189,6 @@ export function searchIssuesQueryOptions(input: {
   });
 }
 
-/**
- * Lists change requests by searching with an empty query.
- *
- * Note: the server does not expose a dedicated list-change-requests WS route;
- * this factory delegates to `sourceControl.searchChangeRequests` with an empty
- * query string. The `state` parameter is accepted for API consistency but is
- * not forwarded to the server (the server-side search is not state-filtered).
- */
 export function changeRequestListQueryOptions(input: {
   environmentId: EnvironmentId | null;
   cwd: string | null;
@@ -216,9 +208,9 @@ export function changeRequestListQueryOptions(input: {
         throw new Error("Change request list is unavailable.");
       }
       const client = requireEnvironmentConnection(input.environmentId).client;
-      return client.sourceControl.searchChangeRequests({
+      return client.sourceControl.listChangeRequests({
         cwd: input.cwd,
-        query: "",
+        state: input.state,
         ...(input.limit !== undefined ? { limit: input.limit } : {}),
       });
     },

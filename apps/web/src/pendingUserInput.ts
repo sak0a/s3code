@@ -1,4 +1,4 @@
-import type { UserInputQuestion } from "@s3tools/contracts";
+import type { UserInputQuestion } from "@ryco/contracts";
 
 export interface PendingUserInputDraftAnswer {
   selectedOptionLabels?: string[];

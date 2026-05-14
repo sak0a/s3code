@@ -114,7 +114,7 @@ export type SourceControlChangeRequestDetail = typeof SourceControlChangeRequest
 
 - [ ] **Step 2: Verify types compile**
 
-Run: `cd /Users/laurinfrank/Library/CloudStorage/Dropbox/Code/s3code && bun typecheck`
+Run: `cd /Users/laurinfrank/Library/CloudStorage/Dropbox/Code/ryco && bun typecheck`
 Expected: PASS (no errors).
 
 - [ ] **Step 3: Commit**
@@ -295,8 +295,8 @@ Create `gitHubIssues.ts` mirroring `gitHubPullRequests.ts` shape:
 
 ```ts
 import { Cause, Exit, Option, Result, Schema } from "effect";
-import { PositiveInt, TrimmedNonEmptyString } from "@s3tools/contracts";
-import { decodeJsonResult, formatSchemaError } from "@s3tools/shared/schemaJson";
+import { PositiveInt, TrimmedNonEmptyString } from "@ryco/contracts";
+import { decodeJsonResult, formatSchemaError } from "@ryco/shared/schemaJson";
 
 export interface NormalizedGitHubIssueRecord {
   readonly number: number;
@@ -1030,7 +1030,7 @@ git commit -m "server(sc): add GitHubCli.getPullRequestDetail with body + commen
 
 - [ ] **Step 1: Add new methods to `SourceControlProviderShape`**
 
-Import `SourceControlIssueSummary`, `SourceControlIssueDetail`, `SourceControlChangeRequestDetail` from `@s3tools/contracts`. Add:
+Import `SourceControlIssueSummary`, `SourceControlIssueDetail`, `SourceControlChangeRequestDetail` from `@ryco/contracts`. Add:
 
 ```ts
 readonly listIssues: (input: {
@@ -1160,7 +1160,7 @@ Expected: PASS (or only fails inside `GitHubSourceControlProvider.ts` — Task 1
 Inside `make`, add normalizer that converts `NormalizedGitHubIssueRecord` → `SourceControlIssueSummary` (adds `provider: "github"`, maps `Option` types correctly), and converts detail similarly while running `truncateSourceControlDetailContent` on body/comments.
 
 ```ts
-import { truncateSourceControlDetailContent } from "@s3tools/contracts";
+import { truncateSourceControlDetailContent } from "@ryco/contracts";
 
 const toIssueSummary = (
   raw: GitHubIssues.NormalizedGitHubIssueRecord,
@@ -1459,7 +1459,7 @@ Pattern reference: `apps/web/src/lib/projectReactQuery.ts`. **Read it first** to
 
 ```ts
 import { queryOptions } from "@tanstack/react-query";
-import type { SourceControlIssueSummary, SourceControlIssueDetail } from "@s3tools/contracts";
+import type { SourceControlIssueSummary, SourceControlIssueDetail } from "@ryco/contracts";
 import { invokeRpc } from "./rpc"; // ← REPLACE with actual helper from projectReactQuery.ts
 
 export const issueListQueryOptions = (input: {
@@ -1596,7 +1596,7 @@ Pattern: identical idea to `composerSlashCommandSearch.ts` — case-insensitive,
 ```ts
 import { describe, expect, it } from "vitest";
 import { searchSourceControlSummaries } from "./composerSourceControlContextSearch";
-import type { SourceControlIssueSummary } from "@s3tools/contracts";
+import type { SourceControlIssueSummary } from "@ryco/contracts";
 
 const summaries: SourceControlIssueSummary[] = [
   {
@@ -1656,7 +1656,7 @@ describe("searchSourceControlSummaries", () => {
 - [ ] **Step 3: Implement**
 
 ```ts
-import type { SourceControlIssueSummary } from "@s3tools/contracts";
+import type { SourceControlIssueSummary } from "@ryco/contracts";
 
 type Rankable = SourceControlIssueSummary & { __score?: number };
 
@@ -1704,7 +1704,7 @@ git commit -m "web(sc): add client-side fuzzy filter for issue/PR summaries"
 - [ ] **Step 1: Implement the list**
 
 ```tsx
-import type { SourceControlIssueSummary } from "@s3tools/contracts";
+import type { SourceControlIssueSummary } from "@ryco/contracts";
 import { memo } from "react";
 import { cn } from "~/lib/utils";
 
@@ -1923,7 +1923,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "~/components/ui/popover
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { PaperclipIcon } from "lucide-react";
 import { ContextPickerPopup } from "./ContextPickerPopup";
-import type { SourceControlIssueSummary, ChangeRequest } from "@s3tools/contracts";
+import type { SourceControlIssueSummary, ChangeRequest } from "@ryco/contracts";
 
 export function ContextPickerButton(props: {
   cwd: string;
@@ -1987,7 +1987,7 @@ import userEvent from "@testing-library/user-event";
 import { SourceControlContextChip } from "./SourceControlContextChip";
 import { describe, expect, it, vi } from "vitest";
 import { DateTime } from "effect";
-import type { ComposerSourceControlContext } from "@s3tools/contracts";
+import type { ComposerSourceControlContext } from "@ryco/contracts";
 
 function fakeIssueContext(
   overrides: Partial<{
@@ -2311,7 +2311,7 @@ Expected: all PASS.
 
 Walk through:
 
-- [ ] Open S3Code in a workspace cloned from a GitHub repo. `gh` is installed and authed.
+- [ ] Open Ryco in a workspace cloned from a GitHub repo. `gh` is installed and authed.
 - [ ] Click 📎 in the composer footer. Popup opens with cached issues.
 - [ ] Type `bug` in search → list narrows.
 - [ ] Click an issue → popup closes, chip appears above textarea.
@@ -2321,7 +2321,7 @@ Walk through:
 - [ ] Type `#` then pick from inline menu → chip attaches.
 - [ ] Open popup → click GH PRs tab → see PRs.
 - [ ] Attach a PR + an issue + an image (via popup paperclip) + free-form text. Send. Verify the agent receives all three contexts.
-- [ ] Open S3Code in a workspace with no remote → button still opens popup, source-control tabs hidden, file upload still works.
+- [ ] Open Ryco in a workspace with no remote → button still opens popup, source-control tabs hidden, file upload still works.
 - [ ] Uninstall `gh` (or rename it temporarily) → tab body shows install hint.
 - [ ] `gh auth logout` → tab body shows auth-command.
 

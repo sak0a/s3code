@@ -3,7 +3,7 @@ import {
   OrchestrationGetFullThreadDiffInput,
   OrchestrationGetTurnDiffInput,
   ThreadId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { queryOptions } from "@tanstack/react-query";
 import { Option, Schema } from "effect";
 import { ensureEnvironmentApi } from "../environmentApi";

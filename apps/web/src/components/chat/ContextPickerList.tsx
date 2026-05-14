@@ -1,4 +1,4 @@
-import type { SourceControlIssueSummary } from "@s3tools/contracts";
+import type { SourceControlIssueSummary } from "@ryco/contracts";
 import { DateTime, Option } from "effect";
 import { memo } from "react";
 import { cn } from "~/lib/utils";

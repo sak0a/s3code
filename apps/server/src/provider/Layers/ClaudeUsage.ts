@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import * as NodeFS from "node:fs/promises";
 import * as NodePath from "node:path";
 
-import type { ClaudeSettings, ServerProviderRateLimits } from "@s3tools/contracts";
+import type { ClaudeSettings, ServerProviderRateLimits } from "@ryco/contracts";
 import { Effect, Path } from "effect";
 
 import { resolveClaudeHomePath } from "../Drivers/ClaudeHome.ts";

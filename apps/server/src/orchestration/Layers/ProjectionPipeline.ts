@@ -1,10 +1,11 @@
 import {
   ApprovalRequestId,
   type ChatAttachment,
+  DEFAULT_AGENT_TOKEN_MODE,
   DEFAULT_PROJECT_METADATA_DIR,
   type OrchestrationEvent,
   ThreadId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect, FileSystem, Layer, Option, Path, Stream } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
@@ -608,6 +609,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
             modelSelection: event.payload.modelSelection,
             runtimeMode: event.payload.runtimeMode,
             interactionMode: event.payload.interactionMode,
+            tokenMode: event.payload.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
             branch: event.payload.branch,
             worktreePath: event.payload.worktreePath,
             worktreeId: null,
@@ -702,6 +704,21 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
           yield* projectionThreadRepository.upsert({
             ...existingRow.value,
             interactionMode: event.payload.interactionMode,
+            updatedAt: event.payload.updatedAt,
+          });
+          return;
+        }
+
+        case "thread.token-mode-set": {
+          const existingRow = yield* projectionThreadRepository.getById({
+            threadId: event.payload.threadId,
+          });
+          if (Option.isNone(existingRow)) {
+            return;
+          }
+          yield* projectionThreadRepository.upsert({
+            ...existingRow.value,
+            tokenMode: event.payload.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
             updatedAt: event.payload.updatedAt,
           });
           return;
@@ -1108,6 +1125,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
         providerName: event.payload.session.providerName,
         providerInstanceId: event.payload.session.providerInstanceId ?? null,
         runtimeMode: event.payload.session.runtimeMode,
+        tokenMode: event.payload.session.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
         activeTurnId: event.payload.session.activeTurnId,
         lastError: event.payload.session.lastError,
         updatedAt: event.payload.session.updatedAt,

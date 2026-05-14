@@ -1,6 +1,6 @@
 # Encyclopedia
 
-This is a living glossary for S3Code. It explains what common terms mean in this codebase.
+This is a living glossary for Ryco. It explains what common terms mean in this codebase.
 
 ## Table of contents
 

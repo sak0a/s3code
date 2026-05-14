@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 
-import type { ChatAttachment } from "@s3tools/contracts";
+import type { ChatAttachment } from "@ryco/contracts";
 
 import {
   normalizeAttachmentRelativePath,

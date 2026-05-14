@@ -1,4 +1,4 @@
-import type { VcsStatusRemoteResult, VcsStatusResult } from "@s3tools/contracts";
+import type { VcsStatusRemoteResult, VcsStatusResult } from "@ryco/contracts";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,23 +12,17 @@ import {
 
 describe("normalizeGitRemoteUrl", () => {
   it("canonicalizes equivalent GitHub remotes across protocol variants", () => {
-    expect(normalizeGitRemoteUrl("git@github.com:S3Tools/S3Code.git")).toBe(
-      "github.com/s3tools/s3code",
-    );
-    expect(normalizeGitRemoteUrl("https://github.com/S3Tools/S3Code.git")).toBe(
-      "github.com/s3tools/s3code",
-    );
-    expect(normalizeGitRemoteUrl("ssh://git@github.com/S3Tools/S3Code")).toBe(
-      "github.com/s3tools/s3code",
-    );
+    expect(normalizeGitRemoteUrl("git@github.com:Ryco/Ryco.git")).toBe("github.com/ryco/ryco");
+    expect(normalizeGitRemoteUrl("https://github.com/Ryco/Ryco.git")).toBe("github.com/ryco/ryco");
+    expect(normalizeGitRemoteUrl("ssh://git@github.com/Ryco/Ryco")).toBe("github.com/ryco/ryco");
   });
 
   it("preserves nested group paths for providers like GitLab", () => {
-    expect(normalizeGitRemoteUrl("git@gitlab.com:S3Tools/platform/S3Code.git")).toBe(
-      "gitlab.com/s3tools/platform/s3code",
+    expect(normalizeGitRemoteUrl("git@gitlab.com:Ryco/platform/Ryco.git")).toBe(
+      "gitlab.com/ryco/platform/ryco",
     );
-    expect(normalizeGitRemoteUrl("https://gitlab.com/S3Tools/platform/S3Code.git")).toBe(
-      "gitlab.com/s3tools/platform/s3code",
+    expect(normalizeGitRemoteUrl("https://gitlab.com/Ryco/platform/Ryco.git")).toBe(
+      "gitlab.com/ryco/platform/ryco",
     );
   });
 
@@ -44,12 +38,12 @@ describe("normalizeGitRemoteUrl", () => {
 
 describe("parseGitHubRepositoryNameWithOwnerFromRemoteUrl", () => {
   it("extracts the owner and repository from common GitHub remote shapes", () => {
+    expect(parseGitHubRepositoryNameWithOwnerFromRemoteUrl("git@github.com:Ryco/Ryco.git")).toBe(
+      "Ryco/Ryco",
+    );
     expect(
-      parseGitHubRepositoryNameWithOwnerFromRemoteUrl("git@github.com:S3Tools/S3Code.git"),
-    ).toBe("S3Tools/S3Code");
-    expect(
-      parseGitHubRepositoryNameWithOwnerFromRemoteUrl("https://github.com/S3Tools/S3Code.git"),
-    ).toBe("S3Tools/S3Code");
+      parseGitHubRepositoryNameWithOwnerFromRemoteUrl("https://github.com/Ryco/Ryco.git"),
+    ).toBe("Ryco/Ryco");
   });
 });
 
@@ -65,7 +59,7 @@ describe("isTemporaryWorktreeBranch", () => {
   });
 
   it("matches legacy temporary worktree refs so existing drafts can be renamed", () => {
-    expect(isTemporaryWorktreeBranch("s3code/deadbeef")).toBe(true);
+    expect(isTemporaryWorktreeBranch("ryco/deadbeef")).toBe(true);
   });
 
   it("rejects non-temporary refName names", () => {

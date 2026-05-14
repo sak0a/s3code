@@ -1,4 +1,4 @@
-import type { TerminalEvent } from "@s3tools/contracts";
+import type { TerminalEvent } from "@ryco/contracts";
 
 export function terminalRunningSubprocessFromEvent(event: TerminalEvent): boolean | null {
   switch (event.type) {

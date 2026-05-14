@@ -4,14 +4,15 @@ import type {
   OrchestrationWorktreeShell,
   ThreadId,
   WorktreeId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
+  DEFAULT_AGENT_TOKEN_MODE,
   OrchestrationCheckpointSummary,
   OrchestrationMessage,
   OrchestrationSession,
   OrchestrationThread,
   OrchestrationWorktreeShell as OrchestrationWorktreeShellSchema,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect, Schema } from "effect";
 
 import { toProjectorDecodeError, type OrchestrationProjectorDecodeError } from "./Errors.ts";
@@ -29,6 +30,7 @@ import {
   ThreadMetaUpdatedPayload,
   ThreadProposedPlanUpsertedPayload,
   ThreadRuntimeModeSetPayload,
+  ThreadTokenModeSetPayload,
   ThreadUnarchivedPayload,
   ThreadRevertedPayload,
   ThreadSessionSetPayload,
@@ -314,6 +316,7 @@ export function projectEvent(
             modelSelection: payload.modelSelection,
             runtimeMode: payload.runtimeMode,
             interactionMode: payload.interactionMode,
+            tokenMode: payload.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
             branch: payload.branch,
             worktreePath: payload.worktreePath,
             worktreeId: null,
@@ -503,6 +506,17 @@ export function projectEvent(
         })),
       );
 
+    case "thread.token-mode-set":
+      return decodeForEvent(ThreadTokenModeSetPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          threads: updateThread(nextBase.threads, payload.threadId, {
+            tokenMode: payload.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
+            updatedAt: payload.updatedAt,
+          }),
+        })),
+      );
+
     case "thread.message-sent":
       return Effect.gen(function* () {
         const payload = yield* decodeForEvent(
@@ -583,11 +597,15 @@ export function projectEvent(
           event.type,
           "session",
         );
+        const normalizedSession: OrchestrationSession = {
+          ...session,
+          tokenMode: session.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
+        };
 
         return {
           ...nextBase,
           threads: updateThread(nextBase.threads, payload.threadId, {
-            session,
+            session: normalizedSession,
             latestTurn:
               session.status === "running" && session.activeTurnId !== null
                 ? {

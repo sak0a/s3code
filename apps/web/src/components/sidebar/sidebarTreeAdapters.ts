@@ -3,10 +3,11 @@ import {
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@s3tools/client-runtime";
-import type { ProjectId } from "@s3tools/contracts";
+} from "@ryco/client-runtime";
+import type { ProjectId } from "@ryco/contracts";
 import type { DraftId, DraftThreadState } from "../../composerDraftStore";
 import {
+  DEFAULT_AGENT_TOKEN_MODE,
   DEFAULT_INTERACTION_MODE,
   type Project,
   type SidebarThreadSummary,
@@ -168,6 +169,7 @@ function adaptDraftThreadForSidebarTree(input: {
     hasPendingUserInput: false,
     id: input.draftThread.threadId,
     interactionMode: input.draftThread.interactionMode ?? DEFAULT_INTERACTION_MODE,
+    tokenMode: input.draftThread.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
     latestTurn: null,
     latestUserMessageAt: null,
     manualStatusBucket: null,

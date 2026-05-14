@@ -3,7 +3,7 @@ import type {
   AuthSessionState,
   AuthWebSocketTokenResult,
   ExecutionEnvironmentDescriptor,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 class RemoteEnvironmentAuthHttpError extends Error {
   readonly status: number;

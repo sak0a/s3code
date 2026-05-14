@@ -5,7 +5,7 @@ import {
   ClientSettingsSchema,
   type ClientSettings,
   type PersistedSavedEnvironmentRecord,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Predicate } from "effect";
 import * as Schema from "effect/Schema";
 

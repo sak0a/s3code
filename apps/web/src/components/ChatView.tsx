@@ -19,21 +19,22 @@ import {
   ProviderInteractionMode,
   ProviderDriverKind,
   RuntimeMode,
+  AgentTokenMode,
   TerminalOpenInput,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   parseScopedThreadKey,
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@s3tools/client-runtime";
+} from "@ryco/client-runtime";
 import {
   applyClaudePromptEffortPrefix,
   createModelSelection,
   resolvePromptInjectedEffort,
-} from "@s3tools/shared/model";
-import { projectScriptCwd, projectScriptRuntimeEnv } from "@s3tools/shared/projectScripts";
-import { truncate } from "@s3tools/shared/String";
+} from "@ryco/shared/model";
+import { projectScriptCwd, projectScriptRuntimeEnv } from "@ryco/shared/projectScripts";
+import { truncate } from "@ryco/shared/String";
 import { Debouncer } from "@tanstack/react-pacer";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -100,6 +101,7 @@ import {
 } from "../proposedPlan";
 import {
   DEFAULT_INTERACTION_MODE,
+  DEFAULT_AGENT_TOKEN_MODE,
   DEFAULT_RUNTIME_MODE,
   DEFAULT_THREAD_TERMINAL_ID,
   MAX_TERMINALS_PER_GROUP,
@@ -111,7 +113,7 @@ import {
 import { useTheme } from "../hooks/useTheme";
 import { useTurnDiffSummaries } from "../hooks/useTurnDiffSummaries";
 import { useCommandPaletteStore } from "../commandPaletteStore";
-import { buildTemporaryWorktreeBranchName } from "@s3tools/shared/git";
+import { buildTemporaryWorktreeBranchName } from "@ryco/shared/git";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY } from "../rightPanelLayout";
 import { BranchToolbar } from "./BranchToolbar";
@@ -225,6 +227,7 @@ const IMAGE_ONLY_BOOTSTRAP_PROMPT =
 const EMPTY_ACTIVITIES: OrchestrationThreadActivity[] = [];
 const EMPTY_PROPOSED_PLANS: Thread["proposedPlans"] = [];
 const EMPTY_PROVIDERS: ServerProvider[] = [];
+const EMPTY_PROVIDER_SKILLS: ServerProvider["skills"] = [];
 const EMPTY_PENDING_USER_INPUT_ANSWERS: Record<string, PendingUserInputDraftAnswer> = {};
 const EMPTY_SESSION_TABS: ReadonlyArray<ChatSessionTabsItem> = Object.freeze([]);
 type EnvironmentUnavailableState = {
@@ -683,6 +686,9 @@ export default function ChatView(props: ChatViewProps) {
   const composerInteractionMode = useComposerDraftStore(
     (store) => store.getComposerDraft(composerDraftTarget)?.interactionMode ?? null,
   );
+  const composerTokenMode = useComposerDraftStore(
+    (store) => store.getComposerDraft(composerDraftTarget)?.tokenMode ?? null,
+  );
   const composerActiveProvider = useComposerDraftStore(
     (store) => store.getComposerDraft(composerDraftTarget)?.activeProvider ?? null,
   );
@@ -696,6 +702,7 @@ export default function ChatView(props: ChatViewProps) {
   const setComposerDraftInteractionMode = useComposerDraftStore(
     (store) => store.setInteractionMode,
   );
+  const setComposerDraftTokenMode = useComposerDraftStore((store) => store.setTokenMode);
   const clearComposerDraftContent = useComposerDraftStore((store) => store.clearComposerContent);
   const setDraftThreadContext = useComposerDraftStore((store) => store.setDraftThreadContext);
   const getDraftSessionByLogicalProjectKey = useComposerDraftStore(
@@ -852,6 +859,11 @@ export default function ChatView(props: ChatViewProps) {
   const runtimeMode = composerRuntimeMode ?? activeThread?.runtimeMode ?? DEFAULT_RUNTIME_MODE;
   const interactionMode =
     composerInteractionMode ?? activeThread?.interactionMode ?? DEFAULT_INTERACTION_MODE;
+  const tokenMode =
+    composerTokenMode ??
+    activeThread?.tokenMode ??
+    settings.defaultAgentTokenMode ??
+    DEFAULT_AGENT_TOKEN_MODE;
   const isLocalDraftThread = !isServerThread && localDraftThread !== undefined;
   const canCheckoutPullRequestIntoThread = isLocalDraftThread;
   const diffOpen = rawSearch.diff === "1";
@@ -1256,6 +1268,7 @@ export default function ChatView(props: ChatViewProps) {
           createdAt: activeDraftSession.createdAt,
           runtimeMode: activeDraftSession.runtimeMode,
           interactionMode: activeDraftSession.interactionMode,
+          tokenMode: activeDraftSession.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
           ...input,
         });
         return activeDraftSession.threadId;
@@ -1268,6 +1281,7 @@ export default function ChatView(props: ChatViewProps) {
         createdAt: new Date().toISOString(),
         runtimeMode: DEFAULT_RUNTIME_MODE,
         interactionMode: DEFAULT_INTERACTION_MODE,
+        tokenMode: settings.defaultAgentTokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
         ...input,
       });
       await navigate({
@@ -1287,6 +1301,7 @@ export default function ChatView(props: ChatViewProps) {
       routeKind,
       setDraftThreadContext,
       setLogicalProjectDraftThreadId,
+      settings.defaultAgentTokenMode,
     ],
   );
 
@@ -2358,6 +2373,24 @@ export default function ChatView(props: ChatViewProps) {
       setDraftThreadContext,
     ],
   );
+  const handleTokenModeChange = useCallback(
+    (mode: AgentTokenMode) => {
+      if (mode === tokenMode) return;
+      setComposerDraftTokenMode(composerDraftTarget, mode);
+      if (isLocalDraftThread) {
+        setDraftThreadContext(composerDraftTarget, { tokenMode: mode });
+      }
+      scheduleComposerFocus();
+    },
+    [
+      composerDraftTarget,
+      isLocalDraftThread,
+      scheduleComposerFocus,
+      setComposerDraftTokenMode,
+      setDraftThreadContext,
+      tokenMode,
+    ],
+  );
   const toggleInteractionMode = useCallback(() => {
     handleInteractionModeChange(interactionMode === "plan" ? "default" : "plan");
   }, [handleInteractionModeChange, interactionMode]);
@@ -2385,6 +2418,7 @@ export default function ChatView(props: ChatViewProps) {
       modelSelection?: ModelSelection;
       runtimeMode: RuntimeMode;
       interactionMode: ProviderInteractionMode;
+      tokenMode: AgentTokenMode;
     }) => {
       if (!serverThread) {
         return;
@@ -2425,6 +2459,16 @@ export default function ChatView(props: ChatViewProps) {
           commandId: newCommandId(),
           threadId: input.threadId,
           interactionMode: input.interactionMode,
+          createdAt: input.createdAt,
+        });
+      }
+
+      if (input.tokenMode !== (serverThread.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE)) {
+        await api.orchestration.dispatchCommand({
+          type: "thread.token-mode.set",
+          commandId: newCommandId(),
+          threadId: input.threadId,
+          tokenMode: input.tokenMode,
           createdAt: input.createdAt,
         });
       }
@@ -2897,6 +2941,7 @@ export default function ChatView(props: ChatViewProps) {
       });
       promptRef.current = "";
       clearComposerDraftContent(composerDraftTarget);
+      setComposerDraftTokenMode(composerDraftTarget, tokenMode);
       composerRef.current?.resetCursorState();
       await onSubmitPlanFollowUp({
         text: followUp.text,
@@ -2912,6 +2957,7 @@ export default function ChatView(props: ChatViewProps) {
       handleInteractionModeChange(standaloneSlashCommand);
       promptRef.current = "";
       clearComposerDraftContent(composerDraftTarget);
+      setComposerDraftTokenMode(composerDraftTarget, tokenMode);
       composerRef.current?.resetCursorState();
       return;
     }
@@ -3015,6 +3061,10 @@ export default function ChatView(props: ChatViewProps) {
     ]);
 
     setThreadError(threadIdForSend, null);
+    setComposerDraftTokenMode(scopeThreadRef(environmentId, threadIdForSend), tokenMode);
+    if (isLocalDraftThread) {
+      setDraftThreadContext(composerDraftTarget, { tokenMode });
+    }
     if (expiredTerminalContextCount > 0) {
       const toastCopy = buildExpiredTerminalContextToastCopy(
         expiredTerminalContextCount,
@@ -3030,6 +3080,7 @@ export default function ChatView(props: ChatViewProps) {
     }
     promptRef.current = "";
     clearComposerDraftContent(composerDraftTarget);
+    setComposerDraftTokenMode(composerDraftTarget, tokenMode);
     composerRef.current?.resetCursorState();
 
     let turnStartSucceeded = false;
@@ -3075,6 +3126,7 @@ export default function ChatView(props: ChatViewProps) {
           ...(ctxSelectedModel ? { modelSelection: ctxSelectedModelSelection } : {}),
           runtimeMode,
           interactionMode,
+          tokenMode,
         });
       }
 
@@ -3130,6 +3182,7 @@ export default function ChatView(props: ChatViewProps) {
                       modelSelection: threadCreateModelSelection,
                       runtimeMode,
                       interactionMode,
+                      tokenMode,
                       branch: activeThreadBranch,
                       worktreePath: activeThread.worktreePath,
                       createdAt: activeThread.createdAt,
@@ -3165,6 +3218,7 @@ export default function ChatView(props: ChatViewProps) {
         titleSeed: title,
         runtimeMode,
         interactionMode,
+        tokenMode,
         ...(bootstrap ? { bootstrap } : {}),
         ...(freshSourceControlContexts.length > 0
           ? { sourceControlContexts: freshSourceControlContexts }
@@ -3460,6 +3514,7 @@ export default function ChatView(props: ChatViewProps) {
           modelSelection: ctxSelectedModelSelection,
           runtimeMode,
           interactionMode: nextInteractionMode,
+          tokenMode,
         });
 
         // Keep the mode toggle and plan-follow-up banner in sync immediately
@@ -3467,6 +3522,10 @@ export default function ChatView(props: ChatViewProps) {
         setComposerDraftInteractionMode(
           scopeThreadRef(activeThread.environmentId, threadIdForSend),
           nextInteractionMode,
+        );
+        setComposerDraftTokenMode(
+          scopeThreadRef(activeThread.environmentId, threadIdForSend),
+          tokenMode,
         );
 
         await api.orchestration.dispatchCommand({
@@ -3483,6 +3542,7 @@ export default function ChatView(props: ChatViewProps) {
           titleSeed: activeThread.title,
           runtimeMode,
           interactionMode: nextInteractionMode,
+          tokenMode,
           ...(nextInteractionMode === "default" && activeProposedPlan
             ? {
                 sourceProposedPlan: {
@@ -3524,9 +3584,11 @@ export default function ChatView(props: ChatViewProps) {
       resetLocalDispatch,
       runtimeMode,
       setComposerDraftInteractionMode,
+      setComposerDraftTokenMode,
       setThreadError,
       autoOpenPlanSidebar,
       environmentId,
+      tokenMode,
     ],
   );
 
@@ -3589,6 +3651,7 @@ export default function ChatView(props: ChatViewProps) {
         modelSelection: nextThreadModelSelection,
         runtimeMode,
         interactionMode: "default",
+        tokenMode,
         branch: activeThreadBranch,
         worktreePath: activeThread.worktreePath,
         createdAt,
@@ -3608,6 +3671,7 @@ export default function ChatView(props: ChatViewProps) {
           titleSeed: nextThreadTitle,
           runtimeMode,
           interactionMode: "default",
+          tokenMode,
           sourceProposedPlan: {
             threadId: activeThread.id,
             planId: activeProposedPlan.id,
@@ -3662,6 +3726,7 @@ export default function ChatView(props: ChatViewProps) {
     navigate,
     resetLocalDispatch,
     runtimeMode,
+    tokenMode,
     autoOpenPlanSidebar,
     environmentId,
   ]);
@@ -3861,6 +3926,7 @@ export default function ChatView(props: ChatViewProps) {
                 resolvedTheme={resolvedTheme}
                 timestampFormat={timestampFormat}
                 workspaceRoot={activeWorkspaceRoot}
+                skills={activeProviderStatus?.skills ?? EMPTY_PROVIDER_SKILLS}
                 onIsAtEndChange={onIsAtEndChange}
               />
             ) : (
@@ -3928,6 +3994,7 @@ export default function ChatView(props: ChatViewProps) {
                   planSidebarOpen={planSidebarOpen}
                   runtimeMode={runtimeMode}
                   interactionMode={interactionMode}
+                  tokenMode={tokenMode}
                   lockedProvider={lockedProvider}
                   providerStatuses={providerStatuses as ServerProvider[]}
                   activeProjectDefaultModelSelection={activeProject?.defaultModelSelection}
@@ -3959,6 +4026,7 @@ export default function ChatView(props: ChatViewProps) {
                   toggleInteractionMode={toggleInteractionMode}
                   handleRuntimeModeChange={handleRuntimeModeChange}
                   handleInteractionModeChange={handleInteractionModeChange}
+                  handleTokenModeChange={handleTokenModeChange}
                   togglePlanSidebar={togglePlanSidebar}
                   focusComposer={focusComposer}
                   scheduleComposerFocus={scheduleComposerFocus}

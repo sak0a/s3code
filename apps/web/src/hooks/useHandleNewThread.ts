@@ -1,5 +1,9 @@
-import { scopedProjectKey, scopeProjectRef } from "@s3tools/client-runtime";
-import { DEFAULT_RUNTIME_MODE, type ScopedProjectRef } from "@s3tools/contracts";
+import { scopedProjectKey, scopeProjectRef } from "@ryco/client-runtime";
+import {
+  DEFAULT_AGENT_TOKEN_MODE,
+  DEFAULT_RUNTIME_MODE,
+  type ScopedProjectRef,
+} from "@ryco/contracts";
 import { useParams, useRouter } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -22,6 +26,7 @@ function useNewThreadState() {
   const projectGroupingSettings = useSettings((settings) => ({
     sidebarProjectGroupingMode: settings.sidebarProjectGroupingMode,
     sidebarProjectGroupingOverrides: settings.sidebarProjectGroupingOverrides,
+    defaultAgentTokenMode: settings.defaultAgentTokenMode,
   }));
   const router = useRouter();
   const getCurrentRouteTarget = useCallback(() => {
@@ -107,6 +112,7 @@ function useNewThreadState() {
           createdAt: latestActiveDraftThread.createdAt,
           runtimeMode: latestActiveDraftThread.runtimeMode,
           interactionMode: latestActiveDraftThread.interactionMode,
+          tokenMode: latestActiveDraftThread.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
           ...(hasBranchOption ? { branch: options?.branch ?? null } : {}),
           ...(hasWorktreePathOption ? { worktreePath: options?.worktreePath ?? null } : {}),
           ...(hasEnvModeOption ? { envMode: options?.envMode } : {}),
@@ -125,6 +131,7 @@ function useNewThreadState() {
           worktreePath: options?.worktreePath ?? null,
           envMode: options?.envMode ?? "local",
           runtimeMode: DEFAULT_RUNTIME_MODE,
+          tokenMode: projectGroupingSettings.defaultAgentTokenMode ?? DEFAULT_AGENT_TOKEN_MODE,
         });
         applyStickyState(draftId);
 

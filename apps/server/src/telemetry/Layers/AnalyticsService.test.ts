@@ -45,10 +45,10 @@ it.layer(NodeServices.layer)("AnalyticsService test", (it) => {
       const telemetryLayer = AnalyticsServiceLayerLive.pipe(Layer.provideMerge(serverConfigLayer));
       const configLayer = ConfigProvider.layer(
         ConfigProvider.fromUnknown({
-          S3CODE_TELEMETRY_ENABLED: true,
-          S3CODE_POSTHOG_KEY: "phc_test_key",
-          S3CODE_POSTHOG_HOST: "",
-          S3CODE_TELEMETRY_FLUSH_BATCH_SIZE: 20,
+          RYCO_TELEMETRY_ENABLED: true,
+          RYCO_POSTHOG_KEY: "phc_test_key",
+          RYCO_POSTHOG_HOST: "",
+          RYCO_TELEMETRY_FLUSH_BATCH_SIZE: 20,
         }),
       );
       const batchServerLayer = HttpServer.serve(

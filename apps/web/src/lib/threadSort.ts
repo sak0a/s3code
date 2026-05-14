@@ -1,5 +1,5 @@
-import type { ProjectId } from "@s3tools/contracts";
-import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "@s3tools/contracts/settings";
+import type { ProjectId } from "@ryco/contracts";
+import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "@ryco/contracts/settings";
 import type { Thread } from "../types";
 
 export type ThreadSortInput = Pick<Thread, "createdAt" | "updatedAt"> & {

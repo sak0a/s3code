@@ -1,4 +1,4 @@
-import { EventId, ProviderDriverKind, RuntimeRequestId } from "@s3tools/contracts";
+import { EventId, ProviderDriverKind, RuntimeRequestId } from "@ryco/contracts";
 import type { LegacyProviderRuntimeEvent } from "../TestProviderAdapter.integration.ts";
 
 const PROVIDER = ProviderDriverKind.make("codex");

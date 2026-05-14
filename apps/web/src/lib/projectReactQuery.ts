@@ -1,4 +1,4 @@
-import type { EnvironmentId, ProjectSearchEntriesResult } from "@s3tools/contracts";
+import type { EnvironmentId, ProjectSearchEntriesResult } from "@ryco/contracts";
 import { queryOptions } from "@tanstack/react-query";
 import { ensureEnvironmentApi } from "~/environmentApi";
 

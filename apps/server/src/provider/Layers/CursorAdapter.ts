@@ -7,6 +7,7 @@ import * as nodePath from "node:path";
 
 import {
   ApprovalRequestId,
+  DEFAULT_AGENT_TOKEN_MODE,
   type CursorSettings,
   type ProviderOptionSelection,
   EventId,
@@ -21,7 +22,7 @@ import {
   type RuntimeMode,
   type ThreadId,
   TurnId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   DateTime,
   Deferred,
@@ -508,7 +509,7 @@ export function makeCursorAdapter(
             childProcessSpawner,
             cwd,
             ...(resumeSessionId ? { resumeSessionId } : {}),
-            clientInfo: { name: "s3-code", version: "0.0.0" },
+            clientInfo: { name: "ryco", version: "0.0.0" },
             ...acpNativeLoggers,
           }).pipe(
             Effect.provideService(Scope.Scope, sessionScope),
@@ -692,11 +693,13 @@ export function makeCursorAdapter(
           });
 
           const now = yield* nowIso;
+          const tokenMode = input.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE;
           const session: ProviderSession = {
             provider: PROVIDER,
             providerInstanceId: boundInstanceId,
             status: "ready",
             runtimeMode: input.runtimeMode,
+            tokenMode,
             cwd,
             model: cursorModelSelection?.model,
             threadId: input.threadId,

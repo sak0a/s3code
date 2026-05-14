@@ -1,4 +1,9 @@
-import type { ChangeRequest, SourceControlIssueSummary } from "@s3tools/contracts";
+import type {
+  ChangeRequest,
+  SourceControlIssueSummary,
+  WorkItemStateFilter,
+  WorkItemSummary,
+} from "@ryco/contracts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SidebarProjectGroupMember } from "~/sidebarProjectGrouping";
 import { ContextPickerTabs } from "../chat/ContextPickerTabs";
@@ -8,11 +13,17 @@ import { IssueDetail } from "./IssueDetail";
 import { IssuesTab } from "./IssuesTab";
 import { PullRequestDetail } from "./PullRequestDetail";
 import { PullRequestsTab } from "./PullRequestsTab";
+import { WorkItemDetail } from "./WorkItemDetail";
+import { WorkItemsTab } from "./WorkItemsTab";
 import type { ChangeRequestStateFilter, IssueStateFilter } from "./StateFilterButtons";
 
-type TabId = "issues" | "prs";
+type TabId = "issues" | "prs" | "workItems";
 
-type Selection = { kind: "issue"; number: number } | { kind: "pr"; number: number } | null;
+type Selection =
+  | { kind: "issue"; number: number }
+  | { kind: "pr"; number: number }
+  | { kind: "workItem"; key: string }
+  | null;
 
 interface ProjectExplorerDialogProps {
   open: boolean;
@@ -26,14 +37,17 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
   const [activeTab, setActiveTab] = useState<TabId>(props.initialTab);
   const [issueQuery, setIssueQuery] = useState("");
   const [prQuery, setPrQuery] = useState("");
+  const [workItemQuery, setWorkItemQuery] = useState("");
   const [issueStateFilter, setIssueStateFilter] = useState<IssueStateFilter>("open");
   const [prStateFilter, setPrStateFilter] = useState<ChangeRequestStateFilter>("open");
+  const [workItemStateFilter, setWorkItemStateFilter] = useState<WorkItemStateFilter>("open");
   const [selection, setSelection] = useState<Selection>(null);
   const [selectedMemberKey, setSelectedMemberKey] = useState<string>(
     () => props.memberProjects[0]?.physicalProjectKey ?? "",
   );
   const issueInputRef = useRef<HTMLInputElement>(null);
   const prInputRef = useRef<HTMLInputElement>(null);
+  const workItemInputRef = useRef<HTMLInputElement>(null);
 
   const selectedMember = useMemo(
     () =>
@@ -64,7 +78,12 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
   useEffect(() => {
     if (!props.open || selection !== null) return;
     const frame = window.requestAnimationFrame(() => {
-      const target = activeTab === "issues" ? issueInputRef.current : prInputRef.current;
+      const target =
+        activeTab === "issues"
+          ? issueInputRef.current
+          : activeTab === "prs"
+            ? prInputRef.current
+            : workItemInputRef.current;
       target?.focus();
     });
     return () => window.cancelAnimationFrame(frame);
@@ -78,9 +97,23 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
     setSelection({ kind: "pr", number: cr.number });
   }, []);
 
+  const handleSelectWorkItem = useCallback((item: WorkItemSummary) => {
+    setSelection({ kind: "workItem", key: item.key });
+  }, []);
+
   const handleSelectLinkedIssue = useCallback((issueNumber: number) => {
     setActiveTab("issues");
     setSelection({ kind: "issue", number: issueNumber });
+  }, []);
+
+  const handleSelectLinkedChangeRequest = useCallback((changeRequestNumber: number) => {
+    setActiveTab("prs");
+    setSelection({ kind: "pr", number: changeRequestNumber });
+  }, []);
+
+  const handleSelectLinkedWorkItem = useCallback((workItemKey: string) => {
+    setActiveTab("workItems");
+    setSelection({ kind: "workItem", key: workItemKey });
   }, []);
 
   const handleBack = useCallback(() => setSelection(null), []);
@@ -99,9 +132,20 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
         setSelection(null);
         return;
       }
+      if ((event.metaKey || event.ctrlKey) && event.key === "3") {
+        event.preventDefault();
+        setActiveTab("workItems");
+        setSelection(null);
+        return;
+      }
       if (event.key === "/" && !(event.target instanceof HTMLInputElement)) {
         event.preventDefault();
-        const target = activeTab === "issues" ? issueInputRef.current : prInputRef.current;
+        const target =
+          activeTab === "issues"
+            ? issueInputRef.current
+            : activeTab === "prs"
+              ? prInputRef.current
+              : workItemInputRef.current;
         target?.focus();
       }
     },
@@ -112,11 +156,13 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
     () => [
       { id: "issues" as const, label: "Issues" },
       { id: "prs" as const, label: "Pull requests" },
+      { id: "workItems" as const, label: "Jira" },
     ],
     [],
   );
 
-  const tabLabel = activeTab === "issues" ? "Issues" : "Pull requests";
+  const tabLabel =
+    activeTab === "issues" ? "Issues" : activeTab === "prs" ? "Pull requests" : "Jira";
   const dialogTitle = `${props.projectName} · ${tabLabel}`;
   const showRepoPicker = props.memberProjects.length > 1 && selectedMember !== null;
   const environmentId = selectedMember?.environmentId ?? null;
@@ -125,13 +171,13 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogPopup
-        className="flex h-[80vh] max-h-[800px] w-full max-w-3xl flex-col p-0 sm:max-w-3xl"
+        className="flex h-[80vh] max-h-[800px] w-full max-w-6xl flex-col p-0 sm:max-w-6xl"
         onKeyDown={handleKeyDown}
       >
-        <header className="flex items-center justify-between border-border/60 border-b px-5 py-3">
+        <header className="flex items-center justify-between border-border/60 border-b py-3 pl-5 pr-14">
           <DialogTitle className="truncate text-base">{dialogTitle}</DialogTitle>
           <span className="shrink-0 text-muted-foreground text-xs">
-            ⌘1 issues · ⌘2 PRs · / focus search · Esc close
+            ⌘1 issues · ⌘2 PRs · ⌘3 Jira · / focus search · Esc close
           </span>
         </header>
 
@@ -182,7 +228,7 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
                   onStateFilterChange={setIssueStateFilter}
                   onSelect={handleSelectIssue}
                 />
-              ) : (
+              ) : activeTab === "prs" ? (
                 <PullRequestsTab
                   environmentId={environmentId}
                   cwd={cwd}
@@ -192,6 +238,17 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
                   stateFilter={prStateFilter}
                   onStateFilterChange={setPrStateFilter}
                   onSelect={handleSelectChangeRequest}
+                />
+              ) : (
+                <WorkItemsTab
+                  environmentId={environmentId}
+                  projectId={selectedMember?.id ?? null}
+                  searchInputRef={workItemInputRef}
+                  query={workItemQuery}
+                  onQueryChange={setWorkItemQuery}
+                  stateFilter={workItemStateFilter}
+                  onStateFilterChange={setWorkItemStateFilter}
+                  onSelect={handleSelectWorkItem}
                 />
               )}
             </div>
@@ -203,13 +260,23 @@ export function ProjectExplorerDialog(props: ProjectExplorerDialogProps) {
             issueNumber={selection.number}
             onBack={handleBack}
           />
-        ) : (
+        ) : selection.kind === "pr" ? (
           <PullRequestDetail
             environmentId={environmentId}
             cwd={cwd}
             pullRequestNumber={selection.number}
             onBack={handleBack}
             onSelectLinkedIssue={handleSelectLinkedIssue}
+            onSelectLinkedWorkItem={handleSelectLinkedWorkItem}
+          />
+        ) : (
+          <WorkItemDetail
+            environmentId={environmentId}
+            projectId={selectedMember?.id ?? null}
+            cwd={cwd}
+            workItemKey={selection.key}
+            onBack={handleBack}
+            onSelectLinkedChangeRequest={handleSelectLinkedChangeRequest}
           />
         )}
       </DialogPopup>

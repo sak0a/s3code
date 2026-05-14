@@ -11,8 +11,8 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   ThreadId,
-} from "@s3tools/contracts";
-import { createModelSelection } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { createModelSelection } from "@ryco/shared/model";
 import { ServerConfig } from "../../config.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
 import { ProviderSessionDirectory } from "../Services/ProviderSessionDirectory.ts";

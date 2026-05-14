@@ -17,7 +17,7 @@ file picker for images.
 ## Non-goals
 
 - **Linear and Sentry integrations.** The reference screenshot shows tabs for
-  these; they are out of scope for v1 (no existing integration in S3Code).
+  these; they are out of scope for v1 (no existing integration in Ryco).
   The tab strip is built to accept new providers later.
 - **Cross-repo browsing UI.** v1 fetches items from the workspace's resolved
   source-control remote. Pasted URLs from other repos are still resolved
@@ -427,7 +427,7 @@ Vitest, browser-mode for components, `*.test.ts` colocated with source.
 
 ### End-to-end smoke (manual checklist)
 
-- Open S3Code in a GitHub repo, click 📎, see issues, attach one, send,
+- Open Ryco in a GitHub repo, click 📎, see issues, attach one, send,
   verify the agent receives the structured context.
 - Same in a GitLab and Bitbucket repo (and Azure DevOps if available).
 - Workspace with no remote → button disabled, file-attach still works.

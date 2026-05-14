@@ -16,8 +16,8 @@ import {
   type ProviderUserInputAnswers,
   ThreadId,
   TurnId,
-} from "@s3tools/contracts";
-import { createModelSelection } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { createModelSelection } from "@ryco/shared/model";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it, vi } from "@effect/vitest";
 
@@ -27,6 +27,7 @@ import * as CodexErrors from "effect-codex-app-server/errors";
 import { ServerConfig } from "../../config.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
 import { DetectedServersIngress } from "../../detectedServers/Layers/DetectedServersIngress.ts";
+import { buildAgentTokenModeInstructions } from "../../tokenReduction.ts";
 import { ProviderAdapterValidationError } from "../Errors.ts";
 import type { CodexAdapterShape } from "../Services/CodexAdapter.ts";
 import { ProviderSessionDirectory } from "../Services/ProviderSessionDirectory.ts";
@@ -272,7 +273,9 @@ validationLayer("CodexAdapterLive validation", (it) => {
         runtimeMode: "full-access",
       });
 
-      assert.deepStrictEqual(validationRuntimeFactory.factory.mock.calls[0]?.[0], {
+      const runtimeOptions = validationRuntimeFactory.factory.mock.calls[0]?.[0];
+      const { tokenReductionInstructions, ...stableRuntimeOptions } = runtimeOptions ?? {};
+      assert.deepStrictEqual(stableRuntimeOptions, {
         binaryPath: "codex",
         cwd: process.cwd(),
         model: "gpt-5.3-codex",
@@ -280,7 +283,11 @@ validationLayer("CodexAdapterLive validation", (it) => {
         serviceTier: "fast",
         threadId: asThreadId("thread-1"),
         runtimeMode: "full-access",
+        tokenMode: "balanced",
       });
+      assert.ok(
+        tokenReductionInstructions?.includes(buildAgentTokenModeInstructions("balanced") ?? ""),
+      );
     }),
   );
 });
@@ -1083,7 +1090,7 @@ scopedFailureLayer("CodexAdapterLive scoped startup failure", (it) => {
 
 it.effect("flushes managed native logs when the adapter layer shuts down", () =>
   Effect.gen(function* () {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "s3-codex-adapter-native-log-"));
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "ryco-codex-adapter-native-log-"));
     const basePath = path.join(tempDir, "provider-native.ndjson");
     const runtimeFactory = makeRuntimeFactory();
     const scope = yield* Scope.make("sequential");

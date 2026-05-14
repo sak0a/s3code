@@ -1,5 +1,5 @@
-import { scopeProjectRef } from "@s3tools/client-runtime";
-import { EnvironmentId, ProjectId } from "@s3tools/contracts";
+import { scopeProjectRef } from "@ryco/client-runtime";
+import { EnvironmentId, ProjectId } from "@ryco/contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
   resolveThreadActionProjectRef,

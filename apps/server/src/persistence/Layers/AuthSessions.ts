@@ -1,4 +1,4 @@
-import { AuthSessionId } from "@s3tools/contracts";
+import { AuthSessionId } from "@ryco/contracts";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import { Effect, Layer, Option, Schema } from "effect";

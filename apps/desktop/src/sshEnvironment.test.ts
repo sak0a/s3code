@@ -4,7 +4,7 @@ import * as Path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { SshPasswordPromptError } from "@s3tools/ssh/errors";
+import { SshPasswordPromptError } from "@ryco/ssh/errors";
 
 import { discoverDesktopSshHosts, isSshPasswordPromptCancellation } from "./sshEnvironment.ts";
 

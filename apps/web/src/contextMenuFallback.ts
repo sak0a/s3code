@@ -1,4 +1,4 @@
-import type { ContextMenuItem } from "@s3tools/contracts";
+import type { ContextMenuItem } from "@ryco/contracts";
 
 function clampMenuPosition(menu: HTMLDivElement, preferredLeft: number, preferredTop: number) {
   const rect = menu.getBoundingClientRect();

@@ -500,7 +500,7 @@ Expected: FAIL — module not found.
 
 ```typescript
 // apps/web/src/sessionTabs.selectors.ts
-import { scopeThreadRef, scopedThreadKey } from "@s3tools/client-runtime";
+import { scopeThreadRef, scopedThreadKey } from "@ryco/client-runtime";
 import type { ChatSessionTabsItem } from "./components/chat/ChatSessionTabs";
 import { deriveStatusBucket, resolveThreadStatusPill } from "./components/Sidebar.logic";
 import type { SidebarStatusBucket } from "./components/Sidebar.logic";
@@ -679,7 +679,7 @@ const handleSelectSessionTab = useCallback(
 );
 ```
 
-If a `parseScopedThreadKey` helper does not already exist in `@s3tools/client-runtime`, keep using `projectSidebarThreadsRef.current.find(...)` — that ref is fed by the existing untargeted selector and is still cheap.
+If a `parseScopedThreadKey` helper does not already exist in `@ryco/client-runtime`, keep using `projectSidebarThreadsRef.current.find(...)` — that ref is fed by the existing untargeted selector and is still cheap.
 
 Add at the top of the file (next to other `EMPTY_*` constants):
 

@@ -1,4 +1,4 @@
-import type { ScopedThreadRef } from "@s3tools/contracts";
+import type { ScopedThreadRef } from "@ryco/contracts";
 import { assert, describe, it } from "vitest";
 import {
   buildVisibleToastLayout,

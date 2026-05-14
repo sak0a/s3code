@@ -14,7 +14,7 @@
  *
  * @module RuntimeReceiptBus
  */
-import { CheckpointRef, IsoDateTime, NonNegativeInt, ThreadId, TurnId } from "@s3tools/contracts";
+import { CheckpointRef, IsoDateTime, NonNegativeInt, ThreadId, TurnId } from "@ryco/contracts";
 import { Schema, Context } from "effect";
 import type { Effect, Stream } from "effect";
 

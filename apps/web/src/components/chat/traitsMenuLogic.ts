@@ -1,5 +1,5 @@
-import { type ProviderOptionDescriptor } from "@s3tools/contracts";
-import { applyClaudePromptEffortPrefix } from "@s3tools/shared/model";
+import { type ProviderOptionDescriptor } from "@ryco/contracts";
+import { applyClaudePromptEffortPrefix } from "@ryco/shared/model";
 
 const ULTRATHINK_PROMPT_PREFIX = "Ultrathink:\n";
 

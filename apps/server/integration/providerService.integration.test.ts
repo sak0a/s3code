@@ -1,6 +1,6 @@
-import type { ProviderRuntimeEvent } from "@s3tools/contracts";
-import { ProviderDriverKind, ProviderInstanceId, ThreadId } from "@s3tools/contracts";
-import { DEFAULT_SERVER_SETTINGS } from "@s3tools/contracts/settings";
+import type { ProviderRuntimeEvent } from "@ryco/contracts";
+import { ProviderDriverKind, ProviderInstanceId, ThreadId } from "@ryco/contracts";
+import { DEFAULT_SERVER_SETTINGS } from "@ryco/contracts/settings";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it, assert } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Path, Queue, Stream } from "effect";

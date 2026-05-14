@@ -1,10 +1,10 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Path, Result, Schema } from "effect";
-import { createModelSelection } from "@s3tools/shared/model";
+import { createModelSelection } from "@ryco/shared/model";
 import { expect } from "vitest";
 
-import { CodexSettings, ProviderInstanceId, TextGenerationError } from "@s3tools/contracts";
+import { CodexSettings, ProviderInstanceId, TextGenerationError } from "@ryco/contracts";
 
 import { ServerConfig } from "../config.ts";
 import { type TextGenerationShape } from "./TextGeneration.ts";
@@ -16,7 +16,7 @@ const DEFAULT_TEST_MODEL_SELECTION = createModelSelection(
 );
 
 const CodexTextGenerationTestLayer = ServerConfig.layerTest(process.cwd(), {
-  prefix: "s3code-codex-text-generation-test-",
+  prefix: "ryco-codex-text-generation-test-",
 }).pipe(Layer.provideMerge(NodeServices.layer));
 
 function makeFakeCodexBinary(
@@ -131,9 +131,9 @@ function makeFakeCodexBinary(
           ? [`printf "%s\\n" ${JSON.stringify(input.stderr)} >&2`]
           : []),
         'if [ -n "$output_path" ]; then',
-        "  cat > \"$output_path\" <<'__S3CODE_FAKE_CODEX_OUTPUT__'",
+        "  cat > \"$output_path\" <<'__RYCO_FAKE_CODEX_OUTPUT__'",
         input.output,
-        "__S3CODE_FAKE_CODEX_OUTPUT__",
+        "__RYCO_FAKE_CODEX_OUTPUT__",
         "fi",
         `exit ${input.exitCode ?? 0}`,
         "",
@@ -160,7 +160,7 @@ function withFakeCodexEnv<A, E, R>(
 ) {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
-    const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "s3code-codex-text-" });
+    const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "ryco-codex-text-" });
     const codexPath = yield* makeFakeCodexBinary(tempDir, input);
     const config = Schema.decodeSync(CodexSettings)({ binaryPath: codexPath });
     const textGeneration = yield* makeCodexTextGeneration(config);

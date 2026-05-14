@@ -3,7 +3,7 @@ import { assert, it } from "@effect/vitest";
 import { Effect, FileSystem, Layer } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 
-import { GitCommandError, type SourceControlProviderError } from "@s3tools/contracts";
+import { GitCommandError, type SourceControlProviderError } from "@ryco/contracts";
 
 import { ServerConfig } from "../config.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
@@ -12,9 +12,9 @@ import * as SourceControlProviderRegistry from "./SourceControlProviderRegistry.
 import * as SourceControlRepositoryService from "./SourceControlRepositoryService.ts";
 
 const CLONE_URLS = {
-  nameWithOwner: "octocat/s3code",
-  url: "https://github.com/octocat/s3code",
-  sshUrl: "git@github.com:octocat/s3code.git",
+  nameWithOwner: "octocat/ryco",
+  url: "https://github.com/octocat/ryco",
+  sshUrl: "git@github.com:octocat/ryco.git",
 };
 
 function makeProvider(
@@ -63,6 +63,7 @@ function makeLayer(input: {
     Layer.provide(
       Layer.mock(SourceControlProviderRegistry.SourceControlProviderRegistry)({
         get: () => Effect.succeed(input.provider ?? makeProvider()),
+        detectProviderFromRemoteUrl: () => null,
       }),
     ),
     Layer.provide(
@@ -98,12 +99,12 @@ it.effect("looks up repositories through the requested provider without search",
     const service = yield* SourceControlRepositoryService.SourceControlRepositoryService;
     const result = yield* service.lookupRepository({
       provider: "github",
-      repository: "octocat/s3code",
+      repository: "octocat/ryco",
       cwd: "/workspace",
     });
 
     assert.deepStrictEqual(result, { provider: "github", ...CLONE_URLS });
-    assert.deepStrictEqual(calls, [{ cwd: "/workspace", repository: "octocat/s3code" }]);
+    assert.deepStrictEqual(calls, [{ cwd: "/workspace", repository: "octocat/ryco" }]);
   }).pipe(Effect.provide(makeLayer({ provider })));
 });
 
@@ -113,14 +114,14 @@ it.effect("clones a looked-up repository into the requested destination", () =>
     const parent = yield* fs.makeTempDirectoryScoped({
       prefix: "s3-source-control-clone-parent-",
     });
-    const destinationPath = `${parent}/s3code`;
+    const destinationPath = `${parent}/ryco`;
     const cloneCalls: Array<{ cwd: string; args: ReadonlyArray<string> }> = [];
 
     yield* Effect.gen(function* () {
       const service = yield* SourceControlRepositoryService.SourceControlRepositoryService;
       const result = yield* service.cloneRepository({
         provider: "github",
-        repository: "octocat/s3code",
+        repository: "octocat/ryco",
         destinationPath,
         protocol: "https",
       });
@@ -133,7 +134,7 @@ it.effect("clones a looked-up repository into the requested destination", () =>
       assert.deepStrictEqual(cloneCalls, [
         {
           cwd: parent,
-          args: ["clone", CLONE_URLS.url, "s3code"],
+          args: ["clone", "--", CLONE_URLS.url, "ryco"],
         },
       ]);
     }).pipe(
@@ -150,6 +151,84 @@ it.effect("clones a looked-up repository into the requested destination", () =>
       ),
     );
   }).pipe(Effect.provide(NodeServices.layer)),
+);
+
+it.effect("rejects clone URLs that could be parsed as git options", () =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const parent = yield* fs.makeTempDirectoryScoped({
+      prefix: "s3-source-control-clone-parent-",
+    });
+    const service = yield* SourceControlRepositoryService.SourceControlRepositoryService;
+
+    const result = yield* service
+      .cloneRepository({
+        remoteUrl: "--upload-pack=/tmp/pwn",
+        destinationPath: `${parent}/s3code`,
+      })
+      .pipe(Effect.result);
+
+    assert.equal(result._tag, "Failure");
+  }).pipe(Effect.provide(makeLayer({}))),
+);
+
+it.effect("accepts explicit HTTPS, SSH, and SCP-style clone URLs", () => {
+  const cloneCalls: ReadonlyArray<string>[] = [];
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const parent = yield* fs.makeTempDirectoryScoped({
+      prefix: "s3-source-control-clone-parent-",
+    });
+    const service = yield* SourceControlRepositoryService.SourceControlRepositoryService;
+
+    for (const [index, remoteUrl] of [
+      "https://github.com/octocat/s3code.git",
+      "ssh://git@github.com/octocat/s3code.git",
+      "git@github.com:octocat/s3code.git",
+    ].entries()) {
+      yield* service.cloneRepository({
+        remoteUrl,
+        destinationPath: `${parent}/repo-${index}`,
+      });
+    }
+
+    assert.deepStrictEqual(cloneCalls, [
+      ["clone", "--", "https://github.com/octocat/s3code.git", "repo-0"],
+      ["clone", "--", "ssh://git@github.com/octocat/s3code.git", "repo-1"],
+      ["clone", "--", "git@github.com:octocat/s3code.git", "repo-2"],
+    ]);
+  }).pipe(
+    Effect.provide(
+      makeLayer({
+        git: {
+          execute: (input) =>
+            Effect.sync(() => {
+              cloneCalls.push(input.args);
+              return processOutput();
+            }),
+        },
+      }),
+    ),
+  );
+});
+
+it.effect("rejects unsupported clone URL schemes", () =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const parent = yield* fs.makeTempDirectoryScoped({
+      prefix: "s3-source-control-clone-parent-",
+    });
+    const service = yield* SourceControlRepositoryService.SourceControlRepositoryService;
+
+    const result = yield* service
+      .cloneRepository({
+        remoteUrl: "file:///tmp/repo.git",
+        destinationPath: `${parent}/s3code`,
+      })
+      .pipe(Effect.result);
+
+    assert.equal(result._tag, "Failure");
+  }).pipe(Effect.provide(makeLayer({}))),
 );
 
 it.effect("publishes by creating the repository, adding a remote, and pushing upstream", () => {
@@ -173,7 +252,7 @@ it.effect("publishes by creating the repository, adding a remote, and pushing up
     const result = yield* service.publishRepository({
       cwd: "/workspace",
       provider: "github",
-      repository: "octocat/s3code",
+      repository: "octocat/ryco",
       visibility: "private",
       remoteName: "origin",
       protocol: "ssh",
@@ -188,7 +267,7 @@ it.effect("publishes by creating the repository, adding a remote, and pushing up
       status: "pushed",
     });
     assert.deepStrictEqual(createCalls, [
-      { cwd: "/workspace", repository: "octocat/s3code", visibility: "private" },
+      { cwd: "/workspace", repository: "octocat/ryco", visibility: "private" },
     ]);
     assert.deepStrictEqual(remoteCalls, [
       { cwd: "/workspace", preferredName: "origin", url: CLONE_URLS.sshUrl },
@@ -228,7 +307,7 @@ it.effect("publishes to the remote name returned by ensureRemote", () => {
     const result = yield* service.publishRepository({
       cwd: "/workspace",
       provider: "github",
-      repository: "octocat/s3code",
+      repository: "octocat/ryco",
       visibility: "private",
       remoteName: "origin",
       protocol: "ssh",
@@ -264,7 +343,7 @@ it.effect("publish succeeds with status remote_added when the local repo has no 
     const result = yield* service.publishRepository({
       cwd: "/workspace",
       provider: "github",
-      repository: "octocat/s3code",
+      repository: "octocat/ryco",
       visibility: "private",
       remoteName: "origin",
       protocol: "ssh",

@@ -1,6 +1,6 @@
 # Theme System
 
-A VS Code-style custom theming system for S3Code. Users will be able to pick from built-in themes, install community themes, and author their own — overriding any chrome color, radius, or scrollbar token.
+A VS Code-style custom theming system for Ryco. Users will be able to pick from built-in themes, install community themes, and author their own — overriding any chrome color, radius, or scrollbar token.
 
 ## Goal
 
@@ -26,9 +26,9 @@ apps/web/src/
 
 **Data flow:**
 
-1. `useTheme` reads `s3code:theme` (light/dark/system) → toggles `.dark` class on `<html>`
-2. `useTheme` reads `s3code:active-theme` → looks up theme in registry → calls `applyThemeToDocument`
-3. `applyThemeToDocument` writes a `<style id="s3code-active-theme">` tag containing `:root { --x: ... } :root.dark { --y: ... }`
+1. `useTheme` reads `ryco:theme` (light/dark/system) → toggles `.dark` class on `<html>`
+2. `useTheme` reads `ryco:active-theme` → looks up theme in registry → calls `applyThemeToDocument`
+3. `applyThemeToDocument` writes a `<style id="ryco-active-theme">` tag containing `:root { --x: ... } :root.dark { --y: ... }`
 4. Because the style tag is appended after `index.css`, its variables win — but only ones the theme defines, so partial themes work.
 
 **Key invariant:** `index.css` always contains the _full_ default token set. Any theme is a _patch_ on top, never a replacement. This guarantees the app never breaks if a user's theme is incomplete.
@@ -42,7 +42,7 @@ What shipped:
 - **Tokenized remaining hard-coded colors** in `index.css`: scrollbar thumbs (regular + thin variants) and noise overlay opacity now use CSS variables (`--scrollbar-thumb*`, `--noise-opacity`).
 - **Theme schema** (`types.ts`): `ThemeDefinition` with `id`, `name`, `description`, `builtIn`, `light`, `dark`. Token names are an allow-list (`THEME_TOKEN_NAMES`) for type safety + future validation.
 - **Default theme as data** (`builtin.ts`): mirrors current `index.css` values — so when the active theme is `default`, no overrides are injected and the CSS file does all the work.
-- **Theme registry** (`registry.ts`): `getAllThemes()`, `findTheme()`, `getActiveThemeId()`, `setActiveThemeId()`, `getCustomThemes()`, `setCustomThemes()`, `applyThemeToDocument()`. Storage keys `s3code:active-theme` and `s3code:custom-themes`.
+- **Theme registry** (`registry.ts`): `getAllThemes()`, `findTheme()`, `getActiveThemeId()`, `setActiveThemeId()`, `getCustomThemes()`, `setCustomThemes()`, `applyThemeToDocument()`. Storage keys `ryco:active-theme` and `ryco:custom-themes`.
 - **`useTheme` integration**: applies the active theme alongside the existing light/dark toggle. New API surface: `activeThemeId`, `setActiveTheme(id)`. Cross-tab sync works via the `storage` event listener.
 - **Defensive guards**: `applyThemeToDocument` no-ops when DOM isn't available (Node test envs).
 
@@ -95,7 +95,7 @@ What shipped:
   - `themes/registry.test.ts` — 16 new tests for `isBuiltInThemeId`, `isValidColorValue`, `isValidTheme`, custom-theme storage (add/update/delete/active rotation/rename collision), `duplicateTheme`, `generateCustomThemeId`
   - `components/settings/ThemeEditor.test.ts` — pure helpers `setTokenValue`, `setThemeName`, `setThemeDescription` (variant isolation, empty-value removal, immutability)
 
-Verified: 1033/1033 unit tests pass; `tsc --noEmit` clean (only the pre-existing `Sidebar.tsx` `SortableContext` error). In-browser eval against the live Vite bundle confirmed the full acceptance path: forked default → set `light.primary` to `red` → saved → `getComputedStyle(:root).--primary === "red"` → full page reload still shows `red` and `localStorage["s3code:active-theme"] === "custom-default"`. Collision avoidance, value validation, and active-theme fallback after delete were all confirmed live.
+Verified: 1033/1033 unit tests pass; `tsc --noEmit` clean (only the pre-existing `Sidebar.tsx` `SortableContext` error). In-browser eval against the live Vite bundle confirmed the full acceptance path: forked default → set `light.primary` to `red` → saved → `getComputedStyle(:root).--primary === "red"` → full page reload still shows `red` and `localStorage["ryco:active-theme"] === "custom-default"`. Collision avoidance, value validation, and active-theme fallback after delete were all confirmed live.
 
 ---
 
@@ -193,11 +193,11 @@ Acceptance: switching theme also re-colors code blocks; falls back gracefully if
 
 ## Storage keys
 
-| Key                    | Type                            | Purpose                              |
-| ---------------------- | ------------------------------- | ------------------------------------ |
-| `s3code:theme`         | `"light" \| "dark" \| "system"` | Light/dark/system mode (existing)    |
-| `s3code:active-theme`  | string (theme id)               | Which theme to apply (new — Phase 1) |
-| `s3code:custom-themes` | `ThemeDefinition[]` JSON        | User-authored themes (new — Phase 1) |
+| Key                  | Type                            | Purpose                              |
+| -------------------- | ------------------------------- | ------------------------------------ |
+| `ryco:theme`         | `"light" \| "dark" \| "system"` | Light/dark/system mode (existing)    |
+| `ryco:active-theme`  | string (theme id)               | Which theme to apply (new — Phase 1) |
+| `ryco:custom-themes` | `ThemeDefinition[]` JSON        | User-authored themes (new — Phase 1) |
 
 ## Hook API
 

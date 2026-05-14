@@ -6,7 +6,7 @@ import {
   ThreadId,
   TurnId,
   type OrchestrationShellSnapshot,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockSubscribeThread = vi.fn();

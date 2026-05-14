@@ -55,7 +55,7 @@ export const resolveNightlyReleaseMetadata = (
     baseVersion,
     version,
     tag: `v${version}`,
-    name: `S3Code Nightly ${version} (${shortSha})`,
+    name: `Ryco Nightly ${version} (${shortSha})`,
     shortSha,
   };
 };

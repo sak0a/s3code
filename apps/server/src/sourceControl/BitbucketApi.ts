@@ -4,10 +4,10 @@ import {
   type SourceControlProviderAuth,
   type SourceControlRepositoryCloneUrls,
   type SourceControlRepositoryVisibility,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
-import { sanitizeBranchFragment, WORKTREE_BRANCH_PREFIX } from "@s3tools/shared/git";
-import { detectSourceControlProviderFromRemoteUrl } from "@s3tools/shared/sourceControl";
+import { sanitizeBranchFragment, WORKTREE_BRANCH_PREFIX } from "@ryco/shared/git";
+import { detectSourceControlProviderFromRemoteUrl } from "@ryco/shared/sourceControl";
 
 import * as BitbucketIssues from "./bitbucketIssues.ts";
 import * as BitbucketPullRequests from "./bitbucketPullRequests.ts";
@@ -18,12 +18,12 @@ import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
 const DEFAULT_API_BASE_URL = "https://api.bitbucket.org/2.0";
 
 const BitbucketApiEnvConfig = Config.all({
-  baseUrl: Config.string("S3CODE_BITBUCKET_API_BASE_URL").pipe(
+  baseUrl: Config.string("RYCO_BITBUCKET_API_BASE_URL").pipe(
     Config.withDefault(DEFAULT_API_BASE_URL),
   ),
-  accessToken: Config.string("S3CODE_BITBUCKET_ACCESS_TOKEN").pipe(Config.option),
-  email: Config.string("S3CODE_BITBUCKET_EMAIL").pipe(Config.option),
-  apiToken: Config.string("S3CODE_BITBUCKET_API_TOKEN").pipe(Config.option),
+  accessToken: Config.string("RYCO_BITBUCKET_ACCESS_TOKEN").pipe(Config.option),
+  email: Config.string("RYCO_BITBUCKET_EMAIL").pipe(Config.option),
+  apiToken: Config.string("RYCO_BITBUCKET_API_TOKEN").pipe(Config.option),
 });
 
 export class BitbucketApiError extends Schema.TaggedErrorClass<BitbucketApiError>()(
@@ -185,6 +185,11 @@ export interface BitbucketApiShape {
     BitbucketPullRequests.NormalizedBitbucketPullRequestDetail,
     BitbucketApiError
   >;
+  readonly getPullRequestDiff: (input: {
+    readonly cwd: string;
+    readonly context?: SourceControlProvider.SourceControlProviderContext;
+    readonly reference: string;
+  }) => Effect.Effect<string, BitbucketApiError>;
 }
 
 export class BitbucketApi extends Context.Service<BitbucketApi, BitbucketApiShape>()(
@@ -388,7 +393,7 @@ function authFromConfig(
     account: Option.none(),
     host: Option.some("bitbucket.org"),
     detail: Option.some(
-      "Set S3CODE_BITBUCKET_EMAIL and S3CODE_BITBUCKET_API_TOKEN, or S3CODE_BITBUCKET_ACCESS_TOKEN.",
+      "Set RYCO_BITBUCKET_EMAIL and RYCO_BITBUCKET_API_TOKEN, or RYCO_BITBUCKET_ACCESS_TOKEN.",
     ),
   };
 }
@@ -473,6 +478,21 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
     httpClient.execute(withAuth(request.pipe(HttpClientRequest.acceptJson))).pipe(
       Effect.mapError((cause) => requestError(operation, cause)),
       Effect.flatMap((response) => decodeResponse(operation, schema, response)),
+    );
+
+  const executeText = (
+    operation: string,
+    request: HttpClientRequest.HttpClientRequest,
+  ): Effect.Effect<string, BitbucketApiError> =>
+    httpClient.execute(withAuth(request)).pipe(
+      Effect.mapError((cause) => requestError(operation, cause)),
+      Effect.flatMap((response) =>
+        HttpClientResponse.matchStatus({
+          "2xx": (success) =>
+            success.text.pipe(Effect.mapError((cause) => requestError(operation, cause))),
+          orElse: (failed) => responseError(operation, failed),
+        })(response),
+      ),
     );
 
   const resolveRepository = Effect.fn("BitbucketApi.resolveRepository")(function* (input: {
@@ -632,13 +652,15 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
       resolveRepository(input).pipe(
         Effect.flatMap((repository) => {
           const states = toBitbucketStates(input.state);
+          const sourceBranch = SourceControlProvider.sourceBranch(input).replaceAll('"', '\\"');
+          const filters = [
+            ...(sourceBranch.length > 0 ? [`source.branch.name = "${sourceBranch}"`] : []),
+            bitbucketStateFilter(states),
+          ];
           const query: Record<string, string | ReadonlyArray<string>> = {
             pagelen: String(Math.max(1, Math.min(input.limit ?? 20, 50))),
             sort: "-updated_on",
-            q: bitbucketQueryString([
-              `source.branch.name = "${SourceControlProvider.sourceBranch(input).replaceAll('"', '\\"')}"`,
-              bitbucketStateFilter(states),
-            ]),
+            q: bitbucketQueryString(filters),
             state: states,
           };
 
@@ -864,9 +886,7 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
             }),
             BitbucketIssues.BitbucketCommentListSchema,
           ).pipe(
-            Effect.map((list) =>
-              [...BitbucketIssues.normalizeBitbucketCommentList(list)].reverse(),
-            ),
+            Effect.map((list) => BitbucketIssues.normalizeBitbucketCommentList(list).toReversed()),
             Effect.catch((err) =>
               isBitbucketApiError(err) && err.status === 404
                 ? Effect.succeed([])
@@ -962,9 +982,7 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
             }),
             BitbucketIssues.BitbucketCommentListSchema,
           ).pipe(
-            Effect.map((list) =>
-              [...BitbucketIssues.normalizeBitbucketCommentList(list)].reverse(),
-            ),
+            Effect.map((list) => BitbucketIssues.normalizeBitbucketCommentList(list).toReversed()),
             Effect.catch((err) =>
               isBitbucketApiError(err) && err.status === 404
                 ? Effect.succeed([])
@@ -972,16 +990,32 @@ export const make = Effect.fn("makeBitbucketApi")(function* () {
             ),
           );
           return Effect.all([pr, comments], { concurrency: 2 }).pipe(
-            Effect.map(([raw, normalizedComments]) => {
-              const summary = BitbucketPullRequests.normalizeBitbucketPullRequestRecord(raw);
-              return {
-                ...summary,
-                body: raw.summary?.raw ?? "",
-                comments: normalizedComments,
-              };
-            }),
+            Effect.map(([raw, normalizedComments]) =>
+              BitbucketPullRequests.normalizeBitbucketPullRequestDetailRecord(
+                raw,
+                normalizedComments,
+              ),
+            ),
           );
         }),
+      );
+    },
+    getPullRequestDiff: (input) => {
+      const referenceId = normalizeChangeRequestId(input.reference);
+      return resolveRepository({
+        cwd: input.cwd,
+        ...(input.context ? { context: input.context } : {}),
+      }).pipe(
+        Effect.flatMap((repo) =>
+          executeText(
+            "getPullRequestDiff",
+            HttpClientRequest.get(
+              apiUrl(
+                `/repositories/${encodeURIComponent(repo.workspace)}/${encodeURIComponent(repo.repoSlug)}/pullrequests/${encodeURIComponent(referenceId)}/diff`,
+              ),
+            ),
+          ),
+        ),
       );
     },
   });

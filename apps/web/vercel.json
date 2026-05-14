@@ -1,6 +1,6 @@
 {
-  "buildCommand": "turbo build --filter @s3tools/web && bun ../../scripts/apply-web-brand-assets.ts production",
-  "installCommand": "bun add -g turbo && bun install --filter '@s3tools/contracts' --filter '@s3tools/client-runtime' --filter '@s3tools/scripts' --filter '@s3tools/web'",
+  "buildCommand": "turbo build --filter @ryco/web && bun ../../scripts/apply-web-brand-assets.ts production",
+  "installCommand": "bun add -g turbo && bun install --filter '@ryco/contracts' --filter '@ryco/client-runtime' --filter '@ryco/scripts' --filter '@ryco/web'",
   "rewrites": [
     {
       "source": "/(.*)",

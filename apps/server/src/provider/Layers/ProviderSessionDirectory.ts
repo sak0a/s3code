@@ -1,4 +1,4 @@
-import { defaultInstanceIdForDriver, ProviderDriverKind, type ThreadId } from "@s3tools/contracts";
+import { defaultInstanceIdForDriver, ProviderDriverKind, type ThreadId } from "@ryco/contracts";
 import { Effect, Layer, Option, Schema } from "effect";
 
 import type { ProviderSessionRuntime } from "../../persistence/Services/ProviderSessionRuntime.ts";

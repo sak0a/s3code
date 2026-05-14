@@ -1,7 +1,7 @@
 import { Cache, Context, Duration, Effect, Exit, Layer } from "effect";
 
-import type { VcsDriverKind, VcsError, VcsRepositoryIdentity } from "@s3tools/contracts";
-import { VcsUnsupportedOperationError } from "@s3tools/contracts";
+import type { VcsDriverKind, VcsError, VcsRepositoryIdentity } from "@ryco/contracts";
+import { VcsUnsupportedOperationError } from "@ryco/contracts";
 import * as GitVcsDriver from "./GitVcsDriver.ts";
 import * as VcsProjectConfig from "./VcsProjectConfig.ts";
 import * as VcsDriver from "./VcsDriver.ts";

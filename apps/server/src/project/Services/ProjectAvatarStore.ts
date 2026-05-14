@@ -1,6 +1,6 @@
 import { Context } from "effect";
 import type { Effect } from "effect";
-import type { ProjectId } from "@s3tools/contracts";
+import type { ProjectId } from "@ryco/contracts";
 
 export interface ProjectAvatarStoreShape {
   readonly write: (input: {
@@ -19,5 +19,5 @@ export class ProjectAvatarStoreError extends Error {
 }
 
 export const ProjectAvatarStore = Context.Service<ProjectAvatarStoreShape>(
-  "@s3tools/server/ProjectAvatarStore",
+  "@ryco/server/ProjectAvatarStore",
 );

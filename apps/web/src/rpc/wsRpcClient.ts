@@ -6,10 +6,12 @@ import {
   type VcsStatusStreamEvent,
   type LocalApi,
   ORCHESTRATION_WS_METHODS,
+  type OpinionatedPluginCheckInput,
+  type OpinionatedPluginInstallInput,
   type ServerSettingsPatch,
   WS_METHODS,
-} from "@s3tools/contracts";
-import { applyGitStatusStreamEvent } from "@s3tools/shared/git";
+} from "@ryco/contracts";
+import { applyGitStatusStreamEvent } from "@ryco/shared/git";
 import { Effect, Stream } from "effect";
 
 import { type WsRpcProtocolClient } from "./protocol";
@@ -81,6 +83,7 @@ export interface WsRpcClient {
     readonly listIssues: RpcUnaryMethod<typeof WS_METHODS.sourceControlListIssues>;
     readonly getIssue: RpcUnaryMethod<typeof WS_METHODS.sourceControlGetIssue>;
     readonly searchIssues: RpcUnaryMethod<typeof WS_METHODS.sourceControlSearchIssues>;
+    readonly listChangeRequests: RpcUnaryMethod<typeof WS_METHODS.sourceControlListChangeRequests>;
     readonly searchChangeRequests: RpcUnaryMethod<
       typeof WS_METHODS.sourceControlSearchChangeRequests
     >;
@@ -90,6 +93,27 @@ export interface WsRpcClient {
     readonly getChangeRequestDiff: RpcUnaryMethod<
       typeof WS_METHODS.sourceControlGetChangeRequestDiff
     >;
+  };
+  readonly atlassian: {
+    readonly listConnections: RpcUnaryNoArgMethod<typeof WS_METHODS.atlassianListConnections>;
+    readonly startOAuth: RpcUnaryMethod<typeof WS_METHODS.atlassianStartOAuth>;
+    readonly disconnect: RpcUnaryMethod<typeof WS_METHODS.atlassianDisconnect>;
+    readonly refresh: RpcUnaryMethod<typeof WS_METHODS.atlassianRefresh>;
+    readonly listResources: RpcUnaryMethod<typeof WS_METHODS.atlassianListResources>;
+    readonly getProjectLink: RpcUnaryMethod<typeof WS_METHODS.atlassianGetProjectLink>;
+    readonly saveProjectLink: RpcUnaryMethod<typeof WS_METHODS.atlassianSaveProjectLink>;
+    readonly saveManualBitbucketToken: RpcUnaryMethod<
+      typeof WS_METHODS.atlassianSaveManualBitbucketToken
+    >;
+    readonly saveManualJiraToken: RpcUnaryMethod<typeof WS_METHODS.atlassianSaveManualJiraToken>;
+  };
+  readonly workItems: {
+    readonly list: RpcUnaryMethod<typeof WS_METHODS.workItemsList>;
+    readonly search: RpcUnaryMethod<typeof WS_METHODS.workItemsSearch>;
+    readonly get: RpcUnaryMethod<typeof WS_METHODS.workItemsGet>;
+    readonly addComment: RpcUnaryMethod<typeof WS_METHODS.workItemsAddComment>;
+    readonly listTransitions: RpcUnaryMethod<typeof WS_METHODS.workItemsListTransitions>;
+    readonly transition: RpcUnaryMethod<typeof WS_METHODS.workItemsTransition>;
   };
   readonly shell: {
     readonly openInEditor: (input: {
@@ -156,6 +180,15 @@ export interface WsRpcClient {
     readonly discoverSourceControl: RpcUnaryNoArgMethod<
       typeof WS_METHODS.serverDiscoverSourceControl
     >;
+    readonly listOpinionatedPlugins: RpcUnaryNoArgMethod<
+      typeof WS_METHODS.serverListOpinionatedPlugins
+    >;
+    readonly checkOpinionatedPlugins: (
+      input?: OpinionatedPluginCheckInput,
+    ) => ReturnType<RpcUnaryMethod<typeof WS_METHODS.serverCheckOpinionatedPlugins>>;
+    readonly installOpinionatedPlugin: (
+      input: OpinionatedPluginInstallInput,
+    ) => ReturnType<RpcUnaryMethod<typeof WS_METHODS.serverInstallOpinionatedPlugin>>;
     readonly subscribeConfig: RpcStreamMethod<typeof WS_METHODS.subscribeServerConfig>;
     readonly subscribeLifecycle: RpcStreamMethod<typeof WS_METHODS.subscribeServerLifecycle>;
     readonly subscribeAuthAccess: RpcStreamMethod<typeof WS_METHODS.subscribeAuthAccess>;
@@ -231,6 +264,8 @@ export function createWsRpcClient(transport: WsTransport): WsRpcClient {
         transport.request((client) => client[WS_METHODS.sourceControlGetIssue](input)),
       searchIssues: (input) =>
         transport.request((client) => client[WS_METHODS.sourceControlSearchIssues](input)),
+      listChangeRequests: (input) =>
+        transport.request((client) => client[WS_METHODS.sourceControlListChangeRequests](input)),
       searchChangeRequests: (input) =>
         transport.request((client) => client[WS_METHODS.sourceControlSearchChangeRequests](input)),
       getChangeRequestDetail: (input) =>
@@ -239,6 +274,36 @@ export function createWsRpcClient(transport: WsTransport): WsRpcClient {
         ),
       getChangeRequestDiff: (input) =>
         transport.request((client) => client[WS_METHODS.sourceControlGetChangeRequestDiff](input)),
+    },
+    atlassian: {
+      listConnections: () =>
+        transport.request((client) => client[WS_METHODS.atlassianListConnections]({})),
+      startOAuth: (input) =>
+        transport.request((client) => client[WS_METHODS.atlassianStartOAuth](input)),
+      disconnect: (input) =>
+        transport.request((client) => client[WS_METHODS.atlassianDisconnect](input)),
+      refresh: (input) => transport.request((client) => client[WS_METHODS.atlassianRefresh](input)),
+      listResources: (input) =>
+        transport.request((client) => client[WS_METHODS.atlassianListResources](input)),
+      getProjectLink: (input) =>
+        transport.request((client) => client[WS_METHODS.atlassianGetProjectLink](input)),
+      saveProjectLink: (input) =>
+        transport.request((client) => client[WS_METHODS.atlassianSaveProjectLink](input)),
+      saveManualBitbucketToken: (input) =>
+        transport.request((client) => client[WS_METHODS.atlassianSaveManualBitbucketToken](input)),
+      saveManualJiraToken: (input) =>
+        transport.request((client) => client[WS_METHODS.atlassianSaveManualJiraToken](input)),
+    },
+    workItems: {
+      list: (input) => transport.request((client) => client[WS_METHODS.workItemsList](input)),
+      search: (input) => transport.request((client) => client[WS_METHODS.workItemsSearch](input)),
+      get: (input) => transport.request((client) => client[WS_METHODS.workItemsGet](input)),
+      addComment: (input) =>
+        transport.request((client) => client[WS_METHODS.workItemsAddComment](input)),
+      listTransitions: (input) =>
+        transport.request((client) => client[WS_METHODS.workItemsListTransitions](input)),
+      transition: (input) =>
+        transport.request((client) => client[WS_METHODS.workItemsTransition](input)),
     },
     shell: {
       openInEditor: (input) =>
@@ -324,6 +389,14 @@ export function createWsRpcClient(transport: WsTransport): WsRpcClient {
         transport.request((client) => client[WS_METHODS.serverUpdateSettings]({ patch })),
       discoverSourceControl: () =>
         transport.request((client) => client[WS_METHODS.serverDiscoverSourceControl]({})),
+      listOpinionatedPlugins: () =>
+        transport.request((client) => client[WS_METHODS.serverListOpinionatedPlugins]({})),
+      checkOpinionatedPlugins: (input) =>
+        transport.request((client) =>
+          client[WS_METHODS.serverCheckOpinionatedPlugins](input ?? {}),
+        ),
+      installOpinionatedPlugin: (input) =>
+        transport.request((client) => client[WS_METHODS.serverInstallOpinionatedPlugin](input)),
       subscribeConfig: (listener, options) =>
         transport.subscribe((client) => client[WS_METHODS.subscribeServerConfig]({}), listener, {
           ...options,

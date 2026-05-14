@@ -10,7 +10,7 @@ import {
   type DateTime,
 } from "effect";
 
-import { TrimmedNonEmptyString, type SourceControlRepositoryVisibility } from "@s3tools/contracts";
+import { TrimmedNonEmptyString, type SourceControlRepositoryVisibility } from "@ryco/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as GitLabIssues from "./gitLabIssues.ts";
@@ -335,16 +335,16 @@ export const make = Effect.fn("makeGitLabCli")(function* () {
 
   return GitLabCli.of({
     execute,
-    listMergeRequests: (input) =>
-      runAndDecode({
+    listMergeRequests: (input) => {
+      const sourceBranch = sourceRefName(input);
+      return runAndDecode({
         operation: "listMergeRequests",
         exec: execute({
           cwd: input.cwd,
           args: [
             "mr",
             "list",
-            "--source-branch",
-            sourceRefName(input),
+            ...(sourceBranch.length > 0 ? ["--source-branch", sourceBranch] : []),
             ...stateArgs(input.state),
             "--per-page",
             String(input.limit ?? 20),
@@ -356,7 +356,8 @@ export const make = Effect.fn("makeGitLabCli")(function* () {
         formatError: GitLabMergeRequests.formatGitLabJsonDecodeError,
         emptyValue: [],
         invalidDetail: "GitLab CLI returned invalid MR list JSON",
-      }).pipe(Effect.map((records) => records.map(toSummaryWithOptionalUpdatedAt))),
+      }).pipe(Effect.map((records) => records.map(toSummaryWithOptionalUpdatedAt)));
+    },
     getMergeRequest: (input) =>
       runAndDecode({
         operation: "getMergeRequest",

@@ -1,9 +1,9 @@
-import type { RepositoryIdentity } from "@s3tools/contracts";
+import type { RepositoryIdentity } from "@ryco/contracts";
 import { Cache, Duration, Effect, Exit, Layer } from "effect";
 import {
   detectSourceControlProviderFromGitRemoteUrl,
   normalizeGitRemoteUrl,
-} from "@s3tools/shared/git";
+} from "@ryco/shared/git";
 
 import { runProcess } from "../../processRunner.ts";
 import {

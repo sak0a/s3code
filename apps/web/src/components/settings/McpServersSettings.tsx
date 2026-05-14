@@ -19,9 +19,10 @@ import {
   McpWorkspaceId,
   type McpListServersResult,
   type McpListWorkspacesResult,
+  type McpProviderSupport,
   type McpServer,
   type McpWorkspace,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import { cn } from "../../lib/utils";
 import { ensureLocalApi } from "../../localApi";
@@ -33,6 +34,7 @@ import {
   validateMcpServerForm,
   type McpServerFormState,
 } from "../../mcpServers";
+import { formatProviderDriverKindLabel } from "../../providerModels";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
@@ -50,9 +52,11 @@ import { Switch } from "../ui/switch";
 import { Textarea } from "../ui/textarea";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { getDriverOption } from "./providerDriverMeta";
 
 type McpApi = NonNullable<ReturnType<typeof ensureLocalApi>["mcp"]>;
 const EMPTY_WORKSPACES: readonly McpWorkspace[] = [];
+const EMPTY_PROVIDERS: readonly McpProviderSupport[] = [];
 
 function getMcpApi(): McpApi {
   const api = ensureLocalApi().mcp;
@@ -103,6 +107,33 @@ function statusLabel(server: McpServer): string {
   if (server.authStatus === "notLoggedIn") return "Login needed";
   if (server.startupStatus === "ready") return "Ready";
   return "Unknown";
+}
+
+function providerSupportVariant(provider: McpProviderSupport): "success" | "warning" | "outline" {
+  if (!provider.enabled) return "outline";
+  if (provider.status === "managed") return "success";
+  if (provider.status === "external") return "warning";
+  return "outline";
+}
+
+function providerSupportLabel(provider: McpProviderSupport): string {
+  if (!provider.enabled) return "Disabled";
+  switch (provider.status) {
+    case "managed":
+      return "Managed";
+    case "external":
+      return "External config";
+    case "unsupported":
+      return "Not wired";
+  }
+}
+
+function providerDisplayName(provider: McpProviderSupport): string {
+  return (
+    provider.displayName ??
+    getDriverOption(provider.driver)?.label ??
+    formatProviderDriverKindLabel(provider.driver)
+  );
 }
 
 function FieldLabel(props: { readonly label: string; readonly children: React.ReactNode }) {
@@ -273,7 +304,7 @@ function McpServerDialog({
                 <Textarea
                   value={form.httpHeadersText}
                   onChange={(event) => setField("httpHeadersText", event.target.value)}
-                  placeholder="X-Client=s3code"
+                  placeholder="X-Client=ryco"
                   spellCheck={false}
                 />
                 <TextareaHelp>Static headers as KEY=VALUE lines.</TextareaHelp>
@@ -422,6 +453,82 @@ function WorkspaceSelect({
         ))}
       </SelectPopup>
     </Select>
+  );
+}
+
+function ProviderSupportSection({
+  providers,
+  selectedWorkspaceId,
+  onSelectWorkspace,
+}: {
+  readonly providers: readonly McpProviderSupport[];
+  readonly selectedWorkspaceId: string | null;
+  readonly onSelectWorkspace: (workspaceId: string) => void;
+}) {
+  if (providers.length === 0) return null;
+
+  return (
+    <section className="rounded-lg border bg-muted/10">
+      <div className="border-b px-4 py-3">
+        <h3 className="text-sm font-semibold">Provider MCP support</h3>
+      </div>
+      <div className="divide-y">
+        {providers.map((provider) => {
+          const driverOption = getDriverOption(provider.driver);
+          const Icon = driverOption?.icon ?? ServerIcon;
+          const workspaceSelected =
+            provider.workspaceId !== undefined && provider.workspaceId === selectedWorkspaceId;
+          const canSelectWorkspace = provider.workspaceId !== undefined && !workspaceSelected;
+
+          return (
+            <div
+              key={provider.instanceId}
+              className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="relative mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background">
+                  <Icon className="size-4 text-muted-foreground" />
+                  {provider.accentColor ? (
+                    <span
+                      className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border border-background"
+                      style={{ backgroundColor: provider.accentColor }}
+                    />
+                  ) : null}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="text-sm font-medium">{providerDisplayName(provider)}</span>
+                    <span className="font-mono text-[11px] text-muted-foreground/70">
+                      {provider.instanceId}
+                    </span>
+                  </div>
+                  <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground/80">
+                    {provider.message}
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+                <Badge variant={providerSupportVariant(provider)}>
+                  {providerSupportLabel(provider)}
+                </Badge>
+                {provider.workspaceId ? (
+                  <Button
+                    size="xs"
+                    variant={workspaceSelected ? "secondary" : "outline"}
+                    disabled={!canSelectWorkspace}
+                    onClick={() => {
+                      if (provider.workspaceId) onSelectWorkspace(provider.workspaceId);
+                    }}
+                  >
+                    Codex workspace
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -610,6 +717,7 @@ export function McpServersSettings() {
   const [error, setError] = useState<string | null>(null);
 
   const workspaces = workspacesResult?.workspaces ?? EMPTY_WORKSPACES;
+  const providers = workspacesResult?.providers ?? EMPTY_PROVIDERS;
   const selectedWorkspace = useMemo(
     () => workspaces.find((workspace) => workspace.id === selectedWorkspaceId) ?? null,
     [selectedWorkspaceId, workspaces],
@@ -766,12 +874,12 @@ export function McpServersSettings() {
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
               <ServerIcon className="size-3.5" />
-              Codex MCP
+              Provider MCP
             </div>
             <h2 className="mt-1 text-lg font-semibold tracking-[-0.01em]">MCP Servers</h2>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground/80">
-              Manage Model Context Protocol servers in the Codex config used by your configured
-              Codex provider instances.
+              Manage Codex MCP servers and inspect how other provider instances currently expose MCP
+              support.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -813,6 +921,15 @@ export function McpServersSettings() {
             </Button>
           </div>
         </header>
+
+        <ProviderSupportSection
+          providers={providers}
+          selectedWorkspaceId={selectedWorkspaceId}
+          onSelectWorkspace={(workspaceId) => {
+            setSelectedWorkspaceId(workspaceId);
+            void loadServers(workspaceId);
+          }}
+        />
 
         {selectedWorkspace ? (
           <div className="rounded-lg border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">

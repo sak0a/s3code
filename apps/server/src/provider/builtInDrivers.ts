@@ -23,14 +23,16 @@
 import {
   ClaudeSettings,
   CodexSettings,
+  CopilotSettings,
   CursorSettings,
   OpenCodeSettings,
   ProviderDriverKind,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect, Schema } from "effect";
 
 import type { ClaudeDriverEnv } from "./Drivers/ClaudeDriver.ts";
 import type { CodexDriverEnv } from "./Drivers/CodexDriver.ts";
+import type { CopilotDriverEnv } from "./Drivers/CopilotDriver.ts";
 import type { CursorDriverEnv } from "./Drivers/CursorDriver.ts";
 import type { OpenCodeDriverEnv } from "./Drivers/OpenCodeDriver.ts";
 import { ProviderDriverError } from "./Errors.ts";
@@ -48,11 +50,13 @@ import type {
 export type BuiltInDriversEnv =
   | ClaudeDriverEnv
   | CodexDriverEnv
+  | CopilotDriverEnv
   | CursorDriverEnv
   | OpenCodeDriverEnv;
 
 const codexDriverKind = ProviderDriverKind.make("codex");
 const claudeDriverKind = ProviderDriverKind.make("claudeAgent");
+const copilotDriverKind = ProviderDriverKind.make("copilot");
 const cursorDriverKind = ProviderDriverKind.make("cursor");
 const openCodeDriverKind = ProviderDriverKind.make("opencode");
 
@@ -98,6 +102,21 @@ const ClaudeLazyDriver: ProviderDriver<ClaudeSettings, ClaudeDriverEnv> = {
     }).pipe(Effect.flatMap(({ ClaudeDriver }) => ClaudeDriver.create(input))),
 };
 
+const CopilotLazyDriver: ProviderDriver<CopilotSettings, CopilotDriverEnv> = {
+  driverKind: copilotDriverKind,
+  metadata: {
+    displayName: "GitHub Copilot",
+    supportsMultipleInstances: true,
+  },
+  configSchema: CopilotSettings,
+  defaultConfig: (): CopilotSettings => Schema.decodeSync(CopilotSettings)({}),
+  create: (input) =>
+    Effect.tryPromise({
+      try: () => import("./Drivers/CopilotDriver.ts"),
+      catch: (cause) => driverImportError(copilotDriverKind, input, cause),
+    }).pipe(Effect.flatMap(({ CopilotDriver }) => CopilotDriver.create(input))),
+};
+
 const CursorLazyDriver: ProviderDriver<CursorSettings, CursorDriverEnv> = {
   driverKind: cursorDriverKind,
   metadata: {
@@ -136,6 +155,7 @@ const OpenCodeLazyDriver: ProviderDriver<OpenCodeSettings, OpenCodeDriverEnv> = 
 export const BUILT_IN_DRIVERS: ReadonlyArray<AnyProviderDriver<BuiltInDriversEnv>> = [
   CodexLazyDriver,
   ClaudeLazyDriver,
+  CopilotLazyDriver,
   CursorLazyDriver,
   OpenCodeLazyDriver,
 ];

@@ -5,8 +5,8 @@ import {
   type TerminalEvent,
   type TerminalSessionSnapshot,
   type TerminalSessionStatus,
-} from "@s3tools/contracts";
-import { makeKeyedCoalescingWorker } from "@s3tools/shared/KeyedCoalescingWorker";
+} from "@ryco/contracts";
+import { makeKeyedCoalescingWorker } from "@ryco/shared/KeyedCoalescingWorker";
 import {
   Effect,
   Encoding,
@@ -658,7 +658,7 @@ function toSessionKey(threadId: string, terminalId: string): string {
 
 function shouldExcludeTerminalEnvKey(key: string): boolean {
   const normalizedKey = key.toUpperCase();
-  if (normalizedKey.startsWith("S3CODE_")) {
+  if (normalizedKey.startsWith("RYCO_")) {
     return true;
   }
   if (normalizedKey.startsWith("VITE_")) {

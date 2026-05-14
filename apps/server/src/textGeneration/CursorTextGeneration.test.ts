@@ -6,10 +6,10 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
 import { Effect, Layer, Schema } from "effect";
-import { createModelSelection } from "@s3tools/shared/model";
+import { createModelSelection } from "@ryco/shared/model";
 import { expect } from "vitest";
 
-import { CursorSettings, ProviderInstanceId } from "@s3tools/contracts";
+import { CursorSettings, ProviderInstanceId } from "@ryco/contracts";
 
 import { ServerConfig } from "../config.ts";
 import { type TextGenerationShape } from "./TextGeneration.ts";
@@ -23,7 +23,7 @@ function shellSingleQuote(value: string): string {
 }
 
 const CursorTextGenerationTestLayer = ServerConfig.layerTest(process.cwd(), {
-  prefix: "s3code-cursor-text-generation-test-",
+  prefix: "ryco-cursor-text-generation-test-",
 }).pipe(Layer.provideMerge(NodeServices.layer));
 
 function makeAcpAgentWrapper(dir: string, env: Record<string, string>): string {
@@ -53,7 +53,7 @@ function withFakeAcpAgent<A, E, R>(
   effectFn: (textGeneration: TextGenerationShape) => Effect.Effect<A, E, R>,
 ) {
   return Effect.gen(function* () {
-    const tempDir = mkdtempSync(path.join(os.tmpdir(), "s3code-cursor-text-acp-"));
+    const tempDir = mkdtempSync(path.join(os.tmpdir(), "ryco-cursor-text-acp-"));
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
         rmSync(tempDir, { recursive: true, force: true });
@@ -84,7 +84,7 @@ function waitForFileContent(path: string): Effect.Effect<string> {
 
 it.layer(CursorTextGenerationTestLayer)("CursorTextGeneration", (it) => {
   it.effect("uses ACP model config options instead of raw CLI model ids", () => {
-    const requestLogDir = mkdtempSync(path.join(os.tmpdir(), "s3code-cursor-text-log-"));
+    const requestLogDir = mkdtempSync(path.join(os.tmpdir(), "ryco-cursor-text-log-"));
     const requestLogPath = path.join(requestLogDir, "requests.ndjson");
 
     return withFakeAcpAgent(
@@ -227,7 +227,7 @@ it.layer(CursorTextGenerationTestLayer)("CursorTextGeneration", (it) => {
   );
 
   it.effect("closes the ACP child process after text generation completes", () => {
-    const exitLogDir = mkdtempSync(path.join(os.tmpdir(), "s3code-cursor-text-exit-log-"));
+    const exitLogDir = mkdtempSync(path.join(os.tmpdir(), "ryco-cursor-text-exit-log-"));
     const exitLogPath = path.join(exitLogDir, "exit.log");
 
     return withFakeAcpAgent(

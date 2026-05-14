@@ -5,7 +5,7 @@ import {
   type VcsError,
   type VcsInitInput,
   VcsUnsupportedOperationError,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import * as VcsDriverRegistry from "./VcsDriverRegistry.ts";
 
 export interface VcsProvisioningServiceShape {

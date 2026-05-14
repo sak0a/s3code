@@ -1,4 +1,5 @@
 import type * as BitbucketApi from "./BitbucketApi.ts";
+import type * as ForgejoApi from "./ForgejoApi.ts";
 import * as SourceControlProviderDiscovery from "./SourceControlProviderDiscovery.ts";
 
 function parseGitHubAuth(input: SourceControlProviderDiscovery.SourceControlAuthProbeInput) {
@@ -136,7 +137,20 @@ export function makeBitbucketDiscovery(
     kind: "bitbucket",
     label: "Bitbucket",
     installHint:
-      "Set S3CODE_BITBUCKET_EMAIL and S3CODE_BITBUCKET_API_TOKEN on the server (use a Bitbucket API token with pull request and repository scopes).",
+      "Set RYCO_BITBUCKET_EMAIL and RYCO_BITBUCKET_API_TOKEN on the server (use a Bitbucket API token with pull request and repository scopes).",
     probeAuth: bitbucket.probeAuth,
+  };
+}
+
+export function makeForgejoDiscovery(
+  forgejo: ForgejoApi.ForgejoApiShape,
+): SourceControlProviderDiscovery.SourceControlApiDiscoverySpec {
+  return {
+    type: "api",
+    kind: "forgejo",
+    label: "Forgejo",
+    installHint:
+      "Authenticate with `fj auth login` on the server and verify with `fj -H codeberg.org whoami`, or set RYCO_FORGEJO_BASE_URL and RYCO_FORGEJO_TOKEN. For unusual fj installs, point Ryco at the token file with RYCO_FORGEJO_CLI_KEYS_FILE.",
+    probeAuth: forgejo.probeAuth,
   };
 }

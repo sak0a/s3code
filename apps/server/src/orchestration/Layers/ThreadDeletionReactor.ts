@@ -1,5 +1,5 @@
-import type { OrchestrationEvent } from "@s3tools/contracts";
-import { makeDrainableWorker } from "@s3tools/shared/DrainableWorker";
+import type { OrchestrationEvent } from "@ryco/contracts";
+import { makeDrainableWorker } from "@ryco/shared/DrainableWorker";
 import { Cause, Effect, Layer, Stream } from "effect";
 
 import { ProviderService } from "../../provider/Services/ProviderService.ts";

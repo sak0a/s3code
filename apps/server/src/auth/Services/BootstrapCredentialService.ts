@@ -1,4 +1,4 @@
-import type { AuthPairingLink, ServerAuthBootstrapMethod } from "@s3tools/contracts";
+import type { AuthPairingLink, ServerAuthBootstrapMethod } from "@ryco/contracts";
 import { Data, DateTime, Duration, Context } from "effect";
 import type { Effect, Stream } from "effect";
 

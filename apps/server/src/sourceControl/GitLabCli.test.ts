@@ -2,7 +2,7 @@ import { assert, it, afterEach, expect, vi } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 
-import { VcsProcessExitError } from "@s3tools/contracts";
+import { VcsProcessExitError } from "@ryco/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as GitLabCli from "./GitLabCli.ts";
@@ -41,14 +41,14 @@ layer("GitLabCli.layer", (it) => {
             JSON.stringify({
               iid: 42,
               title: "Add MR thread creation",
-              web_url: "https://gitlab.com/pingdotgg/s3code/-/merge_requests/42",
+              web_url: "https://gitlab.com/pingdotgg/ryco/-/merge_requests/42",
               target_branch: "main",
               source_branch: "feature/mr-threads",
               state: "opened",
               source_project_id: 101,
               target_project_id: 100,
               source_project: {
-                path_with_namespace: "octocat/s3code",
+                path_with_namespace: "octocat/ryco",
               },
             }),
           ),
@@ -66,12 +66,12 @@ layer("GitLabCli.layer", (it) => {
       assert.deepStrictEqual(result, {
         number: 42,
         title: "Add MR thread creation",
-        url: "https://gitlab.com/pingdotgg/s3code/-/merge_requests/42",
+        url: "https://gitlab.com/pingdotgg/ryco/-/merge_requests/42",
         baseRefName: "main",
         headRefName: "feature/mr-threads",
         state: "open",
         isCrossRepository: true,
-        headRepositoryNameWithOwner: "octocat/s3code",
+        headRepositoryNameWithOwner: "octocat/ryco",
         headRepositoryOwnerLogin: "octocat",
       });
       expect(mockedRun).toHaveBeenCalledWith(
@@ -93,14 +93,14 @@ layer("GitLabCli.layer", (it) => {
               {
                 iid: 0,
                 title: "invalid",
-                web_url: "https://gitlab.com/pingdotgg/s3code/-/merge_requests/0",
+                web_url: "https://gitlab.com/pingdotgg/ryco/-/merge_requests/0",
                 target_branch: "main",
                 source_branch: "feature/invalid",
               },
               {
                 iid: 43,
                 title: "  Valid MR  ",
-                web_url: " https://gitlab.com/pingdotgg/s3code/-/merge_requests/43 ",
+                web_url: " https://gitlab.com/pingdotgg/ryco/-/merge_requests/43 ",
                 target_branch: " main ",
                 source_branch: " feature/mr-list ",
                 state: "merged",
@@ -123,7 +123,7 @@ layer("GitLabCli.layer", (it) => {
         {
           number: 43,
           title: "Valid MR",
-          url: "https://gitlab.com/pingdotgg/s3code/-/merge_requests/43",
+          url: "https://gitlab.com/pingdotgg/ryco/-/merge_requests/43",
           baseRefName: "main",
           headRefName: "feature/mr-list",
           state: "merged",
@@ -155,10 +155,10 @@ layer("GitLabCli.layer", (it) => {
         Effect.succeed(
           processOutput(
             JSON.stringify({
-              path_with_namespace: "octocat/s3code",
-              web_url: "https://gitlab.com/octocat/s3code",
-              http_url_to_repo: "https://gitlab.com/octocat/s3code.git",
-              ssh_url_to_repo: "git@gitlab.com:octocat/s3code.git",
+              path_with_namespace: "octocat/ryco",
+              web_url: "https://gitlab.com/octocat/ryco",
+              http_url_to_repo: "https://gitlab.com/octocat/ryco.git",
+              ssh_url_to_repo: "git@gitlab.com:octocat/ryco.git",
             }),
           ),
         ),
@@ -168,14 +168,14 @@ layer("GitLabCli.layer", (it) => {
         const glab = yield* GitLabCli.GitLabCli;
         return yield* glab.getRepositoryCloneUrls({
           cwd: "/repo",
-          repository: "octocat/s3code",
+          repository: "octocat/ryco",
         });
       });
 
       assert.deepStrictEqual(result, {
-        nameWithOwner: "octocat/s3code",
-        url: "https://gitlab.com/octocat/s3code",
-        sshUrl: "git@gitlab.com:octocat/s3code.git",
+        nameWithOwner: "octocat/ryco",
+        url: "https://gitlab.com/octocat/ryco",
+        sshUrl: "git@gitlab.com:octocat/ryco.git",
       });
     }),
   );
@@ -224,10 +224,10 @@ layer("GitLabCli.layer", (it) => {
           Effect.succeed(
             processOutput(
               JSON.stringify({
-                path_with_namespace: "octocat/s3code",
-                web_url: "https://gitlab.com/octocat/s3code",
-                http_url_to_repo: "https://gitlab.com/octocat/s3code.git",
-                ssh_url_to_repo: "git@gitlab.com:octocat/s3code.git",
+                path_with_namespace: "octocat/ryco",
+                web_url: "https://gitlab.com/octocat/ryco",
+                http_url_to_repo: "https://gitlab.com/octocat/ryco.git",
+                ssh_url_to_repo: "git@gitlab.com:octocat/ryco.git",
               }),
             ),
           ),
@@ -236,14 +236,14 @@ layer("GitLabCli.layer", (it) => {
       const glab = yield* GitLabCli.GitLabCli;
       const result = yield* glab.createRepository({
         cwd: "/repo",
-        repository: "octocat/s3code",
+        repository: "octocat/ryco",
         visibility: "public",
       });
 
       assert.deepStrictEqual(result, {
-        nameWithOwner: "octocat/s3code",
-        url: "https://gitlab.com/octocat/s3code",
-        sshUrl: "git@gitlab.com:octocat/s3code.git",
+        nameWithOwner: "octocat/ryco",
+        url: "https://gitlab.com/octocat/ryco",
+        sshUrl: "git@gitlab.com:octocat/ryco.git",
       });
       expect(mockedRun).toHaveBeenNthCalledWith(
         1,
@@ -264,9 +264,9 @@ layer("GitLabCli.layer", (it) => {
             "POST",
             "projects",
             "--raw-field",
-            "path=s3code",
+            "path=ryco",
             "--raw-field",
-            "name=s3code",
+            "name=ryco",
             "--raw-field",
             "visibility=public",
             "--raw-field",

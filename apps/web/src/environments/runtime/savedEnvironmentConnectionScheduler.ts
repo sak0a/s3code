@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@s3tools/contracts";
+import type { EnvironmentId } from "@ryco/contracts";
 
 export interface SavedEnvironmentConnectionQueueItem {
   readonly environmentId: EnvironmentId;

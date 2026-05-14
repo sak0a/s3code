@@ -1,4 +1,4 @@
-import { AuthClientMetadataDeviceType, AuthSessionId } from "@s3tools/contracts";
+import { AuthClientMetadataDeviceType, AuthSessionId } from "@ryco/contracts";
 import { Option, Schema, Context } from "effect";
 import type { Effect } from "effect";
 

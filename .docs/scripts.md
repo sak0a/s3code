@@ -3,9 +3,9 @@
 - `bun run dev` — Starts contracts, server, and web in `turbo watch` mode.
 - `bun run dev:server` — Starts just the WebSocket server (uses Bun TypeScript execution).
 - `bun run dev:web` — Starts just the Vite dev server for the web app.
-- Dev commands default `S3CODE_HOME` to `~/.s3code` and use `~/.s3code/dev` for dev state isolation.
+- Dev commands default `RYCO_HOME` to `~/.ryco` and use `~/.ryco/dev` for dev state isolation.
 - Override server CLI-equivalent flags from root dev commands with `--`, for example:
-  `bun run dev -- --base-dir ~/.s3code-2`
+  `bun run dev -- --base-dir ~/.ryco-2`
 - `bun run start` — Runs the production server (serves built web app as static files).
 - `bun run build` — Builds contracts, web app, and server through Turbo.
 - `bun run typecheck` — Strict TypeScript checks for all packages.
@@ -33,10 +33,10 @@
 
 ## Running multiple dev instances
 
-Set `S3CODE_DEV_INSTANCE` to any value to deterministically shift all dev ports together.
+Set `RYCO_DEV_INSTANCE` to any value to deterministically shift all dev ports together.
 
 - Default ports: server `3773`, web `5733`
-- Shifted ports: `base + offset` (offset is hashed from `S3CODE_DEV_INSTANCE`)
-- Example: `S3CODE_DEV_INSTANCE=branch-a bun run dev:desktop`
+- Shifted ports: `base + offset` (offset is hashed from `RYCO_DEV_INSTANCE`)
+- Example: `RYCO_DEV_INSTANCE=branch-a bun run dev:desktop`
 
-If you want full control instead of hashing, set `S3CODE_PORT_OFFSET` to a numeric offset.
+If you want full control instead of hashing, set `RYCO_PORT_OFFSET` to a numeric offset.

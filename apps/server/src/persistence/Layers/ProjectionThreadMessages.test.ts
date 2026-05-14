@@ -1,4 +1,4 @@
-import { MessageId, ThreadId } from "@s3tools/contracts";
+import { MessageId, ThreadId } from "@ryco/contracts";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 

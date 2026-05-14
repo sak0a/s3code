@@ -4,7 +4,7 @@ import type {
   ProviderSessionRuntimeStatus,
   RuntimeMode,
   ThreadId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Option, Context } from "effect";
 import type { Effect } from "effect";
 

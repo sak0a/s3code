@@ -1,6 +1,6 @@
 import { Context, Effect, FileSystem, Layer, Path, Schema } from "effect";
 
-import { VcsDriverKind, type VcsDriverKind as VcsDriverKindType } from "@s3tools/contracts";
+import { VcsDriverKind, type VcsDriverKind as VcsDriverKindType } from "@ryco/contracts";
 
 const ProjectVcsConfig = Schema.Struct({
   vcs: Schema.optional(
@@ -55,7 +55,7 @@ export const make = Effect.fn("makeVcsProjectConfig")(function* () {
   const findConfigPath = Effect.fn("VcsProjectConfig.findConfigPath")(function* (cwd: string) {
     let current = cwd;
     while (true) {
-      const candidate = path.join(current, ".s3code", "vcs.json");
+      const candidate = path.join(current, ".ryco", "vcs.json");
       if (yield* fileSystem.exists(candidate).pipe(Effect.orElseSucceed(() => false))) {
         return candidate;
       }

@@ -4,7 +4,7 @@ import type {
   ScopedProjectRef,
   ScopedThreadRef,
   ThreadId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 export function scopeProjectRef(
   environmentId: EnvironmentId,

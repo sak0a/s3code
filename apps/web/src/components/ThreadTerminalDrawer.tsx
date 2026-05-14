@@ -6,8 +6,8 @@ import {
   type TerminalEvent,
   type TerminalSessionSnapshot,
   type ThreadId,
-} from "@s3tools/contracts";
-import { scopedThreadKey } from "@s3tools/client-runtime";
+} from "@ryco/contracts";
+import { scopedThreadKey } from "@ryco/client-runtime";
 import { Terminal, type ITheme } from "@xterm/xterm";
 import {
   type PointerEvent as ReactPointerEvent,

@@ -1,4 +1,4 @@
-import { TurnId } from "@s3tools/contracts";
+import { TurnId } from "@ryco/contracts";
 import { describe, expect, it } from "vitest";
 
 import { getRightPanelMode, parseRightPanelRouteSearch } from "./rightPanelRouteSearch";

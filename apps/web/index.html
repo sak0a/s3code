@@ -17,7 +17,7 @@
         const DARK_BACKGROUND = "#161616";
         const themeColorMeta = document.querySelector('meta[name="theme-color"]');
         try {
-          const storedTheme = window.localStorage.getItem("s3code:theme");
+          const storedTheme = window.localStorage.getItem("ryco:theme");
           const theme =
             storedTheme === "light" || storedTheme === "dark" || storedTheme === "system"
               ? storedTheme
@@ -89,13 +89,13 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..800;1,9..40,300..800&display=swap"
       rel="stylesheet"
     />
-    <title>S3Code (Alpha)</title>
+    <title>Ryco (Alpha)</title>
   </head>
   <body>
     <div id="root">
       <div id="boot-shell">
-        <div id="boot-shell-card" aria-label="S3 Code splash screen">
-          <img id="boot-shell-logo" src="/apple-touch-icon.png" alt="S3 Code" />
+        <div id="boot-shell-card" aria-label="Ryco splash screen">
+          <img id="boot-shell-logo" src="/apple-touch-icon.png" alt="Ryco" />
         </div>
       </div>
     </div>

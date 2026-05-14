@@ -1,6 +1,6 @@
 import { assert, it } from "@effect/vitest";
 import { DateTime, Effect, Layer, Option } from "effect";
-import { SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES } from "@s3tools/contracts";
+import { SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES } from "@ryco/contracts";
 
 import * as AzureDevOpsCli from "./AzureDevOpsCli.ts";
 import * as AzureDevOpsSourceControlProvider from "./AzureDevOpsSourceControlProvider.ts";

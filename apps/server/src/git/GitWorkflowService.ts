@@ -25,7 +25,7 @@ import {
   type VcsStatusLocalResult,
   type VcsStatusRemoteResult,
   type VcsStatusResult,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import { GitManager, type GitRunStackedActionOptions } from "./GitManager.ts";
 import { GitVcsDriver } from "../vcs/GitVcsDriver.ts";
@@ -61,6 +61,7 @@ export interface GitWorkflowServiceShape {
   ) => Effect.Effect<VcsCreateWorktreeResult, GitCommandError>;
   readonly removeWorktree: (input: VcsRemoveWorktreeInput) => Effect.Effect<void, GitCommandError>;
   readonly listWorktreePaths: (cwd: string) => Effect.Effect<readonly string[], GitCommandError>;
+  readonly listLocalBranchNames: (cwd: string) => Effect.Effect<readonly string[], GitCommandError>;
   readonly createRef: (
     input: VcsCreateRefInput,
   ) => Effect.Effect<VcsCreateRefResult, GitCommandError>;
@@ -328,6 +329,16 @@ export const make = Effect.fn("makeGitWorkflowService")(function* () {
         Effect.flatMap((isGitRepository) =>
           isGitRepository
             ? git.listWorktreePaths(cwd).pipe(Effect.catch(recoverMissingCwd(cwd, empty)))
+            : Effect.succeed(empty),
+        ),
+      );
+    },
+    listLocalBranchNames: (cwd) => {
+      const empty: readonly string[] = [];
+      return detectGitRepositoryForCommand("GitWorkflowService.listLocalBranchNames", cwd).pipe(
+        Effect.flatMap((isGitRepository) =>
+          isGitRepository
+            ? git.listLocalBranchNames(cwd).pipe(Effect.catch(recoverMissingCwd(cwd, empty)))
             : Effect.succeed(empty),
         ),
       );

@@ -1,9 +1,9 @@
-import { OpenCodeSettings, ProviderInstanceId } from "@s3tools/contracts";
+import { OpenCodeSettings, ProviderInstanceId } from "@ryco/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
 import { Duration, Effect, Layer, Schema } from "effect";
 import { TestClock } from "effect/testing";
-import { NetService } from "@s3tools/shared/Net";
+import { NetService } from "@ryco/shared/Net";
 import { beforeEach, expect } from "vitest";
 import type { OpencodeClient } from "@opencode-ai/sdk/v2";
 
@@ -110,7 +110,7 @@ const OpenCodeTextGenerationTestLayer = Layer.succeed(
 ).pipe(
   Layer.provideMerge(
     ServerConfig.layerTest(process.cwd(), {
-      prefix: "s3code-opencode-text-generation-test-",
+      prefix: "ryco-opencode-text-generation-test-",
     }),
   ),
   Layer.provideMerge(NetService.layer),
@@ -123,7 +123,7 @@ const OpenCodeTextGenerationExistingServerTestLayer = Layer.succeed(
 ).pipe(
   Layer.provideMerge(
     ServerConfig.layerTest(process.cwd(), {
-      prefix: "s3code-opencode-text-generation-existing-server-test-",
+      prefix: "ryco-opencode-text-generation-existing-server-test-",
     }),
   ),
   Layer.provideMerge(NetService.layer),

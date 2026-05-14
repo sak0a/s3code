@@ -39,7 +39,7 @@ import {
   type ProviderInstanceConfigMap,
   type ProviderDriverKind,
   type ServerProvider,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Context, Effect, Equal, Exit, Layer, PubSub, Ref, Schema, Scope, Stream } from "effect";
 
 import { buildUnavailableProviderSnapshot } from "../unavailableProviderSnapshot.ts";

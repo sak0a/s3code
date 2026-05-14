@@ -6,7 +6,7 @@ import {
   type SourceControlChangeRequestDetail,
   type SourceControlIssueDetail,
   type SourceControlIssueSummary,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import * as AzureDevOpsCli from "./AzureDevOpsCli.ts";
 import * as AzureDevOpsPullRequests from "./azureDevOpsPullRequests.ts";

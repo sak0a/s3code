@@ -4,7 +4,7 @@ import {
   TrimmedNonEmptyString,
   type SourceControlRepositoryVisibility,
   type VcsError,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as GitHubIssues from "./gitHubIssues.ts";

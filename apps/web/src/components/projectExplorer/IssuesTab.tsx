@@ -1,4 +1,4 @@
-import type { EnvironmentId, SourceControlIssueSummary } from "@s3tools/contracts";
+import type { EnvironmentId, SourceControlIssueSummary } from "@ryco/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { SearchIcon, RotateCwIcon } from "lucide-react";

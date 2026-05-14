@@ -1,4 +1,4 @@
-import type { EnvironmentId, ExecutionEnvironmentDescriptor } from "@s3tools/contracts";
+import type { EnvironmentId, ExecutionEnvironmentDescriptor } from "@ryco/contracts";
 import { Context } from "effect";
 import type { Effect } from "effect";
 

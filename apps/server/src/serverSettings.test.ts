@@ -5,8 +5,8 @@ import {
   ProviderInstanceId,
   ServerSettings,
   ServerSettingsPatch,
-} from "@s3tools/contracts";
-import { createModelSelection } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { createModelSelection } from "@ryco/shared/model";
 import { assert, it } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Schema } from "effect";
 import { ServerConfig } from "./config.ts";
@@ -17,7 +17,7 @@ const makeServerSettingsLayer = () =>
     Layer.provideMerge(
       Layer.fresh(
         ServerConfig.layerTest(process.cwd(), {
-          prefix: "s3code-server-settings-test-",
+          prefix: "ryco-server-settings-test-",
         }),
       ),
     ),

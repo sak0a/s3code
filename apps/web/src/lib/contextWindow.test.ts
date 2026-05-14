@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EventId, type OrchestrationThreadActivity, TurnId } from "@s3tools/contracts";
+import { EventId, type OrchestrationThreadActivity, TurnId } from "@ryco/contracts";
 
 import { deriveLatestContextWindowSnapshot, formatContextWindowTokens } from "./contextWindow";
 

@@ -127,6 +127,7 @@ export type ModelCapabilities = typeof ModelCapabilities.Type;
 
 const CODEX_DRIVER_KIND = ProviderDriverKind.make("codex");
 const CLAUDE_DRIVER_KIND = ProviderDriverKind.make("claudeAgent");
+const COPILOT_DRIVER_KIND = ProviderDriverKind.make("copilot");
 const CURSOR_DRIVER_KIND = ProviderDriverKind.make("cursor");
 const OPENCODE_DRIVER_KIND = ProviderDriverKind.make("opencode");
 
@@ -136,6 +137,7 @@ export const DEFAULT_GIT_TEXT_GENERATION_MODEL = "gpt-5.4-mini";
 export const DEFAULT_MODEL_BY_PROVIDER: Partial<Record<ProviderDriverKind, string>> = {
   [CODEX_DRIVER_KIND]: DEFAULT_MODEL,
   [CLAUDE_DRIVER_KIND]: "claude-sonnet-4-6",
+  [COPILOT_DRIVER_KIND]: "gpt-5",
   [CURSOR_DRIVER_KIND]: "auto",
   [OPENCODE_DRIVER_KIND]: "openai/gpt-5",
 };
@@ -146,6 +148,7 @@ export const DEFAULT_GIT_TEXT_GENERATION_MODEL_BY_PROVIDER: Partial<
 > = {
   [CODEX_DRIVER_KIND]: DEFAULT_GIT_TEXT_GENERATION_MODEL,
   [CLAUDE_DRIVER_KIND]: "claude-haiku-4-5",
+  [COPILOT_DRIVER_KIND]: "gpt-5-mini",
   [CURSOR_DRIVER_KIND]: "composer-2",
   [OPENCODE_DRIVER_KIND]: "openai/gpt-5",
 };
@@ -177,6 +180,14 @@ export const MODEL_SLUG_ALIASES_BY_PROVIDER: Partial<
     "claude-haiku-4.5": "claude-haiku-4-5",
     "claude-haiku-4-5-20251001": "claude-haiku-4-5",
   },
+  [COPILOT_DRIVER_KIND]: {
+    "gpt-5.4": "gpt-5",
+    "gpt-5-codex": "gpt-5",
+    "5.4": "gpt-5",
+    "gpt-5.4-mini": "gpt-5-mini",
+    "gpt-5-codex-mini": "gpt-5-mini",
+    "5.4-mini": "gpt-5-mini",
+  },
   [CURSOR_DRIVER_KIND]: {
     composer: "composer-2",
     "composer-1.5": "composer-1.5",
@@ -196,6 +207,7 @@ export const MODEL_SLUG_ALIASES_BY_PROVIDER: Partial<
 export const PROVIDER_DISPLAY_NAMES: Partial<Record<ProviderDriverKind, string>> = {
   [CODEX_DRIVER_KIND]: "Codex",
   [CLAUDE_DRIVER_KIND]: "Claude",
+  [COPILOT_DRIVER_KIND]: "GitHub Copilot",
   [CURSOR_DRIVER_KIND]: "Cursor",
   [OPENCODE_DRIVER_KIND]: "OpenCode",
 };

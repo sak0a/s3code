@@ -1,5 +1,5 @@
-import { ProviderDriverKind, ProviderInstanceId, type ServerProvider } from "@s3tools/contracts";
-import { DEFAULT_UNIFIED_SETTINGS, type UnifiedSettings } from "@s3tools/contracts/settings";
+import { ProviderDriverKind, ProviderInstanceId, type ServerProvider } from "@ryco/contracts";
+import { DEFAULT_UNIFIED_SETTINGS, type UnifiedSettings } from "@ryco/contracts/settings";
 import { describe, expect, it } from "vitest";
 import { deriveProviderInstanceEntries } from "./providerInstances";
 import {

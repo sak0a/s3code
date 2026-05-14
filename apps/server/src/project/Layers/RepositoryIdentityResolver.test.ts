@@ -40,18 +40,18 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       });
 
       yield* git(cwd, ["init"]);
-      yield* git(cwd, ["remote", "add", "origin", "git@github.com:S3Tools/s3code.git"]);
+      yield* git(cwd, ["remote", "add", "origin", "git@github.com:Ryco/ryco.git"]);
 
       const resolver = yield* RepositoryIdentityResolver;
       const identity = yield* resolver.resolve(cwd);
 
       expect(identity).not.toBeNull();
-      expect(identity?.canonicalKey).toBe("github.com/s3tools/s3code");
+      expect(identity?.canonicalKey).toBe("github.com/ryco/ryco");
       expect(normalizeResolvedPath(identity?.rootPath ?? "")).toBe(normalizeResolvedPath(cwd));
-      expect(identity?.displayName).toBe("s3tools/s3code");
+      expect(identity?.displayName).toBe("ryco/ryco");
       expect(identity?.provider).toBe("github");
-      expect(identity?.owner).toBe("s3tools");
-      expect(identity?.name).toBe("s3code");
+      expect(identity?.owner).toBe("ryco");
+      expect(identity?.name).toBe("ryco");
     }).pipe(Effect.provide(RepositoryIdentityResolverLive)),
   );
 
@@ -65,13 +65,13 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
 
       yield* fileSystem.makeDirectory(nestedWorkspace, { recursive: true });
       yield* git(repoRoot, ["init"]);
-      yield* git(repoRoot, ["remote", "add", "origin", "git@github.com:S3Tools/s3code.git"]);
+      yield* git(repoRoot, ["remote", "add", "origin", "git@github.com:Ryco/ryco.git"]);
 
       const resolver = yield* RepositoryIdentityResolver;
       const identity = yield* resolver.resolve(nestedWorkspace);
 
       expect(identity).not.toBeNull();
-      expect(identity?.canonicalKey).toBe("github.com/s3tools/s3code");
+      expect(identity?.canonicalKey).toBe("github.com/ryco/ryco");
       expect(normalizeResolvedPath(identity?.rootPath ?? "")).toBe(normalizeResolvedPath(repoRoot));
     }).pipe(Effect.provide(RepositoryIdentityResolverLive)),
   );
@@ -105,16 +105,16 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       });
 
       yield* git(cwd, ["init"]);
-      yield* git(cwd, ["remote", "add", "origin", "git@github.com:julius/s3code.git"]);
-      yield* git(cwd, ["remote", "add", "upstream", "git@github.com:S3Tools/s3code.git"]);
+      yield* git(cwd, ["remote", "add", "origin", "git@github.com:julius/ryco.git"]);
+      yield* git(cwd, ["remote", "add", "upstream", "git@github.com:Ryco/ryco.git"]);
 
       const resolver = yield* RepositoryIdentityResolver;
       const identity = yield* resolver.resolve(cwd);
 
       expect(identity).not.toBeNull();
       expect(identity?.locator.remoteName).toBe("upstream");
-      expect(identity?.canonicalKey).toBe("github.com/s3tools/s3code");
-      expect(identity?.displayName).toBe("s3tools/s3code");
+      expect(identity?.canonicalKey).toBe("github.com/ryco/ryco");
+      expect(identity?.displayName).toBe("ryco/ryco");
     }).pipe(Effect.provide(RepositoryIdentityResolverLive)),
   );
 
@@ -126,16 +126,16 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       });
 
       yield* git(cwd, ["init"]);
-      yield* git(cwd, ["remote", "add", "origin", "git@gitlab.com:S3Tools/platform/s3code.git"]);
+      yield* git(cwd, ["remote", "add", "origin", "git@gitlab.com:Ryco/platform/ryco.git"]);
 
       const resolver = yield* RepositoryIdentityResolver;
       const identity = yield* resolver.resolve(cwd);
 
       expect(identity).not.toBeNull();
-      expect(identity?.canonicalKey).toBe("gitlab.com/s3tools/platform/s3code");
-      expect(identity?.displayName).toBe("s3tools/platform/s3code");
-      expect(identity?.owner).toBe("s3tools");
-      expect(identity?.name).toBe("s3code");
+      expect(identity?.canonicalKey).toBe("gitlab.com/ryco/platform/ryco");
+      expect(identity?.displayName).toBe("ryco/platform/ryco");
+      expect(identity?.owner).toBe("ryco");
+      expect(identity?.name).toBe("ryco");
     }).pipe(Effect.provide(RepositoryIdentityResolverLive)),
   );
 
@@ -154,7 +154,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
         const initialIdentity = yield* resolver.resolve(cwd);
         expect(initialIdentity).toBeNull();
 
-        yield* git(cwd, ["remote", "add", "origin", "git@github.com:S3Tools/s3code.git"]);
+        yield* git(cwd, ["remote", "add", "origin", "git@github.com:Ryco/ryco.git"]);
 
         for (const _attempt of [1, 2, 3]) {
           const cachedIdentity = yield* resolver.resolve(cwd);
@@ -165,8 +165,8 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
 
         const refreshedIdentity = yield* resolver.resolve(cwd);
         expect(refreshedIdentity).not.toBeNull();
-        expect(refreshedIdentity?.canonicalKey).toBe("github.com/s3tools/s3code");
-        expect(refreshedIdentity?.name).toBe("s3code");
+        expect(refreshedIdentity?.canonicalKey).toBe("github.com/ryco/ryco");
+        expect(refreshedIdentity?.name).toBe("ryco");
       }).pipe(
         Effect.provide(
           Layer.merge(
@@ -188,26 +188,26 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       });
 
       yield* git(cwd, ["init"]);
-      yield* git(cwd, ["remote", "add", "origin", "git@github.com:S3Tools/s3code.git"]);
+      yield* git(cwd, ["remote", "add", "origin", "git@github.com:Ryco/ryco.git"]);
 
       const resolver = yield* RepositoryIdentityResolver;
       const initialIdentity = yield* resolver.resolve(cwd);
       expect(initialIdentity).not.toBeNull();
-      expect(initialIdentity?.canonicalKey).toBe("github.com/s3tools/s3code");
+      expect(initialIdentity?.canonicalKey).toBe("github.com/ryco/ryco");
 
-      yield* git(cwd, ["remote", "set-url", "origin", "git@github.com:S3Tools/s3code-next.git"]);
+      yield* git(cwd, ["remote", "set-url", "origin", "git@github.com:Ryco/ryco-next.git"]);
 
       const cachedIdentity = yield* resolver.resolve(cwd);
       expect(cachedIdentity).not.toBeNull();
-      expect(cachedIdentity?.canonicalKey).toBe("github.com/s3tools/s3code");
+      expect(cachedIdentity?.canonicalKey).toBe("github.com/ryco/ryco");
 
       yield* TestClock.adjust(Duration.millis(180));
 
       const refreshedIdentity = yield* resolver.resolve(cwd);
       expect(refreshedIdentity).not.toBeNull();
-      expect(refreshedIdentity?.canonicalKey).toBe("github.com/s3tools/s3code-next");
-      expect(refreshedIdentity?.displayName).toBe("s3tools/s3code-next");
-      expect(refreshedIdentity?.name).toBe("s3code-next");
+      expect(refreshedIdentity?.canonicalKey).toBe("github.com/ryco/ryco-next");
+      expect(refreshedIdentity?.displayName).toBe("ryco/ryco-next");
+      expect(refreshedIdentity?.name).toBe("ryco-next");
     }).pipe(
       Effect.provide(
         Layer.merge(
@@ -229,8 +229,8 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       });
 
       yield* git(cwd, ["init"]);
-      yield* git(cwd, ["remote", "add", "origin", "git@github.com:sak0a/s3code.git"]);
-      yield* git(cwd, ["remote", "add", "upstream", "git@github.com:S3Tools/s3code.git"]);
+      yield* git(cwd, ["remote", "add", "origin", "git@github.com:sak0a/ryco.git"]);
+      yield* git(cwd, ["remote", "add", "upstream", "git@github.com:Ryco/ryco.git"]);
 
       const resolver = yield* RepositoryIdentityResolver;
       const identity = yield* resolver.resolve(cwd);
@@ -245,7 +245,7 @@ it.layer(NodeServices.layer)("RepositoryIdentityResolverLive", (it) => {
       const remoteNames = remotes.map((remote) => remote.name).toSorted();
       expect(remoteNames).toEqual(["origin", "upstream"]);
       const origin = remotes.find((remote) => remote.name === "origin");
-      expect(origin?.ownerRepo).toBe("sak0a/s3code");
+      expect(origin?.ownerRepo).toBe("sak0a/ryco");
       expect(origin?.provider).toBe("github");
     }).pipe(Effect.provide(RepositoryIdentityResolverLive)),
   );

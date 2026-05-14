@@ -17,6 +17,7 @@ export {
 export {
   createServerPairingCredential,
   fetchSessionState,
+  issuePrimaryWebSocketToken,
   listServerClientSessions,
   listServerPairingLinks,
   peekPairingTokenFromUrl,

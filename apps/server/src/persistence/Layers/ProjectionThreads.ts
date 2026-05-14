@@ -14,7 +14,7 @@ import {
   SetProjectionThreadManualPositionInput,
   type ProjectionThreadRepositoryShape,
 } from "../Services/ProjectionThreads.ts";
-import { ModelSelection } from "@s3tools/contracts";
+import { DEFAULT_AGENT_TOKEN_MODE, ModelSelection } from "@ryco/contracts";
 
 const ProjectionThreadDbRow = ProjectionThread.mapFields(
   Struct.assign({
@@ -37,6 +37,7 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           model_selection_json,
           runtime_mode,
           interaction_mode,
+          token_mode,
           branch,
           worktree_path,
           worktree_id,
@@ -59,6 +60,7 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           ${JSON.stringify(row.modelSelection)},
           ${row.runtimeMode},
           ${row.interactionMode},
+          ${row.tokenMode ?? DEFAULT_AGENT_TOKEN_MODE},
           ${row.branch},
           ${row.worktreePath},
           ${row.worktreeId ?? null},
@@ -81,6 +83,7 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           model_selection_json = excluded.model_selection_json,
           runtime_mode = excluded.runtime_mode,
           interaction_mode = excluded.interaction_mode,
+          token_mode = excluded.token_mode,
           branch = excluded.branch,
           worktree_path = excluded.worktree_path,
           worktree_id = excluded.worktree_id,
@@ -110,6 +113,7 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           model_selection_json AS "modelSelection",
           runtime_mode AS "runtimeMode",
           interaction_mode AS "interactionMode",
+          token_mode AS "tokenMode",
           branch,
           worktree_path AS "worktreePath",
           worktree_id AS "worktreeId",
@@ -141,6 +145,7 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           model_selection_json AS "modelSelection",
           runtime_mode AS "runtimeMode",
           interaction_mode AS "interactionMode",
+          token_mode AS "tokenMode",
           branch,
           worktree_path AS "worktreePath",
           worktree_id AS "worktreeId",

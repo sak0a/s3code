@@ -6,7 +6,7 @@
  *
  * @module ProviderRegistry
  */
-import type { ProviderInstanceId, ProviderDriverKind, ServerProvider } from "@s3tools/contracts";
+import type { ProviderInstanceId, ProviderDriverKind, ServerProvider } from "@ryco/contracts";
 import { Context } from "effect";
 import type { Effect, Stream } from "effect";
 

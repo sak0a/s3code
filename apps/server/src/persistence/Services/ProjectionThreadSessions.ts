@@ -7,13 +7,14 @@
  * @module ProjectionThreadSessionRepository
  */
 import {
+  AgentTokenMode,
   RuntimeMode,
   IsoDateTime,
   OrchestrationSessionStatus,
   ProviderInstanceId,
   ThreadId,
   TurnId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Option, Schema, Context } from "effect";
 import type { Effect } from "effect";
 
@@ -25,6 +26,7 @@ export const ProjectionThreadSession = Schema.Struct({
   providerName: Schema.NullOr(Schema.String),
   providerInstanceId: Schema.NullOr(ProviderInstanceId),
   runtimeMode: RuntimeMode,
+  tokenMode: AgentTokenMode,
   activeTurnId: Schema.NullOr(TurnId),
   lastError: Schema.NullOr(Schema.String),
   updatedAt: IsoDateTime,

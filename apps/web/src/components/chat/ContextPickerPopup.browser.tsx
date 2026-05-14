@@ -3,7 +3,7 @@ import "../../index.css";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 import { page, userEvent } from "vitest/browser";
-import type { ChangeRequest, EnvironmentId, SourceControlIssueSummary } from "@s3tools/contracts";
+import type { ChangeRequest, EnvironmentId, SourceControlIssueSummary } from "@ryco/contracts";
 
 // ---------------------------------------------------------------------------
 // Mock TanStack Query so we can inject test data without a real server
@@ -59,7 +59,7 @@ vi.mock("~/lib/sourceControlContextRpc", () => ({
       input.state,
       null,
     ],
-    queryFn: async () => issueListData,
+    queryFn: () => issueListData,
     enabled: true,
     staleTime: 60_000,
   })),
@@ -74,20 +74,20 @@ vi.mock("~/lib/sourceControlContextRpc", () => ({
         input.state,
         null,
       ],
-      queryFn: async () => prListData,
+      queryFn: () => prListData,
       enabled: true,
       staleTime: 60_000,
     }),
   ),
   searchIssuesQueryOptions: vi.fn((input: { query: string; enabled?: boolean }) => ({
     queryKey: ["sourceControl", "issues", null, null, "search", input.query, null],
-    queryFn: async () => [],
+    queryFn: () => [],
     enabled: input.enabled ?? false,
     staleTime: 30_000,
   })),
   searchChangeRequestsQueryOptions: vi.fn((input: { query: string; enabled?: boolean }) => ({
     queryKey: ["sourceControl", "changeRequests", null, null, "search", input.query, null],
-    queryFn: async () => [],
+    queryFn: () => [],
     enabled: input.enabled ?? false,
     staleTime: 30_000,
   })),
@@ -232,10 +232,10 @@ describe("ContextPickerPopup", () => {
 
     try {
       await vi.waitFor(() => {
-        expect(document.body.textContent).toContain("GH PRs");
+        expect(document.body.textContent).toContain("PRs");
       });
 
-      await page.getByRole("tab", { name: "GH PRs" }).click();
+      await page.getByRole("tab", { name: "PRs" }).click();
 
       await vi.waitFor(() => {
         const text = document.body.textContent ?? "";

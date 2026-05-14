@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as EffectAcpErrors from "effect-acp/errors";
-import { ProviderDriverKind } from "@s3tools/contracts";
+import { ProviderDriverKind } from "@ryco/contracts";
 
 import { acpPermissionOutcome, mapAcpToAdapterError } from "./AcpAdapterSupport.ts";
 

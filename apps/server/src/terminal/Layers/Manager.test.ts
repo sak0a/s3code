@@ -7,7 +7,7 @@ import {
   type TerminalEvent,
   type TerminalOpenInput,
   type TerminalRestartInput,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { DetectedServersIngress } from "../../detectedServers/Layers/DetectedServersIngress.ts";
 import {
   Duration,
@@ -223,7 +223,7 @@ const createManager = (
 > =>
   Effect.flatMap(Effect.service(FileSystem.FileSystem), (fs) =>
     Effect.gen(function* () {
-      const baseDir = yield* fs.makeTempDirectoryScoped({ prefix: "s3code-terminal-" });
+      const baseDir = yield* fs.makeTempDirectoryScoped({ prefix: "ryco-terminal-" });
       const logsDir = path.join(baseDir, "userdata", "logs", "terminals");
       const ptyAdapter = options.ptyAdapter ?? new FakePtyAdapter();
 
@@ -952,7 +952,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, detectedServersIngressTestLayer), {
       };
 
       setEnv("PORT", "5173");
-      setEnv("S3CODE_PORT", "3773");
+      setEnv("RYCO_PORT", "3773");
       setEnv("VITE_DEV_SERVER_URL", "http://localhost:5173");
       setEnv("TEST_TERMINAL_KEEP", "keep-me");
 
@@ -964,7 +964,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, detectedServersIngressTestLayer), {
         if (!spawnInput) return;
 
         expect(spawnInput.env.PORT).toBeUndefined();
-        expect(spawnInput.env.S3CODE_PORT).toBeUndefined();
+        expect(spawnInput.env.RYCO_PORT).toBeUndefined();
         expect(spawnInput.env.VITE_DEV_SERVER_URL).toBeUndefined();
         expect(spawnInput.env.TEST_TERMINAL_KEEP).toBe("keep-me");
       } finally {
@@ -979,8 +979,8 @@ it.layer(Layer.mergeAll(NodeServices.layer, detectedServersIngressTestLayer), {
       yield* manager.open(
         openInput({
           env: {
-            S3CODE_PROJECT_ROOT: "/repo",
-            S3CODE_WORKTREE_PATH: "/repo/worktree-a",
+            RYCO_PROJECT_ROOT: "/repo",
+            RYCO_WORKTREE_PATH: "/repo/worktree-a",
             CUSTOM_FLAG: "1",
           },
         }),
@@ -989,8 +989,8 @@ it.layer(Layer.mergeAll(NodeServices.layer, detectedServersIngressTestLayer), {
       expect(spawnInput).toBeDefined();
       if (!spawnInput) return;
 
-      assert.equal(spawnInput.env.S3CODE_PROJECT_ROOT, "/repo");
-      assert.equal(spawnInput.env.S3CODE_WORKTREE_PATH, "/repo/worktree-a");
+      assert.equal(spawnInput.env.RYCO_PROJECT_ROOT, "/repo");
+      assert.equal(spawnInput.env.RYCO_WORKTREE_PATH, "/repo/worktree-a");
       assert.equal(spawnInput.env.CUSTOM_FLAG, "1");
     }),
   );
