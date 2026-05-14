@@ -72,11 +72,9 @@ export const BranchToolbar = memo(function BranchToolbar({
   const activeProject = useStore(activeProjectSelector);
   const hasActiveThread = serverThread !== undefined || draftThread !== null;
 
-  const detectedServers = useDetectedServerStore((s) => {
-    const threadKey = scopedThreadKey(threadRef);
-    const m = s.serversByThreadKey[threadKey];
-    return m ? [...m.values()] : [];
-  });
+  const threadKey = useMemo(() => scopedThreadKey(threadRef), [threadRef]);
+  const serversMap = useDetectedServerStore((s) => s.serversByThreadKey[threadKey]);
+  const detectedServers = useMemo(() => (serversMap ? [...serversMap.values()] : []), [serversMap]);
 
   const showEnvironmentPicker = Boolean(
     availableEnvironments && availableEnvironments.length > 1 && onEnvironmentChange,
