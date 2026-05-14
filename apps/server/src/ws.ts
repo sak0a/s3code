@@ -33,6 +33,7 @@ import {
   WS_METHODS,
   WsRpcGroup,
 } from "@ryco/contracts";
+import { buildTemporaryWorktreeBranchName } from "@ryco/shared/git";
 import { clamp } from "effect/Number";
 import { HttpRouter, HttpServerRequest } from "effect/unstable/http";
 import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
@@ -900,12 +901,14 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
           let issueNumber: number | null = null;
           let prTitle: string | null = null;
           let issueTitle: string | null = null;
+          let preparedWorktreePath: string | null = null;
 
           switch (input.intent.kind) {
             case "branch":
-              branch = input.intent.branchName ?? "HEAD";
-              refName = branch;
-              title = branch;
+              refName = input.intent.branchName;
+              branch = buildTemporaryWorktreeBranchName();
+              newRefName = branch;
+              title = refName;
               break;
             case "newBranch":
               branch = input.intent.branchName ?? `task/${randomShortId(6)}`;
@@ -915,16 +918,30 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               break;
             case "pr": {
               const number = input.intent.number ?? 0;
-              const resolved = yield* gitWorkflow.resolvePullRequest({
+              const prepared = yield* gitWorkflow.preparePullRequestThread({
                 cwd: project.workspaceRoot,
                 reference: String(number),
+                mode: "worktree",
+                projectId: input.projectId,
+                worktreeLocation: input.worktreeLocation,
+                worktreesDir:
+                  input.worktreeLocation === "projectMetadata"
+                    ? resolveProjectWorktreesDir(project.workspaceRoot, project.projectMetadataDir)
+                    : path.join(config.worktreesDir, input.projectId),
               });
-              branch = resolved.pullRequest.headBranch;
+              if (prepared.worktreePath === null) {
+                return yield* failGitWorkflow(
+                  operation,
+                  `Failed to create worktree for PR #${number}.`,
+                );
+              }
+              preparedWorktreePath = prepared.worktreePath;
+              branch = prepared.branch;
               refName = branch;
-              title = resolved.pullRequest.title;
+              title = prepared.pullRequest.title;
               origin = "pr";
-              prNumber = resolved.pullRequest.number;
-              prTitle = resolved.pullRequest.title;
+              prNumber = prepared.pullRequest.number;
+              prTitle = prepared.pullRequest.title;
               break;
             }
             case "issue": {
@@ -940,19 +957,21 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             }
           }
 
-          const worktree = yield* gitWorkflow.createWorktree({
-            cwd: project.workspaceRoot,
-            refName,
-            ...(newRefName !== undefined ? { newRefName } : {}),
-            path: resolveWorktreeCheckoutPath({
-              location: input.worktreeLocation,
-              appWorktreesRoot: config.worktreesDir,
-              projectId: input.projectId,
-              workspaceRoot: project.workspaceRoot,
-              projectMetadataDir: project.projectMetadataDir,
-              branchName: branch,
-            }),
-          });
+          const worktreePath =
+            preparedWorktreePath ??
+            (yield* gitWorkflow.createWorktree({
+              cwd: project.workspaceRoot,
+              refName,
+              ...(newRefName !== undefined ? { newRefName } : {}),
+              path: resolveWorktreeCheckoutPath({
+                location: input.worktreeLocation,
+                appWorktreesRoot: config.worktreesDir,
+                projectId: input.projectId,
+                workspaceRoot: project.workspaceRoot,
+                projectMetadataDir: project.projectMetadataDir,
+                branchName: branch,
+              }),
+            })).worktree.path;
 
           yield* dispatchWorktreeCommand(
             {
@@ -961,7 +980,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               worktreeId,
               projectId: input.projectId,
               branch,
-              worktreePath: worktree.worktree.path,
+              worktreePath,
               origin,
               prNumber,
               issueNumber,
@@ -983,7 +1002,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               runtimeMode: "full-access",
               interactionMode: "default",
               branch,
-              worktreePath: worktree.worktree.path,
+              worktreePath,
               createdAt: now,
             },
             operation,
@@ -1004,9 +1023,9 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             threadId,
             projectId: input.projectId,
             projectCwd: project.workspaceRoot,
-            worktreePath: worktree.worktree.path,
+            worktreePath,
           });
-          yield* refreshGitStatus(worktree.worktree.path);
+          yield* refreshGitStatus(worktreePath);
           return { worktreeId, sessionId: threadId };
         });
 

@@ -2726,6 +2726,300 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 
+  it.effect("creates project worktrees from selected branches with a fresh Ryco branch", () =>
+    Effect.gen(function* () {
+      const dispatchedCommands: Array<OrchestrationCommand> = [];
+      const createWorktree = vi.fn(
+        (input: Parameters<GitVcsDriver.GitVcsDriverShape["createWorktree"]>[0]) =>
+          Effect.succeed({
+            worktree: {
+              refName: input.newRefName ?? input.refName,
+              path: "/tmp/project-branch-worktree",
+            },
+          }),
+      );
+
+      const config = yield* buildAppUnderTest({
+        layers: {
+          gitVcsDriver: {
+            createWorktree,
+          },
+          vcsStatusBroadcaster: {
+            refreshStatus: () =>
+              Effect.succeed({
+                isRepo: true,
+                hasPrimaryRemote: true,
+                isDefaultRef: false,
+                refName: "ryco/12345678",
+                hasWorkingTreeChanges: false,
+                workingTree: { files: [], insertions: 0, deletions: 0 },
+                hasUpstream: false,
+                aheadCount: 0,
+                behindCount: 0,
+                aheadOfDefaultCount: 0,
+                pr: null,
+              }),
+          },
+          orchestrationEngine: {
+            dispatch: (command) =>
+              Effect.sync(() => {
+                dispatchedCommands.push(command);
+                return { sequence: dispatchedCommands.length };
+              }),
+          },
+          projectionSnapshotQuery: {
+            getProjectShellById: () =>
+              Effect.succeed(
+                Option.some({
+                  id: defaultProjectId,
+                  title: "Default Project",
+                  workspaceRoot: "/tmp/project",
+                  projectMetadataDir: ".ryco",
+                  repositoryIdentity: null,
+                  defaultModelSelection,
+                  customSystemPrompt: null,
+                  customAvatarContentHash: null,
+                  preferredRemoteName: null,
+                  scripts: [],
+                  createdAt: "2026-05-10T00:00:00.000Z",
+                  updatedAt: "2026-05-10T00:00:00.000Z",
+                }),
+              ),
+          },
+        },
+      });
+
+      const wsUrl = yield* getWsServerUrl("/ws");
+      yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          client[WS_METHODS.gitCreateWorktreeForProject]({
+            projectId: defaultProjectId,
+            intent: { kind: "branch", branchName: "main" },
+          }),
+        ),
+      );
+
+      const createdWorktreeInput = createWorktree.mock.calls[0]?.[0];
+      assert.equal(createdWorktreeInput?.cwd, "/tmp/project");
+      assert.equal(createdWorktreeInput?.refName, "main");
+      assert.match(createdWorktreeInput?.newRefName ?? "", /^ryco\/[0-9a-f]{8}$/);
+      assert.match(
+        createdWorktreeInput?.path ?? "",
+        new RegExp(
+          `^${config.worktreesDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/project-default/ryco-[0-9a-f]{8}__[a-z]{5}$`,
+        ),
+      );
+
+      const worktreeCreate = dispatchedCommands.find(
+        (command): command is Extract<OrchestrationCommand, { type: "worktree.create" }> =>
+          command.type === "worktree.create",
+      );
+      assert.equal(worktreeCreate?.origin, "branch");
+      assert.equal(worktreeCreate?.branch, createdWorktreeInput?.newRefName);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("creates project worktrees from pull requests using PR preparation", () =>
+    Effect.gen(function* () {
+      const path = yield* Path.Path;
+      const dispatchedCommands: Array<OrchestrationCommand> = [];
+      const createWorktree = vi.fn(
+        (_input: Parameters<GitVcsDriver.GitVcsDriverShape["createWorktree"]>[0]) =>
+          Effect.succeed({
+            worktree: {
+              refName: "unexpected",
+              path: "/tmp/unexpected",
+            },
+          }),
+      );
+      const preparePullRequestThread = vi.fn(
+        (_input: Parameters<GitManagerShape["preparePullRequestThread"]>[0]) =>
+          Effect.succeed({
+            pullRequest: {
+              number: 42,
+              title: "Fix worktree creation",
+              url: "https://example.com/pull/42",
+              baseBranch: "main",
+              headBranch: "feature/worktree-pr",
+              state: "open" as const,
+            },
+            branch: "feature/worktree-pr",
+            worktreePath: "/tmp/project-pr-worktree",
+          }),
+      );
+
+      const config = yield* buildAppUnderTest({
+        layers: {
+          gitManager: {
+            preparePullRequestThread,
+          },
+          gitVcsDriver: {
+            createWorktree,
+          },
+          vcsStatusBroadcaster: {
+            refreshStatus: () =>
+              Effect.succeed({
+                isRepo: true,
+                hasPrimaryRemote: true,
+                isDefaultRef: false,
+                refName: "feature/worktree-pr",
+                hasWorkingTreeChanges: false,
+                workingTree: { files: [], insertions: 0, deletions: 0 },
+                hasUpstream: true,
+                aheadCount: 0,
+                behindCount: 0,
+                aheadOfDefaultCount: 0,
+                pr: null,
+              }),
+          },
+          orchestrationEngine: {
+            dispatch: (command) =>
+              Effect.sync(() => {
+                dispatchedCommands.push(command);
+                return { sequence: dispatchedCommands.length };
+              }),
+          },
+          projectionSnapshotQuery: {
+            getProjectShellById: () =>
+              Effect.succeed(
+                Option.some({
+                  id: defaultProjectId,
+                  title: "Default Project",
+                  workspaceRoot: "/tmp/project",
+                  projectMetadataDir: ".ryco",
+                  repositoryIdentity: null,
+                  defaultModelSelection,
+                  customSystemPrompt: null,
+                  customAvatarContentHash: null,
+                  preferredRemoteName: null,
+                  scripts: [],
+                  createdAt: "2026-05-10T00:00:00.000Z",
+                  updatedAt: "2026-05-10T00:00:00.000Z",
+                }),
+              ),
+          },
+        },
+      });
+
+      const wsUrl = yield* getWsServerUrl("/ws");
+      yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          client[WS_METHODS.gitCreateWorktreeForProject]({
+            projectId: defaultProjectId,
+            intent: { kind: "pr", number: 42 },
+          }),
+        ),
+      );
+
+      assert.equal(createWorktree.mock.calls.length, 0);
+      assert.deepEqual(preparePullRequestThread.mock.calls[0]?.[0], {
+        cwd: "/tmp/project",
+        reference: "42",
+        mode: "worktree",
+        projectId: defaultProjectId,
+        worktreeLocation: undefined,
+        worktreesDir: path.join(config.worktreesDir, defaultProjectId),
+      });
+
+      const worktreeCreate = dispatchedCommands.find(
+        (command): command is Extract<OrchestrationCommand, { type: "worktree.create" }> =>
+          command.type === "worktree.create",
+      );
+      assert.equal(worktreeCreate?.origin, "pr");
+      assert.equal(worktreeCreate?.branch, "feature/worktree-pr");
+      assert.equal(worktreeCreate?.worktreePath, "/tmp/project-pr-worktree");
+      assert.equal(worktreeCreate?.prNumber, 42);
+      assert.equal(worktreeCreate?.prTitle, "Fix worktree creation");
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("creates project worktrees from issues with a fresh issue branch", () =>
+    Effect.gen(function* () {
+      const dispatchedCommands: Array<OrchestrationCommand> = [];
+      const createWorktree = vi.fn(
+        (input: Parameters<GitVcsDriver.GitVcsDriverShape["createWorktree"]>[0]) =>
+          Effect.succeed({
+            worktree: {
+              refName: input.newRefName ?? input.refName,
+              path: "/tmp/project-issue-worktree",
+            },
+          }),
+      );
+
+      yield* buildAppUnderTest({
+        layers: {
+          gitVcsDriver: {
+            createWorktree,
+          },
+          vcsStatusBroadcaster: {
+            refreshStatus: () =>
+              Effect.succeed({
+                isRepo: true,
+                hasPrimaryRemote: true,
+                isDefaultRef: false,
+                refName: "issue/42-abc123",
+                hasWorkingTreeChanges: false,
+                workingTree: { files: [], insertions: 0, deletions: 0 },
+                hasUpstream: false,
+                aheadCount: 0,
+                behindCount: 0,
+                aheadOfDefaultCount: 0,
+                pr: null,
+              }),
+          },
+          orchestrationEngine: {
+            dispatch: (command) =>
+              Effect.sync(() => {
+                dispatchedCommands.push(command);
+                return { sequence: dispatchedCommands.length };
+              }),
+          },
+          projectionSnapshotQuery: {
+            getProjectShellById: () =>
+              Effect.succeed(
+                Option.some({
+                  id: defaultProjectId,
+                  title: "Default Project",
+                  workspaceRoot: "/tmp/project",
+                  projectMetadataDir: ".ryco",
+                  repositoryIdentity: null,
+                  defaultModelSelection,
+                  customSystemPrompt: null,
+                  customAvatarContentHash: null,
+                  preferredRemoteName: null,
+                  scripts: [],
+                  createdAt: "2026-05-10T00:00:00.000Z",
+                  updatedAt: "2026-05-10T00:00:00.000Z",
+                }),
+              ),
+          },
+        },
+      });
+
+      const wsUrl = yield* getWsServerUrl("/ws");
+      yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          client[WS_METHODS.gitCreateWorktreeForProject]({
+            projectId: defaultProjectId,
+            intent: { kind: "issue", number: 42 },
+          }),
+        ),
+      );
+
+      const createdWorktreeInput = createWorktree.mock.calls[0]?.[0];
+      assert.equal(createdWorktreeInput?.refName, "HEAD");
+      assert.match(createdWorktreeInput?.newRefName ?? "", /^issue\/42-[a-z0-9]{6}$/);
+
+      const worktreeCreate = dispatchedCommands.find(
+        (command): command is Extract<OrchestrationCommand, { type: "worktree.create" }> =>
+          command.type === "worktree.create",
+      );
+      assert.equal(worktreeCreate?.origin, "issue");
+      assert.equal(worktreeCreate?.branch, createdWorktreeInput?.newRefName);
+      assert.equal(worktreeCreate?.issueNumber, 42);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
   it.effect("deletes stale worktree records when the on-disk worktree is already gone", () =>
     Effect.gen(function* () {
       const projectId = ProjectId.make("project-stale-worktree");
