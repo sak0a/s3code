@@ -205,7 +205,7 @@ export const DetectedServersIngressLive = Layer.effect(
             const probeFiber = runFork(
               Effect.gen(function* () {
                 let liveSeenAt: Date | null = null;
-                let emittedConfirmed = false;
+                let lastConfirmedPort: number | null = null;
                 while (true) {
                   const pids = yield* Effect.tryPromise({
                     try: () => pidtree(source.pid, { root: true }),
@@ -213,12 +213,26 @@ export const DetectedServersIngressLive = Layer.effect(
                   }).pipe(Effect.orElseSucceed(() => [source.pid] as number[]));
                   const rows = yield* probe.probe(pids);
                   const candidates = rows.filter((r) => !denyPorts.has(r.port));
-                  const matching = sniffedPort
-                    ? candidates.find((r) => r.port === sniffedPort)
-                    : candidates[0];
-                  if (matching && !liveSeenAt) {
-                    const ok = yield* heartbeat.check(`http://localhost:${matching.port}`);
-                    if (ok) {
+                  if (candidates.length > 0 && !liveSeenAt) {
+                    // Probe heartbeat on each candidate, preferring the sniffed
+                    // port. The first one that responds wins — this avoids
+                    // sticking on a transient port that briefly listened during
+                    // startup but isn't the real server.
+                    const ordered = sniffedPort
+                      ? [
+                          ...candidates.filter((r) => r.port === sniffedPort),
+                          ...candidates.filter((r) => r.port !== sniffedPort),
+                        ]
+                      : candidates;
+                    let liveCandidate: (typeof candidates)[number] | undefined;
+                    for (const c of ordered) {
+                      const ok = yield* heartbeat.check(`http://localhost:${c.port}`);
+                      if (ok) {
+                        liveCandidate = c;
+                        break;
+                      }
+                    }
+                    if (liveCandidate) {
                       liveSeenAt = new Date();
                       yield* registry.registerOrUpdate({
                         threadId: source.threadId,
@@ -226,24 +240,27 @@ export const DetectedServersIngressLive = Layer.effect(
                         identityKey,
                         patch: {
                           status: "live",
-                          port: matching.port,
-                          host: matching.host,
-                          url: `http://localhost:${matching.port}`,
+                          port: liveCandidate.port,
+                          host: liveCandidate.host,
+                          url: `http://localhost:${liveCandidate.port}`,
                           liveAt: DateTime.fromDateUnsafe(liveSeenAt),
                         },
                       });
-                    } else if (!emittedConfirmed) {
-                      emittedConfirmed = true;
-                      yield* registry.registerOrUpdate({
-                        threadId: source.threadId,
-                        source: "pty",
-                        identityKey,
-                        patch: {
-                          status: "confirmed",
-                          port: matching.port,
-                          host: matching.host,
-                        },
-                      });
+                    } else {
+                      const preferred = ordered[0]!;
+                      if (lastConfirmedPort !== preferred.port) {
+                        lastConfirmedPort = preferred.port;
+                        yield* registry.registerOrUpdate({
+                          threadId: source.threadId,
+                          source: "pty",
+                          identityKey,
+                          patch: {
+                            status: "confirmed",
+                            port: preferred.port,
+                            host: preferred.host,
+                          },
+                        });
+                      }
                     }
                   }
                   yield* Effect.sleep(liveSeenAt ? Duration.seconds(2) : Duration.millis(250));

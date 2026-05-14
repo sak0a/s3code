@@ -123,6 +123,57 @@ describe("DetectedServersIngress", () => {
     );
   });
 
+  it("prefers a heartbeat-alive candidate over the first listening port", async () => {
+    // Simulates: dev server binds both port 3000 (no HTTP) and port 5733 (alive).
+    // The probe loop should pick 5733 via heartbeat rather than the first port.
+    const heartbeat = Layer.succeed(LivenessHeartbeat, {
+      check: (url: string) => Effect.succeed(url.includes(":5733")),
+    });
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const ingress = yield* DetectedServersIngress;
+        const registry = yield* DetectedServerRegistry;
+        const tracker = yield* ingress.trackPty(
+          {
+            threadId: "t-pick",
+            terminalId: "term-pick",
+            pid: 12345,
+            argv: ["bun", "run", "dev"],
+            cwd: "/repo",
+          },
+          { scripts: { dev: "next dev" } },
+        );
+        // Seed the sniffer with port 3000 (e.g., Next.js prints localhost:3000
+        // even when port 3000 is in use, then settles on 5733).
+        tracker.feed("  - Local: http://localhost:3000\n");
+        let observed = "predicted";
+        let observedPort: number | undefined;
+        for (let i = 0; i < 50; i += 1) {
+          yield* Effect.sleep(100);
+          const servers = yield* registry.getCurrent("t-pick");
+          if (servers[0]?.status === "live") {
+            observed = "live";
+            observedPort = servers[0].port;
+            break;
+          }
+        }
+        expect(observed).toBe("live");
+        expect(observedPort).toBe(5733);
+        tracker.end(0);
+      }).pipe(
+        Effect.provide(
+          buildLayer(
+            stubProbe([
+              { pid: 12345, port: 3000, host: "127.0.0.1" },
+              { pid: 12345, port: 5733, host: "127.0.0.1" },
+            ]),
+            heartbeat,
+          ),
+        ),
+      ),
+    );
+  });
+
   it("end() interrupts the probe fiber so no further SocketProbe calls fire", async () => {
     let probeCalls = 0;
     const countingProbe = Layer.succeed(SocketProbe, {
