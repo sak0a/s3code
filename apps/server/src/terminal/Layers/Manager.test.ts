@@ -266,7 +266,7 @@ const createManager = (
 
 const detectedServersIngressTestLayer = Layer.succeed(DetectedServersIngress, {
   trackAgentCommand: () => Effect.succeed({ feed: () => {}, end: () => {} }),
-  trackPty: () => Effect.succeed({ feed: () => {}, end: () => {} }),
+  trackPty: () => Effect.succeed({ feed: () => {}, feedCommand: () => {}, end: () => {} }),
 });
 
 it.layer(Layer.mergeAll(NodeServices.layer, detectedServersIngressTestLayer), {

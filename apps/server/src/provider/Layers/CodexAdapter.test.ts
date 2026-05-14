@@ -213,7 +213,7 @@ const providerSessionDirectoryTestLayer = Layer.succeed(ProviderSessionDirectory
 
 const detectedServersIngressTestLayer = Layer.succeed(DetectedServersIngress, {
   trackAgentCommand: () => Effect.succeed({ feed: () => {}, end: () => {} }),
-  trackPty: () => Effect.succeed({ feed: () => {}, end: () => {} }),
+  trackPty: () => Effect.succeed({ feed: () => {}, feedCommand: () => {}, end: () => {} }),
 });
 
 const validationRuntimeFactory = makeRuntimeFactory();

@@ -83,7 +83,7 @@ const makeOpenCodeConfig = (overrides: Partial<OpenCodeSettings>): OpenCodeSetti
 
 const detectedServersIngressTestLayer = Layer.succeed(DetectedServersIngress, {
   trackAgentCommand: () => Effect.succeed({ feed: () => {}, end: () => {} }),
-  trackPty: () => Effect.succeed({ feed: () => {}, end: () => {} }),
+  trackPty: () => Effect.succeed({ feed: () => {}, feedCommand: () => {}, end: () => {} }),
 });
 
 describe("ProviderInstanceRegistryLive — multi-instance codex slice", () => {

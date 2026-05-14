@@ -1,6 +1,10 @@
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Schema } from "effect";
 import { spawn } from "node:child_process";
 import { SocketProbe, type ProbeResult } from "./SocketProbe.ts";
+
+class SocketProbeError extends Schema.TaggedErrorClass<SocketProbeError>(
+  "s3/detectedServers/SocketProbeError",
+)("SocketProbeError", { stage: Schema.String }) {}
 
 export const parseLsofOutput = (text: string): ProbeResult[] => {
   if (!text.trim()) return [];
@@ -41,7 +45,7 @@ const runLsof = (pids: ReadonlyArray<number>): Effect.Effect<string> => {
         child.on("error", () => resolve(""));
         child.on("close", () => resolve(buf));
       }),
-    catch: () => new Error("lsof failed"),
+    catch: () => new SocketProbeError({ stage: "lsof" }),
   }).pipe(Effect.orElseSucceed(() => ""));
 };
 

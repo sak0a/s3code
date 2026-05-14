@@ -288,7 +288,7 @@ export const makeOrchestrationIntegrationHarness = (
       Layer.provideMerge(
         Layer.succeed(DetectedServersIngress, {
           trackAgentCommand: () => Effect.succeed({ feed: () => {}, end: () => {} }),
-          trackPty: () => Effect.succeed({ feed: () => {}, end: () => {} }),
+          trackPty: () => Effect.succeed({ feed: () => {}, feedCommand: () => {}, end: () => {} }),
         }),
       ),
     );

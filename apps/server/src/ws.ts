@@ -100,6 +100,10 @@ import { DetectedServerRegistry } from "./detectedServers/Services/DetectedServe
 import { authorizeWsRpc, type WsRpcAccess } from "./auth/wsAuthorization.ts";
 import { AtlassianConnectionService } from "./atlassian/AtlassianConnectionService.ts";
 import { JiraWorkItemService } from "./atlassian/JiraWorkItemService.ts";
+import {
+  handleDetectedServerOpenInBrowser,
+  handleDetectedServerStop,
+} from "./detectedServers/Handlers.ts";
 
 function isThreadDetailEvent(event: OrchestrationEvent): event is Extract<
   OrchestrationEvent,
@@ -2469,10 +2473,12 @@ const makeWsRpcLayer = (session: AuthenticatedSession) =>
                 server,
                 createdAt: new Date().toISOString(),
               }));
+              const services = yield* Effect.context<never>();
+              const runSyncOffer = Effect.runSyncWith(services);
               const liveStream = Stream.callback<DetectedServerEvent>((queue) =>
                 Effect.acquireRelease(
                   detectedServerRegistry.subscribe(input.threadId, (event) => {
-                    Effect.runFork(Queue.offer(queue, event).pipe(Effect.ignoreCause({ log: false })));
+                    runSyncOffer(Queue.offer(queue, event));
                   }),
                   (unsubscribe) => Effect.sync(unsubscribe),
                 ),
@@ -2484,27 +2490,13 @@ const makeWsRpcLayer = (session: AuthenticatedSession) =>
         [WS_METHODS.detectedServersStop]: (input) =>
           observeRpcEffect(
             WS_METHODS.detectedServersStop,
-            Effect.gen(function* () {
-              const server = yield* detectedServerRegistry.findById(input.serverId);
-              if (!server) {
-                return { kind: "not-stoppable", hint: "interrupt-turn" } as const;
-              }
-              // TODO: PTY kill — requires pid→terminalId mapping; defer to follow-up.
-              return { kind: "not-stoppable", hint: "interrupt-turn" } as const;
-            }),
+            handleDetectedServerStop(detectedServerRegistry, terminalManager, input.serverId),
             { "rpc.aggregate": "detectedServers" },
           ),
         [WS_METHODS.detectedServersOpenInBrowser]: (input) =>
           observeRpcEffect(
             WS_METHODS.detectedServersOpenInBrowser,
-            Effect.gen(function* () {
-              const server = yield* detectedServerRegistry.findById(input.serverId);
-              if (!server?.url) {
-                return { ok: false };
-              }
-              yield* open.openBrowser(server.url).pipe(Effect.ignore({ log: true }));
-              return { ok: true };
-            }),
+            handleDetectedServerOpenInBrowser(detectedServerRegistry, open, input.serverId),
             { "rpc.aggregate": "detectedServers" },
           ),
       });

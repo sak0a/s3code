@@ -54,6 +54,7 @@ import {
   ProviderAdapterValidationError,
 } from "../Errors.ts";
 import { acpPermissionOutcome, mapAcpToAdapterError } from "../acp/AcpAdapterSupport.ts";
+import { AcpDetailSuffixDedup } from "../acp/AcpDetectedServersTap.ts";
 import { type AcpSessionRuntimeShape } from "../acp/AcpSessionRuntime.ts";
 import {
   makeAcpAssistantItemEvent,
@@ -315,6 +316,7 @@ export function makeCursorAdapter(
     const serverConfig = yield* Effect.service(ServerConfig);
     const detectedServers = yield* DetectedServersIngress;
     const trackerMap = new Map<string, CommandTracker>();
+    const detailDedup = new AcpDetailSuffixDedup();
     const nativeEventLogger =
       options?.nativeEventLogger ??
       (options?.nativeEventLogPath !== undefined
@@ -801,14 +803,18 @@ export function makeCursorAdapter(
                         if (toolStatus === "completed" || toolStatus === "failed") {
                           tracker.end(toolStatus === "completed" ? "success" : "error");
                           trackerMap.delete(trackerKey);
+                          detailDedup.reset(toolCallId);
                         } else if (event.toolCall.detail) {
-                          tracker.feed(event.toolCall.detail);
+                          const suffix = detailDedup.consume(toolCallId, event.toolCall.detail);
+                          if (suffix !== null) tracker.feed(suffix);
                         }
                       } else if (toolStatus === "completed" || toolStatus === "failed") {
                         existingTracker.end(toolStatus === "completed" ? "success" : "error");
                         trackerMap.delete(trackerKey);
+                        detailDedup.reset(toolCallId);
                       } else if (event.toolCall.detail) {
-                        existingTracker.feed(event.toolCall.detail);
+                        const suffix = detailDedup.consume(toolCallId, event.toolCall.detail);
+                        if (suffix !== null) existingTracker.feed(suffix);
                       }
                     }
                     yield* offerRuntimeEvent(

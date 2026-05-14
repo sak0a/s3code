@@ -6,7 +6,11 @@
  *
  * @module LivenessHeartbeat
  */
-import { Effect, Context, Layer } from "effect";
+import { Effect, Context, Layer, Schema } from "effect";
+
+class HeartbeatError extends Schema.TaggedErrorClass<HeartbeatError>(
+  "s3/detectedServers/HeartbeatError",
+)("HeartbeatError", { url: Schema.String }) {}
 
 /**
  * LivenessHeartbeatShape - Service API for HTTP liveness checks.
@@ -29,7 +33,7 @@ export class LivenessHeartbeat extends Context.Service<LivenessHeartbeat, Livene
 const checkImpl = (url: string): Effect.Effect<boolean> =>
   Effect.tryPromise({
     try: () => fetch(url, { method: "HEAD", signal: AbortSignal.timeout(500) }),
-    catch: () => new Error("heartbeat failed"),
+    catch: () => new HeartbeatError({ url }),
   }).pipe(
     Effect.map(() => true),
     Effect.orElseSucceed(() => false),
