@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { DetectedServer } from "@s3tools/contracts";
+import type { DetectedServer } from "@ryco/contracts";
 import { DetectedServerRow } from "./DetectedServerRow.tsx";
 
 const make = (overrides: Partial<DetectedServer>): DetectedServer => ({

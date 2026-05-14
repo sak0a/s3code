@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { DetectedServerEvent, EnvironmentId, ThreadId } from "@s3tools/contracts";
-import { scopedThreadKey, scopeThreadRef } from "@s3tools/client-runtime";
+import type { DetectedServerEvent, EnvironmentId, ThreadId } from "@ryco/contracts";
+import { scopedThreadKey, scopeThreadRef } from "@ryco/client-runtime";
 import { subscribeDetectedServers } from "./useDetectedServersSubscription.ts";
 
 interface FakeConnection {

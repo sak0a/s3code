@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { DateTime, Effect, Layer } from "effect";
-import type { DetectedServer } from "@s3tools/contracts";
+import type { DetectedServer } from "@ryco/contracts";
 import { handleDetectedServerOpenInBrowser, handleDetectedServerStop } from "./Handlers.ts";
 import {
   DetectedServerRegistry,
