@@ -50,8 +50,8 @@ function HostedStaticOnboardingState() {
                 Connect an environment to get started
               </EmptyTitle>
               <EmptyDescription className="mt-2 text-sm leading-relaxed text-muted-foreground/78">
-                Open a pairing link from your S3Code desktop app or add a reachable backend
-                manually. Your saved environments stay in this browser.
+                Open a pairing link from your Ryco desktop app or add a reachable backend manually.
+                Your saved environments stay in this browser.
               </EmptyDescription>
               <div className="mt-6 flex justify-center">
                 <Button size="sm" onClick={() => openSettings("connections")}>

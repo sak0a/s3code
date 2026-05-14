@@ -1,4 +1,4 @@
-import type { OrchestrationEvent, ThreadId } from "@s3tools/contracts";
+import type { OrchestrationEvent, ThreadId } from "@ryco/contracts";
 
 export interface OrchestrationBatchEffects {
   promoteDraftThreadIds: ThreadId[];

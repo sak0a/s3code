@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { DesktopBridge, LocalApi } from "@s3tools/contracts";
+import type { DesktopBridge, LocalApi } from "@ryco/contracts";
 
 interface ImportMetaEnv {
   readonly VITE_HTTP_URL: string;

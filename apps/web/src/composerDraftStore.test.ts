@@ -3,7 +3,7 @@ import {
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@s3tools/client-runtime";
+} from "@ryco/client-runtime";
 import * as Schema from "effect/Schema";
 import {
   defaultInstanceIdForDriver,
@@ -14,8 +14,8 @@ import {
   ThreadId,
   type ModelSelection,
   type ProviderOptionSelection,
-} from "@s3tools/contracts";
-import { createModelSelection } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { createModelSelection } from "@ryco/shared/model";
 
 // The composer draft's `modelSelectionByProvider` and
 // `stickyModelSelectionByProvider` maps are keyed by `ProviderInstanceId`
@@ -56,7 +56,7 @@ function selectionsByProvider(
 }
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Option } from "effect";
-import type { ComposerSourceControlContext } from "@s3tools/contracts";
+import type { ComposerSourceControlContext } from "@ryco/contracts";
 
 import {
   COMPOSER_DRAFT_STORAGE_KEY,

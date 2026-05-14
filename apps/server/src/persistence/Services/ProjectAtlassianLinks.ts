@@ -1,4 +1,4 @@
-import { AtlassianConnectionId, IsoDateTime, ProjectId } from "@s3tools/contracts";
+import { AtlassianConnectionId, IsoDateTime, ProjectId } from "@ryco/contracts";
 import { Context, Option, Schema } from "effect";
 import type { Effect } from "effect";
 

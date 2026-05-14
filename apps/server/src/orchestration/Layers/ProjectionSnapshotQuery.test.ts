@@ -6,7 +6,7 @@ import {
   ThreadId,
   TurnId,
   ProviderInstanceId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
@@ -259,7 +259,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           id: asProjectId("project-1"),
           title: "Project 1",
           workspaceRoot: "/tmp/project-1",
-          projectMetadataDir: ".s3code",
+          projectMetadataDir: ".ryco",
           repositoryIdentity: null,
           defaultModelSelection: {
             instanceId: ProviderInstanceId.make("codex"),
@@ -378,7 +378,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
           id: asProjectId("project-1"),
           title: "Project 1",
           workspaceRoot: "/tmp/project-1",
-          projectMetadataDir: ".s3code",
+          projectMetadataDir: ".ryco",
           repositoryIdentity: null,
           defaultModelSelection: {
             instanceId: ProviderInstanceId.make("codex"),

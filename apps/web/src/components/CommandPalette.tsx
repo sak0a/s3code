@@ -1,6 +1,6 @@
 "use client";
 
-import { scopeProjectRef, scopeThreadRef } from "@s3tools/client-runtime";
+import { scopeProjectRef, scopeThreadRef } from "@ryco/client-runtime";
 import {
   DEFAULT_MODEL,
   type EnvironmentId,
@@ -10,7 +10,7 @@ import {
   type SourceControlDiscoveryResult,
   type SourceControlProviderKind,
   type SourceControlRepositoryInfo,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Option } from "effect";
@@ -1170,7 +1170,7 @@ function OpenCommandPaletteDialog() {
           projectId,
           title: inferProjectTitleFromPath(cwd),
           workspaceRoot: cwd,
-          projectMetadataDir: ".s3code",
+          projectMetadataDir: ".ryco",
           createWorkspaceRootIfMissing: true,
           defaultModelSelection: {
             instanceId: ProviderInstanceId.make("codex"),

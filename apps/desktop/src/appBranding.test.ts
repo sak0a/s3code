@@ -39,9 +39,9 @@ describe("resolveDesktopAppBranding", () => {
         appVersion: "0.0.17-nightly.20260414.1",
       }),
     ).toEqual({
-      baseName: "S3Code",
+      baseName: "Ryco",
       stageLabel: "Nightly",
-      displayName: "S3Code (Nightly)",
+      displayName: "Ryco (Nightly)",
     });
   });
 });

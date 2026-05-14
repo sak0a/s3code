@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { DateTime } from "effect";
-import type { ComposerSourceControlContext } from "@s3tools/contracts";
+import type { ComposerSourceControlContext } from "@ryco/contracts";
 import { SourceControlContextChip } from "./SourceControlContextChip";
 
 function fakeIssueContext(

@@ -4,7 +4,7 @@ import {
   AtlassianProduct,
   AtlassianResourceId,
   IsoDateTime,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Context, Schema } from "effect";
 import type { Effect } from "effect";
 

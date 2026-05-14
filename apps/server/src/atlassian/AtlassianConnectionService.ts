@@ -14,7 +14,7 @@ import {
   type AtlassianSaveProjectLinkInput,
   type AtlassianStartOAuthInput,
   type AtlassianStartOAuthResult,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Context, DateTime, Effect, Layer, Option, Schema } from "effect";
 
 import { ServerSecretStore } from "../auth/Services/ServerSecretStore.ts";

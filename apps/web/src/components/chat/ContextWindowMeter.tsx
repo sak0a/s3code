@@ -1,4 +1,4 @@
-import type { ServerProviderRateLimits, ServerProviderRateLimitWindow } from "@s3tools/contracts";
+import type { ServerProviderRateLimits, ServerProviderRateLimitWindow } from "@ryco/contracts";
 
 import { cn } from "~/lib/utils";
 import { type ContextWindowSnapshot, formatContextWindowTokens } from "~/lib/contextWindow";

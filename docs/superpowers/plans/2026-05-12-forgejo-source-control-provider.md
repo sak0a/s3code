@@ -21,9 +21,9 @@ Spec: `docs/superpowers/specs/2026-05-12-forgejo-source-control-provider-design.
 
 - Add `apps/server/src/sourceControl/ForgejoApi.ts`.
 - Add config parsing for:
-  - `S3CODE_FORGEJO_BASE_URL`
-  - `S3CODE_FORGEJO_TOKEN`
-  - `S3CODE_FORGEJO_INSTANCES`
+  - `RYCO_FORGEJO_BASE_URL`
+  - `RYCO_FORGEJO_TOKEN`
+  - `RYCO_FORGEJO_INSTANCES`
 - Normalize base URLs to web roots and build `/api/v1` URLs internally.
 - Implement credential lookup by host and optional configured base path.
 - Implement repository locator parsing for:
@@ -45,7 +45,7 @@ Spec: `docs/superpowers/specs/2026-05-12-forgejo-source-control-provider-design.
 
 - Add `apps/server/src/sourceControl/forgejoIssues.ts`.
 - Add `apps/server/src/sourceControl/forgejoPullRequests.ts`.
-- Define Effect schemas for the subset of Forgejo JSON S3Code consumes.
+- Define Effect schemas for the subset of Forgejo JSON Ryco consumes.
 - Normalize issue summaries/details/comments.
 - Normalize pull-request summaries/details, including merged-state mapping.
 - Normalize commits and changed files when endpoints return them.
@@ -121,7 +121,7 @@ Spec: `docs/superpowers/specs/2026-05-12-forgejo-source-control-provider-design.
 - Update `docs/source-control-providers.md`:
   - add Forgejo to supported providers
   - document token setup
-  - document optional `fj` credential reuse and `S3CODE_FORGEJO_CLI_KEYS_FILE`
+  - document optional `fj` credential reuse and `RYCO_FORGEJO_CLI_KEYS_FILE`
   - document single-instance and multi-instance environment variables
   - document recommended scopes
   - clarify that the bundled `forgejo` binary is not required

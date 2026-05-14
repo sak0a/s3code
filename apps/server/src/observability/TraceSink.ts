@@ -1,4 +1,4 @@
-import { RotatingFileSink } from "@s3tools/shared/logging";
+import { RotatingFileSink } from "@ryco/shared/logging";
 import { Effect } from "effect";
 
 import type { TraceRecord } from "./TraceRecord.ts";

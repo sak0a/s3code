@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { NetService } from "@s3tools/shared/Net";
+import { NetService } from "@ryco/shared/Net";
 import { Duration, Effect, Fiber, Layer, Result, Sink, Stream } from "effect";
 import { TestClock } from "effect/testing";
 import { HttpClient, HttpClientResponse } from "effect/unstable/http";
@@ -84,23 +84,20 @@ describe("ssh tunnel scripts", () => {
     const script = buildRemoteS3RunnerScript();
 
     assert.include(script, "S3_NODE_SCRIPT_PATH=''");
-    assert.include(script, 'exec s3code "$@"');
-    assert.include(script, "exec npx --yes 'sakacode@latest' \"$@\"");
-    assert.include(script, "exec npm exec --yes 'sakacode@latest' -- \"$@\"");
-    assert.include(script, "could not install 'sakacode@latest'");
+    assert.include(script, 'exec ryco "$@"');
+    assert.include(script, "exec npx --yes 'ryco@latest' \"$@\"");
+    assert.include(script, "exec npm exec --yes 'ryco@latest' -- \"$@\"");
+    assert.include(script, "could not install 'ryco@latest'");
   });
 
   it("shell-quotes package specs in the remote s3 runner", () => {
     const script = buildRemoteS3RunnerScript({
-      packageSpec: "sakacode@nightly; touch /tmp/sakacode-owned",
+      packageSpec: "ryco@nightly; touch /tmp/ryco-owned",
     });
 
-    assert.include(script, "exec npx --yes 'sakacode@nightly; touch /tmp/sakacode-owned' \"$@\"");
-    assert.include(
-      script,
-      "exec npm exec --yes 'sakacode@nightly; touch /tmp/sakacode-owned' -- \"$@\"",
-    );
-    assert.notInclude(script, "exec npx --yes sakacode@nightly; touch /tmp/sakacode-owned");
+    assert.include(script, "exec npx --yes 'ryco@nightly; touch /tmp/ryco-owned' \"$@\"");
+    assert.include(script, "exec npm exec --yes 'ryco@nightly; touch /tmp/ryco-owned' -- \"$@\"");
+    assert.notInclude(script, "exec npx --yes ryco@nightly; touch /tmp/ryco-owned");
   });
 
   it("builds the remote s3 runner with a node script override", () => {
@@ -133,11 +130,8 @@ describe("ssh tunnel scripts", () => {
     assert.include(buildRemoteLaunchScript(), '"$RUNNER_FILE" serve --host 127.0.0.1');
     assert.include(buildRemoteLaunchScript(), '--base-dir "$DEFAULT_SERVER_HOME"');
     assert.notInclude(buildRemoteLaunchScript(), "server-home");
-    assert.include(buildRemoteLaunchScript(), "Remote S3Code server did not become ready");
-    assert.include(
-      buildRemoteLaunchScript({ packageSpec: "sakacode@nightly" }),
-      "sakacode@nightly",
-    );
+    assert.include(buildRemoteLaunchScript(), "Remote Ryco server did not become ready");
+    assert.include(buildRemoteLaunchScript({ packageSpec: "ryco@nightly" }), "ryco@nightly");
     assert.include(
       buildRemotePairingScript(target),
       '"$RUNNER_FILE" auth pairing create --base-dir "$PAIRING_BASE_DIR" --json',
@@ -145,8 +139,8 @@ describe("ssh tunnel scripts", () => {
     assert.include(buildRemotePairingScript(target), 'PAIRING_BASE_DIR="$DEFAULT_SERVER_HOME"');
     assert.notInclude(buildRemotePairingScript(target), "server-home");
     assert.include(
-      buildRemotePairingScript(target, { packageSpec: "sakacode@nightly" }),
-      "sakacode@nightly",
+      buildRemotePairingScript(target, { packageSpec: "ryco@nightly" }),
+      "ryco@nightly",
     );
     assert.include(
       buildRemoteStopScript(target),

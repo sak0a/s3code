@@ -4,10 +4,10 @@ import {
   type SourceControlProviderAuth,
   type SourceControlRepositoryCloneUrls,
   type SourceControlRepositoryVisibility,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
-import { sanitizeBranchFragment, WORKTREE_BRANCH_PREFIX } from "@s3tools/shared/git";
-import { detectSourceControlProviderFromRemoteUrl } from "@s3tools/shared/sourceControl";
+import { sanitizeBranchFragment, WORKTREE_BRANCH_PREFIX } from "@ryco/shared/git";
+import { detectSourceControlProviderFromRemoteUrl } from "@ryco/shared/sourceControl";
 
 import * as BitbucketIssues from "./bitbucketIssues.ts";
 import * as BitbucketPullRequests from "./bitbucketPullRequests.ts";
@@ -18,12 +18,12 @@ import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
 const DEFAULT_API_BASE_URL = "https://api.bitbucket.org/2.0";
 
 const BitbucketApiEnvConfig = Config.all({
-  baseUrl: Config.string("S3CODE_BITBUCKET_API_BASE_URL").pipe(
+  baseUrl: Config.string("RYCO_BITBUCKET_API_BASE_URL").pipe(
     Config.withDefault(DEFAULT_API_BASE_URL),
   ),
-  accessToken: Config.string("S3CODE_BITBUCKET_ACCESS_TOKEN").pipe(Config.option),
-  email: Config.string("S3CODE_BITBUCKET_EMAIL").pipe(Config.option),
-  apiToken: Config.string("S3CODE_BITBUCKET_API_TOKEN").pipe(Config.option),
+  accessToken: Config.string("RYCO_BITBUCKET_ACCESS_TOKEN").pipe(Config.option),
+  email: Config.string("RYCO_BITBUCKET_EMAIL").pipe(Config.option),
+  apiToken: Config.string("RYCO_BITBUCKET_API_TOKEN").pipe(Config.option),
 });
 
 export class BitbucketApiError extends Schema.TaggedErrorClass<BitbucketApiError>()(
@@ -393,7 +393,7 @@ function authFromConfig(
     account: Option.none(),
     host: Option.some("bitbucket.org"),
     detail: Option.some(
-      "Set S3CODE_BITBUCKET_EMAIL and S3CODE_BITBUCKET_API_TOKEN, or S3CODE_BITBUCKET_ACCESS_TOKEN.",
+      "Set RYCO_BITBUCKET_EMAIL and RYCO_BITBUCKET_API_TOKEN, or RYCO_BITBUCKET_ACCESS_TOKEN.",
     ),
   };
 }

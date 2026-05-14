@@ -8,7 +8,7 @@ import type {
   AuthRevokePairingLinkInput,
   AuthSessionId,
   AuthSessionState,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import {
   getPairingTokenFromUrl,

@@ -6,7 +6,7 @@
  *
  * @module ProjectionWorktreeRepository
  */
-import { IsoDateTime, ProjectId, Worktree, WorktreeId } from "@s3tools/contracts";
+import { IsoDateTime, ProjectId, Worktree, WorktreeId } from "@ryco/contracts";
 import { Context, Option, Schema } from "effect";
 import type { Effect } from "effect";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CopilotSettings } from "@s3tools/contracts";
+import { CopilotSettings } from "@ryco/contracts";
 import { Schema } from "effect";
 
 import { getCopilotFallbackModels } from "./CopilotProvider.ts";

@@ -16,7 +16,7 @@ import type {
   SourceControlProviderDiscoveryItem,
   VcsDriverKind,
   VcsDiscoveryItem,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import { cn } from "../../lib/utils";
 import {
@@ -383,7 +383,7 @@ function AtlassianConnectionsSection() {
         stackedThreadToast({
           type: "success",
           title: "Bitbucket token saved",
-          description: "S3Code can now use this Atlassian connection for Bitbucket workflows.",
+          description: "Ryco can now use this Atlassian connection for Bitbucket workflows.",
         }),
       );
     },
@@ -419,7 +419,7 @@ function AtlassianConnectionsSection() {
         stackedThreadToast({
           type: "success",
           title: "Jira token saved",
-          description: "S3Code can now load Jira work items for linked projects.",
+          description: "Ryco can now load Jira work items for linked projects.",
         }),
       );
     },

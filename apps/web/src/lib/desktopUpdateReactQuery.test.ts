@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
-import type { DesktopUpdateState } from "@s3tools/contracts";
+import type { DesktopUpdateState } from "@ryco/contracts";
 import {
   desktopUpdateQueryKeys,
   desktopUpdateStateQueryOptions,

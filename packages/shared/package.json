@@ -1,5 +1,5 @@
 {
-  "name": "@s3tools/shared",
+  "name": "@ryco/shared",
   "version": "0.0.0-alpha.1",
   "private": true,
   "type": "module",
@@ -94,7 +94,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@s3tools/contracts": "workspace:*",
+    "@ryco/contracts": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

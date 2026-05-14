@@ -1,9 +1,6 @@
-import type {
-  DesktopSshEnvironmentBootstrap,
-  DesktopSshEnvironmentTarget,
-} from "@s3tools/contracts";
-import { type NetError, NetService } from "@s3tools/shared/Net";
-import { fromLenientJson } from "@s3tools/shared/schemaJson";
+import type { DesktopSshEnvironmentBootstrap, DesktopSshEnvironmentTarget } from "@ryco/contracts";
+import { type NetError, NetService } from "@ryco/shared/Net";
+import { fromLenientJson } from "@ryco/shared/schemaJson";
 import {
   Deferred,
   Context,
@@ -307,8 +304,8 @@ S3_NODE_SCRIPT_PATH=@@S3_NODE_SCRIPT_PATH@@
 if [ -n "$S3_NODE_SCRIPT_PATH" ]; then
   exec node "$S3_NODE_SCRIPT_PATH" "$@"
 fi
-if command -v s3code >/dev/null 2>&1; then
-  exec s3code "$@"
+if command -v ryco >/dev/null 2>&1; then
+  exec ryco "$@"
 fi
 if command -v npx >/dev/null 2>&1; then
   exec npx --yes @@S3_PACKAGE_SPEC@@ "$@"
@@ -316,13 +313,13 @@ fi
 if command -v npm >/dev/null 2>&1; then
   exec npm exec --yes @@S3_PACKAGE_SPEC@@ -- "$@"
 fi
-printf 'Remote host is missing the s3code CLI and could not install @@S3_PACKAGE_SPEC@@ because npx and npm are unavailable on PATH.\\n' >&2
+printf 'Remote host is missing the ryco CLI and could not install @@S3_PACKAGE_SPEC@@ because npx and npm are unavailable on PATH.\\n' >&2
 exit 1
 `;
 
 export const REMOTE_LAUNCH_SCRIPT = `set -eu
 STATE_KEY="$1"
-DEFAULT_SERVER_HOME="$HOME/.s3code"
+DEFAULT_SERVER_HOME="$HOME/.ryco"
 STATE_DIR="$DEFAULT_SERVER_HOME/ssh-launch/$STATE_KEY"
 DEFAULT_RUNTIME_FILE="$DEFAULT_SERVER_HOME/userdata/server-runtime.json"
 PORT_FILE="$STATE_DIR/port"
@@ -437,13 +434,13 @@ if [ -z "$REMOTE_PID" ] || [ -z "$REMOTE_PORT" ]; then
     printf 'Failed to find an available port on the remote host. Ensure node is available on PATH.\\n' >&2
     exit 1
   fi
-  nohup env S3CODE_NO_BROWSER=1 "$RUNNER_FILE" serve --host 127.0.0.1 --port "$REMOTE_PORT" --base-dir "$DEFAULT_SERVER_HOME" >>"$LOG_FILE" 2>&1 < /dev/null &
+  nohup env RYCO_NO_BROWSER=1 "$RUNNER_FILE" serve --host 127.0.0.1 --port "$REMOTE_PORT" --base-dir "$DEFAULT_SERVER_HOME" >>"$LOG_FILE" 2>&1 < /dev/null &
   REMOTE_PID="$!"
   printf '%s\\n' "$REMOTE_PID" >"$PID_FILE"
   printf '%s\\n' "$REMOTE_PORT" >"$PORT_FILE"
   printf 'managed\\n' >"$MANAGED_FILE"
   if ! wait_ready "@@S3_READY_TIMEOUT_MS@@"; then
-    printf 'Remote S3Code server did not become ready on 127.0.0.1:%s.\\n' "$REMOTE_PORT" >&2
+    printf 'Remote Ryco server did not become ready on 127.0.0.1:%s.\\n' "$REMOTE_PORT" >&2
     tail -n 80 "$LOG_FILE" >&2 2>/dev/null || true
     kill "$REMOTE_PID" 2>/dev/null || true
     wait_for_pid_exit "$REMOTE_PID"
@@ -455,7 +452,7 @@ printf '{"remotePort":%s,"serverKind":"%s"}\\n' "$REMOTE_PORT" "\${REMOTE_MANAGE
 `;
 
 export const REMOTE_PAIRING_SCRIPT = `set -eu
-DEFAULT_SERVER_HOME="$HOME/.s3code"
+DEFAULT_SERVER_HOME="$HOME/.ryco"
 STATE_DIR="$DEFAULT_SERVER_HOME/ssh-launch/@@S3_STATE_KEY@@"
 RUNNER_FILE="$STATE_DIR/run-s3.sh"
 mkdir -p "$STATE_DIR"
@@ -468,7 +465,7 @@ PAIRING_BASE_DIR="$DEFAULT_SERVER_HOME"
 `;
 
 export const REMOTE_STOP_SCRIPT = `set -eu
-DEFAULT_SERVER_HOME="$HOME/.s3code"
+DEFAULT_SERVER_HOME="$HOME/.ryco"
 STATE_DIR="$DEFAULT_SERVER_HOME/ssh-launch/@@S3_STATE_KEY@@"
 PID_FILE="$STATE_DIR/pid"
 PORT_FILE="$STATE_DIR/port"
@@ -488,7 +485,7 @@ printf '{"stopped":true}\\n'
 `;
 
 const REMOTE_LOG_TAIL_SCRIPT = `set -eu
-DEFAULT_SERVER_HOME="$HOME/.s3code"
+DEFAULT_SERVER_HOME="$HOME/.ryco"
 STATE_DIR="$DEFAULT_SERVER_HOME/ssh-launch/@@S3_STATE_KEY@@"
 LOG_FILE="$STATE_DIR/server.log"
 if [ -f "$LOG_FILE" ]; then
@@ -497,7 +494,7 @@ fi
 `;
 
 export function buildRemoteS3RunnerScript(input?: RemoteS3RunnerOptions): string {
-  const packageSpec = shellSingleQuote(input?.packageSpec?.trim() || "sakacode@latest");
+  const packageSpec = shellSingleQuote(input?.packageSpec?.trim() || "ryco@latest");
   const nodeScriptPath = input?.nodeScriptPath?.trim() || "";
   return stripTrailingNewlines(
     applyScriptPlaceholders(REMOTE_RUNNER_SCRIPT, {
@@ -1580,7 +1577,7 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
 export class SshEnvironmentManager extends Context.Service<
   SshEnvironmentManager,
   SshEnvironmentManagerShape
->()("@s3tools/ssh/SshEnvironmentManager") {
+>()("@ryco/ssh/SshEnvironmentManager") {
   static readonly layer = (options: SshEnvironmentManagerOptions = {}) =>
     Layer.effect(SshEnvironmentManager, makeSshEnvironmentManager(options));
 }

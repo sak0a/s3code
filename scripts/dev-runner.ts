@@ -4,8 +4,8 @@ import * as NodeOS from "node:os";
 
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { NetService } from "@s3tools/shared/Net";
-import { deleteEnv, setEnv } from "@s3tools/shared/runtimeEnv";
+import { NetService } from "@ryco/shared/Net";
+import { deleteEnv, setEnv } from "@ryco/shared/runtimeEnv";
 import { Config, Data, Effect, Hash, Layer, Logger, Option, Path, Schema } from "effect";
 import { Argument, Command, Flag } from "effect/unstable/cli";
 import { ChildProcess } from "effect/unstable/process";
@@ -18,7 +18,7 @@ const DESKTOP_DEV_LOOPBACK_HOST = "127.0.0.1";
 const DEV_PORT_PROBE_HOSTS = ["127.0.0.1", "0.0.0.0", "::1", "::"] as const;
 
 export const DEFAULT_S3_HOME = Effect.map(Effect.service(Path.Path), (path) =>
-  path.join(NodeOS.homedir(), ".s3code"),
+  path.join(NodeOS.homedir(), ".ryco"),
 );
 
 const MODE_ARGS = {
@@ -26,14 +26,14 @@ const MODE_ARGS = {
     "run",
     "dev",
     "--ui=tui",
-    "--filter=@s3tools/contracts",
-    "--filter=@s3tools/web",
-    "--filter=sakacode",
+    "--filter=@ryco/contracts",
+    "--filter=@ryco/web",
+    "--filter=ryco",
     "--parallel",
   ],
-  "dev:server": ["run", "dev", "--filter=sakacode"],
-  "dev:web": ["run", "dev", "--filter=@s3tools/web"],
-  "dev:desktop": ["run", "dev", "--filter=@s3tools/desktop", "--filter=@s3tools/web", "--parallel"],
+  "dev:server": ["run", "dev", "--filter=ryco"],
+  "dev:web": ["run", "dev", "--filter=@ryco/web"],
+  "dev:desktop": ["run", "dev", "--filter=@ryco/desktop", "--filter=@ryco/web", "--parallel"],
 } as const satisfies Record<string, ReadonlyArray<string>>;
 
 type DevMode = keyof typeof MODE_ARGS;
@@ -73,8 +73,8 @@ const optionalUrlConfig = (name: string): Config.Config<URL | undefined> =>
   );
 
 const OffsetConfig = Config.all({
-  portOffset: optionalIntegerConfig("S3CODE_PORT_OFFSET"),
-  devInstance: optionalStringConfig("S3CODE_DEV_INSTANCE"),
+  portOffset: optionalIntegerConfig("RYCO_PORT_OFFSET"),
+  devInstance: optionalStringConfig("RYCO_DEV_INSTANCE"),
 });
 
 export function resolveOffset(config: {
@@ -83,11 +83,11 @@ export function resolveOffset(config: {
 }): { readonly offset: number; readonly source: string } {
   if (config.portOffset !== undefined) {
     if (config.portOffset < 0) {
-      throw new Error(`Invalid S3CODE_PORT_OFFSET: ${config.portOffset}`);
+      throw new Error(`Invalid RYCO_PORT_OFFSET: ${config.portOffset}`);
     }
     return {
       offset: config.portOffset,
-      source: `S3CODE_PORT_OFFSET=${config.portOffset}`,
+      source: `RYCO_PORT_OFFSET=${config.portOffset}`,
     };
   }
 
@@ -97,11 +97,11 @@ export function resolveOffset(config: {
   }
 
   if (/^\d+$/.test(seed)) {
-    return { offset: Number(seed), source: `numeric S3CODE_DEV_INSTANCE=${seed}` };
+    return { offset: Number(seed), source: `numeric RYCO_DEV_INSTANCE=${seed}` };
   }
 
   const offset = ((Hash.string(seed) >>> 0) % MAX_HASH_OFFSET) + 1;
-  return { offset, source: `hashed S3CODE_DEV_INSTANCE=${seed}` };
+  return { offset, source: `hashed RYCO_DEV_INSTANCE=${seed}` };
 }
 
 function resolveBaseDir(baseDir: string | undefined): Effect.Effect<string, never, Path.Path> {
@@ -157,60 +157,60 @@ export function createDevRunnerEnv({
         devUrl?.toString() ??
         `http://${isDesktopMode ? DESKTOP_DEV_LOOPBACK_HOST : "localhost"}:${webPort}`,
     };
-    setEnv(output, "S3CODE_HOME", resolvedBaseDir);
+    setEnv(output, "RYCO_HOME", resolvedBaseDir);
 
     if (!isDesktopMode) {
-      setEnv(output, "S3CODE_PORT", String(serverPort));
+      setEnv(output, "RYCO_PORT", String(serverPort));
       output.VITE_HTTP_URL = `http://localhost:${serverPort}`;
       output.VITE_WS_URL = `ws://localhost:${serverPort}`;
     } else {
-      setEnv(output, "S3CODE_PORT", String(serverPort));
+      setEnv(output, "RYCO_PORT", String(serverPort));
       output.VITE_HTTP_URL = `http://${DESKTOP_DEV_LOOPBACK_HOST}:${serverPort}`;
       output.VITE_WS_URL = `ws://${DESKTOP_DEV_LOOPBACK_HOST}:${serverPort}`;
-      deleteEnv(output, "S3CODE_MODE");
-      deleteEnv(output, "S3CODE_NO_BROWSER");
-      deleteEnv(output, "S3CODE_HOST");
+      deleteEnv(output, "RYCO_MODE");
+      deleteEnv(output, "RYCO_NO_BROWSER");
+      deleteEnv(output, "RYCO_HOST");
     }
 
     if (!isDesktopMode && host !== undefined) {
-      setEnv(output, "S3CODE_HOST", host);
+      setEnv(output, "RYCO_HOST", host);
     }
 
     if (!isDesktopMode && noBrowser !== undefined) {
-      setEnv(output, "S3CODE_NO_BROWSER", noBrowser ? "1" : "0");
+      setEnv(output, "RYCO_NO_BROWSER", noBrowser ? "1" : "0");
     } else if (!isDesktopMode) {
-      deleteEnv(output, "S3CODE_NO_BROWSER");
+      deleteEnv(output, "RYCO_NO_BROWSER");
     }
 
     if (autoBootstrapProjectFromCwd !== undefined) {
       setEnv(
         output,
-        "S3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD",
+        "RYCO_AUTO_BOOTSTRAP_PROJECT_FROM_CWD",
         autoBootstrapProjectFromCwd ? "1" : "0",
       );
     } else {
-      deleteEnv(output, "S3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD");
+      deleteEnv(output, "RYCO_AUTO_BOOTSTRAP_PROJECT_FROM_CWD");
     }
 
     if (logWebSocketEvents !== undefined) {
-      setEnv(output, "S3CODE_LOG_WS_EVENTS", logWebSocketEvents ? "1" : "0");
+      setEnv(output, "RYCO_LOG_WS_EVENTS", logWebSocketEvents ? "1" : "0");
     } else {
-      deleteEnv(output, "S3CODE_LOG_WS_EVENTS");
+      deleteEnv(output, "RYCO_LOG_WS_EVENTS");
     }
 
     if (mode === "dev") {
-      setEnv(output, "S3CODE_MODE", "web");
-      deleteEnv(output, "S3CODE_DESKTOP_WS_URL");
+      setEnv(output, "RYCO_MODE", "web");
+      deleteEnv(output, "RYCO_DESKTOP_WS_URL");
     }
 
     if (mode === "dev:server" || mode === "dev:web") {
-      setEnv(output, "S3CODE_MODE", "web");
-      deleteEnv(output, "S3CODE_DESKTOP_WS_URL");
+      setEnv(output, "RYCO_MODE", "web");
+      deleteEnv(output, "RYCO_DESKTOP_WS_URL");
     }
 
     if (isDesktopMode) {
       output.HOST = DESKTOP_DEV_LOOPBACK_HOST;
-      deleteEnv(output, "S3CODE_DESKTOP_WS_URL");
+      deleteEnv(output, "RYCO_DESKTOP_WS_URL");
     }
 
     return output;
@@ -386,7 +386,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
       Effect.mapError(
         (cause) =>
           new DevRunnerError({
-            message: "Failed to read S3CODE_PORT_OFFSET/S3CODE_DEV_INSTANCE configuration.",
+            message: "Failed to read RYCO_PORT_OFFSET/RYCO_DEV_INSTANCE configuration.",
             cause,
           }),
       ),
@@ -428,7 +428,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
         : "";
 
     yield* Effect.logInfo(
-      `[dev-runner] mode=${input.mode} source=${source}${selectionSuffix} serverPort=${String(env.S3CODE_PORT)} webPort=${String(env.PORT)} baseDir=${String(env.S3CODE_HOME)}`,
+      `[dev-runner] mode=${input.mode} source=${source}${selectionSuffix} serverPort=${String(env.RYCO_PORT)} webPort=${String(env.PORT)} baseDir=${String(env.RYCO_HOME)}`,
     );
 
     if (input.dryRun) {
@@ -477,32 +477,32 @@ const devRunnerCli = Command.make("dev-runner", {
     Argument.withDescription("Development mode to run."),
   ),
   t3Home: Flag.string("home-dir").pipe(
-    Flag.withDescription("Base directory for all S3Code data (equivalent to S3CODE_HOME)."),
-    Flag.withFallbackConfig(optionalStringConfig("S3CODE_HOME")),
+    Flag.withDescription("Base directory for all Ryco data (equivalent to RYCO_HOME)."),
+    Flag.withFallbackConfig(optionalStringConfig("RYCO_HOME")),
   ),
   noBrowser: Flag.boolean("no-browser").pipe(
-    Flag.withDescription("Browser auto-open toggle (equivalent to S3CODE_NO_BROWSER)."),
-    Flag.withFallbackConfig(optionalBooleanConfig("S3CODE_NO_BROWSER")),
+    Flag.withDescription("Browser auto-open toggle (equivalent to RYCO_NO_BROWSER)."),
+    Flag.withFallbackConfig(optionalBooleanConfig("RYCO_NO_BROWSER")),
   ),
   autoBootstrapProjectFromCwd: Flag.boolean("auto-bootstrap-project-from-cwd").pipe(
     Flag.withDescription(
-      "Auto-bootstrap toggle (equivalent to S3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD).",
+      "Auto-bootstrap toggle (equivalent to RYCO_AUTO_BOOTSTRAP_PROJECT_FROM_CWD).",
     ),
-    Flag.withFallbackConfig(optionalBooleanConfig("S3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD")),
+    Flag.withFallbackConfig(optionalBooleanConfig("RYCO_AUTO_BOOTSTRAP_PROJECT_FROM_CWD")),
   ),
   logWebSocketEvents: Flag.boolean("log-websocket-events").pipe(
-    Flag.withDescription("WebSocket event logging toggle (equivalent to S3CODE_LOG_WS_EVENTS)."),
+    Flag.withDescription("WebSocket event logging toggle (equivalent to RYCO_LOG_WS_EVENTS)."),
     Flag.withAlias("log-ws-events"),
-    Flag.withFallbackConfig(optionalBooleanConfig("S3CODE_LOG_WS_EVENTS")),
+    Flag.withFallbackConfig(optionalBooleanConfig("RYCO_LOG_WS_EVENTS")),
   ),
   host: Flag.string("host").pipe(
-    Flag.withDescription("Server host/interface override (forwards to S3CODE_HOST)."),
-    Flag.withFallbackConfig(optionalStringConfig("S3CODE_HOST")),
+    Flag.withDescription("Server host/interface override (forwards to RYCO_HOST)."),
+    Flag.withFallbackConfig(optionalStringConfig("RYCO_HOST")),
   ),
   port: Flag.integer("port").pipe(
     Flag.withSchema(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 65535 }))),
-    Flag.withDescription("Server port override (forwards to S3CODE_PORT)."),
-    Flag.withFallbackConfig(optionalPortConfig("S3CODE_PORT")),
+    Flag.withDescription("Server port override (forwards to RYCO_PORT)."),
+    Flag.withFallbackConfig(optionalPortConfig("RYCO_PORT")),
   ),
   devUrl: Flag.string("dev-url").pipe(
     Flag.withSchema(Schema.URLFromString),

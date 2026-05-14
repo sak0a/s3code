@@ -1,9 +1,9 @@
-import type { ServerProvider } from "@s3tools/contracts";
+import type { ServerProvider } from "@ryco/contracts";
 import { Duration, Effect, Equal, Fiber, PubSub, Ref, Scope, Stream } from "effect";
 import * as Semaphore from "effect/Semaphore";
 
 import type { ServerProviderShape } from "./Services/ServerProvider.ts";
-import { ServerSettingsError } from "@s3tools/contracts";
+import { ServerSettingsError } from "@ryco/contracts";
 
 interface ProviderSnapshotState {
   readonly snapshot: ServerProvider;

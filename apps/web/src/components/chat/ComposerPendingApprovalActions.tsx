@@ -1,4 +1,4 @@
-import { type ApprovalRequestId, type ProviderApprovalDecision } from "@s3tools/contracts";
+import { type ApprovalRequestId, type ProviderApprovalDecision } from "@ryco/contracts";
 import { memo } from "react";
 import { Button } from "../ui/button";
 

@@ -1,5 +1,5 @@
-import type { DesktopEnvironmentBootstrap } from "@s3tools/contracts";
-import type { KnownEnvironment } from "@s3tools/client-runtime";
+import type { DesktopEnvironmentBootstrap } from "@ryco/contracts";
+import type { KnownEnvironment } from "@ryco/client-runtime";
 
 export interface PrimaryEnvironmentTarget {
   readonly source: KnownEnvironment["source"];

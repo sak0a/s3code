@@ -8,11 +8,11 @@ import {
   type SourceControlProviderInfo,
   type SourceControlRepositoryCloneUrls,
   type SourceControlRepositoryVisibility,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
-import { sanitizeBranchFragment, WORKTREE_BRANCH_PREFIX } from "@s3tools/shared/git";
-import { detectSourceControlProviderFromRemoteUrl } from "@s3tools/shared/sourceControl";
-import { decodeJsonResult } from "@s3tools/shared/schemaJson";
+import { sanitizeBranchFragment, WORKTREE_BRANCH_PREFIX } from "@ryco/shared/git";
+import { detectSourceControlProviderFromRemoteUrl } from "@ryco/shared/sourceControl";
+import { decodeJsonResult } from "@ryco/shared/schemaJson";
 
 import * as ForgejoIssues from "./forgejoIssues.ts";
 import * as ForgejoPullRequests from "./forgejoPullRequests.ts";
@@ -24,10 +24,10 @@ const DEFAULT_BASE_URL = "https://codeberg.org";
 const DEFAULT_PAGE_LIMIT = 50;
 
 const ForgejoApiEnvConfig = Config.all({
-  baseUrl: Config.string("S3CODE_FORGEJO_BASE_URL").pipe(Config.option),
-  token: Config.string("S3CODE_FORGEJO_TOKEN").pipe(Config.option),
-  instances: Config.string("S3CODE_FORGEJO_INSTANCES").pipe(Config.option),
-  cliKeysFile: Config.string("S3CODE_FORGEJO_CLI_KEYS_FILE").pipe(Config.option),
+  baseUrl: Config.string("RYCO_FORGEJO_BASE_URL").pipe(Config.option),
+  token: Config.string("RYCO_FORGEJO_TOKEN").pipe(Config.option),
+  instances: Config.string("RYCO_FORGEJO_INSTANCES").pipe(Config.option),
+  cliKeysFile: Config.string("RYCO_FORGEJO_CLI_KEYS_FILE").pipe(Config.option),
 });
 
 export class ForgejoApiError extends Schema.TaggedErrorClass<ForgejoApiError>()("ForgejoApiError", {
@@ -805,7 +805,7 @@ export const make = Effect.fn("makeForgejoApi")(function* () {
           account: Option.none(),
           host: Option.some(firstInstance.host),
           detail: Option.some(
-            "Run `fj auth login` on the server and verify with `fj -H codeberg.org whoami`, set S3CODE_FORGEJO_BASE_URL and S3CODE_FORGEJO_TOKEN, or set S3CODE_FORGEJO_CLI_KEYS_FILE to the fj keys.json path.",
+            "Run `fj auth login` on the server and verify with `fj -H codeberg.org whoami`, set RYCO_FORGEJO_BASE_URL and RYCO_FORGEJO_TOKEN, or set RYCO_FORGEJO_CLI_KEYS_FILE to the fj keys.json path.",
           ),
         };
       }

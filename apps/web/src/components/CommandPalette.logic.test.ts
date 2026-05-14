@@ -5,7 +5,7 @@ import {
   ProjectId,
   ProviderInstanceId,
   ThreadId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import type { Thread } from "../types";
 import {
   buildBrowseGroups,

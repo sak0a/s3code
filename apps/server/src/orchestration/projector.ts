@@ -4,7 +4,7 @@ import type {
   OrchestrationWorktreeShell,
   ThreadId,
   WorktreeId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   DEFAULT_AGENT_TOKEN_MODE,
   OrchestrationCheckpointSummary,
@@ -12,7 +12,7 @@ import {
   OrchestrationSession,
   OrchestrationThread,
   OrchestrationWorktreeShell as OrchestrationWorktreeShellSchema,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect, Schema } from "effect";
 
 import { toProjectorDecodeError, type OrchestrationProjectorDecodeError } from "./Errors.ts";

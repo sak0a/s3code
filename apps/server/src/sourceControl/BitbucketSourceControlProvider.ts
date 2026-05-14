@@ -6,7 +6,7 @@ import {
   type SourceControlChangeRequestDetail,
   type SourceControlIssueDetail,
   type SourceControlIssueSummary,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import * as BitbucketApi from "./BitbucketApi.ts";
 import * as BitbucketIssues from "./bitbucketIssues.ts";

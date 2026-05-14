@@ -1,4 +1,4 @@
-import { EnvironmentId } from "@s3tools/contracts";
+import { EnvironmentId } from "@ryco/contracts";
 import { describe, expect, it } from "vitest";
 
 import { shouldShowOpenInPicker } from "./ChatHeader";

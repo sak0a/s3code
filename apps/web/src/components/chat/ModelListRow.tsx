@@ -1,4 +1,4 @@
-import { type ProviderDriverKind, type ProviderInstanceId } from "@s3tools/contracts";
+import { type ProviderDriverKind, type ProviderInstanceId } from "@ryco/contracts";
 import { memo } from "react";
 import { StarIcon } from "lucide-react";
 import {

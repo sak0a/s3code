@@ -9,10 +9,10 @@ import type * as VcsDriver from "../vcs/VcsDriver.ts";
 import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
 
 const forgejoRepository = {
-  full_name: "pingdotgg/s3code",
-  html_url: "https://codeberg.test/pingdotgg/s3code",
-  clone_url: "https://codeberg.test/pingdotgg/s3code.git",
-  ssh_url: "git@codeberg.test:pingdotgg/s3code.git",
+  full_name: "pingdotgg/ryco",
+  html_url: "https://codeberg.test/pingdotgg/ryco",
+  clone_url: "https://codeberg.test/pingdotgg/ryco.git",
+  ssh_url: "git@codeberg.test:pingdotgg/ryco.git",
   default_branch: "main",
 };
 
@@ -22,7 +22,7 @@ const forgejoPullRequest = {
   state: "open",
   merged: false,
   body: "PR body",
-  html_url: "https://codeberg.test/pingdotgg/s3code/pulls/42",
+  html_url: "https://codeberg.test/pingdotgg/ryco/pulls/42",
   updated_at: "2026-01-02T00:00:00.000Z",
   comments: 1,
   user: { login: "alice" },
@@ -31,10 +31,10 @@ const forgejoPullRequest = {
     label: "alice:feature/source-control",
     repo_id: 11,
     repo: {
-      full_name: "alice/s3code",
-      html_url: "https://codeberg.test/alice/s3code",
-      clone_url: "https://codeberg.test/alice/s3code.git",
-      ssh_url: "git@codeberg.test:alice/s3code.git",
+      full_name: "alice/ryco",
+      html_url: "https://codeberg.test/alice/ryco",
+      clone_url: "https://codeberg.test/alice/ryco.git",
+      ssh_url: "git@codeberg.test:alice/ryco.git",
       default_branch: "main",
     },
   },
@@ -61,7 +61,7 @@ function makeLayer(input: {
   );
   const gitMock = {
     readConfigValue: vi.fn<GitVcsDriver.GitVcsDriverShape["readConfigValue"]>(() =>
-      Effect.succeed<string | null>("git@codeberg.test:pingdotgg/s3code.git"),
+      Effect.succeed<string | null>("git@codeberg.test:pingdotgg/ryco.git"),
     ),
     resolvePrimaryRemoteName: vi.fn<GitVcsDriver.GitVcsDriverShape["resolvePrimaryRemoteName"]>(
       () => Effect.succeed("origin"),
@@ -96,7 +96,7 @@ function makeLayer(input: {
         remotes: [
           {
             name: "origin",
-            url: "git@codeberg.test:pingdotgg/s3code.git",
+            url: "git@codeberg.test:pingdotgg/ryco.git",
             pushUrl: Option.none(),
             isPrimary: true,
           },
@@ -140,8 +140,8 @@ function makeLayer(input: {
       ConfigProvider.layer(
         ConfigProvider.fromEnv({
           env: input.env ?? {
-            S3CODE_FORGEJO_BASE_URL: "https://codeberg.test",
-            S3CODE_FORGEJO_TOKEN: "token",
+            RYCO_FORGEJO_BASE_URL: "https://codeberg.test",
+            RYCO_FORGEJO_TOKEN: "token",
           },
         }),
       ),
@@ -194,7 +194,7 @@ it.effect("lists pull requests and filters by head branch locally", () => {
     assert.strictEqual(result.length, 1);
     assert.strictEqual(result[0]?.number, 42);
     const request = execute.mock.calls[0]?.[0];
-    assert.strictEqual(request?.url, "https://codeberg.test/api/v1/repos/pingdotgg/s3code/pulls");
+    assert.strictEqual(request?.url, "https://codeberg.test/api/v1/repos/pingdotgg/ryco/pulls");
     assert.deepStrictEqual(request?.urlParams.params, [
       ["state", "open"],
       ["sort", "recentupdate"],
@@ -212,14 +212,14 @@ it.effect("reads repository clone URLs and default branch", () => {
     const forgejo = yield* ForgejoApi.ForgejoApi;
     const cloneUrls = yield* forgejo.getRepositoryCloneUrls({
       cwd: "/repo",
-      repository: "pingdotgg/s3code",
+      repository: "pingdotgg/ryco",
     });
     const defaultBranch = yield* forgejo.getDefaultBranch({ cwd: "/repo" });
 
     assert.deepStrictEqual(cloneUrls, {
-      nameWithOwner: "pingdotgg/s3code",
-      url: "https://codeberg.test/pingdotgg/s3code.git",
-      sshUrl: "git@codeberg.test:pingdotgg/s3code.git",
+      nameWithOwner: "pingdotgg/ryco",
+      url: "https://codeberg.test/pingdotgg/ryco.git",
+      sshUrl: "git@codeberg.test:pingdotgg/ryco.git",
     });
     assert.strictEqual(defaultBranch, "main");
   }).pipe(Effect.provide(layer));
@@ -237,16 +237,16 @@ it.effect("creates repositories through the Forgejo REST API", () => {
     const forgejo = yield* ForgejoApi.ForgejoApi;
     const cloneUrls = yield* forgejo.createRepository({
       cwd: "/repo",
-      repository: "pingdotgg/s3code",
+      repository: "pingdotgg/ryco",
       visibility: "private",
     });
 
-    assert.strictEqual(cloneUrls.nameWithOwner, "pingdotgg/s3code");
+    assert.strictEqual(cloneUrls.nameWithOwner, "pingdotgg/ryco");
     const createRequest = execute.mock.calls.find((call) => call[0].method === "POST")?.[0];
     assert.ok(createRequest);
     assert.strictEqual(createRequest.url, "https://codeberg.test/api/v1/user/repos");
     assert.deepStrictEqual(requestJsonBody(createRequest), {
-      name: "s3code",
+      name: "ryco",
       private: true,
       auto_init: false,
     });
@@ -273,7 +273,7 @@ it.effect("creates pull requests using the Forgejo REST payload shape", () => {
     });
 
     const request = execute.mock.calls[0]?.[0];
-    assert.strictEqual(request?.url, "https://codeberg.test/api/v1/repos/pingdotgg/s3code/pulls");
+    assert.strictEqual(request?.url, "https://codeberg.test/api/v1/repos/pingdotgg/ryco/pulls");
     assert.strictEqual(request?.method, "POST");
     assert.ok(request);
     assert.deepStrictEqual(requestJsonBody(request), {
@@ -315,8 +315,8 @@ it.effect("uses fj credentials when no Forgejo token is configured", () =>
 
     const { execute, layer } = makeLayer({
       env: {
-        S3CODE_FORGEJO_BASE_URL: "https://codeberg.test",
-        S3CODE_FORGEJO_CLI_KEYS_FILE: keysFile,
+        RYCO_FORGEJO_BASE_URL: "https://codeberg.test",
+        RYCO_FORGEJO_CLI_KEYS_FILE: keysFile,
       },
       response: () => Response.json({ login: "fj-user" }),
     });
@@ -347,7 +347,7 @@ it.effect("discovers custom Forgejo hosts from fj credentials", () =>
 
     const { execute, layer } = makeLayer({
       env: {
-        S3CODE_FORGEJO_CLI_KEYS_FILE: keysFile,
+        RYCO_FORGEJO_CLI_KEYS_FILE: keysFile,
       },
       response: () => Response.json({ login: "self-hosted" }),
     });
@@ -384,23 +384,23 @@ it.effect("checks out fork pull requests through an ensured fork remote", () => 
     assert.deepStrictEqual(git.ensureRemote.mock.calls[0]?.[0], {
       cwd: "/repo",
       preferredName: "alice",
-      url: "git@codeberg.test:alice/s3code.git",
+      url: "git@codeberg.test:alice/ryco.git",
     });
     assert.deepStrictEqual(git.fetchRemoteBranch.mock.calls[0]?.[0], {
       cwd: "/repo",
       remoteName: "alice",
       remoteBranch: "feature/source-control",
-      localBranch: "s3code/pr-42/feature/source-control",
+      localBranch: "ryco/pr-42/feature/source-control",
     });
     assert.deepStrictEqual(git.setBranchUpstream.mock.calls[0]?.[0], {
       cwd: "/repo",
-      branch: "s3code/pr-42/feature/source-control",
+      branch: "ryco/pr-42/feature/source-control",
       remoteName: "alice",
       remoteBranch: "feature/source-control",
     });
     assert.deepStrictEqual(git.switchRef.mock.calls[0]?.[0], {
       cwd: "/repo",
-      refName: "s3code/pr-42/feature/source-control",
+      refName: "ryco/pr-42/feature/source-control",
     });
   }).pipe(Effect.provide(layer));
 });

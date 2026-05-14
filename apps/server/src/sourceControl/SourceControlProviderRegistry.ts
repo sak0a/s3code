@@ -3,9 +3,9 @@ import {
   SourceControlProviderError,
   type SourceControlProviderDiscoveryItem,
   type SourceControlProviderInfo,
-} from "@s3tools/contracts";
-import type { SourceControlProviderKind } from "@s3tools/contracts";
-import { detectSourceControlProviderFromRemoteUrl } from "@s3tools/shared/sourceControl";
+} from "@ryco/contracts";
+import type { SourceControlProviderKind } from "@ryco/contracts";
+import { detectSourceControlProviderFromRemoteUrl } from "@ryco/shared/sourceControl";
 
 import * as AzureDevOpsCli from "./AzureDevOpsCli.ts";
 import * as BitbucketApi from "./BitbucketApi.ts";

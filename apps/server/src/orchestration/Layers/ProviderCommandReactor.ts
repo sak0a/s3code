@@ -13,10 +13,10 @@ import {
   type RuntimeMode,
   type AgentTokenMode,
   type TurnId,
-} from "@s3tools/contracts";
-import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@s3tools/shared/git";
+} from "@ryco/contracts";
+import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@ryco/shared/git";
 import { Cache, Cause, Duration, Effect, Equal, Layer, Option, Schema, Stream } from "effect";
-import { makeDrainableWorker } from "@s3tools/shared/DrainableWorker";
+import { makeDrainableWorker } from "@ryco/shared/DrainableWorker";
 
 import { resolveThreadWorkspaceCwd } from "../../checkpointing/Utils.ts";
 import { increment, orchestrationEventsProcessedTotal } from "../../observability/Metrics.ts";

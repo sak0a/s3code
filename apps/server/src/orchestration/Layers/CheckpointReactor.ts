@@ -7,9 +7,9 @@ import {
   TurnId,
   type OrchestrationEvent,
   type ProviderRuntimeEvent,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Cause, Effect, Layer, Option, Stream } from "effect";
-import { makeDrainableWorker } from "@s3tools/shared/DrainableWorker";
+import { makeDrainableWorker } from "@ryco/shared/DrainableWorker";
 
 import { parseTurnDiffFilesFromUnifiedDiff } from "../../checkpointing/Diffs.ts";
 import {

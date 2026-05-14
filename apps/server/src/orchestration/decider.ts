@@ -3,8 +3,8 @@ import type {
   OrchestrationCommand,
   OrchestrationEvent,
   OrchestrationReadModel,
-} from "@s3tools/contracts";
-import { DEFAULT_AGENT_TOKEN_MODE } from "@s3tools/contracts";
+} from "@ryco/contracts";
+import { DEFAULT_AGENT_TOKEN_MODE } from "@ryco/contracts";
 import { Effect } from "effect";
 
 import { OrchestrationCommandInvariantError } from "./Errors.ts";

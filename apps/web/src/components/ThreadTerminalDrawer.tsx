@@ -6,7 +6,7 @@ import {
   type TerminalEvent,
   type TerminalSessionSnapshot,
   type ThreadId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Terminal, type ITheme } from "@xterm/xterm";
 import {
   type PointerEvent as ReactPointerEvent,

@@ -10,7 +10,7 @@ import type {
   SourceControlProviderKind,
   SourceControlRepositoryCloneUrls,
   SourceControlRepositoryVisibility,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 export interface SourceControlProviderContext {
   readonly provider: SourceControlProviderInfo;

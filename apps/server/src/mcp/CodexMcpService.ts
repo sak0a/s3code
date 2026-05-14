@@ -24,7 +24,7 @@ import {
   McpWorkspaceId,
   ProviderDriverKind,
   ProviderInstanceId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Cause, Duration, Effect, Exit, FileSystem, Layer, Path, Schema } from "effect";
 import * as CodexClient from "effect-codex-app-server/client";
 import type * as CodexErrors from "effect-codex-app-server/errors";
@@ -96,7 +96,7 @@ function mcpSupportForDriver(
     case CODEX_DRIVER:
       return {
         status: "managed",
-        message: "S3Code can list, edit, reload, and start OAuth for Codex MCP servers.",
+        message: "Ryco can list, edit, reload, and start OAuth for Codex MCP servers.",
       };
     case COPILOT_DRIVER:
       return {
@@ -114,17 +114,17 @@ function mcpSupportForDriver(
       return {
         status: "external",
         message:
-          "OpenCode MCP setup is managed by OpenCode; S3Code only displays reported MCP activity.",
+          "OpenCode MCP setup is managed by OpenCode; Ryco only displays reported MCP activity.",
       };
     case CURSOR_DRIVER:
       return {
         status: "unsupported",
-        message: "Cursor ACP sessions are currently started without MCP server bindings in S3Code.",
+        message: "Cursor ACP sessions are currently started without MCP server bindings in Ryco.",
       };
     default:
       return {
         status: "unsupported",
-        message: "This driver has no MCP management integration registered in S3Code.",
+        message: "This driver has no MCP management integration registered in Ryco.",
       };
   }
 }

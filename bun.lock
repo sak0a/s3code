@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@s3tools/monorepo",
+      "name": "@ryco/monorepo",
       "devDependencies": {
         "@effect/language-service": "catalog:",
         "@types/node": "catalog:",
@@ -15,7 +15,7 @@
       },
     },
     "apps/desktop": {
-      "name": "@s3tools/desktop",
+      "name": "@ryco/desktop",
       "version": "0.0.25",
       "dependencies": {
         "@effect/platform-node": "catalog:",
@@ -24,11 +24,11 @@
         "electron-updater": "^6.6.2",
       },
       "devDependencies": {
-        "@s3tools/client-runtime": "workspace:*",
-        "@s3tools/contracts": "workspace:*",
-        "@s3tools/shared": "workspace:*",
-        "@s3tools/ssh": "workspace:*",
-        "@s3tools/tailscale": "workspace:*",
+        "@ryco/client-runtime": "workspace:*",
+        "@ryco/contracts": "workspace:*",
+        "@ryco/shared": "workspace:*",
+        "@ryco/ssh": "workspace:*",
+        "@ryco/tailscale": "workspace:*",
         "@types/node": "catalog:",
         "effect-acp": "workspace:*",
         "tsdown": "catalog:",
@@ -37,7 +37,7 @@
       },
     },
     "apps/marketing": {
-      "name": "@s3tools/marketing",
+      "name": "@ryco/marketing",
       "version": "0.0.0",
       "dependencies": {
         "astro": "^6.0.4",
@@ -48,10 +48,10 @@
       },
     },
     "apps/server": {
-      "name": "sakacode",
+      "name": "ryco",
       "version": "0.0.25",
       "bin": {
-        "s3code": "./dist/bin.mjs",
+        "ryco": "./dist/bin.mjs",
       },
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "^0.2.111",
@@ -69,10 +69,10 @@
       "devDependencies": {
         "@effect/language-service": "catalog:",
         "@effect/vitest": "catalog:",
-        "@s3tools/contracts": "workspace:*",
-        "@s3tools/shared": "workspace:*",
-        "@s3tools/tailscale": "workspace:*",
-        "@s3tools/web": "workspace:*",
+        "@ryco/contracts": "workspace:*",
+        "@ryco/shared": "workspace:*",
+        "@ryco/tailscale": "workspace:*",
+        "@ryco/web": "workspace:*",
         "@types/bun": "catalog:",
         "@types/node": "catalog:",
         "effect-acp": "workspace:*",
@@ -83,7 +83,7 @@
       },
     },
     "apps/web": {
-      "name": "@s3tools/web",
+      "name": "@ryco/web",
       "version": "0.0.25",
       "dependencies": {
         "@base-ui/react": "^1.2.0",
@@ -96,9 +96,9 @@
         "@legendapp/list": "3.0.0-beta.44",
         "@lexical/react": "^0.41.0",
         "@pierre/diffs": "catalog:",
-        "@s3tools/client-runtime": "workspace:*",
-        "@s3tools/contracts": "workspace:*",
-        "@s3tools/shared": "workspace:*",
+        "@ryco/client-runtime": "workspace:*",
+        "@ryco/contracts": "workspace:*",
+        "@ryco/shared": "workspace:*",
         "@tanstack/react-pacer": "^0.19.4",
         "@tanstack/react-query": "^5.90.0",
         "@tanstack/react-router": "^1.160.2",
@@ -138,10 +138,10 @@
       },
     },
     "packages/client-runtime": {
-      "name": "@s3tools/client-runtime",
+      "name": "@ryco/client-runtime",
       "version": "0.0.0-alpha.1",
       "dependencies": {
-        "@s3tools/contracts": "workspace:*",
+        "@ryco/contracts": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -151,7 +151,7 @@
       },
     },
     "packages/contracts": {
-      "name": "@s3tools/contracts",
+      "name": "@ryco/contracts",
       "version": "0.0.25",
       "dependencies": {
         "effect": "catalog:",
@@ -195,10 +195,10 @@
       },
     },
     "packages/shared": {
-      "name": "@s3tools/shared",
+      "name": "@ryco/shared",
       "version": "0.0.0-alpha.1",
       "dependencies": {
-        "@s3tools/contracts": "workspace:*",
+        "@ryco/contracts": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -210,11 +210,11 @@
       },
     },
     "packages/ssh": {
-      "name": "@s3tools/ssh",
+      "name": "@ryco/ssh",
       "version": "0.0.0-alpha.1",
       "dependencies": {
-        "@s3tools/contracts": "workspace:*",
-        "@s3tools/shared": "workspace:*",
+        "@ryco/contracts": "workspace:*",
+        "@ryco/shared": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -227,7 +227,7 @@
       },
     },
     "packages/tailscale": {
-      "name": "@s3tools/tailscale",
+      "name": "@ryco/tailscale",
       "version": "0.0.0-alpha.1",
       "dependencies": {
         "@effect/platform-node": "catalog:",
@@ -242,12 +242,12 @@
       },
     },
     "scripts": {
-      "name": "@s3tools/scripts",
+      "name": "@ryco/scripts",
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "^0.2.77",
         "@effect/platform-node": "catalog:",
-        "@s3tools/contracts": "workspace:*",
-        "@s3tools/shared": "workspace:*",
+        "@ryco/contracts": "workspace:*",
+        "@ryco/shared": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -768,23 +768,23 @@
 
     "@rollup/pluginutils": ["@rollup/pluginutils@5.3.0", "", { "dependencies": { "@types/estree": "^1.0.0", "estree-walker": "^2.0.2", "picomatch": "^4.0.2" }, "peerDependencies": { "rollup": "^1.20.0||^2.0.0||^3.0.0||^4.0.0" }, "optionalPeers": ["rollup"] }, "sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q=="],
 
-    "@s3tools/client-runtime": ["@s3tools/client-runtime@workspace:packages/client-runtime"],
+    "@ryco/client-runtime": ["@ryco/client-runtime@workspace:packages/client-runtime"],
 
-    "@s3tools/contracts": ["@s3tools/contracts@workspace:packages/contracts"],
+    "@ryco/contracts": ["@ryco/contracts@workspace:packages/contracts"],
 
-    "@s3tools/desktop": ["@s3tools/desktop@workspace:apps/desktop"],
+    "@ryco/desktop": ["@ryco/desktop@workspace:apps/desktop"],
 
-    "@s3tools/marketing": ["@s3tools/marketing@workspace:apps/marketing"],
+    "@ryco/marketing": ["@ryco/marketing@workspace:apps/marketing"],
 
-    "@s3tools/scripts": ["@s3tools/scripts@workspace:scripts"],
+    "@ryco/scripts": ["@ryco/scripts@workspace:scripts"],
 
-    "@s3tools/shared": ["@s3tools/shared@workspace:packages/shared"],
+    "@ryco/shared": ["@ryco/shared@workspace:packages/shared"],
 
-    "@s3tools/ssh": ["@s3tools/ssh@workspace:packages/ssh"],
+    "@ryco/ssh": ["@ryco/ssh@workspace:packages/ssh"],
 
-    "@s3tools/tailscale": ["@s3tools/tailscale@workspace:packages/tailscale"],
+    "@ryco/tailscale": ["@ryco/tailscale@workspace:packages/tailscale"],
 
-    "@s3tools/web": ["@s3tools/web@workspace:apps/web"],
+    "@ryco/web": ["@ryco/web@workspace:apps/web"],
 
     "@shikijs/core": ["@shikijs/core@4.0.2", "", { "dependencies": { "@shikijs/primitive": "4.0.2", "@shikijs/types": "4.0.2", "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.4", "hast-util-to-html": "^9.0.5" } }, "sha512-hxT0YF4ExEqB8G/qFdtJvpmHXBYJ2lWW7qTHDarVkIudPFE6iCIrqdgWxGn5s+ppkGXI0aEGlibI0PAyzP3zlw=="],
 
@@ -1808,7 +1808,7 @@
 
     "safer-buffer": ["safer-buffer@2.1.2", "", {}, "sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg=="],
 
-    "sakacode": ["sakacode@workspace:apps/server"],
+    "ryco": ["ryco@workspace:apps/server"],
 
     "sax": ["sax@1.5.0", "", {}, "sha512-21IYA3Q5cQf089Z6tgaUTr7lDAyzoTPx5HRtbhsME8Udispad8dC/+sziTNugOEx54ilvatQ9YCzl4KQLPcRHA=="],
 

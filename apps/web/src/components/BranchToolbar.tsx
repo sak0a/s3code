@@ -1,5 +1,5 @@
-import { scopeProjectRef, scopeThreadRef } from "@s3tools/client-runtime";
-import type { EnvironmentId, ThreadId } from "@s3tools/contracts";
+import { scopeProjectRef, scopeThreadRef } from "@ryco/client-runtime";
+import type { EnvironmentId, ThreadId } from "@ryco/contracts";
 import { TerminalSquareIcon } from "lucide-react";
 import { memo, useMemo } from "react";
 

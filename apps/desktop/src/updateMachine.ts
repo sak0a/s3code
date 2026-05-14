@@ -1,8 +1,4 @@
-import type {
-  DesktopRuntimeInfo,
-  DesktopUpdateChannel,
-  DesktopUpdateState,
-} from "@s3tools/contracts";
+import type { DesktopRuntimeInfo, DesktopUpdateChannel, DesktopUpdateState } from "@ryco/contracts";
 
 import { getCanRetryAfterDownloadFailure, nextStatusAfterDownloadFailure } from "./updateState.ts";
 

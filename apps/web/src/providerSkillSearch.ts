@@ -1,9 +1,9 @@
-import type { ServerProviderSkill } from "@s3tools/contracts";
+import type { ServerProviderSkill } from "@ryco/contracts";
 import {
   insertRankedSearchResult,
   normalizeSearchQuery,
   scoreQueryMatch,
-} from "@s3tools/shared/searchRanking";
+} from "@ryco/shared/searchRanking";
 
 import { formatProviderSkillDisplayName } from "./providerSkillPresentation";
 

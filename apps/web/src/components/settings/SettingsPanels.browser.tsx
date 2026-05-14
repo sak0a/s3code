@@ -12,7 +12,7 @@ import {
   type LocalApi,
   type ServerConfig,
   type SourceControlDiscoveryResult,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { DateTime, Option } from "effect";
 import { page } from "vitest/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,7 +23,7 @@ import { __resetLocalApiForTests } from "../../localApi";
 import { AppAtomRegistryProvider, resetAppAtomRegistryForTests } from "../../rpc/atomRegistry";
 import { resetServerStateForTests, setServerConfigSnapshot } from "../../rpc/serverState";
 import { useUiStateStore } from "../../uiStateStore";
-import { DEFAULT_CLIENT_SETTINGS } from "@s3tools/contracts/settings";
+import { DEFAULT_CLIENT_SETTINGS } from "@ryco/contracts/settings";
 import { ConnectionsSettings } from "./ConnectionsSettings";
 import { ProvidersSettingsPanel } from "./ProvidersSettingsPanel";
 import { GeneralSettingsPanel } from "./SettingsPanels";
@@ -195,7 +195,7 @@ function createBaseServerConfig(): ServerConfig {
       sessionCookieName: "t3_session",
     },
     cwd: "/repo/project",
-    keybindingsConfigPath: "/repo/project/.s3code-keybindings.json",
+    keybindingsConfigPath: "/repo/project/.ryco-keybindings.json",
     keybindings: [],
     issues: [],
     providers: [],
@@ -1075,7 +1075,7 @@ describe("GeneralSettingsPanel observability", () => {
     await networkAccessToggle.click();
     await expect.element(page.getByText("Enable network access?")).toBeInTheDocument();
     await expect
-      .element(page.getByText("S3Code will restart to expose this environment over the network."))
+      .element(page.getByText("Ryco will restart to expose this environment over the network."))
       .toBeInTheDocument();
     await page.getByRole("button", { name: "Restart and enable", exact: true }).click();
     await vi.waitFor(() => {

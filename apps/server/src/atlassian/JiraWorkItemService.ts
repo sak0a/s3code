@@ -12,7 +12,7 @@ import {
   WORK_ITEM_DETAIL_BODY_MAX_BYTES,
   WORK_ITEM_DETAIL_COMMENT_BODY_MAX_BYTES,
   WORK_ITEM_DETAIL_MAX_COMMENTS,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Context, DateTime, Effect, Layer, Option, Schema } from "effect";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
 

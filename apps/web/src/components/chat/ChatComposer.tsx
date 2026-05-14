@@ -15,14 +15,14 @@ import type {
   SourceControlIssueSummary,
   ThreadId,
   TurnId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   ProviderDriverKind,
   ProviderInstanceId,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
-} from "@s3tools/contracts";
-import { createModelSelection, normalizeModelSlug } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { createModelSelection, normalizeModelSlug } from "@ryco/shared/model";
 import {
   forwardRef,
   memo,
@@ -122,7 +122,7 @@ import {
   type ProviderInstanceEntry,
 } from "../../providerInstances";
 import { type AppModelOption, getAppModelOptionsForInstance } from "../../modelSelection";
-import type { UnifiedSettings } from "@s3tools/contracts/settings";
+import type { UnifiedSettings } from "@ryco/contracts/settings";
 import type { SessionPhase, Thread } from "../../types";
 import type { PendingUserInputDraftAnswer } from "../../pendingUserInput";
 import type { PendingApproval, PendingUserInput } from "../../session-logic";
@@ -167,7 +167,7 @@ const tokenModeConfig: Record<
   off: {
     label: "Off",
     triggerLabel: "Tokens off",
-    description: "Do not add S3Code token-efficiency instructions.",
+    description: "Do not add Ryco token-efficiency instructions.",
     icon: CircleOffIcon,
   },
   balanced: {

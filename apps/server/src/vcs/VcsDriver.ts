@@ -7,7 +7,7 @@ import type {
   VcsListRemotesResult,
   VcsListWorkspaceFilesResult,
   VcsRepositoryIdentity,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import * as VcsProcess from "./VcsProcess.ts";
 
 export interface VcsDriverShape {

@@ -3,7 +3,7 @@ import {
   type AgentTokenMode,
   type ProviderInteractionMode,
   type RuntimeMode,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { memo, type ReactNode } from "react";
 import { EllipsisIcon, ListTodoIcon } from "lucide-react";
 import { cn } from "~/lib/utils";

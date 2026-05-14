@@ -1,5 +1,5 @@
-import { type ServerLifecycleWelcomePayload } from "@s3tools/contracts";
-import { scopedProjectKey, scopeProjectRef } from "@s3tools/client-runtime";
+import { type ServerLifecycleWelcomePayload } from "@ryco/contracts";
+import { scopedProjectKey, scopeProjectRef } from "@ryco/client-runtime";
 import {
   Outlet,
   createRootRouteWithContext,

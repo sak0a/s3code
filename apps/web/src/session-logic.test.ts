@@ -4,7 +4,7 @@ import {
   ThreadId,
   TurnId,
   type OrchestrationThreadActivity,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { describe, expect, it } from "vitest";
 
 import {

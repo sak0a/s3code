@@ -10,7 +10,7 @@ import {
   Option,
 } from "effect";
 
-import type { VcsDriverKind } from "@s3tools/contracts";
+import type { VcsDriverKind } from "@ryco/contracts";
 import * as VcsDriver from "../VcsDriver.ts";
 
 export interface VcsDriverFixture<R, E> {

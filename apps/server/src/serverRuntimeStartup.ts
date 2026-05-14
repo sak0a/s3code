@@ -6,7 +6,7 @@ import {
   ProjectId,
   ProviderInstanceId,
   ThreadId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   Data,
   Deferred,
@@ -451,7 +451,7 @@ export const makeServerRuntimeStartup = Effect.gen(function* () {
         yield* Effect.logDebug("startup phase: browser open check");
         const startupBrowserTarget = yield* resolveStartupBrowserTarget;
         if (serverConfig.mode !== "desktop") {
-          yield* Effect.logInfo("Authentication required. Open S3Code using the pairing URL.").pipe(
+          yield* Effect.logInfo("Authentication required. Open Ryco using the pairing URL.").pipe(
             Effect.annotateLogs({ pairingUrl: startupBrowserTarget }),
           );
         }

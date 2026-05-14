@@ -16,7 +16,7 @@ import {
   type ScopedThreadRef,
   ThreadId,
   type ComposerSourceControlContext,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   parseScopedProjectKey,
   parseScopedThreadKey,
@@ -24,11 +24,11 @@ import {
   scopeProjectRef,
   scopedThreadKey,
   scopeThreadRef,
-} from "@s3tools/client-runtime";
+} from "@ryco/client-runtime";
 import * as Schema from "effect/Schema";
 import * as Equal from "effect/Equal";
 import { DeepMutable } from "effect/Types";
-import { createModelSelection, normalizeModelSlug } from "@s3tools/shared/model";
+import { createModelSelection, normalizeModelSlug } from "@ryco/shared/model";
 import { useMemo } from "react";
 import { getLocalStorageItem } from "./hooks/useLocalStorage";
 import { resolveAppModelSelection, resolveAppModelSelectionForInstance } from "./modelSelection";
@@ -48,9 +48,9 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { createDebouncedStorage, createMemoryStorage } from "./lib/storage";
 import { getDefaultServerModel } from "./providerModels";
-import { UnifiedSettings } from "@s3tools/contracts/settings";
+import { UnifiedSettings } from "@ryco/contracts/settings";
 
-export const COMPOSER_DRAFT_STORAGE_KEY = "s3code:composer-drafts:v1";
+export const COMPOSER_DRAFT_STORAGE_KEY = "ryco:composer-drafts:v1";
 const COMPOSER_DRAFT_STORAGE_VERSION = 7;
 const DraftThreadEnvModeSchema = Schema.Literals(["local", "worktree"]);
 const isRuntimeMode = Schema.is(RuntimeMode);

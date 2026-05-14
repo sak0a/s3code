@@ -3,7 +3,7 @@ import type {
   GitResolvePullRequestResult,
   ProjectId,
   ThreadId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

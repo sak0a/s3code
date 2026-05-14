@@ -3,7 +3,7 @@ import type {
   SourceControlChangeRequestCommit,
   SourceControlChangeRequestDetail,
   SourceControlChangeRequestFile,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { DateTime, Option } from "effect";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";

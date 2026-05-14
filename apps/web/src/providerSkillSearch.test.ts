@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ServerProviderSkill } from "@s3tools/contracts";
+import type { ServerProviderSkill } from "@ryco/contracts";
 
 import { searchProviderSkills } from "./providerSkillSearch";
 

@@ -7,8 +7,8 @@ import {
   TextGenerationError,
   type CopilotSettings,
   type ModelSelection,
-} from "@s3tools/contracts";
-import { getModelSelectionStringOptionValue } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { getModelSelectionStringOptionValue } from "@ryco/shared/model";
 import { CopilotClient, type CopilotClientOptions, type SessionConfig } from "@github/copilot-sdk";
 import { Effect, Schema } from "effect";
 

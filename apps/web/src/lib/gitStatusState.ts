@@ -3,7 +3,7 @@ import {
   type EnvironmentId,
   type GitManagerServiceError,
   type VcsStatusResult,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Cause } from "effect";
 import { Atom } from "effect/unstable/reactivity";
 import { useEffect } from "react";

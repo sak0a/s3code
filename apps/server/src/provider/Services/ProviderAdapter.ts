@@ -19,7 +19,7 @@ import type {
   ThreadId,
   ProviderTurnStartResult,
   TurnId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import type { Effect } from "effect";
 import type { Stream } from "effect";
 

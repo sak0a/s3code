@@ -1,5 +1,5 @@
-import { scopeThreadRef } from "@s3tools/client-runtime";
-import { ThreadId } from "@s3tools/contracts";
+import { scopeThreadRef } from "@ryco/client-runtime";
+import { ThreadId } from "@ryco/contracts";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";

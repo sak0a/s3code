@@ -19,11 +19,11 @@ import type {
   ScopedProjectRef,
   ScopedThreadRef,
   WorktreeId,
-} from "@s3tools/contracts";
-import { isProviderDriverKind, ProviderDriverKind } from "@s3tools/contracts";
-import type { ThreadId, TurnId } from "@s3tools/contracts";
+} from "@ryco/contracts";
+import { isProviderDriverKind, ProviderDriverKind } from "@ryco/contracts";
+import type { ThreadId, TurnId } from "@ryco/contracts";
 import { Schema } from "effect";
-import { resolveModelSlugForProvider } from "@s3tools/shared/model";
+import { resolveModelSlugForProvider } from "@ryco/shared/model";
 import { create } from "zustand";
 import {
   type ChatMessage,

@@ -32,7 +32,7 @@ import {
   WorktreeId,
   WS_METHODS,
   WsRpcGroup,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { clamp } from "effect/Number";
 import { HttpRouter, HttpServerRequest } from "effect/unstable/http";
 import { RpcSerialization, RpcServer } from "effect/unstable/rpc";

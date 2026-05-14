@@ -1,5 +1,5 @@
 {
-  "name": "S3Code Dev",
+  "name": "Ryco Dev",
   "image": "debian:bookworm",
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},

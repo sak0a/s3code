@@ -2,7 +2,7 @@ import {
   defaultInstanceIdForDriver,
   ProviderDriverKind,
   type ServerProvider,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { it, assert, vi } from "@effect/vitest";
 
 import { Effect, Layer, PubSub, Stream } from "effect";

@@ -8,7 +8,7 @@ bun run dev
 bun run dev:desktop
 
 # Desktop development on an isolated port set
-S3CODE_DEV_INSTANCE=feature-xyz bun run dev:desktop
+RYCO_DEV_INSTANCE=feature-xyz bun run dev:desktop
 
 # Production
 bun run build
@@ -18,5 +18,5 @@ bun run start
 bun run dist:desktop:dmg
 
 # Or from any project directory after publishing:
-npx sakacode
+npx ryco
 ```

@@ -9,7 +9,7 @@ import {
   type ServerConfig,
   type TerminalEvent,
   ThreadId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { type QueryClient } from "@tanstack/react-query";
 import { Throttler } from "@tanstack/react-pacer";
 import {
@@ -18,7 +18,7 @@ import {
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@s3tools/client-runtime";
+} from "@ryco/client-runtime";
 
 import {
   markPromotedDraftThreadByRef,

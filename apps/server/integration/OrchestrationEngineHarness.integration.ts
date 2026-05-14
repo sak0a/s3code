@@ -7,7 +7,7 @@ import {
   ProviderDriverKind,
   type OrchestrationEvent,
   type OrchestrationThread,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   Effect,
   Exit,

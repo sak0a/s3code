@@ -1,6 +1,6 @@
 import { assert, it } from "@effect/vitest";
 import { DateTime, Effect, Layer, Option } from "effect";
-import { SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES } from "@s3tools/contracts";
+import { SOURCE_CONTROL_DETAIL_BODY_MAX_BYTES } from "@ryco/contracts";
 
 import * as GitLabCli from "./GitLabCli.ts";
 import * as GitLabSourceControlProvider from "./GitLabSourceControlProvider.ts";
@@ -18,12 +18,12 @@ it.effect("maps GitLab MR summaries into provider-neutral change requests", () =
         Effect.succeed({
           number: 42,
           title: "Add GitLab provider",
-          url: "https://gitlab.com/pingdotgg/s3code/-/merge_requests/42",
+          url: "https://gitlab.com/pingdotgg/ryco/-/merge_requests/42",
           baseRefName: "main",
           headRefName: "feature/source-control",
           state: "open",
           isCrossRepository: true,
-          headRepositoryNameWithOwner: "fork/s3code",
+          headRepositoryNameWithOwner: "fork/ryco",
           headRepositoryOwnerLogin: "fork",
         }),
     });
@@ -37,13 +37,13 @@ it.effect("maps GitLab MR summaries into provider-neutral change requests", () =
       provider: "gitlab",
       number: 42,
       title: "Add GitLab provider",
-      url: "https://gitlab.com/pingdotgg/s3code/-/merge_requests/42",
+      url: "https://gitlab.com/pingdotgg/ryco/-/merge_requests/42",
       baseRefName: "main",
       headRefName: "feature/source-control",
       state: "open",
       updatedAt: Option.none(),
       isCrossRepository: true,
-      headRepositoryNameWithOwner: "fork/s3code",
+      headRepositoryNameWithOwner: "fork/ryco",
       headRepositoryOwnerLogin: "fork",
     });
   }),

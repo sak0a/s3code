@@ -5,7 +5,7 @@ import {
   DEFAULT_PROJECT_METADATA_DIR,
   type OrchestrationEvent,
   ThreadId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect, FileSystem, Layer, Option, Path, Stream } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 

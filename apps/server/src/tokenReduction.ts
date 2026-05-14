@@ -1,4 +1,4 @@
-import type { AgentTokenMode } from "@s3tools/contracts";
+import type { AgentTokenMode } from "@ryco/contracts";
 
 import { runProcess } from "./processRunner.ts";
 

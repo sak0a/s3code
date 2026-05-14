@@ -1,14 +1,14 @@
 import { Debouncer } from "@tanstack/react-pacer";
 import { create } from "zustand";
 
-export const PERSISTED_STATE_KEY = "s3code:ui-state:v1";
+export const PERSISTED_STATE_KEY = "ryco:ui-state:v1";
 const LEGACY_PERSISTED_STATE_KEYS = [
-  "s3code:renderer-state:v8",
-  "s3code:renderer-state:v7",
-  "s3code:renderer-state:v6",
-  "s3code:renderer-state:v5",
-  "s3code:renderer-state:v4",
-  "s3code:renderer-state:v3",
+  "ryco:renderer-state:v8",
+  "ryco:renderer-state:v7",
+  "ryco:renderer-state:v6",
+  "ryco:renderer-state:v5",
+  "ryco:renderer-state:v4",
+  "ryco:renderer-state:v3",
   "codething:renderer-state:v4",
   "codething:renderer-state:v3",
   "codething:renderer-state:v2",

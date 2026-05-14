@@ -3,7 +3,7 @@ import {
   type MessageId,
   type ServerProviderSkill,
   type TurnId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   createContext,
   memo,
@@ -59,7 +59,7 @@ import {
 } from "~/lib/terminalContext";
 import { cn } from "~/lib/utils";
 import { useUiStateStore } from "~/uiStateStore";
-import { type TimestampFormat } from "@s3tools/contracts/settings";
+import { type TimestampFormat } from "@ryco/contracts/settings";
 import { formatTimestamp } from "../../timestampFormat";
 import { usePerfMark } from "../../perf/tabSwitchInstrumentation";
 

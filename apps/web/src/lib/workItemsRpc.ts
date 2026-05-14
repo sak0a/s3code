@@ -1,4 +1,4 @@
-import type { EnvironmentId, ProjectId, WorkItemStateFilter } from "@s3tools/contracts";
+import type { EnvironmentId, ProjectId, WorkItemStateFilter } from "@ryco/contracts";
 import { queryOptions } from "@tanstack/react-query";
 import { requireEnvironmentConnection } from "~/environments/runtime";
 

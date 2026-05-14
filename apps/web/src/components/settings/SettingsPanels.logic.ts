@@ -4,8 +4,8 @@ import type {
   ProviderInstanceId,
   ServerSettings,
   UnifiedSettings,
-} from "@s3tools/contracts";
-import { DEFAULT_UNIFIED_SETTINGS } from "@s3tools/contracts/settings";
+} from "@ryco/contracts";
+import { DEFAULT_UNIFIED_SETTINGS } from "@ryco/contracts/settings";
 
 export function buildProviderInstanceUpdatePatch(input: {
   readonly settings: Pick<ServerSettings, "providers" | "providerInstances">;

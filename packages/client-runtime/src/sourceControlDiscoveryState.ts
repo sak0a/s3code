@@ -1,4 +1,4 @@
-import type { SourceControlDiscoveryResult } from "@s3tools/contracts";
+import type { SourceControlDiscoveryResult } from "@ryco/contracts";
 import { Atom, type AtomRegistry } from "effect/unstable/reactivity";
 
 /* --- Types ---------------------------------------------------------- */

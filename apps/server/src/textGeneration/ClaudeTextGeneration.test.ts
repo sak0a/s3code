@@ -1,8 +1,8 @@
-import { ClaudeSettings, ProviderInstanceId } from "@s3tools/contracts";
+import { ClaudeSettings, ProviderInstanceId } from "@ryco/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Path, Schema } from "effect";
-import { createModelSelection } from "@s3tools/shared/model";
+import { createModelSelection } from "@ryco/shared/model";
 import { expect } from "vitest";
 
 import { ServerConfig } from "../config.ts";
@@ -11,7 +11,7 @@ import { sanitizeThreadTitle } from "./TextGenerationUtils.ts";
 import { makeClaudeTextGeneration } from "./ClaudeTextGeneration.ts";
 
 const ClaudeTextGenerationTestLayer = ServerConfig.layerTest(process.cwd(), {
-  prefix: "s3code-claude-text-generation-test-",
+  prefix: "ryco-claude-text-generation-test-",
 }).pipe(Layer.provideMerge(NodeServices.layer));
 
 function makeFakeClaudeBinary(dir: string) {
@@ -78,7 +78,7 @@ function withFakeClaudeEnv<A, E, R>(
 ) {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
-    const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "s3code-claude-text-" });
+    const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "ryco-claude-text-" });
     const binDir = yield* makeFakeClaudeBinary(tempDir);
     const previousPath = process.env.PATH;
     const previousOutput = process.env.S3_FAKE_CLAUDE_OUTPUT;

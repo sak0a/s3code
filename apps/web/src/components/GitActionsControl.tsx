@@ -1,4 +1,4 @@
-import { type ScopedThreadRef } from "@s3tools/contracts";
+import { type ScopedThreadRef } from "@ryco/contracts";
 import type {
   GitActionProgressEvent,
   GitRunStackedActionResult,
@@ -9,7 +9,7 @@ import type {
   SourceControlPublishRepositoryResult,
   SourceControlRepositoryVisibility,
   VcsStatusResult,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { useIsMutating, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Option } from "effect";
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";

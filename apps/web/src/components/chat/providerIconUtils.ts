@@ -1,4 +1,4 @@
-import { ProviderDriverKind } from "@s3tools/contracts";
+import { ProviderDriverKind } from "@ryco/contracts";
 import { ClaudeAI, CursorIcon, GithubCopilotIcon, Icon, OpenAI, OpenCodeIcon } from "../Icons";
 import { PROVIDER_OPTIONS } from "../../session-logic";
 

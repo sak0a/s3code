@@ -15,7 +15,7 @@ import {
   ProjectId,
   ThreadId,
   WorktreeId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Option, Schema, Context } from "effect";
 import type { Effect } from "effect";
 

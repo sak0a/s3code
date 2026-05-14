@@ -1,10 +1,10 @@
 import { Effect, Option, Ref, Schema } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 
-import { type CursorSettings, type ModelSelection } from "@s3tools/contracts";
-import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@s3tools/shared/git";
+import { type CursorSettings, type ModelSelection } from "@ryco/contracts";
+import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@ryco/shared/git";
 
-import { TextGenerationError } from "@s3tools/contracts";
+import { TextGenerationError } from "@ryco/contracts";
 import { type ThreadTitleGenerationResult, type TextGenerationShape } from "./TextGeneration.ts";
 import {
   buildBranchNamePrompt,
@@ -84,7 +84,7 @@ export const makeCursorTextGeneration = Effect.fn("makeCursorTextGeneration")(fu
         environment,
         childProcessSpawner: commandSpawner,
         cwd,
-        clientInfo: { name: "s3-code-git-text", version: "0.0.0" },
+        clientInfo: { name: "ryco-git-text", version: "0.0.0" },
       });
 
       yield* runtime.handleSessionUpdate((notification) => {

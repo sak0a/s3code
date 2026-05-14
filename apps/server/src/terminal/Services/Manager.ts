@@ -21,7 +21,7 @@ import {
   TerminalSessionLookupError,
   TerminalSessionStatus,
   TerminalWriteInput,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import type { PtyProcess } from "./PTY.ts";
 import { Effect, Context } from "effect";
 

@@ -11,7 +11,7 @@ import {
   ThreadId,
   TurnId,
   ProviderDriverKind,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Effect, Queue, Stream } from "effect";
 
 import {

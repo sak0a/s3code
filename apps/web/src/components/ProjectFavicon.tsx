@@ -1,4 +1,4 @@
-import type { EnvironmentId, ProjectId } from "@s3tools/contracts";
+import type { EnvironmentId, ProjectId } from "@ryco/contracts";
 import { FolderIcon } from "lucide-react";
 import { useState } from "react";
 import { resolveEnvironmentHttpUrl } from "../environments/runtime";

@@ -5,7 +5,7 @@ import {
   CursorSettings,
   OpenCodeSettings,
   ProviderDriverKind,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import type { Schema } from "effect";
 import { ClaudeAI, CursorIcon, GithubCopilotIcon, type Icon, OpenAI, OpenCodeIcon } from "../Icons";
 

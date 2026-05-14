@@ -1,6 +1,6 @@
 import { Context, Effect, Layer } from "effect";
-import type { ChatAttachment, ModelSelection, ProviderInstanceId } from "@s3tools/contracts";
-import { TextGenerationError } from "@s3tools/contracts";
+import type { ChatAttachment, ModelSelection, ProviderInstanceId } from "@ryco/contracts";
+import { TextGenerationError } from "@ryco/contracts";
 
 import {
   ProviderInstanceRegistry,

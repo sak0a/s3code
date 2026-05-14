@@ -71,7 +71,7 @@ describe("SourceControlChangeRequestDetail", () => {
       provider: "bitbucket",
       number: 42,
       title: "PROJ-123 add Atlassian workflow",
-      url: "https://bitbucket.org/acme/s3code/pull-requests/42",
+      url: "https://bitbucket.org/acme/ryco/pull-requests/42",
       baseRefName: "main",
       headRefName: "feature/proj-123",
       state: "open",

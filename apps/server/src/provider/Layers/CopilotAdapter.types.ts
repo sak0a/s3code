@@ -13,8 +13,8 @@ import {
   type ProviderSession,
   type ProviderSendTurnInput,
   type ThreadTokenUsageSnapshot,
-} from "@s3tools/contracts";
-import { resolveCommandPath } from "@s3tools/shared/shell";
+} from "@ryco/contracts";
+import { resolveCommandPath } from "@ryco/shared/shell";
 import type {
   CopilotClient,
   CopilotClientOptions,

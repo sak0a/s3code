@@ -6,7 +6,7 @@
 
 ## Goal
 
-Make Atlassian workflows feel first-class in S3Code:
+Make Atlassian workflows feel first-class in Ryco:
 
 1. Bitbucket Cloud should be as easy to connect and use as GitHub/GitLab, without requiring users to manually set environment variables and restart the server.
 2. Bitbucket pull requests should render rich review context: details, comments, commits, reviewers, changed files, diffstat, linked Jira keys, and checkout actions.
@@ -28,7 +28,7 @@ Git action -> Create PR with Jira key, linked issue, and optional Jira transitio
 - Bitbucket Server/Data Center support. v1 is Bitbucket Cloud only.
 - Jira Data Center support. v1 is Jira Cloud only.
 - Creating or editing Jira issues in v1. v1 can read, comment, and transition existing issues.
-- Full Atlassian Marketplace app packaging. This is an S3Code server-side integration, not a Marketplace distribution.
+- Full Atlassian Marketplace app packaging. This is an Ryco server-side integration, not a Marketplace distribution.
 - Replacing Git. Local operations remain Git-backed through the existing VCS layer.
 - Replacing existing GitHub/GitLab/Azure source-control providers.
 
@@ -36,10 +36,10 @@ Git action -> Create PR with Jira key, linked issue, and optional Jira transitio
 
 Bitbucket currently exists as a server-side REST implementation:
 
-- `BitbucketApi.ts` reads `S3CODE_BITBUCKET_ACCESS_TOKEN` or `S3CODE_BITBUCKET_EMAIL` + `S3CODE_BITBUCKET_API_TOKEN`.
+- `BitbucketApi.ts` reads `RYCO_BITBUCKET_ACCESS_TOKEN` or `RYCO_BITBUCKET_EMAIL` + `RYCO_BITBUCKET_API_TOKEN`.
 - `BitbucketSourceControlProvider.ts` maps REST results into the shared `SourceControlProvider` interface.
 - `SourceControlProviderRegistry.ts` registers Bitbucket lazily beside GitHub, GitLab, and Azure DevOps.
-- `docs/source-control-providers.md` tells users to create a Bitbucket API token, set env vars, restart S3Code, then rescan.
+- `docs/source-control-providers.md` tells users to create a Bitbucket API token, set env vars, restart Ryco, then rescan.
 
 Supported today:
 
@@ -62,7 +62,7 @@ Important gaps:
 
 ## Design Principles
 
-1. **Atlassian account first, product capabilities second.** Users connect Atlassian once, then S3Code discovers available Jira sites and Bitbucket workspaces.
+1. **Atlassian account first, product capabilities second.** Users connect Atlassian once, then Ryco discovers available Jira sites and Bitbucket workspaces.
 2. **Provider-neutral contracts stay useful.** Bitbucket PRs should populate existing `SourceControlChangeRequestDetail` fields before introducing provider-specific UI.
 3. **Jira is not Bitbucket issues.** Jira becomes a separate work-item provider. Bitbucket's repository issue tracker remains supported but is not the main Atlassian issue workflow.
 4. **No secrets in browser state.** Web UI receives redacted connection status only. Tokens live server-side in `ServerSecretStore`.
@@ -109,7 +109,7 @@ apps/server
 Use two paths:
 
 1. **Preferred:** Atlassian OAuth 2.0 3LO for Jira Cloud, with token refresh and accessible-resource discovery.
-2. **Fallback:** Bitbucket Cloud app password/API token stored through S3Code Settings for users who cannot use OAuth.
+2. **Fallback:** Bitbucket Cloud app password/API token stored through Ryco Settings for users who cannot use OAuth.
 
 Bitbucket Cloud and Jira Cloud have historically had different auth surfaces. The implementation should avoid assuming one token always covers both products. The abstraction is:
 
@@ -201,11 +201,11 @@ Represents Jira sites and Bitbucket workspaces discovered for a connection.
 
 ### `project_atlassian_links`
 
-Maps S3Code projects to Jira project keys and Bitbucket repository identity.
+Maps Ryco projects to Jira project keys and Bitbucket repository identity.
 
 | column                      | type      | notes                      |
 | --------------------------- | --------- | -------------------------- |
-| `project_id`                | TEXT      | S3Code project id          |
+| `project_id`                | TEXT      | Ryco project id            |
 | `connection_id`             | TEXT      | Atlassian connection       |
 | `jira_cloud_id`             | TEXT NULL | selected Jira site         |
 | `jira_project_keys_json`    | TEXT      | e.g. `["S3", "WEB"]`       |
@@ -463,7 +463,7 @@ When current branch contains a Jira key or a Jira work item is attached:
 
 - PR title template defaults to `{key}: {generatedTitle}` or `{key}: {summary}`.
 - PR body includes a `Jira: PROJ-123` line.
-- After creation, S3Code optionally posts a Jira comment with the Bitbucket PR link.
+- After creation, Ryco optionally posts a Jira comment with the Bitbucket PR link.
 - Optional transition to configured review state.
 
 ### Work item transitions

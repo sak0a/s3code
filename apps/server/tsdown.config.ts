@@ -9,7 +9,7 @@ export default defineConfig({
   outDir: "dist",
   sourcemap: true,
   clean: true,
-  noExternal: (id) => id.startsWith("@s3tools/") || id.startsWith("effect-acp"),
+  noExternal: (id) => id.startsWith("@ryco/") || id.startsWith("effect-acp"),
   inlineOnly: false,
   banner: {
     js: "#!/usr/bin/env node\n",

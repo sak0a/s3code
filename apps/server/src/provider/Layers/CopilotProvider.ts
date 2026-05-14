@@ -1,8 +1,8 @@
-import type { CopilotSettings, ModelCapabilities, ServerProviderModel } from "@s3tools/contracts";
-import { ProviderDriverKind } from "@s3tools/contracts";
+import type { CopilotSettings, ModelCapabilities, ServerProviderModel } from "@ryco/contracts";
+import { ProviderDriverKind } from "@ryco/contracts";
 import { CopilotClient, type ModelInfo } from "@github/copilot-sdk";
 import { Effect, Result } from "effect";
-import { createModelCapabilities } from "@s3tools/shared/model";
+import { createModelCapabilities } from "@ryco/shared/model";
 
 import {
   buildSelectOptionDescriptor,
@@ -171,7 +171,7 @@ export function makePendingCopilotProvider(settings: CopilotSettings): ServerPro
         version: null,
         status: "warning",
         auth: { status: "unknown" },
-        message: "GitHub Copilot is disabled in S3Code settings.",
+        message: "GitHub Copilot is disabled in Ryco settings.",
       },
     });
   }

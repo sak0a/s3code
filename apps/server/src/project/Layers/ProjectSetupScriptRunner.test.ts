@@ -1,4 +1,4 @@
-import { ProjectId, type OrchestrationProject } from "@s3tools/contracts";
+import { ProjectId, type OrchestrationProject } from "@ryco/contracts";
 import { Effect, Layer, Option } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
@@ -143,8 +143,8 @@ describe("ProjectSetupScriptRunner", () => {
       cwd: "/repo/worktrees/a",
       worktreePath: "/repo/worktrees/a",
       env: {
-        S3CODE_PROJECT_ROOT: "/repo/project",
-        S3CODE_WORKTREE_PATH: "/repo/worktrees/a",
+        RYCO_PROJECT_ROOT: "/repo/project",
+        RYCO_WORKTREE_PATH: "/repo/worktrees/a",
       },
     });
     expect(write).toHaveBeenCalledWith({

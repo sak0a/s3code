@@ -298,7 +298,7 @@ existing `TraitsMenuContent` menu positioning.
 ## Migration / cleanup
 
 - Existing users land on `"icon-dots"` (the default). No migration needed.
-- Old persisted `s3code:ui-state:v1` blobs without the new field hydrate to
+- Old persisted `ryco:ui-state:v1` blobs without the new field hydrate to
   default — already handled by the `?? initialState.x` fallback pattern in
   `readPersistedState`.
 - No bump to the `PERSISTED_STATE_KEY` version is required (additive field).

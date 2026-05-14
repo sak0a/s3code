@@ -1,4 +1,4 @@
-import type { ComposerSourceControlContext } from "@s3tools/contracts";
+import type { ComposerSourceControlContext } from "@ryco/contracts";
 import { CircleDotIcon, GitBranchIcon, XIcon } from "lucide-react";
 import { cn } from "~/lib/utils";
 import {

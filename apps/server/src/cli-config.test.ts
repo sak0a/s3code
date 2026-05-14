@@ -3,7 +3,7 @@ import os from "node:os";
 import { assert, expect, it } from "@effect/vitest";
 import { ConfigProvider, Effect, FileSystem, Layer, Option, Path } from "effect";
 
-import { NetService } from "@s3tools/shared/Net";
+import { NetService } from "@ryco/shared/Net";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { deriveServerPaths } from "./config.ts";
 import { resolveServerConfig } from "./cli.ts";
@@ -56,15 +56,15 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
             ConfigProvider.layer(
               ConfigProvider.fromEnv({
                 env: {
-                  S3CODE_LOG_LEVEL: "Warn",
-                  S3CODE_MODE: "desktop",
-                  S3CODE_PORT: "4001",
-                  S3CODE_HOST: "0.0.0.0",
-                  S3CODE_HOME: baseDir,
+                  RYCO_LOG_LEVEL: "Warn",
+                  RYCO_MODE: "desktop",
+                  RYCO_PORT: "4001",
+                  RYCO_HOST: "0.0.0.0",
+                  RYCO_HOME: baseDir,
                   VITE_DEV_SERVER_URL: "http://127.0.0.1:5173",
-                  S3CODE_NO_BROWSER: "true",
-                  S3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "false",
-                  S3CODE_LOG_WS_EVENTS: "true",
+                  RYCO_NO_BROWSER: "true",
+                  RYCO_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "false",
+                  RYCO_LOG_WS_EVENTS: "true",
                 },
               }),
             ),
@@ -122,15 +122,15 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
             ConfigProvider.layer(
               ConfigProvider.fromEnv({
                 env: {
-                  S3CODE_LOG_LEVEL: "Warn",
-                  S3CODE_MODE: "desktop",
-                  S3CODE_PORT: "4001",
-                  S3CODE_HOST: "0.0.0.0",
-                  S3CODE_HOME: join(os.tmpdir(), "ignored-base"),
+                  RYCO_LOG_LEVEL: "Warn",
+                  RYCO_MODE: "desktop",
+                  RYCO_PORT: "4001",
+                  RYCO_HOST: "0.0.0.0",
+                  RYCO_HOME: join(os.tmpdir(), "ignored-base"),
                   VITE_DEV_SERVER_URL: "http://127.0.0.1:5173",
-                  S3CODE_NO_BROWSER: "false",
-                  S3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "false",
-                  S3CODE_LOG_WS_EVENTS: "false",
+                  RYCO_NO_BROWSER: "false",
+                  RYCO_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "false",
+                  RYCO_LOG_WS_EVENTS: "false",
                 },
               }),
             ),
@@ -196,10 +196,10 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
             ConfigProvider.layer(
               ConfigProvider.fromEnv({
                 env: {
-                  S3CODE_BOOTSTRAP_FD: String(fd),
-                  S3CODE_NO_BROWSER: "true",
-                  S3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "true",
-                  S3CODE_LOG_WS_EVENTS: "true",
+                  RYCO_BOOTSTRAP_FD: String(fd),
+                  RYCO_NO_BROWSER: "true",
+                  RYCO_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "true",
+                  RYCO_LOG_WS_EVENTS: "true",
                 },
               }),
             ),
@@ -272,7 +272,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
             ConfigProvider.layer(
               ConfigProvider.fromEnv({
                 env: {
-                  S3CODE_BOOTSTRAP_FD: String(fd),
+                  RYCO_BOOTSTRAP_FD: String(fd),
                 },
               }),
             ),
@@ -395,12 +395,12 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
             ConfigProvider.layer(
               ConfigProvider.fromEnv({
                 env: {
-                  S3CODE_MODE: "web",
-                  S3CODE_BOOTSTRAP_FD: String(fd),
-                  S3CODE_HOME: baseDir,
-                  S3CODE_NO_BROWSER: "true",
-                  S3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "true",
-                  S3CODE_LOG_WS_EVENTS: "true",
+                  RYCO_MODE: "web",
+                  RYCO_BOOTSTRAP_FD: String(fd),
+                  RYCO_HOME: baseDir,
+                  RYCO_NO_BROWSER: "true",
+                  RYCO_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "true",
+                  RYCO_LOG_WS_EVENTS: "true",
                 },
               }),
             ),
@@ -530,8 +530,8 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
             ConfigProvider.layer(
               ConfigProvider.fromEnv({
                 env: {
-                  S3CODE_NO_BROWSER: "false",
-                  S3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "true",
+                  RYCO_NO_BROWSER: "false",
+                  RYCO_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "true",
                 },
               }),
             ),

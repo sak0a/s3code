@@ -1,6 +1,6 @@
 # Architecture
 
-S3Code runs as a **Node.js WebSocket server** that wraps `codex app-server` (JSON-RPC over stdio) and serves a React web app.
+Ryco runs as a **Node.js WebSocket server** that wraps `codex app-server` (JSON-RPC over stdio) and serves a React web app.
 
 ```
 ┌─────────────────────────────────┐

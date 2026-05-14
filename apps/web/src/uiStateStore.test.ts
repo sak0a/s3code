@@ -1,4 +1,4 @@
-import { ProjectId, ThreadId } from "@s3tools/contracts";
+import { ProjectId, ThreadId } from "@ryco/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {

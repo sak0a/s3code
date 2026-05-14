@@ -27,7 +27,7 @@ import {
   ProviderDriverKind,
   type ProviderInstanceId,
   type ServerProvider,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Cause, Effect, Equal, FileSystem, Layer, Path, PubSub, Ref, Stream } from "effect";
 import * as Semaphore from "effect/Semaphore";
 

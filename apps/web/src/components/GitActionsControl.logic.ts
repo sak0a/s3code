@@ -1,9 +1,5 @@
-import type {
-  GitRunStackedActionResult,
-  GitStackedAction,
-  VcsStatusResult,
-} from "@s3tools/contracts";
-import { isTemporaryWorktreeBranch } from "@s3tools/shared/git";
+import type { GitRunStackedActionResult, GitStackedAction, VcsStatusResult } from "@ryco/contracts";
+import { isTemporaryWorktreeBranch } from "@ryco/shared/git";
 import {
   DEFAULT_CHANGE_REQUEST_TERMINOLOGY,
   getChangeRequestTerminology,
@@ -404,4 +400,4 @@ export function resolveLiveThreadBranchUpdate(input: {
 }
 
 // Re-export from shared for backwards compatibility in this module's exports
-export { resolveAutoFeatureBranchName } from "@s3tools/shared/git";
+export { resolveAutoFeatureBranchName } from "@ryco/shared/git";

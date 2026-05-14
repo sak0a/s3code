@@ -3,7 +3,7 @@ import { assert, it } from "@effect/vitest";
 import { Effect, FileSystem, Layer } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 
-import { GitCommandError, type SourceControlProviderError } from "@s3tools/contracts";
+import { GitCommandError, type SourceControlProviderError } from "@ryco/contracts";
 
 import { ServerConfig } from "../config.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
@@ -12,9 +12,9 @@ import * as SourceControlProviderRegistry from "./SourceControlProviderRegistry.
 import * as SourceControlRepositoryService from "./SourceControlRepositoryService.ts";
 
 const CLONE_URLS = {
-  nameWithOwner: "octocat/s3code",
-  url: "https://github.com/octocat/s3code",
-  sshUrl: "git@github.com:octocat/s3code.git",
+  nameWithOwner: "octocat/ryco",
+  url: "https://github.com/octocat/ryco",
+  sshUrl: "git@github.com:octocat/ryco.git",
 };
 
 function makeProvider(
@@ -99,12 +99,12 @@ it.effect("looks up repositories through the requested provider without search",
     const service = yield* SourceControlRepositoryService.SourceControlRepositoryService;
     const result = yield* service.lookupRepository({
       provider: "github",
-      repository: "octocat/s3code",
+      repository: "octocat/ryco",
       cwd: "/workspace",
     });
 
     assert.deepStrictEqual(result, { provider: "github", ...CLONE_URLS });
-    assert.deepStrictEqual(calls, [{ cwd: "/workspace", repository: "octocat/s3code" }]);
+    assert.deepStrictEqual(calls, [{ cwd: "/workspace", repository: "octocat/ryco" }]);
   }).pipe(Effect.provide(makeLayer({ provider })));
 });
 
@@ -114,14 +114,14 @@ it.effect("clones a looked-up repository into the requested destination", () =>
     const parent = yield* fs.makeTempDirectoryScoped({
       prefix: "s3-source-control-clone-parent-",
     });
-    const destinationPath = `${parent}/s3code`;
+    const destinationPath = `${parent}/ryco`;
     const cloneCalls: Array<{ cwd: string; args: ReadonlyArray<string> }> = [];
 
     yield* Effect.gen(function* () {
       const service = yield* SourceControlRepositoryService.SourceControlRepositoryService;
       const result = yield* service.cloneRepository({
         provider: "github",
-        repository: "octocat/s3code",
+        repository: "octocat/ryco",
         destinationPath,
         protocol: "https",
       });
@@ -134,7 +134,7 @@ it.effect("clones a looked-up repository into the requested destination", () =>
       assert.deepStrictEqual(cloneCalls, [
         {
           cwd: parent,
-          args: ["clone", CLONE_URLS.url, "s3code"],
+          args: ["clone", CLONE_URLS.url, "ryco"],
         },
       ]);
     }).pipe(
@@ -174,7 +174,7 @@ it.effect("publishes by creating the repository, adding a remote, and pushing up
     const result = yield* service.publishRepository({
       cwd: "/workspace",
       provider: "github",
-      repository: "octocat/s3code",
+      repository: "octocat/ryco",
       visibility: "private",
       remoteName: "origin",
       protocol: "ssh",
@@ -189,7 +189,7 @@ it.effect("publishes by creating the repository, adding a remote, and pushing up
       status: "pushed",
     });
     assert.deepStrictEqual(createCalls, [
-      { cwd: "/workspace", repository: "octocat/s3code", visibility: "private" },
+      { cwd: "/workspace", repository: "octocat/ryco", visibility: "private" },
     ]);
     assert.deepStrictEqual(remoteCalls, [
       { cwd: "/workspace", preferredName: "origin", url: CLONE_URLS.sshUrl },
@@ -229,7 +229,7 @@ it.effect("publishes to the remote name returned by ensureRemote", () => {
     const result = yield* service.publishRepository({
       cwd: "/workspace",
       provider: "github",
-      repository: "octocat/s3code",
+      repository: "octocat/ryco",
       visibility: "private",
       remoteName: "origin",
       protocol: "ssh",
@@ -265,7 +265,7 @@ it.effect("publish succeeds with status remote_added when the local repo has no 
     const result = yield* service.publishRepository({
       cwd: "/workspace",
       provider: "github",
-      repository: "octocat/s3code",
+      repository: "octocat/ryco",
       visibility: "private",
       remoteName: "origin",
       protocol: "ssh",

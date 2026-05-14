@@ -10,9 +10,9 @@ import {
 
 const KNOWN_TOKEN_NAMES = new Set<string>(THEME_TOKEN_NAMES);
 
-export const CUSTOM_THEMES_STORAGE_KEY = "s3code:custom-themes";
-export const ACTIVE_THEME_STORAGE_KEY = "s3code:active-theme";
-export const THEME_STYLE_ELEMENT_ID = "s3code-active-theme";
+export const CUSTOM_THEMES_STORAGE_KEY = "ryco:custom-themes";
+export const ACTIVE_THEME_STORAGE_KEY = "ryco:active-theme";
+export const THEME_STYLE_ELEMENT_ID = "ryco-active-theme";
 
 export { DEFAULT_THEME, DEFAULT_THEME_ID };
 

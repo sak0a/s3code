@@ -10,7 +10,7 @@ import {
   type ThreadId,
   type ToolLifecycleItemType,
   type TurnId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 import type { AcpPermissionRequest, AcpPlanUpdate, AcpToolCallState } from "./AcpRuntimeModel.ts";
 

@@ -23,7 +23,7 @@ import {
   type ProviderDriverKind,
   type ProviderRuntimeEvent,
   type ProviderSession,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Cause, Effect, Layer, Option, PubSub, Ref, Schema, SchemaIssue, Stream } from "effect";
 
 import {
@@ -525,7 +525,7 @@ const makeProviderService = Effect.fn("makeProviderService")(function* (
         if (!instanceInfo.enabled) {
           return yield* toValidationError(
             "ProviderService.startSession",
-            `Provider instance '${resolvedInstanceId}' is disabled in S3Code settings.`,
+            `Provider instance '${resolvedInstanceId}' is disabled in Ryco settings.`,
           );
         }
         const persistedBinding = Option.getOrUndefined(yield* directory.getBinding(threadId));

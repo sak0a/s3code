@@ -5,7 +5,7 @@ import {
   type AuthPairingCredentialResult,
   type AuthSessionState,
   type AuthWebSocketTokenResult,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { DateTime, Effect, Layer, Option } from "effect";
 import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest";
 

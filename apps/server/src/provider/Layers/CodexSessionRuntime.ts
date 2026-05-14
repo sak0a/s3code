@@ -16,8 +16,8 @@ import {
   RuntimeMode,
   ThreadId,
   TurnId,
-} from "@s3tools/contracts";
-import { normalizeModelSlug } from "@s3tools/shared/model";
+} from "@ryco/contracts";
+import { normalizeModelSlug } from "@ryco/shared/model";
 import { Deferred, Effect, Exit, Layer, Queue, Ref, Scope, Random, Schema, Stream } from "effect";
 import * as SchemaIssue from "effect/SchemaIssue";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";

@@ -9,7 +9,7 @@
 Restructure the left sidebar from today's flat `Project → Thread` into a hierarchical workspace explorer that mirrors how a developer actually thinks about their work: one project, many isolated worktrees, multiple chats per worktree grouped by status. Non-git projects keep a simpler flat shape with a clear path to upgrade.
 
 ```
-Project (s3code)
+Project (ryco)
 └── Worktree                ← "main" or any branch / PR / issue / manual worktree
     └── Status bucket       (auto-derived; collapsible; hidden when empty)
         └── Session         ← today's "thread"

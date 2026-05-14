@@ -14,7 +14,7 @@ import {
   ProviderInstanceId,
   ThreadId,
   TurnId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { Option, Schema, Context } from "effect";
 import type { Effect } from "effect";
 

@@ -1,6 +1,6 @@
 import { GitPullRequestIcon } from "lucide-react";
 import type { ElementType } from "react";
-import type { SourceControlProviderInfo } from "@s3tools/contracts";
+import type { SourceControlProviderInfo } from "@ryco/contracts";
 export {
   DEFAULT_CHANGE_REQUEST_TERMINOLOGY,
   formatChangeRequestAction,
@@ -9,12 +9,12 @@ export {
   resolveChangeRequestPresentation,
   type ChangeRequestPresentation,
   type ChangeRequestTerminology,
-} from "@s3tools/shared/sourceControl";
+} from "@ryco/shared/sourceControl";
 import {
   getChangeRequestTerminology,
   resolveChangeRequestPresentation,
   type ChangeRequestTerminology,
-} from "@s3tools/shared/sourceControl";
+} from "@ryco/shared/sourceControl";
 import {
   AzureDevOpsIcon,
   BitbucketIcon,

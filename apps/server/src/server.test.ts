@@ -25,7 +25,7 @@ import {
   WS_METHODS,
   WsRpcGroup,
   EditorId,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { assert, it } from "@effect/vitest";
 import { assertFailure, assertInclude, assertTrue } from "@effect/vitest/utils";
 import {
@@ -3426,16 +3426,16 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
   it.effect("enriches replayed project events with repository identity metadata", () =>
     Effect.gen(function* () {
       const repositoryIdentity = {
-        canonicalKey: "github.com/t3tools/s3code",
+        canonicalKey: "github.com/t3tools/ryco",
         locator: {
           source: "git-remote" as const,
           remoteName: "origin",
-          remoteUrl: "git@github.com:S3Tools/s3code.git",
+          remoteUrl: "git@github.com:Ryco/ryco.git",
         },
-        displayName: "S3Tools/s3code",
+        displayName: "Ryco/ryco",
         provider: "github",
-        owner: "S3Tools",
-        name: "s3code",
+        owner: "Ryco",
+        name: "ryco",
         remotes: [],
       };
 
@@ -3918,7 +3918,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
             isRepo: true,
             hasPrimaryRemote: true,
             isDefaultRef: false,
-            refName: "s3code/bootstrap-refName",
+            refName: "ryco/bootstrap-refName",
             hasWorkingTreeChanges: false,
             workingTree: {
               files: [],
@@ -3935,7 +3935,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
           (_: Parameters<GitVcsDriver.GitVcsDriverShape["createWorktree"]>[0]) =>
             Effect.succeed({
               worktree: {
-                refName: "s3code/bootstrap-refName",
+                refName: "ryco/bootstrap-refName",
                 path: "/tmp/bootstrap-worktree",
               },
             }),
@@ -4004,7 +4004,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
                 prepareWorktree: {
                   projectCwd: "/tmp/project",
                   baseBranch: "main",
-                  branch: "s3code/bootstrap-refName",
+                  branch: "ryco/bootstrap-refName",
                 },
                 runSetupScript: true,
               },
@@ -4027,11 +4027,11 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         const createdWorktreeInput = createWorktree.mock.calls[0]?.[0];
         assert.equal(createdWorktreeInput?.cwd, "/tmp/project");
         assert.equal(createdWorktreeInput?.refName, "main");
-        assert.equal(createdWorktreeInput?.newRefName, "s3code/bootstrap-refName");
+        assert.equal(createdWorktreeInput?.newRefName, "ryco/bootstrap-refName");
         assert.match(
           createdWorktreeInput?.path ?? "",
           new RegExp(
-            `^${config.worktreesDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/project-default/s3code-bootstrap-refname__[a-z]{5}$`,
+            `^${config.worktreesDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/project-default/ryco-bootstrap-refname__[a-z]{5}$`,
           ),
         );
         assert.deepEqual(runForThread.mock.calls[0]?.[0], {
@@ -4065,7 +4065,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         (_: Parameters<GitVcsDriver.GitVcsDriverShape["createWorktree"]>[0]) =>
           Effect.succeed({
             worktree: {
-              refName: "s3code/bootstrap-refName",
+              refName: "ryco/bootstrap-refName",
               path: "/tmp/bootstrap-worktree",
             },
           }),
@@ -4125,7 +4125,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
               prepareWorktree: {
                 projectCwd: "/tmp/project",
                 baseBranch: "main",
-                branch: "s3code/bootstrap-refName",
+                branch: "ryco/bootstrap-refName",
               },
               runSetupScript: true,
             },
@@ -4159,7 +4159,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         (_: Parameters<GitVcsDriver.GitVcsDriverShape["createWorktree"]>[0]) =>
           Effect.succeed({
             worktree: {
-              refName: "s3code/bootstrap-refName",
+              refName: "ryco/bootstrap-refName",
               path: "/tmp/bootstrap-worktree",
             },
           }),
@@ -4242,7 +4242,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
               prepareWorktree: {
                 projectCwd: "/tmp/project",
                 baseBranch: "main",
-                branch: "s3code/bootstrap-refName",
+                branch: "ryco/bootstrap-refName",
               },
               runSetupScript: true,
             },
@@ -4326,7 +4326,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
               prepareWorktree: {
                 projectCwd: "/tmp/project",
                 baseBranch: "main",
-                branch: "s3code/bootstrap-refName",
+                branch: "ryco/bootstrap-refName",
               },
               runSetupScript: false,
             },

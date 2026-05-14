@@ -3,7 +3,7 @@ import { Effect, Layer } from "effect";
 import os from "node:os";
 import path from "node:path";
 
-import { GitCommandError, GitManagerError } from "@s3tools/contracts";
+import { GitCommandError, GitManagerError } from "@ryco/contracts";
 import * as GitManager from "./GitManager.ts";
 import * as GitWorkflowService from "./GitWorkflowService.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";

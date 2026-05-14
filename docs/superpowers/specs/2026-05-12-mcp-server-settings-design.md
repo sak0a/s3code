@@ -5,13 +5,13 @@ Date: 2026-05-12
 
 ## Summary
 
-S3Code can add an MCP server settings panel without becoming its own MCP host. The best fit is to use Codex app-server as the source of truth for Codex MCP configuration and status, then expose a thin S3Code WebSocket API plus a React settings surface.
+Ryco can add an MCP server settings panel without becoming its own MCP host. The best fit is to use Codex app-server as the source of truth for Codex MCP configuration and status, then expose a thin Ryco WebSocket API plus a React settings surface.
 
-The initial scope should be Codex-only. S3Code currently brokers Codex through app-server, and the generated local app-server bindings already expose the needed MCP and config methods. Other provider drivers can be added later behind the same S3Code MCP contracts if they expose equivalent configuration and inventory surfaces.
+The initial scope should be Codex-only. Ryco currently brokers Codex through app-server, and the generated local app-server bindings already expose the needed MCP and config methods. Other provider drivers can be added later behind the same Ryco MCP contracts if they expose equivalent configuration and inventory surfaces.
 
 ## Research Findings
 
-Current S3Code architecture:
+Current Ryco architecture:
 
 - Settings already have a modal/nav structure in `apps/web/src/components/settings/SettingsDialog.tsx` with `SettingsSectionId` in `apps/web/src/settingsDialogStore.ts`.
 - Server-backed settings flow through `packages/contracts/src/settings.ts`, `apps/server/src/serverSettings.ts`, `apps/server/src/ws.ts`, `apps/web/src/hooks/useSettings.ts`, and `apps/web/src/rpc/serverState.ts`.
@@ -50,9 +50,9 @@ Relevant current Codex behavior from the docs:
 
 ## Recommendation
 
-Use a new S3Code MCP domain backed by Codex app-server config and status APIs.
+Use a new Ryco MCP domain backed by Codex app-server config and status APIs.
 
-Do not store MCP servers in S3Code `settings.json` as the source of truth. Codex CLI and IDE extension already share `config.toml`; duplicating that state in S3Code would make behavior unpredictable. S3Code should read and write Codex config through app-server, then call `config/mcpServer/reload`.
+Do not store MCP servers in Ryco `settings.json` as the source of truth. Codex CLI and IDE extension already share `config.toml`; duplicating that state in Ryco would make behavior unpredictable. Ryco should read and write Codex config through app-server, then call `config/mcpServer/reload`.
 
 Group the UI by Codex workspace:
 
@@ -75,9 +75,9 @@ This is the recommended path. It avoids hand-written TOML manipulation, matches 
 
 The main caveat is table deletion. The implementation should first verify whether `config/value/write` or `config/batchWrite` can remove `mcp_servers.<name>` safely. If not, use `codex mcp remove <name>` with the same binary path, `CODEX_HOME`, and provider environment as a bounded fallback.
 
-### C. Store MCP settings in S3Code settings
+### C. Store MCP settings in Ryco settings
 
-This gives S3Code total UI control but breaks the shared Codex CLI/IDE config model. It also forces S3Code to become responsible for MCP process configuration semantics. This is not recommended for the first version.
+This gives Ryco total UI control but breaks the shared Codex CLI/IDE config model. It also forces Ryco to become responsible for MCP process configuration semantics. This is not recommended for the first version.
 
 ## Product Design
 

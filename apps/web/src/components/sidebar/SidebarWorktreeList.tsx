@@ -12,7 +12,7 @@ import {
   RotateCcwIcon,
   Trash2Icon,
 } from "lucide-react";
-import { scopedThreadKey, scopeThreadRef } from "@s3tools/client-runtime";
+import { scopedThreadKey, scopeThreadRef } from "@ryco/client-runtime";
 import { cn } from "../../lib/utils";
 import {
   ContextMenu,

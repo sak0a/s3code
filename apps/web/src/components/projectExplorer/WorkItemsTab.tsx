@@ -5,7 +5,7 @@ import type {
   ProjectId,
   WorkItemStateFilter,
   WorkItemSummary,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import { DateTime, Option } from "effect";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";

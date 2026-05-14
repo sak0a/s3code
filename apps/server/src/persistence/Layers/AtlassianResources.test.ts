@@ -1,4 +1,4 @@
-import { AtlassianConnectionId, AtlassianResourceId } from "@s3tools/contracts";
+import { AtlassianConnectionId, AtlassianResourceId } from "@ryco/contracts";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 

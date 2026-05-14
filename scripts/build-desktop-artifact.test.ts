@@ -22,8 +22,8 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
   });
 
   it("switches desktop packaging product names to nightly for nightly builds", () => {
-    assert.equal(resolveDesktopProductName("0.0.17"), "S3Code");
-    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "S3Code (Nightly)");
+    assert.equal(resolveDesktopProductName("0.0.17"), "Ryco");
+    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "Ryco (Nightly)");
   });
 
   it("switches desktop packaging icons to the nightly artwork for nightly versions", () => {
@@ -106,11 +106,11 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           ConfigProvider.layer(
             ConfigProvider.fromEnv({
               env: {
-                S3CODE_DESKTOP_SKIP_BUILD: "true",
-                S3CODE_DESKTOP_KEEP_STAGE: "true",
-                S3CODE_DESKTOP_SIGNED: "true",
-                S3CODE_DESKTOP_VERBOSE: "true",
-                S3CODE_DESKTOP_MOCK_UPDATES: "true",
+                RYCO_DESKTOP_SKIP_BUILD: "true",
+                RYCO_DESKTOP_KEEP_STAGE: "true",
+                RYCO_DESKTOP_SIGNED: "true",
+                RYCO_DESKTOP_VERBOSE: "true",
+                RYCO_DESKTOP_MOCK_UPDATES: "true",
               },
             }),
           ),

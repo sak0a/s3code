@@ -5,7 +5,7 @@ import {
   type KeybindingShortcut,
   type KeybindingWhenNode,
   type ResolvedKeybindingsConfig,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 import {
   formatShortcutLabel,
   isChatNewShortcut,

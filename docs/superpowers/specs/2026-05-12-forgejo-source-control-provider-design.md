@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add Forgejo as a first-class source-control provider in S3Code, matching the
+Add Forgejo as a first-class source-control provider in Ryco, matching the
 current GitHub, GitLab, Bitbucket, and Azure DevOps provider surface:
 
 - detect Forgejo remotes
@@ -48,7 +48,7 @@ Relevant findings:
   error rather than hiding it behind generic auth copy.
 - Forgejo versions advertise Gitea API compatibility metadata, and tools built
   for Gitea 1.22 and below are documented as compatible with Forgejo 7+.
-  However, S3Code should still implement against Forgejo's own REST API docs and
+  However, Ryco should still implement against Forgejo's own REST API docs and
   schema rather than assuming every Gitea client behavior is stable.
 - The bundled `forgejo` binary is an admin/server CLI. It starts the web server,
   manages users, performs migrations, handles Actions runner administration, and
@@ -56,7 +56,7 @@ Relevant findings:
   `glab` for daily issue and pull-request workflows.
 - `fj` is a user-facing Forgejo CLI from `forgejo-contrib`. It can create and
   list Forgejo credentials, but it does not provide the stable JSON API surface
-  S3Code needs for normalized issue, pull-request, and repository operations.
+  Ryco needs for normalized issue, pull-request, and repository operations.
 - Tea is the official Gitea CLI and has useful issue/pull/repository commands,
   but it is not Forgejo-owned. Using it would add a third-party compatibility
   dependency where Forgejo's REST API is already available.
@@ -67,9 +67,9 @@ Implement Forgejo through a direct REST API provider, following the Bitbucket
 API-provider pattern rather than the GitHub/GitLab CLI-provider pattern. Accept
 `fj` credentials as an optional token source so users who already ran
 `fj auth login` or `fj auth add-key` do not need to duplicate the token in
-`S3CODE_FORGEJO_TOKEN`.
+`RYCO_FORGEJO_TOKEN`.
 
-This gives S3Code deterministic JSON contracts, removes an extra CLI dependency,
+This gives Ryco deterministic JSON contracts, removes an extra CLI dependency,
 works for Codeberg and self-hosted Forgejo instances, and keeps checkout/publish
 behavior inside the existing provider and git-driver boundaries.
 
@@ -90,7 +90,7 @@ Pros:
 Cons:
 
 - Requires implementing endpoint wrappers and normalizers.
-- Requires S3Code-owned credential configuration when `fj` credentials are not
+- Requires Ryco-owned credential configuration when `fj` credentials are not
   available.
 - Checkout needs a provider-local Git path, similar to Bitbucket.
 
@@ -108,7 +108,7 @@ Cons:
 - Adds install and auth setup burden comparable to `gh`/`glab`, without the same
   Forgejo documentation backing.
 - Multi-instance support would depend on Tea's login profiles instead of
-  S3Code's provider discovery model.
+  Ryco's provider discovery model.
 
 ### Treat Forgejo as GitLab or Generic Git
 
@@ -120,7 +120,7 @@ Cons:
 
 - Incorrect API, URL, and terminology behavior.
 - No issue or pull-request support beyond raw Git operations.
-- Does not satisfy the user-visible provider feature set S3Code already exposes.
+- Does not satisfy the user-visible provider feature set Ryco already exposes.
 
 ## User-Visible Behavior
 
@@ -159,7 +159,7 @@ Cons:
   `head.ref` or `head.label` because the Forgejo list endpoint does not expose a
   direct head-branch query parameter.
 - Closed and merged states are normalized from Forgejo's `state` and `merged`
-  fields. `merged: true` maps to S3Code's `merged`; closed non-merged PRs map to
+  fields. `merged: true` maps to Ryco's `merged`; closed non-merged PRs map to
   `closed`.
 - Pull-request detail includes body, recent issue-thread comments, commits,
   changed files when available, and full diff from `/pulls/{index}.diff`.
@@ -186,8 +186,8 @@ Also read `fj` credentials from the Forgejo CLI `keys.json` store when present.
 Single instance:
 
 ```bash
-S3CODE_FORGEJO_BASE_URL=https://codeberg.org
-S3CODE_FORGEJO_TOKEN=...
+RYCO_FORGEJO_BASE_URL=https://codeberg.org
+RYCO_FORGEJO_TOKEN=...
 ```
 
 Forgejo CLI credentials:
@@ -201,13 +201,13 @@ fj auth add-key
 Optional credentials-file override:
 
 ```bash
-S3CODE_FORGEJO_CLI_KEYS_FILE=/path/to/keys.json
+RYCO_FORGEJO_CLI_KEYS_FILE=/path/to/keys.json
 ```
 
 Multiple instances:
 
 ```bash
-S3CODE_FORGEJO_INSTANCES='[
+RYCO_FORGEJO_INSTANCES='[
   {"baseUrl":"https://codeberg.org","token":"..."},
   {"baseUrl":"https://forge.example.com","token":"..."}
 ]'
@@ -221,9 +221,9 @@ Rules:
   double-appending API paths.
 - Matching is by normalized host and optional base path. This matters for
   Forgejo instances hosted below a path prefix.
-- `S3CODE_FORGEJO_INSTANCES` wins over the single-instance variables when both
+- `RYCO_FORGEJO_INSTANCES` wins over the single-instance variables when both
   are present.
-- An explicit S3Code token wins over a matching `fj` token.
+- An explicit Ryco token wins over a matching `fj` token.
 - `fj` credential hosts are added to the known Forgejo instance list so
   self-hosted remotes can be detected without separate environment variables.
 - Tokens are server-side secrets. They are never sent to the browser.
@@ -237,23 +237,23 @@ Static detection should recognize:
 - hosts containing `forgejo`
 
 Configured detection should recognize every host from
-`S3CODE_FORGEJO_BASE_URL` and `S3CODE_FORGEJO_INSTANCES`.
+`RYCO_FORGEJO_BASE_URL` and `RYCO_FORGEJO_INSTANCES`.
 
 Implementation detail:
 
-- Keep the shared static detector in `@s3tools/shared/sourceControl`.
+- Keep the shared static detector in `@ryco/shared/sourceControl`.
 - Add a server-side configured-host matcher in the Forgejo API module.
 - Refactor `GitManager.resolveHostingProvider` to use
   `SourceControlProviderRegistry.resolveHandle({ cwd })` or an equivalent
   provider-context helper so configured Forgejo hosts show up in git status.
 - Keep pure shared tests for static hosts and server tests for configured hosts.
 
-This avoids network probing during status reads. S3Code should not try to guess
+This avoids network probing during status reads. Ryco should not try to guess
 that an arbitrary unknown remote is Forgejo by calling that remote under load.
 
 ## API Mapping
 
-| S3Code operation               | Forgejo endpoint                                            |
+| Ryco operation                 | Forgejo endpoint                                            |
 | ------------------------------ | ----------------------------------------------------------- |
 | Probe auth                     | `GET /api/v1/user`                                          |
 | Repository lookup              | `GET /api/v1/repos/{owner}/{repo}`                          |
@@ -292,7 +292,7 @@ Normalize these fields:
 - Issue: `number`, `title`, `html_url`, `state`, `updated_at`, `user.login`,
   `labels`, `assignees`, `comments`, `body`
 - Comments: `user.login`, `body`, `created_at`
-- Commits/files: map only the fields S3Code contracts expose and tolerate
+- Commits/files: map only the fields Ryco contracts expose and tolerate
   missing optional fields.
 
 Parser behavior should match the existing provider modules: skip malformed
@@ -347,7 +347,7 @@ Web changes:
 - Forgejo Actions support.
 - Forgejo issue or PR creation from the project explorer.
 - Admin operations through the bundled `forgejo` binary.
-- OAuth app flow in S3Code. API tokens are enough for this provider.
+- OAuth app flow in Ryco. API tokens are enough for this provider.
 - Runtime auto-detection of arbitrary unknown hosts through network probes.
 - Full Gitea provider support. The design should leave room for a later Gitea
   provider, but the provider kind and setup copy should be Forgejo-specific.
@@ -416,7 +416,7 @@ flag: unauthenticated Forgejo simply appears in Settings with setup guidance.
 
 - Forgejo instances can be hosted below a path prefix. The parser and URL
   matcher must strip the configured base path before extracting `owner/repo`.
-- The pull-request list endpoint does not accept a head-branch filter. S3Code
+- The pull-request list endpoint does not accept a head-branch filter. Ryco
   must fetch a bounded page and filter locally; this can miss older PRs if a
   branch has many stale PRs. Mitigation: request `state=all`, sort by recent
   update, and keep the same small-limit behavior used by other providers.

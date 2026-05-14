@@ -1,4 +1,4 @@
-import { CheckpointRef, ProjectId, ThreadId, TurnId } from "@s3tools/contracts";
+import { CheckpointRef, ProjectId, ThreadId, TurnId } from "@ryco/contracts";
 import { Effect, Layer, Option } from "effect";
 import { describe, expect, it } from "vitest";
 

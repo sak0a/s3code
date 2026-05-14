@@ -1,5 +1,5 @@
-import { ProjectId } from "@s3tools/contracts";
-import { projectScriptRuntimeEnv, setupProjectScript } from "@s3tools/shared/projectScripts";
+import { ProjectId } from "@ryco/contracts";
+import { projectScriptRuntimeEnv, setupProjectScript } from "@ryco/shared/projectScripts";
 import { Effect, Layer, Option } from "effect";
 
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
