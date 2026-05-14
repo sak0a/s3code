@@ -2472,7 +2472,7 @@ const makeWsRpcLayer = (session: AuthenticatedSession) =>
               const liveStream = Stream.callback<DetectedServerEvent>((queue) =>
                 Effect.acquireRelease(
                   detectedServerRegistry.subscribe(input.threadId, (event) => {
-                    Effect.runSync(Queue.offer(queue, event));
+                    Effect.runFork(Queue.offer(queue, event).pipe(Effect.ignoreCause({ log: false })));
                   }),
                   (unsubscribe) => Effect.sync(unsubscribe),
                 ),

@@ -1,4 +1,4 @@
-import type { ServerFramework } from "@s3tools/contracts";
+import type { ServerFramework } from "@ryco/contracts";
 
 export interface ArgvHint {
   framework: ServerFramework;

@@ -485,7 +485,7 @@ apps/server/src/detectedServers/
 
 apps/server/src/
   serverLayers.ts                                          (modified: + ingress)
-  wsServer.ts                                              (modified: + RPC handlers)
+  ws.ts                                                    (modified: + RPC handlers)
   provider/Layers/CodexSessionRuntime.ts                   (modified: + emitter taps)
   provider/acp/AcpSessionRuntime.ts                        (modified: + emitter taps)
   terminal/Layers/Manager.ts                               (modified: + emitter taps)

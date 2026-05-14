@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { parseScopedThreadKey } from "@s3tools/client-runtime";
+import { parseScopedThreadKey } from "@ryco/client-runtime";
 import { useDetectedServerStore } from "../../detectedServerStore.ts";
 import { readEnvironmentConnection } from "../../environments/runtime/service.ts";
 import { DetectedServerRow } from "./DetectedServerRow.tsx";
@@ -31,21 +31,31 @@ export const DetectedServersPanel = ({ threadKey }: Props) => {
     if (!threadRef) return;
     const connection = readEnvironmentConnection(threadRef.environmentId);
     if (!connection) return;
-    const result = await connection.client.detectedServers.stop({ serverId });
-    if (result.kind === "not-stoppable") {
-      console.info("Server managed by agent — interrupt the turn to stop it");
+    try {
+      const result = await connection.client.detectedServers.stop({ serverId });
+      if (result.kind === "not-stoppable") {
+        console.info("Server managed by agent — interrupt the turn to stop it");
+      }
+    } catch (err) {
+      console.error("Failed to stop detected server", err);
     }
   };
 
   const handleCopy = (url: string) => {
-    void navigator.clipboard.writeText(url);
+    void navigator.clipboard.writeText(url).catch((err) => {
+      console.error("Failed to copy server URL", err);
+    });
   };
 
   const handleOpen = async (serverId: string) => {
     if (!threadRef) return;
     const connection = readEnvironmentConnection(threadRef.environmentId);
     if (!connection) return;
-    await connection.client.detectedServers.openInBrowser({ serverId });
+    try {
+      await connection.client.detectedServers.openInBrowser({ serverId });
+    } catch (err) {
+      console.error("Failed to open detected server in browser", err);
+    }
   };
 
   return (

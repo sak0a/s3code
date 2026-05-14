@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Registry } from "./Layers/Registry.ts";
-import type { DetectedServerEvent } from "@s3tools/contracts";
+import type { DetectedServerEvent } from "@ryco/contracts";
 
 const collectEvents = (registry: Registry) => {
   const events: DetectedServerEvent[] = [];

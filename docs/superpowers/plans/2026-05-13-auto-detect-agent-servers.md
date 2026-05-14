@@ -160,7 +160,7 @@ describe("LineBuffer", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `bun run test --filter @s3tools/shared -- lineBuffer`
+Run: `bun run test --filter @ryco/shared -- lineBuffer`
 Expected: FAIL, "Cannot find module './lineBuffer.ts'".
 
 - [ ] **Step 3: Implement `LineBuffer`**
@@ -222,7 +222,7 @@ In the `exports` field, add:
 
 - [ ] **Step 5: Run tests to verify pass**
 
-Run: `bun run test --filter @s3tools/shared -- lineBuffer`
+Run: `bun run test --filter @ryco/shared -- lineBuffer`
 Expected: all 5 tests PASS.
 
 - [ ] **Step 6: Run typecheck**
@@ -572,7 +572,7 @@ describe("ArgvHinter.hintFromArgv", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `bun run test --filter @s3tools/server -- ArgvHinter`
+Run: `bun run test --filter @ryco/server -- ArgvHinter`
 Expected: FAIL, module not found.
 
 - [ ] **Step 3: Implement `ArgvHinter`**
@@ -580,7 +580,7 @@ Expected: FAIL, module not found.
 Create `apps/server/src/detectedServers/Layers/ArgvHinter.ts`:
 
 ```ts
-import type { ServerFramework } from "@s3tools/contracts";
+import type { ServerFramework } from "@ryco/contracts";
 
 export interface ArgvHint {
   framework: ServerFramework;
@@ -675,7 +675,7 @@ export const hintFromArgv = (
 
 - [ ] **Step 4: Run tests to verify pass**
 
-Run: `bun run test --filter @s3tools/server -- ArgvHinter`
+Run: `bun run test --filter @ryco/server -- ArgvHinter`
 Expected: all tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -889,7 +889,7 @@ describe("StdoutSniffer", () => {
 
 - [ ] **Step 3: Run test to verify it fails**
 
-Run: `bun run test --filter @s3tools/server -- StdoutSniffer`
+Run: `bun run test --filter @ryco/server -- StdoutSniffer`
 Expected: FAIL, module not found.
 
 - [ ] **Step 4: Implement `StdoutSniffer`**
@@ -897,7 +897,7 @@ Expected: FAIL, module not found.
 Create `apps/server/src/detectedServers/Layers/StdoutSniffer.ts`:
 
 ```ts
-import type { ServerFramework } from "@s3tools/contracts";
+import type { ServerFramework } from "@ryco/contracts";
 
 export interface UrlCandidate {
   url: string;
@@ -1012,7 +1012,7 @@ export class StdoutSniffer {
 
 - [ ] **Step 5: Run tests to verify pass**
 
-Run: `bun run test --filter @s3tools/server -- StdoutSniffer`
+Run: `bun run test --filter @ryco/server -- StdoutSniffer`
 Expected: all 10 tests PASS.
 
 - [ ] **Step 6: Commit**
@@ -1038,7 +1038,7 @@ Create `apps/server/src/detectedServers/Registry.test.ts`:
 ```ts
 import { describe, it, expect } from "vitest";
 import { Registry } from "./Layers/Registry.ts";
-import type { DetectedServerEvent } from "@s3tools/contracts";
+import type { DetectedServerEvent } from "@ryco/contracts";
 
 const collectEvents = (registry: Registry) => {
   const events: DetectedServerEvent[] = [];
@@ -1167,7 +1167,7 @@ describe("Registry", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `bun run test --filter @s3tools/server -- Registry`
+Run: `bun run test --filter @ryco/server -- Registry`
 Expected: FAIL, module not found.
 
 - [ ] **Step 3: Implement `Registry`**
@@ -1183,7 +1183,7 @@ import type {
   ServerSource,
   ServerStatus,
   ExitReason,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 const ALLOWED_TRANSITIONS: Record<ServerStatus, ReadonlyArray<ServerStatus>> = {
   predicted: ["candidate", "confirmed", "exited", "crashed"],
@@ -1363,7 +1363,7 @@ export class Registry {
 
 - [ ] **Step 4: Run tests to verify pass**
 
-Run: `bun run test --filter @s3tools/server -- Registry`
+Run: `bun run test --filter @ryco/server -- Registry`
 Expected: all 6 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -1497,7 +1497,7 @@ describe("SocketProbe.Linux parsers", () => {
 
 - [ ] **Step 3: Run test to verify it fails**
 
-Run: `bun run test --filter @s3tools/server -- SocketProbe.Linux`
+Run: `bun run test --filter @ryco/server -- SocketProbe.Linux`
 Expected: FAIL, module not found.
 
 - [ ] **Step 4: Implement the parsers + layer**
@@ -1622,7 +1622,7 @@ export const SocketProbeLinuxLive = Layer.succeed(SocketProbe, { probe: probeImp
 
 - [ ] **Step 5: Run tests to verify pass**
 
-Run: `bun run test --filter @s3tools/server -- SocketProbe.Linux`
+Run: `bun run test --filter @ryco/server -- SocketProbe.Linux`
 Expected: all 3 tests PASS.
 
 - [ ] **Step 6: Commit**
@@ -1678,7 +1678,7 @@ node    12345 alice   23u  IPv4  0xabc12345abc1234      0t0  TCP 127.0.0.1:5173-
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `bun run test --filter @s3tools/server -- SocketProbe.Darwin`
+Run: `bun run test --filter @ryco/server -- SocketProbe.Darwin`
 Expected: FAIL, module not found.
 
 - [ ] **Step 3: Implement parser + layer**
@@ -1742,7 +1742,7 @@ export const SocketProbeDarwinLive = Layer.succeed(SocketProbe, { probe: probeIm
 
 - [ ] **Step 4: Run tests to verify pass**
 
-Run: `bun run test --filter @s3tools/server -- SocketProbe.Darwin`
+Run: `bun run test --filter @ryco/server -- SocketProbe.Darwin`
 Expected: all 3 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -1801,7 +1801,7 @@ Active Connections
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `bun run test --filter @s3tools/server -- SocketProbe.Windows`
+Run: `bun run test --filter @ryco/server -- SocketProbe.Windows`
 Expected: FAIL, module not found.
 
 - [ ] **Step 3: Implement parser + layer**
@@ -1864,7 +1864,7 @@ export const SocketProbeWindowsLive = Layer.succeed(SocketProbe, { probe: probeI
 
 - [ ] **Step 4: Run tests to verify pass**
 
-Run: `bun run test --filter @s3tools/server -- SocketProbe.Windows`
+Run: `bun run test --filter @ryco/server -- SocketProbe.Windows`
 Expected: all 3 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -1992,7 +1992,7 @@ Create `apps/server/src/detectedServers/Services/DetectedServerRegistry.ts`:
 
 ```ts
 import { Effect, Context, Layer } from "effect";
-import type { DetectedServer, DetectedServerEvent } from "@s3tools/contracts";
+import type { DetectedServer, DetectedServerEvent } from "@ryco/contracts";
 import { Registry, type RegistryRegisterInput } from "../Layers/Registry.ts";
 
 export interface DetectedServerRegistryShape {
@@ -2331,7 +2331,7 @@ Expected: no errors.
 
 - [ ] **Step 4: Run all server tests**
 
-Run: `bun run test --filter @s3tools/server`
+Run: `bun run test --filter @ryco/server`
 Expected: pre-existing tests still PASS; new tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -2406,7 +2406,7 @@ trackerMap.delete(`${turnId}::${itemId}`);
 
 - [ ] **Step 6: Run typecheck and existing tests**
 
-Run: `bun run typecheck && bun run test --filter @s3tools/server -- CodexSessionRuntime`
+Run: `bun run typecheck && bun run test --filter @ryco/server -- CodexSessionRuntime`
 Expected: no errors; existing CodexSessionRuntime tests still PASS.
 
 - [ ] **Step 7: Commit**
@@ -2450,7 +2450,7 @@ trackerMap.delete(`${turnId}::${itemId}`);
 
 - [ ] **Step 3: Run typecheck and tests**
 
-Run: `bun run typecheck && bun run test --filter @s3tools/server -- AcpSessionRuntime`
+Run: `bun run typecheck && bun run test --filter @ryco/server -- AcpSessionRuntime`
 Expected: no errors; existing tests still PASS.
 
 - [ ] **Step 4: Commit**
@@ -2519,7 +2519,7 @@ tracker.end(event.exitCode ?? null);
 
 - [ ] **Step 5: Run typecheck and tests**
 
-Run: `bun run typecheck && bun run test --filter @s3tools/server -- terminal`
+Run: `bun run typecheck && bun run test --filter @ryco/server -- terminal`
 Expected: no errors; existing terminal tests still PASS.
 
 - [ ] **Step 6: Commit**
@@ -2623,7 +2623,7 @@ registerHandler("detectedServers.openInBrowser", ({ serverId }) =>
 
 - [ ] **Step 5: Run typecheck and existing server tests**
 
-Run: `bun run typecheck && bun run test --filter @s3tools/server`
+Run: `bun run typecheck && bun run test --filter @ryco/server`
 Expected: no errors; pre-existing tests still PASS.
 
 - [ ] **Step 6: Commit**
@@ -2696,7 +2696,7 @@ describe("DetectedServers / Codex synthetic", () => {
 
 - [ ] **Step 2: Run the test**
 
-Run: `bun run test --filter @s3tools/server -- detectedServersCodex`
+Run: `bun run test --filter @ryco/server -- detectedServersCodex`
 Expected: PASS.
 
 - [ ] **Step 3: Commit**
@@ -2783,7 +2783,7 @@ Note: this test currently relies on the ArgvHinter recognising the command. Sinc
 
 - [ ] **Step 2: Run the test on Linux/macOS**
 
-Run: `bun run test --filter @s3tools/server -- detectedServersPty`
+Run: `bun run test --filter @ryco/server -- detectedServersPty`
 Expected: PASS within ~5 seconds on Linux/macOS. Skip on Windows (mark `it.skipIf(process.platform === 'win32')`) if `netstat -ano` parsing isn't viable in CI.
 
 - [ ] **Step 3: Commit**
@@ -2919,7 +2919,7 @@ describe("detectedServerStore", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `bun run test --filter @s3tools/web -- detectedServerStore`
+Run: `bun run test --filter @ryco/web -- detectedServerStore`
 Expected: FAIL, module not found.
 
 - [ ] **Step 3: Implement the store**
@@ -2928,8 +2928,8 @@ Create `apps/web/src/detectedServerStore.ts`:
 
 ```ts
 import { create } from "zustand";
-import type { DetectedServer, DetectedServerEvent } from "@s3tools/contracts";
-import { LineBuffer } from "@s3tools/shared/lineBuffer";
+import type { DetectedServer, DetectedServerEvent } from "@ryco/contracts";
+import { LineBuffer } from "@ryco/shared/lineBuffer";
 
 const MAX_LOG_LINES = 5000;
 
@@ -2988,7 +2988,7 @@ export const useDetectedServerStore = create<State>((set, get) => ({
 
 - [ ] **Step 4: Run tests to verify pass**
 
-Run: `bun run test --filter @s3tools/web -- detectedServerStore`
+Run: `bun run test --filter @ryco/web -- detectedServerStore`
 Expected: all 4 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -3065,7 +3065,7 @@ Create `DetectedServersBadge.test.tsx`:
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DetectedServersBadge } from "./DetectedServersBadge.tsx";
-import type { DetectedServer } from "@s3tools/contracts";
+import type { DetectedServer } from "@ryco/contracts";
 
 const make = (overrides: Partial<DetectedServer>): DetectedServer => ({
   id: "s",
@@ -3112,7 +3112,7 @@ Create `DetectedServersBadge.tsx`:
 ```tsx
 import { Server } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip.tsx";
-import type { DetectedServer } from "@s3tools/contracts";
+import type { DetectedServer } from "@ryco/contracts";
 
 interface Props {
   servers: DetectedServer[];
@@ -3173,7 +3173,7 @@ const servers = useDetectedServerStore((s) => {
 
 - [ ] **Step 4: Run tests to verify pass**
 
-Run: `bun run test --filter @s3tools/web -- DetectedServersBadge`
+Run: `bun run test --filter @ryco/web -- DetectedServersBadge`
 Expected: all 4 tests PASS.
 
 - [ ] **Step 5: Commit**
@@ -3280,7 +3280,7 @@ git commit -m "Add kind tabset (Terminals / Servers) to ThreadTerminalDrawer"
 
 ```tsx
 import { Server, ExternalLink, Square, Copy } from "lucide-react";
-import type { DetectedServer } from "@s3tools/contracts";
+import type { DetectedServer } from "@ryco/contracts";
 import { Button } from "../ui/button.tsx";
 import { cn } from "../../lib/utils.ts";
 

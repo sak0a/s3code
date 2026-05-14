@@ -780,7 +780,8 @@ export function makeCursorAdapter(
                     if (event.toolCall.kind === "execute") {
                       const toolCallId = event.toolCall.toolCallId;
                       const toolStatus = event.toolCall.status;
-                      const existingTracker = trackerMap.get(toolCallId);
+                      const trackerKey = `${ctx.threadId}::${toolCallId}`;
+                      const existingTracker = trackerMap.get(trackerKey);
                       if (!existingTracker) {
                         const argv = event.toolCall.command
                           ? event.toolCall.command.split(/\s+/).filter(Boolean)
@@ -796,13 +797,16 @@ export function makeCursorAdapter(
                           "acp",
                           undefined,
                         );
-                        trackerMap.set(toolCallId, tracker);
-                        if (event.toolCall.detail) {
+                        trackerMap.set(trackerKey, tracker);
+                        if (toolStatus === "completed" || toolStatus === "failed") {
+                          tracker.end(toolStatus === "completed" ? "success" : "error");
+                          trackerMap.delete(trackerKey);
+                        } else if (event.toolCall.detail) {
                           tracker.feed(event.toolCall.detail);
                         }
                       } else if (toolStatus === "completed" || toolStatus === "failed") {
                         existingTracker.end(toolStatus === "completed" ? "success" : "error");
-                        trackerMap.delete(toolCallId);
+                        trackerMap.delete(trackerKey);
                       } else if (event.toolCall.detail) {
                         existingTracker.feed(event.toolCall.detail);
                       }

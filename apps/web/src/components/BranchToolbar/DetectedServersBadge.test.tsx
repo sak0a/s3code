@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, it, expect } from "vitest";
 import { DetectedServersBadge } from "./DetectedServersBadge.tsx";
-import type { DetectedServer } from "@s3tools/contracts";
+import type { DetectedServer } from "@ryco/contracts";
 
 const make = (overrides: Partial<DetectedServer>): DetectedServer => ({
   id: "s",

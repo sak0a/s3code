@@ -1,5 +1,5 @@
 import { Server, ExternalLink, Square, Copy } from "lucide-react";
-import type { DetectedServer } from "@s3tools/contracts";
+import type { DetectedServer } from "@ryco/contracts";
 import { cn } from "~/lib/utils";
 
 const STATUS_PILL_CLASS: Record<DetectedServer["status"], string> = {
@@ -22,9 +22,16 @@ interface Props {
 }
 
 export const DetectedServerRow = ({ server, active, onSelect, onOpen, onCopy, onStop }: Props) => (
-  <button
-    type="button"
+  <div
+    role="button"
+    tabIndex={0}
     onClick={onSelect}
+    onKeyDown={(e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onSelect();
+      }
+    }}
     className={cn(
       "group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent",
       active && "bg-accent",
@@ -80,5 +87,5 @@ export const DetectedServerRow = ({ server, active, onSelect, onOpen, onCopy, on
         <Square className="h-3.5 w-3.5" />
       </button>
     </div>
-  </button>
+  </div>
 );

@@ -1249,6 +1249,10 @@ export const makeCodexSessionRuntime = (
       if (alreadyClosed) {
         return;
       }
+      for (const tracker of trackerMap.values()) {
+        tracker.end("error");
+      }
+      trackerMap.clear();
       yield* settlePendingApprovals("cancel");
       yield* settlePendingUserInputs({});
       yield* updateSession(sessionRef, {

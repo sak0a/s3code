@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import type { DetectedServer, DetectedServerEvent } from "@s3tools/contracts";
-import { LineBuffer } from "@s3tools/shared/lineBuffer";
+import type { DetectedServer, DetectedServerEvent } from "@ryco/contracts";
+import { LineBuffer } from "@ryco/shared/lineBuffer";
 
 const MAX_LOG_LINES = 5000;
 

@@ -1,5 +1,5 @@
 import { Server } from "lucide-react";
-import type { DetectedServer } from "@s3tools/contracts";
+import type { DetectedServer } from "@ryco/contracts";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
 interface Props {

@@ -182,6 +182,7 @@ export const DetectedServersIngressLive = Layer.effect(
         const probeFiber = runFork(
           Effect.gen(function* () {
             let liveSeenAt: Date | null = null;
+            let emittedConfirmed = false;
             while (true) {
               const pids = yield* Effect.tryPromise({
                 try: () => pidtree(source.pid, { root: true }),
@@ -208,7 +209,8 @@ export const DetectedServersIngressLive = Layer.effect(
                       liveAt: DateTime.fromDateUnsafe(liveSeenAt),
                     },
                   });
-                } else {
+                } else if (!emittedConfirmed) {
+                  emittedConfirmed = true;
                   yield* registry.registerOrUpdate({
                     threadId: source.threadId,
                     source: "pty",

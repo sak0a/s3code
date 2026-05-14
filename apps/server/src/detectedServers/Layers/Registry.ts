@@ -7,7 +7,7 @@ import type {
   ServerFramework,
   ServerSource,
   ServerStatus,
-} from "@s3tools/contracts";
+} from "@ryco/contracts";
 
 const ALLOWED_TRANSITIONS: Record<ServerStatus, ReadonlyArray<ServerStatus>> = {
   predicted: ["candidate", "confirmed", "exited", "crashed"],
@@ -43,6 +43,9 @@ export interface RegistryRegisterInput {
 
 type Listener = (e: DetectedServerEvent) => void;
 
+const cloneServer = (s: DetectedServer): DetectedServer =>
+  s.argv ? { ...s, argv: [...s.argv] } : { ...s };
+
 export class Registry {
   private byThread = new Map<string, Map<string, DetectedServer>>();
   private idByIdentity = new Map<string, string>();
@@ -60,13 +63,13 @@ export class Registry {
 
   getCurrent(threadId: string): DetectedServer[] {
     const m = this.byThread.get(threadId);
-    return m ? [...m.values()] : [];
+    return m ? [...m.values()].map(cloneServer) : [];
   }
 
   findById(serverId: string): DetectedServer | undefined {
     for (const m of this.byThread.values()) {
       const s = m.get(serverId);
-      if (s) return s;
+      if (s) return cloneServer(s);
     }
     return undefined;
   }
@@ -180,6 +183,12 @@ export class Registry {
   private publish(threadId: string, event: DetectedServerEvent): void {
     const set = this.listeners.get(threadId);
     if (!set) return;
-    for (const l of set) l(event);
+    for (const l of set) {
+      try {
+        l(event);
+      } catch (err) {
+        console.error("DetectedServerRegistry listener threw", { threadId, err });
+      }
+    }
   }
 }

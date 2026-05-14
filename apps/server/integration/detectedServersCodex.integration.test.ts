@@ -39,9 +39,16 @@ describe("DetectedServers / Codex synthetic", () => {
           undefined,
         );
         tracker.feed("  ➜  Local:   http://localhost:5173/\n");
-        // Allow the async sniffer callback to flush via runForkWith
-        yield* Effect.sleep(Duration.millis(100));
-        const current = yield* registry.getCurrent("thread-1");
+        // Poll until the sniffer callback registers the candidate (bounded wait).
+        let current = yield* registry.getCurrent("thread-1");
+        for (
+          let attempt = 0;
+          attempt < 50 && current[0]?.status !== "candidate";
+          attempt += 1
+        ) {
+          yield* Effect.sleep(Duration.millis(50));
+          current = yield* registry.getCurrent("thread-1");
+        }
         expect(current).toHaveLength(1);
         expect(current[0]!.status).toBe("candidate");
         expect(current[0]!.url).toBe("http://localhost:5173/");

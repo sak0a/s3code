@@ -1,5 +1,5 @@
 import { Effect, Context, Layer } from "effect";
-import type { DetectedServer, DetectedServerEvent } from "@s3tools/contracts";
+import type { DetectedServer, DetectedServerEvent } from "@ryco/contracts";
 import { Registry, type RegistryRegisterInput } from "../Layers/Registry.ts";
 
 export interface DetectedServerRegistryShape {
