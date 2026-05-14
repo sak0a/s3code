@@ -33,6 +33,7 @@ import {
   WS_METHODS,
   WsRpcGroup,
 } from "@ryco/contracts";
+import { buildTemporaryWorktreeBranchName } from "@ryco/shared/git";
 import { clamp } from "effect/Number";
 import { HttpRouter, HttpServerRequest } from "effect/unstable/http";
 import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
@@ -839,7 +840,8 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             if (existing !== null) {
               const existingWorktree = yield* loadWorktreeForGitWorkflow(operation, existing);
               const project = yield* loadProjectForGitWorkflow(operation, input.projectId);
-              if (project.defaultModelSelection === null) {
+              const modelSelection = project.defaultModelSelection;
+              if (modelSelection === null) {
                 return yield* failGitWorkflow(
                   operation,
                   `Project ${input.projectId} has no default model selection.`,
@@ -857,7 +859,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
                     existingWorktree.prTitle ??
                     existingWorktree.issueTitle ??
                     existingWorktree.branch,
-                  modelSelection: project.defaultModelSelection,
+                  modelSelection,
                   runtimeMode: "full-access",
                   interactionMode: "default",
                   branch: existingWorktree.branch,
@@ -881,7 +883,8 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
           }
 
           const project = yield* loadProjectForGitWorkflow(operation, input.projectId);
-          if (project.defaultModelSelection === null) {
+          const modelSelection = project.defaultModelSelection;
+          if (modelSelection === null) {
             return yield* failGitWorkflow(
               operation,
               `Project ${input.projectId} has no default model selection.`,
@@ -900,12 +903,16 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
           let issueNumber: number | null = null;
           let prTitle: string | null = null;
           let issueTitle: string | null = null;
+          let preparedWorktreePath: string | null = null;
+          let ownedWorktreePath: string | null = null;
+          let ownedBranchName: string | null = null;
 
           switch (input.intent.kind) {
             case "branch":
-              branch = input.intent.branchName ?? "HEAD";
-              refName = branch;
-              title = branch;
+              refName = input.intent.branchName;
+              branch = buildTemporaryWorktreeBranchName();
+              newRefName = branch;
+              title = refName;
               break;
             case "newBranch":
               branch = input.intent.branchName ?? `task/${randomShortId(6)}`;
@@ -915,16 +922,43 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               break;
             case "pr": {
               const number = input.intent.number ?? 0;
-              const resolved = yield* gitWorkflow.resolvePullRequest({
+              const [existingWorktreePaths, existingBranchNames] = yield* Effect.all(
+                [
+                  gitWorkflow.listWorktreePaths(project.workspaceRoot),
+                  gitWorkflow.listLocalBranchNames(project.workspaceRoot),
+                ],
+                { concurrency: 2 },
+              );
+              const prepared = yield* gitWorkflow.preparePullRequestThread({
                 cwd: project.workspaceRoot,
                 reference: String(number),
+                mode: "worktree",
+                projectId: input.projectId,
+                worktreeLocation: input.worktreeLocation,
+                worktreesDir:
+                  input.worktreeLocation === "projectMetadata"
+                    ? resolveProjectWorktreesDir(project.workspaceRoot, project.projectMetadataDir)
+                    : path.join(config.worktreesDir, input.projectId),
               });
-              branch = resolved.pullRequest.headBranch;
+              if (prepared.worktreePath === null) {
+                return yield* failGitWorkflow(
+                  operation,
+                  `Failed to create worktree for PR #${number}.`,
+                );
+              }
+              preparedWorktreePath = prepared.worktreePath;
+              branch = prepared.branch;
+              if (!existingWorktreePaths.includes(prepared.worktreePath)) {
+                ownedWorktreePath = prepared.worktreePath;
+              }
+              if (!existingBranchNames.includes(prepared.branch)) {
+                ownedBranchName = prepared.branch;
+              }
               refName = branch;
-              title = resolved.pullRequest.title;
+              title = prepared.pullRequest.title;
               origin = "pr";
-              prNumber = resolved.pullRequest.number;
-              prTitle = resolved.pullRequest.title;
+              prNumber = prepared.pullRequest.number;
+              prTitle = prepared.pullRequest.title;
               break;
             }
             case "issue": {
@@ -940,73 +974,126 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             }
           }
 
-          const worktree = yield* gitWorkflow.createWorktree({
-            cwd: project.workspaceRoot,
-            refName,
-            ...(newRefName !== undefined ? { newRefName } : {}),
-            path: resolveWorktreeCheckoutPath({
-              location: input.worktreeLocation,
-              appWorktreesRoot: config.worktreesDir,
-              projectId: input.projectId,
-              workspaceRoot: project.workspaceRoot,
-              projectMetadataDir: project.projectMetadataDir,
-              branchName: branch,
-            }),
-          });
+          const worktreePath =
+            preparedWorktreePath ??
+            (yield* gitWorkflow.createWorktree({
+              cwd: project.workspaceRoot,
+              refName,
+              ...(newRefName !== undefined ? { newRefName } : {}),
+              path: resolveWorktreeCheckoutPath({
+                location: input.worktreeLocation,
+                appWorktreesRoot: config.worktreesDir,
+                projectId: input.projectId,
+                workspaceRoot: project.workspaceRoot,
+                projectMetadataDir: project.projectMetadataDir,
+                branchName: branch,
+              }),
+            })).worktree.path;
 
-          yield* dispatchWorktreeCommand(
-            {
-              type: "worktree.create",
-              commandId: serverCommandId("worktree-create"),
-              worktreeId,
-              projectId: input.projectId,
-              branch,
-              worktreePath: worktree.worktree.path,
-              origin,
-              prNumber,
-              issueNumber,
-              prTitle,
-              issueTitle,
-              createdAt: now,
-            },
-            operation,
+          if (preparedWorktreePath === null) {
+            ownedWorktreePath = worktreePath;
+            if (newRefName !== undefined) {
+              ownedBranchName = newRefName;
+            }
+          }
+
+          const cleanupOwnedCheckout = Effect.gen(function* () {
+            if (ownedWorktreePath !== null) {
+              yield* ignoreAlreadyMissingGitResource(
+                gitWorkflow.removeWorktree({
+                  cwd: project.workspaceRoot,
+                  path: ownedWorktreePath,
+                  force: true,
+                }),
+                {
+                  operation,
+                  action: "remove-worktree",
+                  target: ownedWorktreePath,
+                },
+              );
+            }
+            if (ownedBranchName !== null) {
+              yield* ignoreAlreadyMissingGitResource(
+                gitWorkflow.deleteBranch({
+                  cwd: project.workspaceRoot,
+                  refName: ownedBranchName,
+                  force: true,
+                }),
+                {
+                  operation,
+                  action: "delete-branch",
+                  target: ownedBranchName,
+                },
+              );
+            }
+          }).pipe(
+            Effect.catch((cleanupError) =>
+              Effect.logWarning("failed to clean up worktree creation after dispatch failure", {
+                operation,
+                worktreePath: ownedWorktreePath,
+                branch: ownedBranchName,
+                detail: cleanupError.message,
+              }).pipe(Effect.asVoid),
+            ),
           );
 
-          yield* dispatchWorktreeCommand(
-            {
-              type: "thread.create",
-              commandId: serverCommandId("worktree-thread-create"),
+          yield* Effect.gen(function* () {
+            yield* dispatchWorktreeCommand(
+              {
+                type: "worktree.create",
+                commandId: serverCommandId("worktree-create"),
+                worktreeId,
+                projectId: input.projectId,
+                branch,
+                worktreePath,
+                origin,
+                prNumber,
+                issueNumber,
+                prTitle,
+                issueTitle,
+                createdAt: now,
+              },
+              operation,
+            );
+
+            yield* dispatchWorktreeCommand(
+              {
+                type: "thread.create",
+                commandId: serverCommandId("worktree-thread-create"),
+                threadId,
+                projectId: input.projectId,
+                title,
+                modelSelection,
+                runtimeMode: "full-access",
+                interactionMode: "default",
+                branch,
+                worktreePath,
+                createdAt: now,
+              },
+              operation,
+            );
+
+            yield* dispatchWorktreeCommand(
+              {
+                type: "thread.attach-to-worktree",
+                commandId: serverCommandId("worktree-thread-attach"),
+                threadId,
+                worktreeId,
+                attachedAt: now,
+              },
+              operation,
+            );
+
+            yield* launchSetupScriptForWorktreeInBackground({
               threadId,
               projectId: input.projectId,
-              title,
-              modelSelection: project.defaultModelSelection,
-              runtimeMode: "full-access",
-              interactionMode: "default",
-              branch,
-              worktreePath: worktree.worktree.path,
-              createdAt: now,
-            },
-            operation,
+              projectCwd: project.workspaceRoot,
+              worktreePath,
+            });
+            yield* refreshGitStatus(worktreePath);
+          }).pipe(
+            Effect.catch((error) => cleanupOwnedCheckout.pipe(Effect.andThen(Effect.fail(error)))),
           );
-
-          yield* dispatchWorktreeCommand(
-            {
-              type: "thread.attach-to-worktree",
-              commandId: serverCommandId("worktree-thread-attach"),
-              threadId,
-              worktreeId,
-              attachedAt: now,
-            },
-            operation,
-          );
-
-          yield* launchSetupScriptForWorktreeInBackground({
-            threadId,
-            projectId: input.projectId,
-            projectCwd: project.workspaceRoot,
-            worktreePath: worktree.worktree.path,
-          });
-          yield* refreshGitStatus(worktree.worktree.path);
           return { worktreeId, sessionId: threadId };
         });
 
