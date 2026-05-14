@@ -41,11 +41,7 @@ describe("DetectedServers / Codex synthetic", () => {
         tracker.feed("  ➜  Local:   http://localhost:5173/\n");
         // Poll until the sniffer callback registers the candidate (bounded wait).
         let current = yield* registry.getCurrent("thread-1");
-        for (
-          let attempt = 0;
-          attempt < 50 && current[0]?.status !== "candidate";
-          attempt += 1
-        ) {
+        for (let attempt = 0; attempt < 50 && current[0]?.status !== "candidate"; attempt += 1) {
           yield* Effect.sleep(Duration.millis(50));
           current = yield* registry.getCurrent("thread-1");
         }
