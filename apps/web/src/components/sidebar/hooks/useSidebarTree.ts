@@ -273,7 +273,7 @@ function canonicalWorktreeGroupKey(worktree: SidebarWorktree): string {
   return `${worktree.projectId}:path:${normalizeWorktreePath(worktree.worktreePath)}`;
 }
 
-function normalizeWorktreePath(worktreePath: string): string {
+export function normalizeWorktreePath(worktreePath: string): string {
   return worktreePath.replace(/\\/g, "/").replace(/\/+$/g, "").toLowerCase();
 }
 

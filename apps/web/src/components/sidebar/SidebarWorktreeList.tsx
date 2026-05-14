@@ -26,10 +26,12 @@ import {
 } from "../ui/menu";
 import { SidebarMenuSub, SidebarMenuSubItem } from "../ui/sidebar";
 import type { SidebarStatusBucket } from "../Sidebar.logic";
-import type {
-  SidebarTreeProject,
-  SidebarTreeThread,
-  SidebarTreeWorktree,
+import {
+  normalizeWorktreePath,
+  type SidebarTreeProject,
+  type SidebarTreeThread,
+  type SidebarTreeWorktree,
+  type SidebarWorktree,
 } from "./hooks/useSidebarTree";
 import { LinkedWorktreeItemDialog, type LinkedWorktreeItem } from "./LinkedWorktreeItemDialog";
 
@@ -108,6 +110,7 @@ export const SidebarWorktreeList = memo(function SidebarWorktreeList(
           <SidebarWorktreeSection
             key={worktree.worktree.worktreeId}
             orderedProjectThreadKeys={orderedProjectThreadKeys}
+            projectCwd={props.treeProject.project.cwd}
             projectExpanded={props.projectExpanded}
             renderThread={props.renderThread}
             visibleThreadKeys={props.visibleThreadKeys}
@@ -140,6 +143,7 @@ export const SidebarWorktreeList = memo(function SidebarWorktreeList(
               ? props.treeProject.archivedWorktrees.map((worktree) => (
                   <ArchivedWorktreeRow
                     key={worktree.worktree.worktreeId}
+                    projectCwd={props.treeProject.project.cwd}
                     worktree={worktree}
                     onDeleteWorktree={props.onDeleteWorktree}
                     onOpenLinkedItem={handleOpenLinkedItem}
@@ -162,11 +166,13 @@ export const SidebarWorktreeList = memo(function SidebarWorktreeList(
 });
 
 function ArchivedWorktreeRow(props: {
+  projectCwd: string;
   worktree: SidebarTreeWorktree;
   onDeleteWorktree: (worktree: SidebarTreeWorktree) => void;
   onOpenLinkedItem: (item: LinkedWorktreeItem) => void;
   onRestoreWorktree: (worktree: SidebarTreeWorktree) => void;
 }) {
+  const isProjectRoot = isProjectRootWorktree(props.worktree.worktree, props.projectCwd);
   return (
     <SidebarMenuSubItem className="w-full" data-thread-selection-safe>
       <div className="ml-3 flex h-7 items-center gap-1.5 rounded-md px-2 text-muted-foreground">
@@ -186,14 +192,16 @@ function ArchivedWorktreeRow(props: {
         >
           <RotateCcwIcon className="size-3.5" />
         </button>
-        <button
-          type="button"
-          className="inline-flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 hover:bg-secondary hover:text-destructive"
-          aria-label={`Delete ${props.worktree.worktree.branch}`}
-          onClick={() => props.onDeleteWorktree(props.worktree)}
-        >
-          <Trash2Icon className="size-3.5" />
-        </button>
+        {isProjectRoot ? null : (
+          <button
+            type="button"
+            className="inline-flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 hover:bg-secondary hover:text-destructive"
+            aria-label={`Delete ${props.worktree.worktree.branch}`}
+            onClick={() => props.onDeleteWorktree(props.worktree)}
+          >
+            <Trash2Icon className="size-3.5" />
+          </button>
+        )}
       </div>
     </SidebarMenuSubItem>
   );
@@ -201,6 +209,7 @@ function ArchivedWorktreeRow(props: {
 
 const SidebarWorktreeSection = memo(function SidebarWorktreeSection(props: {
   orderedProjectThreadKeys: readonly string[];
+  projectCwd: string;
   projectExpanded: boolean;
   renderThread: (
     thread: SidebarTreeThread,
@@ -217,6 +226,7 @@ const SidebarWorktreeSection = memo(function SidebarWorktreeSection(props: {
   onOpenWorktree: (worktree: SidebarTreeWorktree) => void;
   onRenameWorktree: (worktree: SidebarTreeWorktree, title: string) => Promise<void> | void;
 }) {
+  const isProjectRoot = isProjectRootWorktree(props.worktree.worktree, props.projectCwd);
   const visibleThreads = useMemo(
     () =>
       props.worktree.sessions.filter((thread) =>
@@ -360,7 +370,7 @@ const SidebarWorktreeSection = memo(function SidebarWorktreeSection(props: {
             )}
             <WorktreeOriginLabel worktree={props.worktree} />
             <WorktreeDiffStats worktree={props.worktree} />
-            {props.worktree.shouldSuggestArchive ? (
+            {props.worktree.shouldSuggestArchive && !isProjectRoot ? (
               <button
                 type="button"
                 className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -387,6 +397,7 @@ const SidebarWorktreeSection = memo(function SidebarWorktreeSection(props: {
               <PlusIcon className="size-3.5" />
             </button>
             <WorktreeMenu
+              isProjectRoot={isProjectRoot}
               worktree={props.worktree}
               onArchiveWorktree={props.onArchiveWorktree}
               onCopyWorktreePath={props.onCopyWorktreePath}
@@ -398,6 +409,7 @@ const SidebarWorktreeSection = memo(function SidebarWorktreeSection(props: {
           </ContextMenuTrigger>
           <ContextMenuPopup align="start" side="bottom" className="min-w-48">
             <WorktreeMenuItems
+              isProjectRoot={isProjectRoot}
               worktree={props.worktree}
               onArchiveWorktree={props.onArchiveWorktree}
               onCopyWorktreePath={props.onCopyWorktreePath}
@@ -425,6 +437,7 @@ const SidebarWorktreeSection = memo(function SidebarWorktreeSection(props: {
 });
 
 function WorktreeMenuItems(props: {
+  isProjectRoot: boolean;
   worktree: SidebarTreeWorktree;
   onArchiveWorktree: (worktree: SidebarTreeWorktree) => void;
   onCopyWorktreePath: (worktree: SidebarTreeWorktree) => void;
@@ -433,7 +446,6 @@ function WorktreeMenuItems(props: {
   onOpenInEditor: (worktree: SidebarTreeWorktree) => void;
   onRenameWorktree: () => void;
 }) {
-  const isMain = props.worktree.worktree.origin === "main";
   return (
     <>
       <MenuItem onClick={() => props.onNewSession(props.worktree)}>
@@ -453,12 +465,15 @@ function WorktreeMenuItems(props: {
         Copy path
       </MenuItem>
       <MenuSeparator />
-      <MenuItem disabled={isMain} onClick={() => props.onArchiveWorktree(props.worktree)}>
+      <MenuItem
+        disabled={props.isProjectRoot}
+        onClick={() => props.onArchiveWorktree(props.worktree)}
+      >
         <ArchiveIcon className="size-4" />
         Archive worktree
       </MenuItem>
       <MenuItem
-        disabled={isMain}
+        disabled={props.isProjectRoot}
         variant="destructive"
         onClick={() => props.onDeleteWorktree(props.worktree)}
       >
@@ -470,6 +485,7 @@ function WorktreeMenuItems(props: {
 }
 
 function WorktreeMenu(props: {
+  isProjectRoot: boolean;
   worktree: SidebarTreeWorktree;
   onArchiveWorktree: (worktree: SidebarTreeWorktree) => void;
   onCopyWorktreePath: (worktree: SidebarTreeWorktree) => void;
@@ -492,6 +508,7 @@ function WorktreeMenu(props: {
       </MenuTrigger>
       <MenuPopup align="end" side="bottom" className="min-w-48">
         <WorktreeMenuItems
+          isProjectRoot={props.isProjectRoot}
           worktree={props.worktree}
           onArchiveWorktree={props.onArchiveWorktree}
           onCopyWorktreePath={props.onCopyWorktreePath}
@@ -613,6 +630,12 @@ function WorktreeSourceControlBadge(props: {
 
 function getWorktreeDisplayTitle(worktree: SidebarTreeWorktree): string {
   return worktree.worktree.title ?? worktree.worktree.branch;
+}
+
+function isProjectRootWorktree(worktree: SidebarWorktree, projectCwd: string): boolean {
+  if (worktree.origin === "main") return true;
+  if (worktree.worktreePath === null) return true;
+  return normalizeWorktreePath(worktree.worktreePath) === normalizeWorktreePath(projectCwd);
 }
 
 function WorktreeDiffStats({ worktree }: { worktree: SidebarTreeWorktree }) {
