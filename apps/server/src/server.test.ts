@@ -2847,6 +2847,21 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
             worktreePath: "/tmp/project-pr-worktree",
           }),
       );
+      const refreshStatus = vi.fn((_: string) =>
+        Effect.succeed({
+          isRepo: true,
+          hasPrimaryRemote: true,
+          isDefaultRef: false,
+          refName: "feature/worktree-pr",
+          hasWorkingTreeChanges: false,
+          workingTree: { files: [], insertions: 0, deletions: 0 },
+          hasUpstream: true,
+          aheadCount: 0,
+          behindCount: 0,
+          aheadOfDefaultCount: 0,
+          pr: null,
+        }),
+      );
 
       const config = yield* buildAppUnderTest({
         layers: {
@@ -2855,22 +2870,14 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
           },
           gitVcsDriver: {
             createWorktree,
+            listWorktreePaths: () => Effect.succeed([]),
+            listLocalBranchNames: () => Effect.succeed([]),
+          },
+          vcsDriver: {
+            isInsideWorkTree: () => Effect.succeed(true),
           },
           vcsStatusBroadcaster: {
-            refreshStatus: () =>
-              Effect.succeed({
-                isRepo: true,
-                hasPrimaryRemote: true,
-                isDefaultRef: false,
-                refName: "feature/worktree-pr",
-                hasWorkingTreeChanges: false,
-                workingTree: { files: [], insertions: 0, deletions: 0 },
-                hasUpstream: true,
-                aheadCount: 0,
-                behindCount: 0,
-                aheadOfDefaultCount: 0,
-                pr: null,
-              }),
+            refreshStatus,
           },
           orchestrationEngine: {
             dispatch: (command) =>
@@ -2925,9 +2932,15 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         (command): command is Extract<OrchestrationCommand, { type: "worktree.create" }> =>
           command.type === "worktree.create",
       );
+      const threadCreate = dispatchedCommands.find(
+        (command): command is Extract<OrchestrationCommand, { type: "thread.create" }> =>
+          command.type === "thread.create",
+      );
       assert.equal(worktreeCreate?.origin, "pr");
       assert.equal(worktreeCreate?.branch, "feature/worktree-pr");
       assert.equal(worktreeCreate?.worktreePath, "/tmp/project-pr-worktree");
+      assert.equal(threadCreate?.worktreePath, "/tmp/project-pr-worktree");
+      assert.equal(refreshStatus.mock.calls[0]?.[0], "/tmp/project-pr-worktree");
       assert.equal(worktreeCreate?.prNumber, 42);
       assert.equal(worktreeCreate?.prTitle, "Fix worktree creation");
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
@@ -3017,6 +3030,259 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
       assert.equal(worktreeCreate?.origin, "issue");
       assert.equal(worktreeCreate?.branch, createdWorktreeInput?.newRefName);
       assert.equal(worktreeCreate?.issueNumber, 42);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("cleans up branch worktrees when orchestration dispatch fails", () =>
+    Effect.gen(function* () {
+      const removeWorktree = vi.fn(
+        (_input: Parameters<GitVcsDriver.GitVcsDriverShape["removeWorktree"]>[0]) => Effect.void,
+      );
+      const deleteBranch = vi.fn(
+        (_input: Parameters<GitVcsDriver.GitVcsDriverShape["deleteBranch"]>[0]) => Effect.void,
+      );
+
+      yield* buildAppUnderTest({
+        layers: {
+          gitVcsDriver: {
+            createWorktree: (input) =>
+              Effect.succeed({
+                worktree: {
+                  refName: input.newRefName ?? input.refName,
+                  path: "/tmp/project-branch-cleanup-worktree",
+                },
+              }),
+            removeWorktree,
+            deleteBranch,
+          },
+          orchestrationEngine: {
+            dispatch: (command) =>
+              command.type === "thread.create"
+                ? Effect.fail(
+                    new OrchestrationListenerCallbackError({
+                      listener: "domain-event",
+                      detail: "thread create failed",
+                    }),
+                  )
+                : Effect.succeed({ sequence: 1 }),
+          },
+          projectionSnapshotQuery: {
+            getProjectShellById: () =>
+              Effect.succeed(
+                Option.some({
+                  id: defaultProjectId,
+                  title: "Default Project",
+                  workspaceRoot: "/tmp/project",
+                  projectMetadataDir: ".ryco",
+                  repositoryIdentity: null,
+                  defaultModelSelection,
+                  customSystemPrompt: null,
+                  customAvatarContentHash: null,
+                  preferredRemoteName: null,
+                  scripts: [],
+                  createdAt: "2026-05-10T00:00:00.000Z",
+                  updatedAt: "2026-05-10T00:00:00.000Z",
+                }),
+              ),
+          },
+        },
+      });
+
+      const wsUrl = yield* getWsServerUrl("/ws");
+      const result = yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          client[WS_METHODS.gitCreateWorktreeForProject]({
+            projectId: defaultProjectId,
+            intent: { kind: "branch", branchName: "main" },
+          }),
+        ).pipe(Effect.result),
+      );
+
+      assert.equal(result._tag, "Failure");
+      assert.deepEqual(removeWorktree.mock.calls[0]?.[0], {
+        cwd: "/tmp/project",
+        path: "/tmp/project-branch-cleanup-worktree",
+        force: true,
+      });
+      assert.equal(deleteBranch.mock.calls[0]?.[0]?.cwd, "/tmp/project");
+      assert.match(deleteBranch.mock.calls[0]?.[0]?.refName ?? "", /^ryco\/[0-9a-f]{8}$/);
+      assert.equal(deleteBranch.mock.calls[0]?.[0]?.force, true);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("cleans up owned prepared PR worktrees when orchestration dispatch fails", () =>
+    Effect.gen(function* () {
+      const removeWorktree = vi.fn(
+        (_input: Parameters<GitVcsDriver.GitVcsDriverShape["removeWorktree"]>[0]) => Effect.void,
+      );
+      const deleteBranch = vi.fn(
+        (_input: Parameters<GitVcsDriver.GitVcsDriverShape["deleteBranch"]>[0]) => Effect.void,
+      );
+
+      yield* buildAppUnderTest({
+        layers: {
+          gitManager: {
+            preparePullRequestThread: () =>
+              Effect.succeed({
+                pullRequest: {
+                  number: 42,
+                  title: "Fix worktree creation",
+                  url: "https://example.com/pull/42",
+                  baseBranch: "main",
+                  headBranch: "feature/worktree-pr",
+                  state: "open" as const,
+                },
+                branch: "feature/worktree-pr",
+                worktreePath: "/tmp/project-pr-cleanup-worktree",
+              }),
+          },
+          gitVcsDriver: {
+            listWorktreePaths: () => Effect.succeed([]),
+            listLocalBranchNames: () => Effect.succeed([]),
+            removeWorktree,
+            deleteBranch,
+          },
+          vcsDriver: {
+            isInsideWorkTree: () => Effect.succeed(true),
+          },
+          orchestrationEngine: {
+            dispatch: (command) =>
+              command.type === "thread.create"
+                ? Effect.fail(
+                    new OrchestrationListenerCallbackError({
+                      listener: "domain-event",
+                      detail: "thread create failed",
+                    }),
+                  )
+                : Effect.succeed({ sequence: 1 }),
+          },
+          projectionSnapshotQuery: {
+            getProjectShellById: () =>
+              Effect.succeed(
+                Option.some({
+                  id: defaultProjectId,
+                  title: "Default Project",
+                  workspaceRoot: "/tmp/project",
+                  projectMetadataDir: ".ryco",
+                  repositoryIdentity: null,
+                  defaultModelSelection,
+                  customSystemPrompt: null,
+                  customAvatarContentHash: null,
+                  preferredRemoteName: null,
+                  scripts: [],
+                  createdAt: "2026-05-10T00:00:00.000Z",
+                  updatedAt: "2026-05-10T00:00:00.000Z",
+                }),
+              ),
+          },
+        },
+      });
+
+      const wsUrl = yield* getWsServerUrl("/ws");
+      const result = yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          client[WS_METHODS.gitCreateWorktreeForProject]({
+            projectId: defaultProjectId,
+            intent: { kind: "pr", number: 42 },
+          }),
+        ).pipe(Effect.result),
+      );
+
+      assert.equal(result._tag, "Failure");
+      assert.deepEqual(removeWorktree.mock.calls[0]?.[0], {
+        cwd: "/tmp/project",
+        path: "/tmp/project-pr-cleanup-worktree",
+        force: true,
+      });
+      assert.deepEqual(deleteBranch.mock.calls[0]?.[0], {
+        cwd: "/tmp/project",
+        refName: "feature/worktree-pr",
+        force: true,
+      });
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("keeps reused prepared PR worktrees when orchestration dispatch fails", () =>
+    Effect.gen(function* () {
+      const removeWorktree = vi.fn(
+        (_input: Parameters<GitVcsDriver.GitVcsDriverShape["removeWorktree"]>[0]) => Effect.void,
+      );
+      const deleteBranch = vi.fn(
+        (_input: Parameters<GitVcsDriver.GitVcsDriverShape["deleteBranch"]>[0]) => Effect.void,
+      );
+
+      yield* buildAppUnderTest({
+        layers: {
+          gitManager: {
+            preparePullRequestThread: () =>
+              Effect.succeed({
+                pullRequest: {
+                  number: 42,
+                  title: "Fix worktree creation",
+                  url: "https://example.com/pull/42",
+                  baseBranch: "main",
+                  headBranch: "feature/worktree-pr",
+                  state: "open" as const,
+                },
+                branch: "feature/worktree-pr",
+                worktreePath: "/tmp/project-pr-reused-worktree",
+              }),
+          },
+          gitVcsDriver: {
+            listWorktreePaths: () => Effect.succeed(["/tmp/project-pr-reused-worktree"]),
+            listLocalBranchNames: () => Effect.succeed(["feature/worktree-pr"]),
+            removeWorktree,
+            deleteBranch,
+          },
+          vcsDriver: {
+            isInsideWorkTree: () => Effect.succeed(true),
+          },
+          orchestrationEngine: {
+            dispatch: (command) =>
+              command.type === "thread.create"
+                ? Effect.fail(
+                    new OrchestrationListenerCallbackError({
+                      listener: "domain-event",
+                      detail: "thread create failed",
+                    }),
+                  )
+                : Effect.succeed({ sequence: 1 }),
+          },
+          projectionSnapshotQuery: {
+            getProjectShellById: () =>
+              Effect.succeed(
+                Option.some({
+                  id: defaultProjectId,
+                  title: "Default Project",
+                  workspaceRoot: "/tmp/project",
+                  projectMetadataDir: ".ryco",
+                  repositoryIdentity: null,
+                  defaultModelSelection,
+                  customSystemPrompt: null,
+                  customAvatarContentHash: null,
+                  preferredRemoteName: null,
+                  scripts: [],
+                  createdAt: "2026-05-10T00:00:00.000Z",
+                  updatedAt: "2026-05-10T00:00:00.000Z",
+                }),
+              ),
+          },
+        },
+      });
+
+      const wsUrl = yield* getWsServerUrl("/ws");
+      const result = yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          client[WS_METHODS.gitCreateWorktreeForProject]({
+            projectId: defaultProjectId,
+            intent: { kind: "pr", number: 42 },
+          }),
+        ).pipe(Effect.result),
+      );
+
+      assert.equal(result._tag, "Failure");
+      assert.equal(removeWorktree.mock.calls.length, 0);
+      assert.equal(deleteBranch.mock.calls.length, 0);
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 
