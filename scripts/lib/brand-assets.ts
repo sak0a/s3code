@@ -1,22 +1,32 @@
 export const BRAND_ASSET_PATHS = {
-  productionMacIconPng: "assets/prod/black-macos-1024.png",
-  productionLinuxIconPng: "assets/prod/black-universal-1024.png",
-  productionWindowsIconIco: "assets/prod/s3-black-windows.ico",
-  productionWebFaviconIco: "assets/prod/s3-black-web-favicon.ico",
-  productionWebFavicon16Png: "assets/prod/s3-black-web-favicon-16x16.png",
-  productionWebFavicon32Png: "assets/prod/s3-black-web-favicon-32x32.png",
-  productionWebAppleTouchIconPng: "assets/prod/s3-black-web-apple-touch-180.png",
+  productionMacIconPng: "assets/prod/ryco-macos-1024.png",
+  productionMacIconset: "assets/prod/ryco-macos.iconset",
+  productionLinuxIconPng: "assets/prod/ryco-linux-1024.png",
+  productionWindowsIconIco: "assets/prod/ryco-windows.ico",
+  productionWebFaviconIco: "assets/prod/favicon/favicon.ico",
+  productionWebFaviconSvg: "assets/prod/favicon/favicon.svg",
+  productionWebFavicon96Png: "assets/prod/favicon/favicon-96x96.png",
+  productionWebAppleTouchIconPng: "assets/prod/favicon/apple-touch-icon.png",
+  productionWebManifest192Png: "assets/prod/favicon/web-app-manifest-192x192.png",
+  productionWebManifest512Png: "assets/prod/favicon/web-app-manifest-512x512.png",
+  productionWebSiteManifest: "assets/prod/favicon/site.webmanifest",
 
-  nightlyMacIconPng: "assets/nightly/blueprint-macos-1024.png",
-  nightlyLinuxIconPng: "assets/nightly/blueprint-universal-1024.png",
-  nightlyWindowsIconIco: "assets/nightly/blueprint-windows.ico",
+  nightlyMacIconPng: "assets/nightly/ryco-macos-1024.png",
+  nightlyMacIconset: "assets/nightly/ryco-macos.iconset",
+  nightlyLinuxIconPng: "assets/nightly/ryco-linux-1024.png",
+  nightlyWindowsIconIco: "assets/nightly/ryco-windows.ico",
 
-  developmentDesktopIconPng: "assets/dev/blueprint-macos-1024.png",
-  developmentWindowsIconIco: "assets/dev/blueprint-windows.ico",
-  developmentWebFaviconIco: "assets/dev/blueprint-web-favicon.ico",
-  developmentWebFavicon16Png: "assets/dev/blueprint-web-favicon-16x16.png",
-  developmentWebFavicon32Png: "assets/dev/blueprint-web-favicon-32x32.png",
-  developmentWebAppleTouchIconPng: "assets/dev/blueprint-web-apple-touch-180.png",
+  developmentDesktopIconPng: "assets/dev/ryco-macos-1024.png",
+  developmentMacIconset: "assets/dev/ryco-macos.iconset",
+  developmentLinuxIconPng: "assets/dev/ryco-linux-1024.png",
+  developmentWindowsIconIco: "assets/dev/ryco-windows.ico",
+  developmentWebFaviconIco: "assets/dev/favicon/favicon.ico",
+  developmentWebFaviconSvg: "assets/dev/favicon/favicon.svg",
+  developmentWebFavicon96Png: "assets/dev/favicon/favicon-96x96.png",
+  developmentWebAppleTouchIconPng: "assets/dev/favicon/apple-touch-icon.png",
+  developmentWebManifest192Png: "assets/dev/favicon/web-app-manifest-192x192.png",
+  developmentWebManifest512Png: "assets/dev/favicon/web-app-manifest-512x512.png",
+  developmentWebSiteManifest: "assets/dev/favicon/site.webmanifest",
 } as const;
 
 export type WebAssetBrand = "development" | "production";
@@ -26,51 +36,42 @@ export interface IconOverride {
   readonly targetRelativePath: string;
 }
 
-const WEB_ICON_TARGET_FILENAMES = {
-  faviconIco: "favicon.ico",
-  favicon16Png: "favicon-16x16.png",
-  favicon32Png: "favicon-32x32.png",
-  appleTouchIconPng: "apple-touch-icon.png",
-} as const;
+const PRODUCTION_WEB_ICON_OVERRIDE_FILES = [
+  { source: BRAND_ASSET_PATHS.productionWebFaviconIco, filename: "favicon.ico" },
+  { source: BRAND_ASSET_PATHS.productionWebFaviconSvg, filename: "favicon.svg" },
+  { source: BRAND_ASSET_PATHS.productionWebFavicon96Png, filename: "favicon-96x96.png" },
+  { source: BRAND_ASSET_PATHS.productionWebAppleTouchIconPng, filename: "apple-touch-icon.png" },
+  { source: BRAND_ASSET_PATHS.productionWebManifest192Png, filename: "web-app-manifest-192x192.png" },
+  { source: BRAND_ASSET_PATHS.productionWebManifest512Png, filename: "web-app-manifest-512x512.png" },
+  { source: BRAND_ASSET_PATHS.productionWebSiteManifest, filename: "site.webmanifest" },
+] as const;
 
-const WEB_ICON_SOURCE_PATHS_BY_BRAND = {
-  development: {
-    faviconIco: BRAND_ASSET_PATHS.developmentWebFaviconIco,
-    favicon16Png: BRAND_ASSET_PATHS.developmentWebFavicon16Png,
-    favicon32Png: BRAND_ASSET_PATHS.developmentWebFavicon32Png,
-    appleTouchIconPng: BRAND_ASSET_PATHS.developmentWebAppleTouchIconPng,
-  },
-  production: {
-    faviconIco: BRAND_ASSET_PATHS.productionWebFaviconIco,
-    favicon16Png: BRAND_ASSET_PATHS.productionWebFavicon16Png,
-    favicon32Png: BRAND_ASSET_PATHS.productionWebFavicon32Png,
-    appleTouchIconPng: BRAND_ASSET_PATHS.productionWebAppleTouchIconPng,
-  },
-} as const satisfies Record<WebAssetBrand, Record<keyof typeof WEB_ICON_TARGET_FILENAMES, string>>;
+const DEVELOPMENT_WEB_ICON_OVERRIDE_FILES = [
+  { source: BRAND_ASSET_PATHS.developmentWebFaviconIco, filename: "favicon.ico" },
+  { source: BRAND_ASSET_PATHS.developmentWebFaviconSvg, filename: "favicon.svg" },
+  { source: BRAND_ASSET_PATHS.developmentWebFavicon96Png, filename: "favicon-96x96.png" },
+  { source: BRAND_ASSET_PATHS.developmentWebAppleTouchIconPng, filename: "apple-touch-icon.png" },
+  { source: BRAND_ASSET_PATHS.developmentWebManifest192Png, filename: "web-app-manifest-192x192.png" },
+  { source: BRAND_ASSET_PATHS.developmentWebManifest512Png, filename: "web-app-manifest-512x512.png" },
+  { source: BRAND_ASSET_PATHS.developmentWebSiteManifest, filename: "site.webmanifest" },
+] as const;
+
+const WEB_ICON_OVERRIDE_FILES_BY_BRAND = {
+  development: DEVELOPMENT_WEB_ICON_OVERRIDE_FILES,
+  production: PRODUCTION_WEB_ICON_OVERRIDE_FILES,
+} as const satisfies Record<
+  WebAssetBrand,
+  ReadonlyArray<{ readonly source: string; readonly filename: string }>
+>;
 
 export function resolveWebIconOverrides(
   brand: WebAssetBrand,
   targetDirectory: string,
 ): ReadonlyArray<IconOverride> {
-  const sourcePaths = WEB_ICON_SOURCE_PATHS_BY_BRAND[brand];
-  return [
-    {
-      sourceRelativePath: sourcePaths.faviconIco,
-      targetRelativePath: `${targetDirectory}/${WEB_ICON_TARGET_FILENAMES.faviconIco}`,
-    },
-    {
-      sourceRelativePath: sourcePaths.favicon16Png,
-      targetRelativePath: `${targetDirectory}/${WEB_ICON_TARGET_FILENAMES.favicon16Png}`,
-    },
-    {
-      sourceRelativePath: sourcePaths.favicon32Png,
-      targetRelativePath: `${targetDirectory}/${WEB_ICON_TARGET_FILENAMES.favicon32Png}`,
-    },
-    {
-      sourceRelativePath: sourcePaths.appleTouchIconPng,
-      targetRelativePath: `${targetDirectory}/${WEB_ICON_TARGET_FILENAMES.appleTouchIconPng}`,
-    },
-  ];
+  return WEB_ICON_OVERRIDE_FILES_BY_BRAND[brand].map((override) => ({
+    sourceRelativePath: override.source,
+    targetRelativePath: `${targetDirectory}/${override.filename}`,
+  }));
 }
 
 export const DEVELOPMENT_ICON_OVERRIDES = resolveWebIconOverrides("development", "dist/client");

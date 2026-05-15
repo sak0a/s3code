@@ -7,6 +7,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   statSync,
@@ -19,13 +20,14 @@ import { fileURLToPath } from "node:url";
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
 const APP_DISPLAY_NAME = isDevelopment ? "Ryco (Dev)" : "Ryco";
 const APP_BUNDLE_ID = isDevelopment ? "com.sak0a.ryco.dev" : "com.sak0a.ryco";
-const LAUNCHER_VERSION = 2;
+const LAUNCHER_VERSION = 3;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const desktopDir = resolve(__dirname, "..");
 const repoRoot = resolve(desktopDir, "..", "..");
 const defaultIconPath = join(desktopDir, "resources", "icon.icns");
-const developmentMacIconPngPath = join(repoRoot, "assets", "dev", "blueprint-macos-1024.png");
+const developmentMacIconPngPath = join(repoRoot, "assets", "dev", "ryco-macos-1024.png");
+const developmentMacIconsetPath = join(repoRoot, "assets", "dev", "ryco-macos.iconset");
 
 function setPlistString(plistPath, key, value) {
   const replaceResult = spawnSync("plutil", ["-replace", key, "-string", value, plistPath], {
@@ -56,17 +58,45 @@ function runChecked(command, args) {
   throw new Error(`Failed to run ${command} ${args.join(" ")}: ${details}`.trim());
 }
 
+function latestMtimeMs(filePath) {
+  if (!existsSync(filePath)) return 0;
+  const stat = statSync(filePath);
+  if (!stat.isDirectory()) return stat.mtimeMs;
+  let latest = stat.mtimeMs;
+  for (const entry of readdirSync(filePath)) {
+    const child = latestMtimeMs(join(filePath, entry));
+    if (child > latest) latest = child;
+  }
+  return latest;
+}
+
 function ensureDevelopmentIconIcns(runtimeDir) {
   const generatedIconPath = join(runtimeDir, "icon-dev.icns");
   mkdirSync(runtimeDir, { recursive: true });
 
-  if (!existsSync(developmentMacIconPngPath)) {
+  const hasIconset = existsSync(developmentMacIconsetPath);
+  const hasSourcePng = existsSync(developmentMacIconPngPath);
+  if (!hasIconset && !hasSourcePng) {
     return defaultIconPath;
   }
 
-  const sourceMtimeMs = statSync(developmentMacIconPngPath).mtimeMs;
+  const sourceMtimeMs = hasIconset
+    ? latestMtimeMs(developmentMacIconsetPath)
+    : statSync(developmentMacIconPngPath).mtimeMs;
   if (existsSync(generatedIconPath) && statSync(generatedIconPath).mtimeMs >= sourceMtimeMs) {
     return generatedIconPath;
+  }
+
+  if (hasIconset) {
+    try {
+      runChecked("iconutil", ["-c", "icns", developmentMacIconsetPath, "-o", generatedIconPath]);
+      return generatedIconPath;
+    } catch (error) {
+      console.warn(
+        "[desktop-launcher] Failed to build dev .icns from iconset, falling back to sips resize.",
+        error,
+      );
+    }
   }
 
   const iconsetRoot = mkdtempSync(join(runtimeDir, "dev-iconset-"));

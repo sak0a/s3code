@@ -15,25 +15,63 @@ describe("brand-assets", () => {
         targetRelativePath: "dist/client/favicon.ico",
       },
       {
-        sourceRelativePath: BRAND_ASSET_PATHS.productionWebFavicon16Png,
-        targetRelativePath: "dist/client/favicon-16x16.png",
+        sourceRelativePath: BRAND_ASSET_PATHS.productionWebFaviconSvg,
+        targetRelativePath: "dist/client/favicon.svg",
       },
       {
-        sourceRelativePath: BRAND_ASSET_PATHS.productionWebFavicon32Png,
-        targetRelativePath: "dist/client/favicon-32x32.png",
+        sourceRelativePath: BRAND_ASSET_PATHS.productionWebFavicon96Png,
+        targetRelativePath: "dist/client/favicon-96x96.png",
       },
       {
         sourceRelativePath: BRAND_ASSET_PATHS.productionWebAppleTouchIconPng,
         targetRelativePath: "dist/client/apple-touch-icon.png",
       },
+      {
+        sourceRelativePath: BRAND_ASSET_PATHS.productionWebManifest192Png,
+        targetRelativePath: "dist/client/web-app-manifest-192x192.png",
+      },
+      {
+        sourceRelativePath: BRAND_ASSET_PATHS.productionWebManifest512Png,
+        targetRelativePath: "dist/client/web-app-manifest-512x512.png",
+      },
+      {
+        sourceRelativePath: BRAND_ASSET_PATHS.productionWebSiteManifest,
+        targetRelativePath: "dist/client/site.webmanifest",
+      },
     ]);
   });
 
   it("maps server build web assets to development icons", () => {
-    expect(DEVELOPMENT_ICON_OVERRIDES[0]).toEqual({
-      sourceRelativePath: BRAND_ASSET_PATHS.developmentWebFaviconIco,
-      targetRelativePath: "dist/client/favicon.ico",
-    });
+    expect(DEVELOPMENT_ICON_OVERRIDES).toEqual([
+      {
+        sourceRelativePath: BRAND_ASSET_PATHS.developmentWebFaviconIco,
+        targetRelativePath: "dist/client/favicon.ico",
+      },
+      {
+        sourceRelativePath: BRAND_ASSET_PATHS.developmentWebFaviconSvg,
+        targetRelativePath: "dist/client/favicon.svg",
+      },
+      {
+        sourceRelativePath: BRAND_ASSET_PATHS.developmentWebFavicon96Png,
+        targetRelativePath: "dist/client/favicon-96x96.png",
+      },
+      {
+        sourceRelativePath: BRAND_ASSET_PATHS.developmentWebAppleTouchIconPng,
+        targetRelativePath: "dist/client/apple-touch-icon.png",
+      },
+      {
+        sourceRelativePath: BRAND_ASSET_PATHS.developmentWebManifest192Png,
+        targetRelativePath: "dist/client/web-app-manifest-192x192.png",
+      },
+      {
+        sourceRelativePath: BRAND_ASSET_PATHS.developmentWebManifest512Png,
+        targetRelativePath: "dist/client/web-app-manifest-512x512.png",
+      },
+      {
+        sourceRelativePath: BRAND_ASSET_PATHS.developmentWebSiteManifest,
+        targetRelativePath: "dist/client/site.webmanifest",
+      },
+    ]);
   });
 
   it("can target hosted web dist directly", () => {

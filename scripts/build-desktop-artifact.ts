@@ -36,6 +36,7 @@ const encodeJsonString = Schema.encodeEffect(Schema.UnknownFromJsonString);
 
 interface DesktopBuildIconAssets {
   readonly macIconPng: string;
+  readonly macIconset: string | undefined;
   readonly linuxIconPng: string;
   readonly windowsIconIco: string;
 }
@@ -357,7 +358,7 @@ const runCommand = Effect.fn("runCommand")(function* (command: ChildProcess.Comm
   }
 });
 
-function generateMacIconSet(
+function generateMacIconSetFromSourcePng(
   sourcePng: string,
   targetIcns: string,
   tmpRoot: string,
@@ -393,7 +394,20 @@ function generateMacIconSet(
   });
 }
 
-function stageMacIcons(stageResourcesDir: string, sourcePng: string, verbose: boolean) {
+function generateMacIcnsFromIconset(iconsetDir: string, targetIcns: string, verbose: boolean) {
+  return runCommand(
+    ChildProcess.make({
+      ...commandOutputOptions(verbose),
+    })`iconutil -c icns ${iconsetDir} -o ${targetIcns}`,
+  );
+}
+
+function stageMacIcons(
+  stageResourcesDir: string,
+  sourcePng: string,
+  sourceIconset: string | undefined,
+  verbose: boolean,
+) {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
@@ -402,10 +416,6 @@ function stageMacIcons(stageResourcesDir: string, sourcePng: string, verbose: bo
         message: `Desktop macOS icon source is missing at ${sourcePng}`,
       });
     }
-
-    const tmpRoot = yield* fs.makeTempDirectoryScoped({
-      prefix: "ryco-icon-build-",
-    });
 
     const iconPngPath = path.join(stageResourcesDir, "icon.png");
     const iconIcnsPath = path.join(stageResourcesDir, "icon.icns");
@@ -416,7 +426,15 @@ function stageMacIcons(stageResourcesDir: string, sourcePng: string, verbose: bo
       })`sips -z 512 512 ${sourcePng} --out ${iconPngPath}`,
     );
 
-    yield* generateMacIconSet(sourcePng, iconIcnsPath, tmpRoot, path, verbose);
+    if (sourceIconset && (yield* fs.exists(sourceIconset))) {
+      yield* generateMacIcnsFromIconset(sourceIconset, iconIcnsPath, verbose);
+      return;
+    }
+
+    const tmpRoot = yield* fs.makeTempDirectoryScoped({
+      prefix: "ryco-icon-build-",
+    });
+    yield* generateMacIconSetFromSourcePng(sourcePng, iconIcnsPath, tmpRoot, path, verbose);
   });
 }
 
@@ -537,6 +555,7 @@ export function resolveDesktopBuildIconAssets(version: string): DesktopBuildIcon
   if (resolveDesktopUpdateChannel(version) === "nightly") {
     return {
       macIconPng: BRAND_ASSET_PATHS.nightlyMacIconPng,
+      macIconset: BRAND_ASSET_PATHS.nightlyMacIconset,
       linuxIconPng: BRAND_ASSET_PATHS.nightlyLinuxIconPng,
       windowsIconIco: BRAND_ASSET_PATHS.nightlyWindowsIconIco,
     };
@@ -544,6 +563,7 @@ export function resolveDesktopBuildIconAssets(version: string): DesktopBuildIcon
 
   return {
     macIconPng: BRAND_ASSET_PATHS.productionMacIconPng,
+    macIconset: BRAND_ASSET_PATHS.productionMacIconset,
     linuxIconPng: BRAND_ASSET_PATHS.productionLinuxIconPng,
     windowsIconIco: BRAND_ASSET_PATHS.productionWindowsIconIco,
   };
@@ -681,7 +701,7 @@ const assertPlatformBuildResources = Effect.fn("assertPlatformBuildResources")(f
   verbose: boolean,
 ) {
   if (platform === "mac") {
-    yield* stageMacIcons(stageResourcesDir, iconAssets.macIconPng, verbose);
+    yield* stageMacIcons(stageResourcesDir, iconAssets.macIconPng, iconAssets.macIconset, verbose);
     return;
   }
 
@@ -816,6 +836,9 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     stageResourcesDir,
     {
       macIconPng: path.join(repoRoot, iconAssets.macIconPng),
+      macIconset: iconAssets.macIconset
+        ? path.join(repoRoot, iconAssets.macIconset)
+        : undefined,
       linuxIconPng: path.join(repoRoot, iconAssets.linuxIconPng),
       windowsIconIco: path.join(repoRoot, iconAssets.windowsIconIco),
     },
