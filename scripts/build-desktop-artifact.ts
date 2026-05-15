@@ -836,9 +836,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     stageResourcesDir,
     {
       macIconPng: path.join(repoRoot, iconAssets.macIconPng),
-      macIconset: iconAssets.macIconset
-        ? path.join(repoRoot, iconAssets.macIconset)
-        : undefined,
+      macIconset: iconAssets.macIconset ? path.join(repoRoot, iconAssets.macIconset) : undefined,
       linuxIconPng: path.join(repoRoot, iconAssets.linuxIconPng),
       windowsIconIco: path.join(repoRoot, iconAssets.windowsIconIco),
     },

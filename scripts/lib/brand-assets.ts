@@ -41,8 +41,14 @@ const PRODUCTION_WEB_ICON_OVERRIDE_FILES = [
   { source: BRAND_ASSET_PATHS.productionWebFaviconSvg, filename: "favicon.svg" },
   { source: BRAND_ASSET_PATHS.productionWebFavicon96Png, filename: "favicon-96x96.png" },
   { source: BRAND_ASSET_PATHS.productionWebAppleTouchIconPng, filename: "apple-touch-icon.png" },
-  { source: BRAND_ASSET_PATHS.productionWebManifest192Png, filename: "web-app-manifest-192x192.png" },
-  { source: BRAND_ASSET_PATHS.productionWebManifest512Png, filename: "web-app-manifest-512x512.png" },
+  {
+    source: BRAND_ASSET_PATHS.productionWebManifest192Png,
+    filename: "web-app-manifest-192x192.png",
+  },
+  {
+    source: BRAND_ASSET_PATHS.productionWebManifest512Png,
+    filename: "web-app-manifest-512x512.png",
+  },
   { source: BRAND_ASSET_PATHS.productionWebSiteManifest, filename: "site.webmanifest" },
 ] as const;
 
@@ -51,8 +57,14 @@ const DEVELOPMENT_WEB_ICON_OVERRIDE_FILES = [
   { source: BRAND_ASSET_PATHS.developmentWebFaviconSvg, filename: "favicon.svg" },
   { source: BRAND_ASSET_PATHS.developmentWebFavicon96Png, filename: "favicon-96x96.png" },
   { source: BRAND_ASSET_PATHS.developmentWebAppleTouchIconPng, filename: "apple-touch-icon.png" },
-  { source: BRAND_ASSET_PATHS.developmentWebManifest192Png, filename: "web-app-manifest-192x192.png" },
-  { source: BRAND_ASSET_PATHS.developmentWebManifest512Png, filename: "web-app-manifest-512x512.png" },
+  {
+    source: BRAND_ASSET_PATHS.developmentWebManifest192Png,
+    filename: "web-app-manifest-192x192.png",
+  },
+  {
+    source: BRAND_ASSET_PATHS.developmentWebManifest512Png,
+    filename: "web-app-manifest-512x512.png",
+  },
   { source: BRAND_ASSET_PATHS.developmentWebSiteManifest, filename: "site.webmanifest" },
 ] as const;
 

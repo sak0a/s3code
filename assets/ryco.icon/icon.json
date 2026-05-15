@@ -1,70 +1,66 @@
 {
-  "fill" : "automatic",
-  "groups" : [
+  "fill": "automatic",
+  "groups": [
     {
-      "hidden" : true,
-      "layers" : [
+      "hidden": true,
+      "layers": [
         {
-          "image-name" : "ryoc-logo-dev.png",
-          "name" : "ryoc-logo-dev"
+          "image-name": "ryoc-logo-dev.png",
+          "name": "ryoc-logo-dev"
         }
       ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
       },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
+      "translucency": {
+        "enabled": true,
+        "value": 0.5
       }
     },
     {
-      "hidden" : false,
-      "layers" : [
+      "hidden": false,
+      "layers": [
         {
-          "fill" : "none",
-          "image-name" : "ryco-logo-nightly.png",
-          "name" : "ryco-logo-nightly"
+          "fill": "none",
+          "image-name": "ryco-logo-nightly.png",
+          "name": "ryco-logo-nightly"
         }
       ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
       },
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.5
+      "translucency": {
+        "enabled": true,
+        "value": 0.5
       }
     },
     {
-      "blur-material" : 0.5,
-      "hidden" : true,
-      "layers" : [
+      "blur-material": 0.5,
+      "hidden": true,
+      "layers": [
         {
-          "blend-mode" : "normal",
-          "fill" : "none",
-          "glass" : true,
-          "hidden" : false,
-          "image-name" : "ryco-logo.png",
-          "name" : "ryco-logo"
+          "blend-mode": "normal",
+          "fill": "none",
+          "glass": true,
+          "hidden": false,
+          "image-name": "ryco-logo.png",
+          "name": "ryco-logo"
         }
       ],
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
       },
-      "translucency" : {
-        "enabled" : false,
-        "value" : 0.5
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
       }
     }
   ],
-  "supported-platforms" : {
-    "circles" : [
-      "watchOS"
-    ],
-    "squares" : [
-      "macOS"
-    ]
+  "supported-platforms": {
+    "circles": ["watchOS"],
+    "squares": ["macOS"]
   }
 }

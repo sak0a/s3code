@@ -33,7 +33,7 @@ It ships as a cross-platform desktop app (macOS, Linux, Windows) backed by an Ef
 - **Claude** — via the Claude Agent SDK
 - **GitHub Copilot** — via `@github/copilot-sdk`
 - **OpenCode** — via `@opencode-ai/sdk`
-- **Cursor** *(Early Access)*
+- **Cursor** _(Early Access)_
 - Multiple **named provider instances** per driver (e.g. `codex_personal`, `claude_openrouter`) with independent config and accent colors
 
 ### Workflow
@@ -83,11 +83,11 @@ npx ryco
 
 Get the latest installer from [GitHub Releases](https://github.com/sak0a/ryco/releases) or use a package manager:
 
-| Platform | Format | Install |
-| --- | --- | --- |
-| macOS | `.dmg` (universal) | `brew install --cask ryco` |
-| Linux | `.AppImage` (x64, arm64) | `yay -S ryco-bin` (AUR) |
-| Windows | NSIS `.exe` (x64, arm64) | Download from Releases |
+| Platform | Format                   | Install                    |
+| -------- | ------------------------ | -------------------------- |
+| macOS    | `.dmg` (universal)       | `brew install --cask ryco` |
+| Linux    | `.AppImage` (x64, arm64) | `yay -S ryco-bin` (AUR)    |
+| Windows  | NSIS `.exe` (x64, arm64) | Download from Releases     |
 
 ## Project status
 
