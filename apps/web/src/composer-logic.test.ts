@@ -281,6 +281,12 @@ describe("local composer file references", () => {
     expect(isLocalFilePathInsideDirectory("C:\\Project\\data.json", "c:\\project")).toBe(true);
   });
 
+  it("treats Windows UNC paths case-insensitively", () => {
+    expect(
+      isLocalFilePathInsideDirectory("\\\\Server\\Share\\data.json", "\\\\server\\share"),
+    ).toBe(true);
+  });
+
   it("allows native paths only for local readable runtime contexts", () => {
     expect(
       shouldUseNativeComposerFileReference({

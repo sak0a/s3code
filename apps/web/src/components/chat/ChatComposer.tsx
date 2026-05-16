@@ -2071,8 +2071,17 @@ export const ChatComposer = memo(
 
     const insertComposerFileReferences = useCallback((references: readonly string[]) => {
       if (references.length === 0) return;
-      composerEditorRef.current?.insertTextAndFocus(
-        references.join(COMPOSER_FILE_REFERENCE_SEPARATOR),
+      const editor = composerEditorRef.current;
+      if (!editor) return;
+
+      const snapshot = editor.readSnapshot();
+      const insertion = references.join(COMPOSER_FILE_REFERENCE_SEPARATOR);
+      const left = snapshot.value[snapshot.cursor - 1] ?? "";
+      const right = snapshot.value[snapshot.cursor] ?? "";
+      const needsLeadingSpace = left.length > 0 && !/\s/.test(left);
+      const needsTrailingSpace = right.length > 0 && !/\s/.test(right);
+      editor.insertTextAndFocus(
+        `${needsLeadingSpace ? COMPOSER_FILE_REFERENCE_SEPARATOR : ""}${insertion}${needsTrailingSpace ? COMPOSER_FILE_REFERENCE_SEPARATOR : ""}`,
       );
     }, []);
 

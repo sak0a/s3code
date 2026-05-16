@@ -62,8 +62,11 @@ export function formatComposerFileReference(path: string): string {
 }
 
 function normalizeComparableLocalPath(input: string): string {
-  const normalized = input.replaceAll("\\", "/").replace(/\/+/g, "/").replace(/\/$/g, "");
-  return /^[a-z]:/i.test(normalized) ? normalized.toLowerCase() : normalized;
+  const slashNormalized = input.replaceAll("\\", "/");
+  const isWindowsDrivePath = /^[a-z]:/i.test(slashNormalized);
+  const isWindowsUncPath = /^\/\/[^/]/.test(slashNormalized);
+  const normalized = slashNormalized.replace(/\/+/g, "/").replace(/\/$/g, "");
+  return isWindowsDrivePath || isWindowsUncPath ? normalized.toLowerCase() : normalized;
 }
 
 export function isAbsoluteLocalFilePath(path: string): boolean {
