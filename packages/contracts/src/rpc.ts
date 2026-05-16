@@ -95,6 +95,9 @@ import {
   ProjectSearchEntriesError,
   ProjectSearchEntriesInput,
   ProjectSearchEntriesResult,
+  ProjectStageFileReferenceError,
+  ProjectStageFileReferenceInput,
+  ProjectStageFileReferenceResult,
   ProjectWriteFileError,
   ProjectWriteFileInput,
   ProjectWriteFileResult,
@@ -163,6 +166,7 @@ export const WS_METHODS = {
   projectsSearchEntries: "projects.searchEntries",
   projectsReadFile: "projects.readFile",
   projectsWriteFile: "projects.writeFile",
+  projectsStageFileReference: "projects.stageFileReference",
 
   // Shell methods
   shellOpenInEditor: "shell.openInEditor",
@@ -665,6 +669,12 @@ export const WsProjectsWriteFileRpc = Rpc.make(WS_METHODS.projectsWriteFile, {
   error: Schema.Union([ProjectWriteFileError, AuthRpcError]),
 });
 
+export const WsProjectsStageFileReferenceRpc = Rpc.make(WS_METHODS.projectsStageFileReference, {
+  payload: ProjectStageFileReferenceInput,
+  success: ProjectStageFileReferenceResult,
+  error: Schema.Union([ProjectStageFileReferenceError, AuthRpcError]),
+});
+
 export const WsShellOpenInEditorRpc = Rpc.make(WS_METHODS.shellOpenInEditor, {
   payload: OpenInEditorInput,
   error: Schema.Union([OpenError, AuthRpcError]),
@@ -954,6 +964,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsProjectsSearchEntriesRpc,
   WsProjectsReadFileRpc,
   WsProjectsWriteFileRpc,
+  WsProjectsStageFileReferenceRpc,
   WsShellOpenInEditorRpc,
   WsFilesystemBrowseRpc,
   WsSubscribeVcsStatusRpc,
